@@ -40,6 +40,15 @@ export const PERMISSIONS = {
   ROOMS_CREATE: "rooms:create",
   ROOMS_UPDATE: "rooms:update",
   STRUCTURE_READ: "structure:read",
+
+  // Module 8 : Communication multicanal
+  COMMUNICATION_TEMPLATES_CREATE: "communication-templates:create",
+  COMMUNICATION_TEMPLATES_READ: "communication-templates:read",
+  COMMUNICATION_TEMPLATES_UPDATE: "communication-templates:update",
+  COMMUNICATIONS_CREATE: "communications:create",
+  COMMUNICATIONS_READ: "communications:read",
+  INTERNAL_MESSAGES_CREATE: "internal-messages:create",
+  INTERNAL_MESSAGES_READ: "internal-messages:read",
 } as const;
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

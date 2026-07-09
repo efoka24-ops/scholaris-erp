@@ -19,6 +19,11 @@ const TENANT_SCOPED_MODELS = new Set([
   "Room",
   "ClassRoom",
   "Group",
+  // Module 8 : Communication multicanal
+  "CommunicationTemplate",
+  "CommunicationMessage",
+  "UserChannelPreference",
+  "InternalMessage",
 ]);
 
 const READ_ACTIONS = new Set(["findFirst", "findMany", "count", "aggregate", "groupBy"]);

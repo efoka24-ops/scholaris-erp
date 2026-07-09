@@ -52,6 +52,12 @@ model Tenant {
   classrooms  ClassRoom[]
   groups      Group[]
 
+  // Module 8 : Communication multicanal
+  communicationTemplates CommunicationTemplate[]
+  communicationMessages  CommunicationMessage[]
+  userChannelPreferences UserChannelPreference[]
+  internalMessages       InternalMessage[]
+
   @@map("tenants")
 }
 
@@ -90,6 +96,12 @@ model User {
   // référencé comme chef de département ou professeur principal d'une classe.
   departmentsHeaded Department[] @relation("DepartmentHeadTeacher")
   classroomsLed     ClassRoom[]  @relation("ClassRoomMainTeacher")
+
+  // Module 8 : Communication multicanal
+  receivedCommunications  CommunicationMessage[] @relation("CommunicationMessageRecipient")
+  channelPreference       UserChannelPreference?  @relation("UserChannelPreferenceUser")
+  sentInternalMessages    InternalMessage[]       @relation("InternalMessageSender")
+  receivedInternalMessages InternalMessage[]      @relation("InternalMessageRecipient")
 
   @@unique([tenantId, email])
   @@map("users")
@@ -364,4 +376,97 @@ model Group {
 
   @@unique([tenantId, classroomId, code])
   @@map("groups")
+}
+
+// ─── Module 8 : Communication multicanal (§23 du guide) ─────────────────────
+// Modèles additifs uniquement, ajoutés en fin de fichier pour limiter les
+// conflits de merge avec les modules 2-7 développés en parallèle sur ce
+// même schéma. Aucune modification du modèle User existant : les préférences
+// de canal vivent dans un modèle séparé (UserChannelPreference) en relation 1:1.
+
+enum Channel {
+  EMAIL
+  SMS
+  WHATSAPP
+  PUSH
+  INTERNAL
+}
+
+enum MessageStatus {
+  PENDING
+  SENT
+  DELIVERED
+  FAILED
+}
+
+model CommunicationTemplate {
+  id         String   @id @default(uuid())
+  tenantId   String   @map("tenant_id")
+  code       String
+  name       String
+  channel    Channel
+  subjectFr  String?  @map("subject_fr")
+  subjectEn  String?  @map("subject_en")
+  bodyFr     String   @map("body_fr")
+  bodyEn     String?  @map("body_en")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  tenant   Tenant                  @relation(fields: [tenantId], references: [id])
+  messages CommunicationMessage[]
+
+  @@unique([tenantId, code])
+  @@map("communication_templates")
+}
+
+model CommunicationMessage {
+  id                 String        @id @default(uuid())
+  tenantId           String        @map("tenant_id")
+  templateId         String?       @map("template_id") // null = message ad-hoc (pas de template)
+  channel            Channel
+  recipientUserId    String        @map("recipient_user_id")
+  subject            String?
+  body               String
+  status             MessageStatus @default(PENDING)
+  providerMessageId  String?       @map("provider_message_id")
+  errorMessage       String?       @map("error_message")
+  sentAt             DateTime?     @map("sent_at")
+  createdAt          DateTime      @default(now()) @map("created_at")
+
+  tenant        Tenant                  @relation(fields: [tenantId], references: [id])
+  template      CommunicationTemplate?  @relation(fields: [templateId], references: [id])
+  recipientUser User                    @relation("CommunicationMessageRecipient", fields: [recipientUserId], references: [id])
+
+  @@map("communication_messages")
+}
+
+model UserChannelPreference {
+  id               String   @id @default(uuid())
+  tenantId         String   @map("tenant_id")
+  userId           String   @unique @map("user_id")
+  preferredChannel Channel  @map("preferred_channel")
+  fallbackChannel  Channel? @map("fallback_channel")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  user   User   @relation("UserChannelPreferenceUser", fields: [userId], references: [id])
+
+  @@map("user_channel_preferences")
+}
+
+model InternalMessage {
+  id             String    @id @default(uuid())
+  tenantId       String    @map("tenant_id")
+  senderUserId   String    @map("sender_user_id")
+  recipientUserId String   @map("recipient_user_id")
+  body           String
+  readAt         DateTime? @map("read_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  tenant       Tenant @relation(fields: [tenantId], references: [id])
+  senderUser   User   @relation("InternalMessageSender", fields: [senderUserId], references: [id])
+  recipientUser User  @relation("InternalMessageRecipient", fields: [recipientUserId], references: [id])
+
+  @@map("internal_messages")
 }
