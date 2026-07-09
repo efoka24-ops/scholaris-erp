@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Settings, Users, GraduationCap } from "lucide-react";
+import { LayoutDashboard, Settings, Users, GraduationCap, MessageSquare } from "lucide-react";
 import { cn } from "@scholaris/ui";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
   { href: "/students", label: "Élèves", icon: GraduationCap },
+  { href: "/communications", label: "Communication", icon: MessageSquare },
   { href: "/settings/users", label: "Utilisateurs", icon: Users },
   { href: "/settings/establishment", label: "Établissement", icon: Settings },
 ];

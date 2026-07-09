@@ -14,6 +14,14 @@ const BASE_PERMISSIONS: Array<{ resource: string; action: string; description: s
   { resource: "academic-years", action: "read", description: "Consulter les années académiques" },
   { resource: "periods", action: "update", description: "Ouvrir/fermer/verrouiller une période de saisie" },
   { resource: "audit-logs", action: "read", description: "Consulter le journal d'audit" },
+  // Module 8 : Communication multicanal
+  { resource: "communication-templates", action: "create", description: "Créer un modèle de communication" },
+  { resource: "communication-templates", action: "read", description: "Consulter les modèles de communication" },
+  { resource: "communication-templates", action: "update", description: "Modifier un modèle de communication" },
+  { resource: "communications", action: "create", description: "Envoyer une communication" },
+  { resource: "communications", action: "read", description: "Consulter le journal des communications" },
+  { resource: "internal-messages", action: "create", description: "Envoyer un message interne" },
+  { resource: "internal-messages", action: "read", description: "Consulter la messagerie interne" },
 ];
 
 async function main() {
