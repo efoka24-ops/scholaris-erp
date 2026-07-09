@@ -14,6 +14,26 @@ const BASE_PERMISSIONS: Array<{ resource: string; action: string; description: s
   { resource: "academic-years", action: "read", description: "Consulter les années académiques" },
   { resource: "periods", action: "update", description: "Ouvrir/fermer/verrouiller une période de saisie" },
   { resource: "audit-logs", action: "read", description: "Consulter le journal d'audit" },
+  // Module 2 — Structure pédagogique
+  { resource: "cycles", action: "read", description: "Consulter les cycles" },
+  { resource: "cycles", action: "create", description: "Créer un cycle" },
+  { resource: "departments", action: "read", description: "Consulter les départements" },
+  { resource: "departments", action: "create", description: "Créer un département" },
+  { resource: "departments", action: "update", description: "Modifier un département" },
+  { resource: "programs", action: "read", description: "Consulter les filières/programmes" },
+  { resource: "programs", action: "create", description: "Créer une filière/un programme" },
+  { resource: "programs", action: "update", description: "Modifier une filière/un programme" },
+  { resource: "levels", action: "read", description: "Consulter les niveaux" },
+  { resource: "levels", action: "create", description: "Créer un niveau" },
+  { resource: "levels", action: "update", description: "Modifier un niveau" },
+  { resource: "levels", action: "delete", description: "Supprimer un niveau" },
+  { resource: "classrooms", action: "read", description: "Consulter les classes" },
+  { resource: "classrooms", action: "create", description: "Créer une classe" },
+  { resource: "classrooms", action: "update", description: "Modifier une classe" },
+  { resource: "rooms", action: "read", description: "Consulter les salles" },
+  { resource: "rooms", action: "create", description: "Créer une salle" },
+  { resource: "rooms", action: "update", description: "Modifier une salle" },
+  { resource: "structure", action: "read", description: "Consulter l'arborescence académique complète" },
 ];
 
 async function main() {

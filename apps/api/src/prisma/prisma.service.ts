@@ -7,7 +7,19 @@ const SOFT_DELETE_MODELS = new Set(["Tenant", "User"]);
 
 // Modèles portant un tenant_id littéral, auto-filtrés par le tenant courant.
 // Role.tenantId est nullable (rôles système) : voir mergeTenantWhere ci-dessous.
-const TENANT_SCOPED_MODELS = new Set(["User", "Role", "AcademicYear"]);
+const TENANT_SCOPED_MODELS = new Set([
+  "User",
+  "Role",
+  "AcademicYear",
+  // Module 2 — structure pédagogique
+  "Cycle",
+  "Department",
+  "Program",
+  "Level",
+  "Room",
+  "ClassRoom",
+  "Group",
+]);
 
 const READ_ACTIONS = new Set(["findFirst", "findMany", "count", "aggregate", "groupBy"]);
 const WRITE_MANY_ACTIONS = new Set(["updateMany", "deleteMany"]);

@@ -43,6 +43,15 @@ model Tenant {
   roles         Role[]
   academicYears AcademicYear[]
 
+  // Relations inverses Module 2 (structure pédagogique)
+  cycles      Cycle[]
+  departments Department[]
+  programs    Program[]
+  levels      Level[]
+  rooms       Room[]
+  classrooms  ClassRoom[]
+  groups      Group[]
+
   @@map("tenants")
 }
 
@@ -76,6 +85,11 @@ model User {
   tenant    Tenant     @relation(fields: [tenantId], references: [id])
   userRoles UserRole[]
   auditLogs AuditLog[]
+
+  // Relations inverses Module 2 (structure pédagogique) : un User peut être
+  // référencé comme chef de département ou professeur principal d'une classe.
+  departmentsHeaded Department[] @relation("DepartmentHeadTeacher")
+  classroomsLed     ClassRoom[]  @relation("ClassRoomMainTeacher")
 
   @@unique([tenantId, email])
   @@map("users")
@@ -198,4 +212,156 @@ model AuditLog {
   user User? @relation(fields: [userId], references: [id])
 
   @@map("audit_logs")
+}
+
+// ─── Module 2 : Structure pédagogique ───────────────────────────────────────
+// Hiérarchie : Cycle → (Program optionnel, ex: filière/série au 2nd cycle et
+// supérieur) → Level → ClassRoom → Group. Program et Level portent chacun un
+// cycleId direct (dénormalisé, cf. tableau du guide §2.2) pour permettre à un
+// niveau sans filière (ex: collège) de s'attacher directement à son cycle.
+
+enum Section {
+  FRANCOPHONE
+  ANGLOPHONE
+}
+
+enum GroupType {
+  TD
+  TP
+  LV2
+}
+
+enum RoomType {
+  SALLE_CLASSE
+  LABORATOIRE
+  SALLE_INFO
+  AMPHITHEATRE
+  TERRAIN_SPORT
+}
+
+model Cycle {
+  id        String   @id @default(uuid())
+  tenantId  String   @map("tenant_id")
+  code      String
+  name      String
+  order     Int
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id])
+  levels   Level[]
+  programs Program[]
+
+  @@unique([tenantId, code])
+  @@map("cycles")
+}
+
+model Department {
+  id            String   @id @default(uuid())
+  tenantId      String   @map("tenant_id")
+  code          String
+  name          String
+  headTeacherId String?  @map("head_teacher_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  tenant      Tenant    @relation(fields: [tenantId], references: [id])
+  headTeacher User?     @relation("DepartmentHeadTeacher", fields: [headTeacherId], references: [id])
+  programs    Program[]
+
+  @@unique([tenantId, code])
+  @@map("departments")
+}
+
+model Program {
+  id           String   @id @default(uuid())
+  tenantId     String   @map("tenant_id")
+  code         String
+  name         String
+  cycleId      String   @map("cycle_id")
+  departmentId String?  @map("department_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  tenant     Tenant      @relation(fields: [tenantId], references: [id])
+  cycle      Cycle       @relation(fields: [cycleId], references: [id])
+  department Department? @relation(fields: [departmentId], references: [id])
+  levels     Level[]
+
+  @@unique([tenantId, code])
+  @@map("programs")
+}
+
+model Level {
+  id        String   @id @default(uuid())
+  tenantId  String   @map("tenant_id")
+  code      String
+  name      String
+  order     Int
+  cycleId   String   @map("cycle_id")
+  programId String?  @map("program_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tenant     Tenant      @relation(fields: [tenantId], references: [id])
+  cycle      Cycle       @relation(fields: [cycleId], references: [id])
+  program    Program?    @relation(fields: [programId], references: [id])
+  classrooms ClassRoom[]
+
+  @@unique([tenantId, code])
+  @@map("levels")
+}
+
+model Room {
+  id        String   @id @default(uuid())
+  tenantId  String   @map("tenant_id")
+  code      String
+  name      String
+  type      RoomType @default(SALLE_CLASSE)
+  capacity  Int?
+  building  String?
+  floor     String?
+  equipment String[] @default([])
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tenant     Tenant      @relation(fields: [tenantId], references: [id])
+  classrooms ClassRoom[]
+
+  @@unique([tenantId, code])
+  @@map("rooms")
+}
+
+model ClassRoom {
+  id            String   @id @default(uuid())
+  tenantId      String   @map("tenant_id")
+  code          String
+  name          String
+  capacity      Int
+  levelId       String   @map("level_id")
+  mainTeacherId String?  @map("main_teacher_id")
+  roomId        String?  @map("room_id")
+  section       Section  @default(FRANCOPHONE)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  tenant      Tenant  @relation(fields: [tenantId], references: [id])
+  level       Level   @relation(fields: [levelId], references: [id])
+  mainTeacher User?   @relation("ClassRoomMainTeacher", fields: [mainTeacherId], references: [id])
+  room        Room?   @relation(fields: [roomId], references: [id])
+  groups      Group[]
+
+  @@unique([tenantId, code])
+  @@map("classrooms")
+}
+
+model Group {
+  id          String    @id @default(uuid())
+  tenantId    String    @map("tenant_id")
+  code        String
+  name        String
+  type        GroupType
+  classroomId String    @map("classroom_id")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  tenant    Tenant    @relation(fields: [tenantId], references: [id])
+  classroom ClassRoom @relation(fields: [classroomId], references: [id])
+
+  @@unique([tenantId, classroomId, code])
+  @@map("groups")
 }

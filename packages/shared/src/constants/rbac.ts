@@ -20,6 +20,26 @@ export const PERMISSIONS = {
   ACADEMIC_YEARS_READ: "academic-years:read",
   PERIODS_UPDATE: "periods:update",
   AUDIT_LOGS_READ: "audit-logs:read",
+  // Module 2 — Structure pédagogique
+  CYCLES_READ: "cycles:read",
+  CYCLES_CREATE: "cycles:create",
+  DEPARTMENTS_READ: "departments:read",
+  DEPARTMENTS_CREATE: "departments:create",
+  DEPARTMENTS_UPDATE: "departments:update",
+  PROGRAMS_READ: "programs:read",
+  PROGRAMS_CREATE: "programs:create",
+  PROGRAMS_UPDATE: "programs:update",
+  LEVELS_READ: "levels:read",
+  LEVELS_CREATE: "levels:create",
+  LEVELS_UPDATE: "levels:update",
+  LEVELS_DELETE: "levels:delete",
+  CLASSROOMS_READ: "classrooms:read",
+  CLASSROOMS_CREATE: "classrooms:create",
+  CLASSROOMS_UPDATE: "classrooms:update",
+  ROOMS_READ: "rooms:read",
+  ROOMS_CREATE: "rooms:create",
+  ROOMS_UPDATE: "rooms:update",
+  STRUCTURE_READ: "structure:read",
 } as const;
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

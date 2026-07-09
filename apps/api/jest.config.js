@@ -4,9 +4,10 @@ module.exports = {
   rootDir: "src",
   testRegex: ".*\\.spec\\.ts$",
   transform: {
-    "^.+\\.(t|j)s$": "ts-jest",
+    "^.+\\.ts$": "ts-jest",
   },
-  collectCoverageFrom: ["**/*.(t|j)s", "!**/*.module.ts", "!main.ts"],
+  transformIgnorePatterns: ["/node_modules/", "generated/client"],
+  collectCoverageFrom: ["**/*.ts", "!**/*.module.ts", "!main.ts"],
   coverageDirectory: "../coverage",
   testEnvironment: "node",
 };
