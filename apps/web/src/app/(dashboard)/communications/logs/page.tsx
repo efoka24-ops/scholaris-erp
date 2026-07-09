@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { PaginationMeta } from "@scholaris/shared";
-import { apiClient } from "@/lib/api-client";
+import { resourceClient } from "@/lib/api-client";
 import { DataTable } from "@/components/shared/data-table";
 
 const CHANNEL_LABELS: Record<string, string> = {
@@ -57,12 +57,12 @@ export default function CommunicationLogsPage() {
   useEffect(() => {
     let cancelled = false;
     setIsLoading(true);
-    apiClient
+    resourceClient
       .get("/communications", { params: { page, limit: 20 } })
       .then(({ data }) => {
         if (cancelled) return;
-        setMessages(data.data?.data ?? []);
-        setMeta(data.data?.meta);
+        setMessages(data?.data ?? []);
+        setMeta(data?.meta);
       })
       .finally(() => {
         if (!cancelled) setIsLoading(false);

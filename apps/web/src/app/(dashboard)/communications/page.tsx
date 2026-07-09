@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { ColumnDef } from "@tanstack/react-table";
-import { apiClient } from "@/lib/api-client";
+import { resourceClient } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/shared/data-table";
 
@@ -45,10 +45,10 @@ export default function CommunicationTemplatesPage() {
 
   useEffect(() => {
     let cancelled = false;
-    apiClient
+    resourceClient
       .get("/communication-templates")
       .then(({ data }) => {
-        if (!cancelled) setTemplates(data.data ?? []);
+        if (!cancelled) setTemplates(data ?? []);
       })
       .finally(() => {
         if (!cancelled) setIsLoading(false);

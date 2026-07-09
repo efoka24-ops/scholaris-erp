@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { createCommunicationTemplateSchema, type CreateCommunicationTemplateInput } from "@scholaris/shared";
-import { apiClient } from "@/lib/api-client";
+import { resourceClient } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,10 +33,10 @@ export default function NewCommunicationTemplatePage() {
     setServerError(null);
     setIsSubmitting(true);
     try {
-      await apiClient.post("/communication-templates", values);
+      await resourceClient.post("/communication-templates", values);
       router.push("/communications");
     } catch (error: any) {
-      setServerError(error.response?.data?.error ?? "Erreur lors de la création du modèle");
+      setServerError(error.response?.data?.message ?? "Erreur lors de la création du modèle");
     } finally {
       setIsSubmitting(false);
     }
