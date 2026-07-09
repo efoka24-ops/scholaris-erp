@@ -1,0 +1,201 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Tenant (établissement) ─────────────────────────────────────────────
+
+enum TenantType {
+  PRIMAIRE
+  SECONDAIRE
+  SUPERIEUR
+  TECHNIQUE
+  FORMATION_PRO
+}
+
+enum TenantStatus {
+  PUBLIC
+  PRIVE
+}
+
+model Tenant {
+  id         String       @id @default(uuid())
+  code       String       @unique
+  name       String
+  type       TenantType
+  status     TenantStatus @default(PUBLIC)
+  address    String?
+  phone      String?
+  email      String?
+  logoUrl    String?      @map("logo_url")
+  // Configuration du moteur de calcul et autres paramètres (§1.4 du guide)
+  configJson Json?        @map("config_json")
+  createdAt  DateTime     @default(now()) @map("created_at")
+  updatedAt  DateTime     @updatedAt @map("updated_at")
+  deletedAt  DateTime?    @map("deleted_at")
+
+  users         User[]
+  roles         Role[]
+  academicYears AcademicYear[]
+
+  @@map("tenants")
+}
+
+// ─── Utilisateurs & RBAC ────────────────────────────────────────────────
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+model User {
+  id                  String     @id @default(uuid())
+  tenantId            String     @map("tenant_id")
+  email               String
+  passwordHash        String     @map("password_hash")
+  firstName           String     @map("first_name")
+  lastName             String    @map("last_name")
+  phone               String?
+  status              UserStatus @default(ACTIVE)
+  mfaEnabled          Boolean    @default(false) @map("mfa_enabled")
+  mfaSecret           String?    @map("mfa_secret")
+  lastLogin           DateTime?  @map("last_login")
+  avatarUrl           String?    @map("avatar_url")
+  failedLoginAttempts Int        @default(0) @map("failed_login_attempts")
+  lockedUntil         DateTime?  @map("locked_until")
+  createdAt           DateTime   @default(now()) @map("created_at")
+  updatedAt           DateTime   @updatedAt @map("updated_at")
+  deletedAt           DateTime?  @map("deleted_at")
+
+  tenant    Tenant     @relation(fields: [tenantId], references: [id])
+  userRoles UserRole[]
+  auditLogs AuditLog[]
+
+  @@unique([tenantId, email])
+  @@map("users")
+}
+
+model Role {
+  id          String   @id @default(uuid())
+  tenantId    String?  @map("tenant_id") // null = rôle système global (ex: SUPER_ADMIN)
+  name        String
+  description String?
+  isSystem    Boolean  @default(false) @map("is_system")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  tenant          Tenant?          @relation(fields: [tenantId], references: [id])
+  userRoles       UserRole[]
+  rolePermissions RolePermission[]
+
+  @@unique([tenantId, name])
+  @@map("roles")
+}
+
+model Permission {
+  id          String  @id @default(uuid())
+  resource    String
+  action      String // create | read | update | delete | manage
+  description String?
+
+  rolePermissions RolePermission[]
+
+  @@unique([resource, action])
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String @map("role_id")
+  permissionId String @map("permission_id")
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model UserRole {
+  userId String @map("user_id")
+  roleId String @map("role_id")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+  @@map("user_roles")
+}
+
+// ─── Calendrier académique ───────────────────────────────────────────────
+
+enum AcademicYearStatus {
+  ACTIVE
+  CLOSED
+  ARCHIVED
+}
+
+enum PeriodType {
+  SEQUENCE
+  TRIMESTER
+  SEMESTER
+}
+
+enum GradingStatus {
+  CLOSED
+  OPEN
+  LOCKED
+}
+
+model AcademicYear {
+  id        String             @id @default(uuid())
+  tenantId  String             @map("tenant_id")
+  label     String
+  startDate DateTime           @map("start_date")
+  endDate   DateTime           @map("end_date")
+  status    AcademicYearStatus @default(ACTIVE)
+  createdAt DateTime           @default(now()) @map("created_at")
+
+  tenant  Tenant   @relation(fields: [tenantId], references: [id])
+  periods Period[]
+
+  @@unique([tenantId, label])
+  @@map("academic_years")
+}
+
+model Period {
+  id             String        @id @default(uuid())
+  academicYearId String        @map("academic_year_id")
+  type           PeriodType
+  number         Int
+  startDate      DateTime      @map("start_date")
+  endDate        DateTime      @map("end_date")
+  gradingStatus  GradingStatus @default(CLOSED) @map("grading_status")
+
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id])
+
+  @@unique([academicYearId, type, number])
+  @@map("periods")
+}
+
+// ─── Audit ────────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String?  @map("user_id")
+  action     String
+  resource   String
+  resourceId String?  @map("resource_id")
+  oldValue   Json?    @map("old_value")
+  newValue   Json?    @map("new_value")
+  ipAddress  String?  @map("ip_address")
+  timestamp  DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@map("audit_logs")
+}

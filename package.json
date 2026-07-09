@@ -1,0 +1,29 @@
+{
+  "name": "scholaris-erp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SCHOLARIS ERP v2.0 - Monorepo Turborepo (Phase 0)",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "test:e2e": "turbo run test:e2e",
+    "db:generate": "npm run generate --workspace=@scholaris/prisma",
+    "db:migrate": "npm run migrate --workspace=@scholaris/prisma",
+    "db:seed": "npm run seed --workspace=@scholaris/prisma",
+    "db:studio": "npm run studio --workspace=@scholaris/prisma"
+  },
+  "devDependencies": {
+    "turbo": "^2.1.2",
+    "typescript": "^5.5.4"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "npm@11.12.1"
+}
