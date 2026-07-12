@@ -3,7 +3,15 @@ import { Prisma, PrismaClient } from "@scholaris/prisma";
 import { RequestContextService } from "../common/context/request-context.service";
 
 // Modèles avec deleted_at : jamais de suppression physique (§0.3 du guide).
-const SOFT_DELETE_MODELS = new Set(["Tenant", "User"]);
+const SOFT_DELETE_MODELS = new Set([
+  "Tenant",
+  "User",
+  // Module 4 — Inscriptions & Admissions
+  "Student",
+  "Parent",
+  "Enrollment",
+  "AdmissionApplication",
+]);
 
 // Modèles portant un tenant_id littéral, auto-filtrés par le tenant courant.
 // Role.tenantId est nullable (rôles système) : voir mergeTenantWhere ci-dessous.
@@ -24,6 +32,12 @@ const TENANT_SCOPED_MODELS = new Set([
   "CommunicationMessage",
   "UserChannelPreference",
   "InternalMessage",
+  // Module 4 — Inscriptions & Admissions
+  "Student",
+  "Parent",
+  "Enrollment",
+  "AdmissionApplication",
+  "MatriculeSequence",
 ]);
 
 const READ_ACTIONS = new Set(["findFirst", "findMany", "count", "aggregate", "groupBy"]);

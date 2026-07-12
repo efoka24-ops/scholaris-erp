@@ -42,6 +42,18 @@ const BASE_PERMISSIONS: Array<{ resource: string; action: string; description: s
   { resource: "communications", action: "read", description: "Consulter le journal des communications" },
   { resource: "internal-messages", action: "create", description: "Envoyer un message interne" },
   { resource: "internal-messages", action: "read", description: "Consulter la messagerie interne" },
+  // Module 4 — Inscriptions & Admissions
+  { resource: "students", action: "create", description: "Créer un élève (dossier + parents)" },
+  { resource: "students", action: "read", description: "Consulter les élèves" },
+  { resource: "students", action: "update", description: "Modifier un dossier élève" },
+  { resource: "students", action: "import", description: "Importer des élèves depuis Excel" },
+  { resource: "enrollments", action: "create", description: "Inscrire un élève dans une classe" },
+  { resource: "enrollments", action: "read", description: "Consulter les inscriptions" },
+  { resource: "enrollments", action: "update", description: "Annuler/suspendre une inscription" },
+  { resource: "enrollments", action: "re-enroll", description: "Réinscription en lot d'une classe vers une autre" },
+  { resource: "admissions", action: "create", description: "Enregistrer une candidature d'admission" },
+  { resource: "admissions", action: "read", description: "Consulter les candidatures d'admission" },
+  { resource: "admissions", action: "decide", description: "Accepter/refuser/mettre en liste d'attente une candidature" },
 ];
 
 async function main() {

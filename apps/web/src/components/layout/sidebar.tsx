@@ -2,7 +2,18 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Settings, Users, GraduationCap, Network, DoorOpen, School, MessageSquare } from "lucide-react";
+import {
+  LayoutDashboard,
+  Settings,
+  Users,
+  GraduationCap,
+  Network,
+  DoorOpen,
+  School,
+  MessageSquare,
+  ClipboardList,
+  Repeat,
+} from "lucide-react";
 import { cn } from "@scholaris/ui";
 
 const NAV_ITEMS = [
@@ -11,6 +22,8 @@ const NAV_ITEMS = [
   { href: "/academics/classrooms", label: "Classes", icon: School },
   { href: "/academics/rooms", label: "Salles", icon: DoorOpen },
   { href: "/students", label: "Élèves", icon: GraduationCap },
+  { href: "/admissions", label: "Admissions", icon: ClipboardList },
+  { href: "/enrollments/re-enroll", label: "Réinscriptions", icon: Repeat },
   { href: "/communications", label: "Communication", icon: MessageSquare },
   { href: "/settings/users", label: "Utilisateurs", icon: Users },
   { href: "/settings/establishment", label: "Établissement", icon: Settings },

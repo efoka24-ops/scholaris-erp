@@ -58,6 +58,13 @@ model Tenant {
   userChannelPreferences UserChannelPreference[]
   internalMessages       InternalMessage[]
 
+  // Module 4 : Inscriptions & Admissions
+  students              Student[]
+  parents               Parent[]
+  enrollments           Enrollment[]
+  admissionApplications AdmissionApplication[]
+  matriculeSequences    MatriculeSequence[]
+
   @@map("tenants")
 }
 
@@ -188,6 +195,10 @@ model AcademicYear {
 
   tenant  Tenant   @relation(fields: [tenantId], references: [id])
   periods Period[]
+
+  // Module 4 : Inscriptions & Admissions
+  enrollments           Enrollment[]
+  admissionApplications AdmissionApplication[]
 
   @@unique([tenantId, label])
   @@map("academic_years")
@@ -358,6 +369,9 @@ model ClassRoom {
   room        Room?   @relation(fields: [roomId], references: [id])
   groups      Group[]
 
+  // Module 4 : Inscriptions & Admissions
+  enrollments Enrollment[]
+
   @@unique([tenantId, code])
   @@map("classrooms")
 }
@@ -453,6 +467,193 @@ model UserChannelPreference {
   user   User   @relation("UserChannelPreferenceUser", fields: [userId], references: [id])
 
   @@map("user_channel_preferences")
+}
+
+// ─── Module 4 : Inscriptions & Admissions (§4 du guide) ─────────────────────
+// Modèles additifs en fin de fichier (même stratégie que le Module 8) pour
+// limiter les conflits de merge. Toutes les entités portent tenant_id,
+// created_at / updated_at / deleted_at (soft delete, jamais de suppression
+// physique — §0.3 du guide).
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum StudentStatus {
+  ACTIVE
+  SUSPENDED
+  GRADUATED
+  EXCLUDED
+  ABANDONED
+}
+
+enum ParentRelationship {
+  FATHER
+  MOTHER
+  GUARDIAN
+}
+
+enum EnrollmentType {
+  NEW
+  RE_ENROLLMENT
+  TRANSFER
+}
+
+enum EnrollmentStatus {
+  PENDING
+  ACTIVE
+  CANCELLED
+}
+
+enum EnrollmentRegime {
+  EXTERNAL
+  HALF_BOARD
+  BOARDING
+}
+
+enum AdmissionType {
+  EXAM
+  DOSSIER
+  DIRECT
+}
+
+enum AdmissionStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  WAITLISTED
+}
+
+model Student {
+  id               String        @id @default(uuid())
+  tenantId         String        @map("tenant_id")
+  matricule        String
+  firstName        String        @map("first_name")
+  lastName         String        @map("last_name")
+  dateOfBirth      DateTime      @map("date_of_birth")
+  placeOfBirth     String?       @map("place_of_birth")
+  gender           Gender
+  nationality      String        @default("Camerounaise")
+  photoUrl         String?       @map("photo_url")
+  bloodGroup       String?       @map("blood_group")
+  allergies        String?
+  handicap         String?
+  emergencyContact String?       @map("emergency_contact")
+  status           StudentStatus @default(ACTIVE)
+  createdAt        DateTime      @default(now()) @map("created_at")
+  updatedAt        DateTime      @updatedAt @map("updated_at")
+  deletedAt        DateTime?     @map("deleted_at")
+
+  tenant      Tenant          @relation(fields: [tenantId], references: [id])
+  parents     StudentParent[]
+  enrollments Enrollment[]
+
+  @@unique([tenantId, matricule])
+  @@index([tenantId, lastName, firstName])
+  @@map("students")
+}
+
+model Parent {
+  id           String             @id @default(uuid())
+  tenantId     String             @map("tenant_id")
+  firstName    String             @map("first_name")
+  lastName     String             @map("last_name")
+  phone        String
+  whatsapp     String?
+  email        String?
+  profession   String?
+  address      String?
+  relationship ParentRelationship
+  createdAt    DateTime           @default(now()) @map("created_at")
+  updatedAt    DateTime           @updatedAt @map("updated_at")
+  deletedAt    DateTime?          @map("deleted_at")
+
+  tenant   Tenant          @relation(fields: [tenantId], references: [id])
+  students StudentParent[]
+
+  @@map("parents")
+}
+
+// Table de liaison M:N élève ↔ parent : la relation (père/mère/tuteur) est
+// portée par le lien, un même Parent pouvant être père d'un élève et tuteur
+// d'un autre.
+model StudentParent {
+  studentId    String             @map("student_id")
+  parentId     String             @map("parent_id")
+  relationship ParentRelationship
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  parent  Parent  @relation(fields: [parentId], references: [id], onDelete: Cascade)
+
+  @@id([studentId, parentId])
+  @@map("student_parents")
+}
+
+model Enrollment {
+  id              String           @id @default(uuid())
+  tenantId        String           @map("tenant_id")
+  studentId       String           @map("student_id")
+  classroomId     String           @map("classroom_id")
+  academicYearId  String           @map("academic_year_id")
+  enrollmentDate  DateTime         @default(now()) @map("enrollment_date")
+  type            EnrollmentType   @default(NEW)
+  status          EnrollmentStatus @default(ACTIVE)
+  regime          EnrollmentRegime @default(EXTERNAL)
+  isRepeater      Boolean          @default(false) @map("is_repeater")
+  previousSchool  String?          @map("previous_school")
+  previousAverage Float?           @map("previous_average")
+  documents       Json?
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+  deletedAt       DateTime?        @map("deleted_at")
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id])
+  student      Student      @relation(fields: [studentId], references: [id])
+  classroom    ClassRoom    @relation(fields: [classroomId], references: [id])
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id])
+
+  @@index([tenantId, classroomId, status])
+  @@index([tenantId, studentId, academicYearId])
+  @@map("enrollments")
+}
+
+model AdmissionApplication {
+  id             String          @id @default(uuid())
+  tenantId       String          @map("tenant_id")
+  applicantName  String          @map("applicant_name")
+  applicantInfo  Json?           @map("applicant_info")
+  type           AdmissionType   @default(DOSSIER)
+  score          Float?
+  rank           Int?
+  status         AdmissionStatus @default(PENDING)
+  academicYearId String          @map("academic_year_id")
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+  deletedAt      DateTime?       @map("deleted_at")
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id])
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id])
+
+  @@index([tenantId, status])
+  @@map("admission_applications")
+}
+
+// Compteur atomique de matricules par tenant + année : incrémenté via un
+// upsert `lastNumber: { increment: 1 }` dans la même transaction que la
+// création de l'élève (pas de trou ni de doublon possible).
+model MatriculeSequence {
+  id         String   @id @default(uuid())
+  tenantId   String   @map("tenant_id")
+  year       String
+  lastNumber Int      @default(0) @map("last_number")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, year])
+  @@map("matricule_sequences")
 }
 
 model InternalMessage {

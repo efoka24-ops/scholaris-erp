@@ -11,6 +11,9 @@ import { AuthModule } from "./modules/auth/auth.module";
 import { HealthModule } from "./modules/health/health.module";
 import { StructureModule } from "./modules/structure/structure.module";
 import { CommunicationsModule } from "./modules/communications/communications.module";
+import { StudentsModule } from "./modules/students/students.module";
+import { EnrollmentsModule } from "./modules/enrollments/enrollments.module";
+import { AdmissionsModule } from "./modules/admissions/admissions.module";
 
 @Module({
   imports: [
@@ -22,6 +25,9 @@ import { CommunicationsModule } from "./modules/communications/communications.mo
     HealthModule,
     StructureModule,
     CommunicationsModule,
+    StudentsModule,
+    EnrollmentsModule,
+    AdmissionsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
