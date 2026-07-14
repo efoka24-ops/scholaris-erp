@@ -3,6 +3,9 @@ import { z } from "zod";
 export const loginSchema = z.object({
   email: z.string().email("Adresse email invalide"),
   password: z.string().min(1, "Le mot de passe est requis"),
+  // Requis uniquement si le MFA est activé sur le compte (le backend répond
+  // 401 { mfaRequired: true } et le formulaire de login affiche alors le champ).
+  mfaCode: z.string().optional(),
 });
 export type LoginInput = z.infer<typeof loginSchema>;
 

@@ -16,6 +16,8 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     const status = error.response?.status ?? 500;
     const message = error.response?.data?.message ?? "Erreur de connexion au serveur";
-    return NextResponse.json({ success: false, error: message }, { status });
+    // mfaRequired : le compte exige un code TOTP — le formulaire de login affiche le champ.
+    const mfaRequired = error.response?.data?.mfaRequired === true;
+    return NextResponse.json({ success: false, error: message, mfaRequired }, { status });
   }
 }

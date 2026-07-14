@@ -18,7 +18,12 @@ export const PERMISSIONS = {
   TENANTS_UPDATE: "tenants:update",
   ACADEMIC_YEARS_CREATE: "academic-years:create",
   ACADEMIC_YEARS_READ: "academic-years:read",
+  ACADEMIC_YEARS_UPDATE: "academic-years:update",
+  PERIODS_READ: "periods:read",
+  PERIODS_CREATE: "periods:create",
   PERIODS_UPDATE: "periods:update",
+  // Réservé au rôle Admin : rouvrir une période dont la saisie a été verrouillée.
+  PERIODS_UNLOCK: "periods:unlock",
   AUDIT_LOGS_READ: "audit-logs:read",
   // Module 2 — Structure pédagogique
   CYCLES_READ: "cycles:read",

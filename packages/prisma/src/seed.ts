@@ -12,7 +12,11 @@ const BASE_PERMISSIONS: Array<{ resource: string; action: string; description: s
   { resource: "tenants", action: "update", description: "Modifier la configuration de l'établissement" },
   { resource: "academic-years", action: "create", description: "Créer une année académique" },
   { resource: "academic-years", action: "read", description: "Consulter les années académiques" },
+  { resource: "academic-years", action: "update", description: "Activer/clore une année académique" },
+  { resource: "periods", action: "read", description: "Consulter les périodes" },
+  { resource: "periods", action: "create", description: "Créer une période" },
   { resource: "periods", action: "update", description: "Ouvrir/fermer/verrouiller une période de saisie" },
+  { resource: "periods", action: "unlock", description: "Rouvrir une période verrouillée (Admin uniquement)" },
   { resource: "audit-logs", action: "read", description: "Consulter le journal d'audit" },
   // Module 2 — Structure pédagogique
   { resource: "cycles", action: "read", description: "Consulter les cycles" },

@@ -11,3 +11,4 @@ packages/prisma/generated
 .DS_Store
 playwright-report
 test-results
+*.tsbuildinfo

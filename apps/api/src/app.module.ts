@@ -11,6 +11,9 @@ import { AuthModule } from "./modules/auth/auth.module";
 import { HealthModule } from "./modules/health/health.module";
 import { StructureModule } from "./modules/structure/structure.module";
 import { CommunicationsModule } from "./modules/communications/communications.module";
+import { AuditModule } from "./modules/audit/audit.module";
+import { AcademicYearsModule } from "./modules/academic-years/academic-years.module";
+import { TenantsModule } from "./modules/tenants/tenants.module";
 
 @Module({
   imports: [
@@ -18,10 +21,13 @@ import { CommunicationsModule } from "./modules/communications/communications.mo
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]),
     RequestContextModule,
     PrismaModule,
+    AuditModule,
     AuthModule,
     HealthModule,
     StructureModule,
     CommunicationsModule,
+    AcademicYearsModule,
+    TenantsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

@@ -8,7 +8,7 @@ import type { CurrentUser } from "@/types/auth";
 interface AuthContextValue {
   user: CurrentUser | null;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, mfaCode?: string) => Promise<void>;
   logout: () => Promise<void>;
   hasPermission: (permission: string) => boolean;
 }
@@ -36,8 +36,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [fetchMe]);
 
   const login = useCallback(
-    async (email: string, password: string) => {
-      await apiClient.post("/auth/login", { email, password });
+    async (email: string, password: string, mfaCode?: string) => {
+      await apiClient.post("/auth/login", { email, password, ...(mfaCode ? { mfaCode } : {}) });
       await fetchMe();
       router.push("/dashboard");
     },

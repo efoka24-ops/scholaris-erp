@@ -1,9 +1,19 @@
-import { UnauthorizedException } from "@nestjs/common";
+import { BadRequestException, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import * as bcrypt from "bcrypt";
 import { PrismaService } from "../../prisma/prisma.service";
+import { AuditService } from "../audit/audit.service";
 import { AuthService } from "./auth.service";
+
+jest.mock("otplib", () => ({
+  generateSecret: jest.fn(() => "JBSWY3DPEHPK3PXP"),
+  generateURI: jest.fn(
+    ({ issuer, label }: { issuer: string; label: string }) =>
+      `otpauth://totp/${issuer}:${label}?secret=JBSWY3DPEHPK3PXP`,
+  ),
+  verify: jest.fn(async ({ token }: { token: string }) => ({ valid: token === "123456" })),
+}));
 
 describe("AuthService", () => {
   let service: AuthService;
@@ -13,6 +23,7 @@ describe("AuthService", () => {
   };
   let jwt: { signAsync: jest.Mock; verifyAsync: jest.Mock };
   let config: { get: jest.Mock; getOrThrow: jest.Mock };
+  let audit: { log: jest.Mock };
 
   const baseUser = {
     id: "user-1",
@@ -35,7 +46,13 @@ describe("AuthService", () => {
       getOrThrow: jest.fn((key: string) => `secret-for-${key}`),
     };
 
-    service = new AuthService(prisma as unknown as PrismaService, jwt as unknown as JwtService, config as unknown as ConfigService);
+    audit = { log: jest.fn().mockResolvedValue(undefined) };
+    service = new AuthService(
+      prisma as unknown as PrismaService,
+      jwt as unknown as JwtService,
+      config as unknown as ConfigService,
+      audit as unknown as AuditService,
+    );
   });
 
   describe("login", () => {
@@ -73,6 +90,73 @@ describe("AuthService", () => {
       prisma.user.findFirst.mockResolvedValue({ ...baseUser, status: "SUSPENDED", passwordHash });
 
       await expect(service.login("admin@scholaris.dev", "ChangeMe123!")).rejects.toThrow(UnauthorizedException);
+    });
+  });
+
+  describe("login avec MFA", () => {
+    it("exige un code MFA quand le MFA est activé sur le compte", async () => {
+      const passwordHash = await bcrypt.hash("ChangeMe123!", 4);
+      prisma.user.findFirst.mockResolvedValue({ ...baseUser, passwordHash, mfaEnabled: true, mfaSecret: "SECRET" });
+
+      await expect(service.login("admin@scholaris.dev", "ChangeMe123!")).rejects.toThrow("Code MFA requis");
+    });
+
+    it("rejette un code MFA invalide", async () => {
+      const passwordHash = await bcrypt.hash("ChangeMe123!", 4);
+      prisma.user.findFirst.mockResolvedValue({ ...baseUser, passwordHash, mfaEnabled: true, mfaSecret: "SECRET" });
+
+      await expect(service.login("admin@scholaris.dev", "ChangeMe123!", "000000")).rejects.toThrow(
+        UnauthorizedException,
+      );
+    });
+
+    it("connecte l'utilisateur avec un code MFA valide", async () => {
+      const passwordHash = await bcrypt.hash("ChangeMe123!", 4);
+      prisma.user.findFirst.mockResolvedValue({ ...baseUser, passwordHash, mfaEnabled: true, mfaSecret: "SECRET" });
+      prisma.user.update.mockResolvedValue({});
+
+      const result = await service.login("admin@scholaris.dev", "ChangeMe123!", "123456");
+
+      expect(result.accessToken).toBe("signed.jwt.token");
+    });
+  });
+
+  describe("enableMfa / verifyMfa", () => {
+    it("génère un secret et une URL otpauth sans activer le MFA", async () => {
+      prisma.user.findFirst.mockResolvedValue({ ...baseUser, mfaEnabled: false });
+      prisma.user.update.mockResolvedValue({});
+
+      const result = await service.enableMfa("user-1", "tenant-1");
+
+      expect(result.secret).toBe("JBSWY3DPEHPK3PXP");
+      expect(result.otpauthUrl).toContain("otpauth://totp/");
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: "user-1" },
+        data: { mfaSecret: "JBSWY3DPEHPK3PXP", mfaEnabled: false },
+      });
+    });
+
+    it("refuse un enrôlement si le MFA est déjà activé", async () => {
+      prisma.user.findFirst.mockResolvedValue({ ...baseUser, mfaEnabled: true });
+
+      await expect(service.enableMfa("user-1", "tenant-1")).rejects.toThrow(BadRequestException);
+    });
+
+    it("active le MFA après vérification d'un premier code valide", async () => {
+      prisma.user.findFirst.mockResolvedValue({ ...baseUser, mfaEnabled: false, mfaSecret: "JBSWY3DPEHPK3PXP" });
+      prisma.user.update.mockResolvedValue({});
+
+      const result = await service.verifyMfa("user-1", "tenant-1", "123456");
+
+      expect(result.mfaEnabled).toBe(true);
+      expect(prisma.user.update).toHaveBeenCalledWith({ where: { id: "user-1" }, data: { mfaEnabled: true } });
+      expect(audit.log).toHaveBeenCalledWith(expect.objectContaining({ action: "mfa-enable", resourceId: "user-1" }));
+    });
+
+    it("rejette la vérification sans enrôlement préalable", async () => {
+      prisma.user.findFirst.mockResolvedValue({ ...baseUser, mfaEnabled: false, mfaSecret: null });
+
+      await expect(service.verifyMfa("user-1", "tenant-1", "123456")).rejects.toThrow(BadRequestException);
     });
   });
 

@@ -4,3 +4,4 @@ export * from "./constants/rbac";
 export * from "./schemas/auth.schema";
 export * from "./schemas/structure.schema";
 export * from "./schemas/communication.schema";
+export * from "./schemas/settings.schema";

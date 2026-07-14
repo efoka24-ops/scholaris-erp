@@ -2,7 +2,19 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Settings, Users, GraduationCap, Network, DoorOpen, School, MessageSquare } from "lucide-react";
+import {
+  LayoutDashboard,
+  Settings,
+  Users,
+  GraduationCap,
+  Network,
+  DoorOpen,
+  School,
+  MessageSquare,
+  CalendarDays,
+  Calculator,
+  ScrollText,
+} from "lucide-react";
 import { cn } from "@scholaris/ui";
 
 const NAV_ITEMS = [
@@ -13,6 +25,9 @@ const NAV_ITEMS = [
   { href: "/students", label: "Élèves", icon: GraduationCap },
   { href: "/communications", label: "Communication", icon: MessageSquare },
   { href: "/settings/users", label: "Utilisateurs", icon: Users },
+  { href: "/settings/academic-years", label: "Années académiques", icon: CalendarDays },
+  { href: "/settings/calculation-engine", label: "Moteur de calcul", icon: Calculator },
+  { href: "/settings/audit-logs", label: "Journal d'audit", icon: ScrollText },
   { href: "/settings/establishment", label: "Établissement", icon: Settings },
 ];
 
