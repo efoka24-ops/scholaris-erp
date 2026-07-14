@@ -69,6 +69,15 @@ const BASE_PERMISSIONS: Array<{ resource: string; action: string; description: s
   { resource: "admissions", action: "create", description: "Enregistrer une candidature d'admission" },
   { resource: "admissions", action: "read", description: "Consulter les candidatures d'admission" },
   { resource: "admissions", action: "decide", description: "Accepter/refuser/mettre en liste d'attente une candidature" },
+  // Module 7 — Gestion financière
+  { resource: "fee-structures", action: "create", description: "Créer une grille tarifaire" },
+  { resource: "fee-structures", action: "read", description: "Consulter les grilles tarifaires" },
+  { resource: "invoices", action: "create", description: "Générer une ou plusieurs factures élève" },
+  { resource: "invoices", action: "read", description: "Consulter les factures" },
+  { resource: "payments", action: "create", description: "Enregistrer un paiement" },
+  { resource: "payments", action: "read", description: "Consulter un paiement / reçu" },
+  { resource: "discounts", action: "create", description: "Appliquer une réduction/bourse à une facture" },
+  { resource: "finance-dashboard", action: "read", description: "Consulter les indicateurs financiers de l'établissement" },
 ];
 
 async function main() {

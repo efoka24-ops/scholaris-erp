@@ -79,6 +79,16 @@ export const PERMISSIONS = {
   ADMISSIONS_CREATE: "admissions:create",
   ADMISSIONS_READ: "admissions:read",
   ADMISSIONS_DECIDE: "admissions:decide",
+
+  // Module 7 — Gestion financière
+  FEE_STRUCTURES_CREATE: "fee-structures:create",
+  FEE_STRUCTURES_READ: "fee-structures:read",
+  INVOICES_CREATE: "invoices:create",
+  INVOICES_READ: "invoices:read",
+  PAYMENTS_CREATE: "payments:create",
+  PAYMENTS_READ: "payments:read",
+  DISCOUNTS_CREATE: "discounts:create",
+  FINANCE_DASHBOARD_READ: "finance-dashboard:read",
 } as const;
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

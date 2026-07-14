@@ -71,6 +71,14 @@ model Tenant {
   admissionApplications AdmissionApplication[]
   matriculeSequences    MatriculeSequence[]
 
+  // Module 7 : Gestion financière
+  feeStructures    FeeStructure[]
+  feeInstallments  FeeInstallment[]
+  invoices         Invoice[]
+  payments         Payment[]
+  discounts        Discount[]
+  receiptSequences ReceiptSequence[]
+
   @@map("tenants")
 }
 
@@ -118,6 +126,10 @@ model User {
 
   // Module 3 : un User peut être référencé comme enseignant assigné à une matière/un EC.
   subjectAssignments SubjectAssignment[] @relation("SubjectAssignmentTeacher")
+
+  // Module 7 : un User peut recevoir des paiements (secrétaire/comptable) ou approuver des réductions (admin).
+  paymentsReceived    Payment[]  @relation("PaymentReceivedBy")
+  discountsApproved   Discount[] @relation("DiscountApprovedBy")
 
   @@unique([tenantId, email])
   @@map("users")
@@ -209,6 +221,10 @@ model AcademicYear {
   // Module 4 : Inscriptions & Admissions
   enrollments           Enrollment[]
   admissionApplications AdmissionApplication[]
+
+  // Module 7 : Gestion financière
+  feeStructures FeeStructure[]
+  invoices      Invoice[]
 
   @@unique([tenantId, label])
   @@map("academic_years")
@@ -337,6 +353,9 @@ model Level {
   cycle      Cycle       @relation(fields: [cycleId], references: [id])
   program    Program?    @relation(fields: [programId], references: [id])
   classrooms ClassRoom[]
+
+  // Module 7 : Gestion financière — une grille tarifaire peut cibler un niveau précis.
+  feeStructures FeeStructure[]
 
   @@unique([tenantId, code])
   @@map("levels")
@@ -561,6 +580,11 @@ model Student {
   parents     StudentParent[]
   enrollments Enrollment[]
 
+  // Module 7 : Gestion financière
+  invoices  Invoice[]
+  payments  Payment[]
+  discounts Discount[]
+
   @@unique([tenantId, matricule])
   @@index([tenantId, lastName, firstName])
   @@map("students")
@@ -624,6 +648,9 @@ model Enrollment {
   student      Student      @relation(fields: [studentId], references: [id])
   classroom    ClassRoom    @relation(fields: [classroomId], references: [id])
   academicYear AcademicYear @relation(fields: [academicYearId], references: [id])
+
+  // Module 7 : Gestion financière — une facture est rattachée à une inscription précise.
+  invoices Invoice[]
 
   @@index([tenantId, classroomId, status])
   @@index([tenantId, studentId, academicYearId])
@@ -797,4 +824,178 @@ model SubjectAssignment {
   @@unique([tenantId, subjectId, classroomId, academicYearId])
   @@unique([tenantId, courseElementId, classroomId, academicYearId])
   @@map("subject_assignments")
+}
+
+// ─── Module 7 : Gestion financière (frais de scolarité, paiements) ──────────
+// Modèles additifs en fin de fichier (même convention que les modules 3/4/8) ;
+// les relations inverses nécessaires ont été ajoutées sur Tenant/User/Level/
+// AcademicYear/Student/Enrollment. FeeStructure définit une grille tarifaire
+// par niveau (levelId = null → s'applique à tous les niveaux de l'année) et
+// par année académique ; ses FeeInstallment sont les tranches affichées à
+// titre indicatif (échéancier) mais le paiement se fait toujours contre le
+// solde global de la facture, jamais tranche par tranche. Invoice est générée
+// depuis la grille applicable au niveau de la classe d'un Enrollment donné.
+// Montants stockés en Float (comme Enrollment.previousAverage) : aucune
+// convention Decimal préexistante dans le schéma pour les valeurs monétaires.
+
+enum InvoiceStatus {
+  PENDING
+  PARTIAL
+  PAID
+  OVERDUE
+}
+
+enum PaymentMethod {
+  CASH
+  MOBILE_MONEY
+  BANK_TRANSFER
+  CHECK
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED
+}
+
+model FeeStructure {
+  id             String    @id @default(uuid())
+  tenantId       String    @map("tenant_id")
+  name           String
+  levelId        String?   @map("level_id")
+  academicYearId String    @map("academic_year_id")
+  totalAmount    Float     @map("total_amount")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+  deletedAt      DateTime? @map("deleted_at")
+
+  tenant       Tenant           @relation(fields: [tenantId], references: [id])
+  level        Level?           @relation(fields: [levelId], references: [id])
+  academicYear AcademicYear     @relation(fields: [academicYearId], references: [id])
+  installments FeeInstallment[]
+  invoices     Invoice[]
+
+  @@index([tenantId, academicYearId, levelId])
+  @@map("fee_structures")
+}
+
+model FeeInstallment {
+  id             String    @id @default(uuid())
+  tenantId       String    @map("tenant_id")
+  feeStructureId String    @map("fee_structure_id")
+  label          String
+  amount         Float
+  dueDate        DateTime  @map("due_date")
+  order          Int
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+  deletedAt      DateTime? @map("deleted_at")
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id])
+  feeStructure FeeStructure @relation(fields: [feeStructureId], references: [id])
+
+  @@index([tenantId, feeStructureId])
+  @@map("fee_installments")
+}
+
+model Invoice {
+  id             String        @id @default(uuid())
+  tenantId       String        @map("tenant_id")
+  studentId      String        @map("student_id")
+  enrollmentId   String        @map("enrollment_id")
+  feeStructureId String        @map("fee_structure_id")
+  academicYearId String        @map("academic_year_id")
+  totalAmount    Float         @map("total_amount")
+  paidAmount     Float         @default(0) @map("paid_amount")
+  balance        Float
+  // Échéance retenue pour le calcul du statut OVERDUE : la plus tardive des
+  // tranches de la grille au moment de la génération (null si la grille n'a
+  // aucune tranche définie).
+  dueDate        DateTime?     @map("due_date")
+  status         InvoiceStatus @default(PENDING)
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+  deletedAt      DateTime?     @map("deleted_at")
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id])
+  student      Student      @relation(fields: [studentId], references: [id])
+  enrollment   Enrollment   @relation(fields: [enrollmentId], references: [id])
+  feeStructure FeeStructure @relation(fields: [feeStructureId], references: [id])
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id])
+  payments     Payment[]
+  discounts    Discount[]
+
+  @@index([tenantId, studentId, status])
+  @@index([tenantId, enrollmentId])
+  @@map("invoices")
+}
+
+model Payment {
+  id            String        @id @default(uuid())
+  tenantId      String        @map("tenant_id")
+  invoiceId     String        @map("invoice_id")
+  studentId     String        @map("student_id")
+  amount        Float
+  method        PaymentMethod
+  reference     String?
+  receiptNumber String        @map("receipt_number")
+  paidAt        DateTime      @default(now()) @map("paid_at")
+  receivedBy    String?       @map("received_by")
+  notes         String?
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+  deletedAt     DateTime?     @map("deleted_at")
+
+  tenant         Tenant  @relation(fields: [tenantId], references: [id])
+  invoice        Invoice @relation(fields: [invoiceId], references: [id])
+  student        Student @relation(fields: [studentId], references: [id])
+  receivedByUser User?   @relation("PaymentReceivedBy", fields: [receivedBy], references: [id])
+
+  @@unique([tenantId, receiptNumber])
+  @@index([tenantId, invoiceId])
+  @@index([tenantId, studentId])
+  @@map("payments")
+}
+
+model Discount {
+  id         String       @id @default(uuid())
+  tenantId   String       @map("tenant_id")
+  // Au moins l'un des deux est renseigné (validé côté service) : invoiceId
+  // applique immédiatement la réduction à cette facture ; studentId seul
+  // enregistre une bourse générale sans impact immédiat sur une facture.
+  studentId  String?      @map("student_id")
+  invoiceId  String?      @map("invoice_id")
+  type       DiscountType
+  value      Float
+  reason     String?
+  approvedBy String       @map("approved_by")
+  createdAt  DateTime     @default(now()) @map("created_at")
+  updatedAt  DateTime     @updatedAt @map("updated_at")
+  deletedAt  DateTime?    @map("deleted_at")
+
+  tenant         Tenant   @relation(fields: [tenantId], references: [id])
+  student        Student? @relation(fields: [studentId], references: [id])
+  invoice        Invoice? @relation(fields: [invoiceId], references: [id])
+  approvedByUser User     @relation("DiscountApprovedBy", fields: [approvedBy], references: [id])
+
+  @@index([tenantId, studentId])
+  @@index([tenantId, invoiceId])
+  @@map("discounts")
+}
+
+// Compteur atomique de numéros de reçu par tenant + année (même pattern que
+// MatriculeSequence du Module 4) : incrémenté via upsert `lastNumber: { increment: 1 }`
+// dans la même transaction que la création du Payment — deux paiements
+// concurrents ne peuvent jamais obtenir le même numéro.
+model ReceiptSequence {
+  id         String   @id @default(uuid())
+  tenantId   String   @map("tenant_id")
+  year       String
+  lastNumber Int      @default(0) @map("last_number")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, year])
+  @@map("receipt_sequences")
 }

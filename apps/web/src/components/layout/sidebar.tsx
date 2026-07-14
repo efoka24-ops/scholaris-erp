@@ -18,6 +18,9 @@ import {
   Layers,
   ClipboardList,
   Repeat,
+  Wallet,
+  Receipt,
+  PiggyBank,
 } from "lucide-react";
 import { cn } from "@scholaris/ui";
 
@@ -32,6 +35,9 @@ const NAV_ITEMS = [
   { href: "/students", label: "Élèves", icon: GraduationCap },
   { href: "/admissions", label: "Admissions", icon: ClipboardList },
   { href: "/enrollments/re-enroll", label: "Réinscriptions", icon: Repeat },
+  { href: "/finance/fee-structures", label: "Grilles tarifaires", icon: PiggyBank },
+  { href: "/finance/invoices", label: "Factures", icon: Receipt },
+  { href: "/finance/dashboard", label: "Finances", icon: Wallet },
   { href: "/communications", label: "Communication", icon: MessageSquare },
   { href: "/settings/users", label: "Utilisateurs", icon: Users },
   { href: "/settings/academic-years", label: "Années académiques", icon: CalendarDays },
