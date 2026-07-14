@@ -66,6 +66,19 @@ export const PERMISSIONS = {
   COURSE_ELEMENTS_CREATE: "course-elements:create",
   SUBJECT_ASSIGNMENTS_READ: "subject-assignments:read",
   SUBJECT_ASSIGNMENTS_CREATE: "subject-assignments:create",
+
+  // Module 4 — Inscriptions & Admissions
+  STUDENTS_CREATE: "students:create",
+  STUDENTS_READ: "students:read",
+  STUDENTS_UPDATE: "students:update",
+  STUDENTS_IMPORT: "students:import",
+  ENROLLMENTS_CREATE: "enrollments:create",
+  ENROLLMENTS_READ: "enrollments:read",
+  ENROLLMENTS_UPDATE: "enrollments:update",
+  ENROLLMENTS_RE_ENROLL: "enrollments:re-enroll",
+  ADMISSIONS_CREATE: "admissions:create",
+  ADMISSIONS_READ: "admissions:read",
+  ADMISSIONS_DECIDE: "admissions:decide",
 } as const;
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

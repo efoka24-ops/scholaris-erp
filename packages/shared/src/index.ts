@@ -6,3 +6,4 @@ export * from "./schemas/structure.schema";
 export * from "./schemas/communication.schema";
 export * from "./schemas/settings.schema";
 export * from "./schemas/subject.schema";
+export * from "./schemas/student.schema";

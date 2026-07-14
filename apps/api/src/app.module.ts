@@ -15,6 +15,9 @@ import { AuditModule } from "./modules/audit/audit.module";
 import { AcademicYearsModule } from "./modules/academic-years/academic-years.module";
 import { TenantsModule } from "./modules/tenants/tenants.module";
 import { SubjectsModule } from "./modules/subjects/subjects.module";
+import { StudentsModule } from "./modules/students/students.module";
+import { EnrollmentsModule } from "./modules/enrollments/enrollments.module";
+import { AdmissionsModule } from "./modules/admissions/admissions.module";
 
 @Module({
   imports: [
@@ -30,6 +33,9 @@ import { SubjectsModule } from "./modules/subjects/subjects.module";
     AcademicYearsModule,
     TenantsModule,
     SubjectsModule,
+    StudentsModule,
+    EnrollmentsModule,
+    AdmissionsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
