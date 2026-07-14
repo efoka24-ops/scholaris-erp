@@ -58,6 +58,12 @@ model Tenant {
   userChannelPreferences UserChannelPreference[]
   internalMessages       InternalMessage[]
 
+  // Module 3 : Matières, UE et EC
+  subjects           Subject[]
+  teachingUnits      TeachingUnit[]
+  courseElements     CourseElement[]
+  subjectAssignments SubjectAssignment[]
+
   @@map("tenants")
 }
 
@@ -102,6 +108,9 @@ model User {
   channelPreference       UserChannelPreference?  @relation("UserChannelPreferenceUser")
   sentInternalMessages    InternalMessage[]       @relation("InternalMessageSender")
   receivedInternalMessages InternalMessage[]      @relation("InternalMessageRecipient")
+
+  // Module 3 : un User peut être référencé comme enseignant assigné à une matière/un EC.
+  subjectAssignments SubjectAssignment[] @relation("SubjectAssignmentTeacher")
 
   @@unique([tenantId, email])
   @@map("users")
@@ -186,8 +195,9 @@ model AcademicYear {
   status    AcademicYearStatus @default(ACTIVE)
   createdAt DateTime           @default(now()) @map("created_at")
 
-  tenant  Tenant   @relation(fields: [tenantId], references: [id])
-  periods Period[]
+  tenant             Tenant              @relation(fields: [tenantId], references: [id])
+  periods            Period[]
+  subjectAssignments SubjectAssignment[]
 
   @@unique([tenantId, label])
   @@map("academic_years")
@@ -275,9 +285,10 @@ model Department {
   headTeacherId String?  @map("head_teacher_id")
   createdAt     DateTime @default(now()) @map("created_at")
 
-  tenant      Tenant    @relation(fields: [tenantId], references: [id])
-  headTeacher User?     @relation("DepartmentHeadTeacher", fields: [headTeacherId], references: [id])
-  programs    Program[]
+  tenant        Tenant         @relation(fields: [tenantId], references: [id])
+  headTeacher   User?          @relation("DepartmentHeadTeacher", fields: [headTeacherId], references: [id])
+  programs      Program[]
+  teachingUnits TeachingUnit[]
 
   @@unique([tenantId, code])
   @@map("departments")
@@ -352,11 +363,12 @@ model ClassRoom {
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
-  tenant      Tenant  @relation(fields: [tenantId], references: [id])
-  level       Level   @relation(fields: [levelId], references: [id])
-  mainTeacher User?   @relation("ClassRoomMainTeacher", fields: [mainTeacherId], references: [id])
-  room        Room?   @relation(fields: [roomId], references: [id])
-  groups      Group[]
+  tenant             Tenant              @relation(fields: [tenantId], references: [id])
+  level              Level               @relation(fields: [levelId], references: [id])
+  mainTeacher        User?               @relation("ClassRoomMainTeacher", fields: [mainTeacherId], references: [id])
+  room               Room?               @relation(fields: [roomId], references: [id])
+  groups             Group[]
+  subjectAssignments SubjectAssignment[]
 
   @@unique([tenantId, code])
   @@map("classrooms")
@@ -469,4 +481,119 @@ model InternalMessage {
   recipientUser User  @relation("InternalMessageRecipient", fields: [recipientUserId], references: [id])
 
   @@map("internal_messages")
+}
+
+// ─── Module 3 : Matières, UE et EC (référentiel des disciplines) ─────────────
+// Matières simples (coefficient + heures hebdo) pour le primaire/secondaire ;
+// UE (TeachingUnit) → EC (CourseElement) pour le supérieur LMD (crédits,
+// volumes CM/TD/TP). SubjectAssignment relie un enseignant à une matière OU
+// à un EC pour une classe et une année académique données. Modèles additifs
+// en fin de fichier (même convention que le Module 8) ; les relations inverses
+// nécessaires ont été ajoutées sur Tenant/User/Department/ClassRoom/AcademicYear.
+
+enum SubjectCategory {
+  LITERARY
+  SCIENTIFIC
+  TECHNICAL
+  LANGUAGE
+  SPORTS
+}
+
+model Subject {
+  id                   String          @id @default(uuid())
+  tenantId             String          @map("tenant_id")
+  code                 String
+  name                 String
+  coefficient          Decimal         @db.Decimal(5, 2)
+  weeklyHours          Int             @map("weekly_hours")
+  category             SubjectCategory
+  isEliminatory        Boolean         @default(false) @map("is_eliminatory")
+  // Seuil (note) en dessous duquel la matière est éliminatoire ; 0 = désactivé.
+  eliminatoryThreshold Decimal         @default(0) @map("eliminatory_threshold") @db.Decimal(5, 2)
+  // Niveaux (Level) auxquels la matière est enseignée. Tableau d'identifiants
+  // plutôt qu'une table de jointure : pas de contrainte référentielle forte
+  // requise ici, et le filtre `has` suffit aux besoins de consultation.
+  levelIds             String[]        @default([]) @map("level_ids")
+  createdAt            DateTime        @default(now()) @map("created_at")
+  updatedAt            DateTime        @updatedAt @map("updated_at")
+  deletedAt            DateTime?       @map("deleted_at")
+
+  tenant      Tenant              @relation(fields: [tenantId], references: [id])
+  assignments SubjectAssignment[]
+
+  @@unique([tenantId, code])
+  @@map("subjects")
+}
+
+model TeachingUnit {
+  id            String    @id @default(uuid())
+  tenantId      String    @map("tenant_id")
+  code          String
+  name          String
+  credits       Int
+  semester      Int
+  isFundamental Boolean   @default(false) @map("is_fundamental")
+  departmentId  String    @map("department_id")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  deletedAt     DateTime? @map("deleted_at")
+
+  tenant         Tenant          @relation(fields: [tenantId], references: [id])
+  department     Department      @relation(fields: [departmentId], references: [id])
+  courseElements CourseElement[]
+
+  @@unique([tenantId, code])
+  @@map("teaching_units")
+}
+
+model CourseElement {
+  id             String    @id @default(uuid())
+  tenantId       String    @map("tenant_id")
+  code           String
+  name           String
+  credits        Int
+  hoursCm        Int       @default(0) @map("hours_cm")
+  hoursTd        Int       @default(0) @map("hours_td")
+  hoursTp        Int       @default(0) @map("hours_tp")
+  coefficient    Decimal   @default(1) @db.Decimal(5, 2)
+  teachingUnitId String    @map("teaching_unit_id")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+  deletedAt      DateTime? @map("deleted_at")
+
+  tenant       Tenant              @relation(fields: [tenantId], references: [id])
+  teachingUnit TeachingUnit        @relation(fields: [teachingUnitId], references: [id])
+  assignments  SubjectAssignment[]
+
+  @@unique([tenantId, code])
+  @@map("course_elements")
+}
+
+model SubjectAssignment {
+  id              String    @id @default(uuid())
+  tenantId        String    @map("tenant_id")
+  // Exactement l'un des deux est renseigné : subjectId (secondaire) OU
+  // courseElementId (supérieur LMD). Validé côté service.
+  subjectId       String?   @map("subject_id")
+  courseElementId String?   @map("course_element_id")
+  teacherId       String    @map("teacher_id")
+  classroomId     String    @map("classroom_id")
+  academicYearId  String    @map("academic_year_id")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  deletedAt       DateTime? @map("deleted_at")
+
+  tenant        Tenant         @relation(fields: [tenantId], references: [id])
+  subject       Subject?       @relation(fields: [subjectId], references: [id])
+  courseElement CourseElement? @relation(fields: [courseElementId], references: [id])
+  teacher       User           @relation("SubjectAssignmentTeacher", fields: [teacherId], references: [id])
+  classroom     ClassRoom      @relation(fields: [classroomId], references: [id])
+  academicYear  AcademicYear   @relation(fields: [academicYearId], references: [id])
+
+  // NB : Postgres n'applique pas l'unicité quand subjectId/courseElementId est
+  // NULL — le contrôle applicatif (409) dans SubjectAssignmentsService reste la
+  // barrière principale ; ces index couvrent les courses concurrentes usuelles.
+  @@unique([tenantId, subjectId, classroomId, academicYearId])
+  @@unique([tenantId, courseElementId, classroomId, academicYearId])
+  @@map("subject_assignments")
 }

@@ -11,6 +11,7 @@ import { AuthModule } from "./modules/auth/auth.module";
 import { HealthModule } from "./modules/health/health.module";
 import { StructureModule } from "./modules/structure/structure.module";
 import { CommunicationsModule } from "./modules/communications/communications.module";
+import { SubjectsModule } from "./modules/subjects/subjects.module";
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { CommunicationsModule } from "./modules/communications/communications.mo
     HealthModule,
     StructureModule,
     CommunicationsModule,
+    SubjectsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
