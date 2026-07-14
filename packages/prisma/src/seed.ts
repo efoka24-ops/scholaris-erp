@@ -69,6 +69,17 @@ const BASE_PERMISSIONS: Array<{ resource: string; action: string; description: s
   { resource: "admissions", action: "create", description: "Enregistrer une candidature d'admission" },
   { resource: "admissions", action: "read", description: "Consulter les candidatures d'admission" },
   { resource: "admissions", action: "decide", description: "Accepter/refuser/mettre en liste d'attente une candidature" },
+  // Module 5 — Saisie des notes et moteur de calcul
+  { resource: "grades", action: "create", description: "Saisir des notes (individuelle ou collective)" },
+  { resource: "grades", action: "read", description: "Consulter les notes et résultats" },
+  { resource: "grades", action: "update", description: "Modifier une note avant verrouillage" },
+  { resource: "grades", action: "import", description: "Importer des notes depuis Excel" },
+  { resource: "grades", action: "lock", description: "Verrouiller la saisie d'une évaluation" },
+  { resource: "grades", action: "unlock", description: "Rouvrir une saisie verrouillée (censeur/admin)" },
+  { resource: "grades", action: "calculate", description: "Calculer moyennes et classements (période ou bilan annuel)" },
+  { resource: "grades", action: "progress", description: "Consulter l'avancement de la saisie des notes" },
+  { resource: "grades", action: "deliberation", description: "Délibérer (décisions, observations) sur une période" },
+  { resource: "grades", action: "publish", description: "Publier les résultats aux parents/élèves" },
 ];
 
 async function main() {

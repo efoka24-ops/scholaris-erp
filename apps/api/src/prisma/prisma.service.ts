@@ -16,6 +16,11 @@ const SOFT_DELETE_MODELS = new Set([
   "Parent",
   "Enrollment",
   "AdmissionApplication",
+  // Module 5 — Notes & moteur de calcul
+  "Grade",
+  "GradeCalculation",
+  "PeriodResult",
+  "AnnualResult",
 ]);
 
 // Modèles portant un tenant_id littéral, auto-filtrés par le tenant courant.
@@ -48,6 +53,11 @@ const TENANT_SCOPED_MODELS = new Set([
   "Enrollment",
   "AdmissionApplication",
   "MatriculeSequence",
+  // Module 5 — Notes & moteur de calcul
+  "Grade",
+  "GradeCalculation",
+  "PeriodResult",
+  "AnnualResult",
 ]);
 
 const READ_ACTIONS = new Set(["findFirst", "findMany", "count", "aggregate", "groupBy"]);
