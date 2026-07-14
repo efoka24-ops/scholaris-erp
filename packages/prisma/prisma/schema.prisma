@@ -79,6 +79,12 @@ model Tenant {
   discounts        Discount[]
   receiptSequences ReceiptSequence[]
 
+  // Module 5 : Notes & moteur de calcul
+  grades            Grade[]
+  gradeCalculations GradeCalculation[]
+  periodResults     PeriodResult[]
+  annualResults     AnnualResult[]
+
   @@map("tenants")
 }
 
@@ -130,6 +136,9 @@ model User {
   // Module 7 : un User peut recevoir des paiements (secrétaire/comptable) ou approuver des réductions (admin).
   paymentsReceived    Payment[]  @relation("PaymentReceivedBy")
   discountsApproved   Discount[] @relation("DiscountApprovedBy")
+
+  // Module 5 : un User peut être référencé comme enseignant saisissant une note.
+  gradesEntered Grade[] @relation("GradeTeacher")
 
   @@unique([tenantId, email])
   @@map("users")
@@ -226,6 +235,9 @@ model AcademicYear {
   feeStructures FeeStructure[]
   invoices      Invoice[]
 
+  // Module 5 : Notes & moteur de calcul
+  annualResults AnnualResult[]
+
   @@unique([tenantId, label])
   @@map("academic_years")
 }
@@ -240,6 +252,11 @@ model Period {
   gradingStatus  GradingStatus @default(CLOSED) @map("grading_status")
 
   academicYear AcademicYear @relation(fields: [academicYearId], references: [id])
+
+  // Module 5 : Notes & moteur de calcul
+  grades            Grade[]
+  gradeCalculations GradeCalculation[]
+  periodResults     PeriodResult[]
 
   @@unique([academicYearId, type, number])
   @@map("periods")
@@ -402,6 +419,11 @@ model ClassRoom {
 
   // Module 4 : Inscriptions & Admissions
   enrollments Enrollment[]
+
+  // Module 5 : Notes & moteur de calcul
+  gradeCalculations GradeCalculation[]
+  periodResults     PeriodResult[]
+  annualResults     AnnualResult[]
 
   @@unique([tenantId, code])
   @@map("classrooms")
@@ -585,6 +607,12 @@ model Student {
   payments  Payment[]
   discounts Discount[]
 
+  // Module 5 : Notes & moteur de calcul
+  grades            Grade[]
+  gradeCalculations GradeCalculation[]
+  periodResults     PeriodResult[]
+  annualResults     AnnualResult[]
+
   @@unique([tenantId, matricule])
   @@index([tenantId, lastName, firstName])
   @@map("students")
@@ -749,6 +777,10 @@ model Subject {
   tenant      Tenant              @relation(fields: [tenantId], references: [id])
   assignments SubjectAssignment[]
 
+  // Module 5 : Notes & moteur de calcul
+  grades            Grade[]
+  gradeCalculations GradeCalculation[]
+
   @@unique([tenantId, code])
   @@map("subjects")
 }
@@ -792,6 +824,10 @@ model CourseElement {
   tenant       Tenant              @relation(fields: [tenantId], references: [id])
   teachingUnit TeachingUnit        @relation(fields: [teachingUnitId], references: [id])
   assignments  SubjectAssignment[]
+
+  // Module 5 : Notes & moteur de calcul
+  grades            Grade[]
+  gradeCalculations GradeCalculation[]
 
   @@unique([tenantId, code])
   @@map("course_elements")
@@ -998,4 +1034,168 @@ model ReceiptSequence {
 
   @@unique([tenantId, year])
   @@map("receipt_sequences")
+}
+
+// ─── Module 5 : Saisie des notes et moteur de calcul (§5 du guide) ──────────
+// Grade (note unitaire) → GradeCalculation (moyenne matière/EC calculée pour
+// une période) → PeriodResult (moyenne générale + classement + délibération
+// d'un élève sur une période) → AnnualResult (bilan annuel : moyenne, rang,
+// mention, décision de passage, GPA pour le LMD). Le moteur de calcul lui-même
+// (CalculationEngineService) est un service sans état, indépendant de Prisma :
+// il consomme la configuration existante `Tenant.configJson` (voir
+// calculationEngineSchema, packages/shared/src/schemas/settings.schema.ts) sans
+// la redéfinir. Modèles additifs en fin de fichier (même convention que les
+// modules 3/4/8) ; toutes les entités portent tenant_id, created_at/updated_at/
+// deleted_at (soft delete, jamais de suppression physique — §0.3 du guide).
+
+enum GradeType {
+  TEST
+  HOMEWORK
+  EXAM
+  RESIT
+}
+
+enum AnnualDecision {
+  PASS
+  REPEAT
+  EXCLUDE
+}
+
+model Grade {
+  id              String    @id @default(uuid())
+  tenantId        String    @map("tenant_id")
+  studentId       String    @map("student_id")
+  // Exactement l'un des deux est renseigné : subjectId (primaire/secondaire) OU
+  // courseElementId (supérieur LMD). Validé côté service (même convention que
+  // SubjectAssignment).
+  subjectId       String?   @map("subject_id")
+  courseElementId String?   @map("course_element_id")
+  periodId        String    @map("period_id")
+  teacherId       String    @map("teacher_id")
+  type            GradeType @default(TEST)
+  // Note brute sur maxValue ; null si isAbsent=true et qu'aucune note de
+  // substitution n'a été saisie (cf. CalculationEngineService.handleAbsence).
+  value           Decimal?  @db.Decimal(5, 2)
+  maxValue        Decimal   @default(20) @map("max_value") @db.Decimal(5, 2)
+  // Pondération de cette évaluation dans la moyenne (matière/EC) de la période.
+  weight          Decimal   @default(1) @db.Decimal(5, 2)
+  date            DateTime  @default(now())
+  comment         String?
+  isAbsent        Boolean   @default(false) @map("is_absent")
+  isJustified     Boolean   @default(false) @map("is_justified")
+  // Verrouillée par l'enseignant (PUT /grades/lock/...) : non modifiable sauf
+  // déverrouillage explicite (censeur/admin, grades:unlock).
+  isLocked        Boolean   @default(false) @map("is_locked")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  deletedAt       DateTime? @map("deleted_at")
+
+  tenant        Tenant         @relation(fields: [tenantId], references: [id])
+  student       Student        @relation(fields: [studentId], references: [id])
+  subject       Subject?       @relation(fields: [subjectId], references: [id])
+  courseElement CourseElement? @relation(fields: [courseElementId], references: [id])
+  period        Period         @relation(fields: [periodId], references: [id])
+  teacher       User           @relation("GradeTeacher", fields: [teacherId], references: [id])
+
+  @@index([tenantId, studentId, periodId])
+  @@index([tenantId, subjectId, periodId])
+  @@index([tenantId, courseElementId, periodId])
+  @@index([tenantId, periodId, isLocked])
+  @@map("grades")
+}
+
+// Moyenne calculée (matière ou EC) d'un élève sur une période, issue du moteur
+// de calcul (POST /grades/calculate/:classId/:periodId). classroomId est
+// dénormalisé depuis l'inscription active de l'élève au moment du calcul, pour
+// permettre un classement rapide par classe sans re-parcourir les inscriptions.
+model GradeCalculation {
+  id                String    @id @default(uuid())
+  tenantId          String    @map("tenant_id")
+  studentId         String    @map("student_id")
+  periodId          String    @map("period_id")
+  subjectId         String?   @map("subject_id")
+  courseElementId   String?   @map("course_element_id")
+  classroomId       String    @map("classroom_id")
+  calculatedAverage Decimal   @map("calculated_average") @db.Decimal(5, 2)
+  coefficient       Decimal   @default(1) @map("coefficient") @db.Decimal(5, 2)
+  weightedTotal     Decimal   @map("weighted_total") @db.Decimal(8, 2)
+  // Rang de l'élève dans la matière/EC au sein de la classe (ex æquo => même rang).
+  rank              Int?
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  deletedAt         DateTime? @map("deleted_at")
+
+  tenant        Tenant         @relation(fields: [tenantId], references: [id])
+  student       Student        @relation(fields: [studentId], references: [id])
+  period        Period         @relation(fields: [periodId], references: [id])
+  subject       Subject?       @relation(fields: [subjectId], references: [id])
+  courseElement CourseElement? @relation(fields: [courseElementId], references: [id])
+  classroom     ClassRoom      @relation(fields: [classroomId], references: [id])
+
+  // NB : comme pour SubjectAssignment, Postgres n'applique pas l'unicité quand
+  // subjectId/courseElementId est NULL — le service recalcule (upsert manuel)
+  // plutôt que de s'appuyer uniquement sur la contrainte.
+  @@unique([tenantId, studentId, periodId, subjectId, courseElementId])
+  @@index([tenantId, classroomId, periodId])
+  @@map("grade_calculations")
+}
+
+// Bilan d'un élève sur une période (moyenne générale, rang, mention,
+// délibération). isPublished contrôle la visibilité pour parents/élèves.
+model PeriodResult {
+  id             String    @id @default(uuid())
+  tenantId       String    @map("tenant_id")
+  studentId      String    @map("student_id")
+  periodId       String    @map("period_id")
+  classroomId    String    @map("classroom_id")
+  generalAverage Decimal   @map("general_average") @db.Decimal(5, 2)
+  rank           Int?
+  totalStudents  Int?      @map("total_students")
+  mention        String?
+  // Décision de la délibération (texte libre : "Admis(e)", "Avertissement"...).
+  decision       String?
+  observations   String?
+  teacherComment String?   @map("teacher_comment")
+  isPublished    Boolean   @default(false) @map("is_published")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+  deletedAt      DateTime? @map("deleted_at")
+
+  tenant    Tenant    @relation(fields: [tenantId], references: [id])
+  student   Student   @relation(fields: [studentId], references: [id])
+  period    Period    @relation(fields: [periodId], references: [id])
+  classroom ClassRoom @relation(fields: [classroomId], references: [id])
+
+  @@unique([tenantId, studentId, periodId])
+  @@index([tenantId, classroomId, periodId])
+  @@map("period_results")
+}
+
+// Bilan annuel d'un élève (POST /grades/calculate-annual/:classId).
+model AnnualResult {
+  id               String          @id @default(uuid())
+  tenantId         String          @map("tenant_id")
+  studentId        String          @map("student_id")
+  classroomId      String          @map("classroom_id")
+  academicYearId   String          @map("academic_year_id")
+  annualAverage    Decimal         @map("annual_average") @db.Decimal(5, 2)
+  rank             Int?
+  mention          String?
+  decision         AnnualDecision?
+  // LMD uniquement : nombre de crédits validés / GPA (échelle configurable via
+  // calculationEngineSchema.gpaScale).
+  creditsValidated Int?            @map("credits_validated")
+  gpa              Decimal?        @db.Decimal(4, 2)
+  createdAt        DateTime        @default(now()) @map("created_at")
+  updatedAt        DateTime        @updatedAt @map("updated_at")
+  deletedAt        DateTime?       @map("deleted_at")
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id])
+  student      Student      @relation(fields: [studentId], references: [id])
+  classroom    ClassRoom    @relation(fields: [classroomId], references: [id])
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id])
+
+  @@unique([tenantId, studentId, academicYearId])
+  @@index([tenantId, classroomId, academicYearId])
+  @@map("annual_results")
 }

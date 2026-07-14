@@ -19,6 +19,7 @@ import { StudentsModule } from "./modules/students/students.module";
 import { EnrollmentsModule } from "./modules/enrollments/enrollments.module";
 import { AdmissionsModule } from "./modules/admissions/admissions.module";
 import { FinanceModule } from "./modules/finance/finance.module";
+import { GradesModule } from "./modules/grades/grades.module";
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { FinanceModule } from "./modules/finance/finance.module";
     EnrollmentsModule,
     AdmissionsModule,
     FinanceModule,
+    GradesModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

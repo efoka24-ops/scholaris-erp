@@ -89,6 +89,23 @@ export const PERMISSIONS = {
   PAYMENTS_READ: "payments:read",
   DISCOUNTS_CREATE: "discounts:create",
   FINANCE_DASHBOARD_READ: "finance-dashboard:read",
+
+  // Module 5 — Saisie des notes et moteur de calcul
+  GRADES_CREATE: "grades:create",
+  GRADES_READ: "grades:read",
+  GRADES_UPDATE: "grades:update",
+  GRADES_IMPORT: "grades:import",
+  // Verrouiller sa propre saisie (enseignant, fin de saisie d'une évaluation).
+  GRADES_LOCK: "grades:lock",
+  // Rouvrir une saisie verrouillée (censeur/admin uniquement).
+  GRADES_UNLOCK: "grades:unlock",
+  // Calculer moyennes/classements (période ou bilan annuel).
+  GRADES_CALCULATE: "grades:calculate",
+  // Tableau d'avancement de la saisie (censeur).
+  GRADES_PROGRESS: "grades:progress",
+  GRADES_DELIBERATION: "grades:deliberation",
+  // Rendre les résultats visibles aux parents/élèves (directeur/admin).
+  GRADES_PUBLISH: "grades:publish",
 } as const;
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

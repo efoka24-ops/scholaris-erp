@@ -21,6 +21,7 @@ import {
   Wallet,
   Receipt,
   PiggyBank,
+  NotebookPen,
 } from "lucide-react";
 import { cn } from "@scholaris/ui";
 
@@ -33,6 +34,7 @@ const NAV_ITEMS = [
   { href: "/academics/teaching-units", label: "UE & EC", icon: Layers },
   { href: "/academics/assignments", label: "Assignations", icon: ClipboardList },
   { href: "/students", label: "Élèves", icon: GraduationCap },
+  { href: "/grades/progress", label: "Notes", icon: NotebookPen },
   { href: "/admissions", label: "Admissions", icon: ClipboardList },
   { href: "/enrollments/re-enroll", label: "Réinscriptions", icon: Repeat },
   { href: "/finance/fee-structures", label: "Grilles tarifaires", icon: PiggyBank },
