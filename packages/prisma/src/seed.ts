@@ -46,6 +46,17 @@ const BASE_PERMISSIONS: Array<{ resource: string; action: string; description: s
   { resource: "communications", action: "read", description: "Consulter le journal des communications" },
   { resource: "internal-messages", action: "create", description: "Envoyer un message interne" },
   { resource: "internal-messages", action: "read", description: "Consulter la messagerie interne" },
+  // Module 3 — Matières, UE et EC
+  { resource: "subjects", action: "read", description: "Consulter les matières" },
+  { resource: "subjects", action: "create", description: "Créer une matière (ou importer depuis Excel)" },
+  { resource: "subjects", action: "update", description: "Modifier une matière" },
+  { resource: "subjects", action: "delete", description: "Supprimer une matière" },
+  { resource: "teaching-units", action: "read", description: "Consulter les unités d'enseignement (UE)" },
+  { resource: "teaching-units", action: "create", description: "Créer une unité d'enseignement (UE)" },
+  { resource: "course-elements", action: "read", description: "Consulter les éléments constitutifs (EC)" },
+  { resource: "course-elements", action: "create", description: "Créer un élément constitutif (EC)" },
+  { resource: "subject-assignments", action: "read", description: "Consulter les assignations enseignant/matière" },
+  { resource: "subject-assignments", action: "create", description: "Assigner un enseignant à une matière ou un EC" },
 ];
 
 async function main() {

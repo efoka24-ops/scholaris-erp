@@ -54,6 +54,18 @@ export const PERMISSIONS = {
   COMMUNICATIONS_READ: "communications:read",
   INTERNAL_MESSAGES_CREATE: "internal-messages:create",
   INTERNAL_MESSAGES_READ: "internal-messages:read",
+
+  // Module 3 — Matières, UE et EC
+  SUBJECTS_READ: "subjects:read",
+  SUBJECTS_CREATE: "subjects:create",
+  SUBJECTS_UPDATE: "subjects:update",
+  SUBJECTS_DELETE: "subjects:delete",
+  TEACHING_UNITS_READ: "teaching-units:read",
+  TEACHING_UNITS_CREATE: "teaching-units:create",
+  COURSE_ELEMENTS_READ: "course-elements:read",
+  COURSE_ELEMENTS_CREATE: "course-elements:create",
+  SUBJECT_ASSIGNMENTS_READ: "subject-assignments:read",
+  SUBJECT_ASSIGNMENTS_CREATE: "subject-assignments:create",
 } as const;
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

@@ -14,6 +14,7 @@ import { CommunicationsModule } from "./modules/communications/communications.mo
 import { AuditModule } from "./modules/audit/audit.module";
 import { AcademicYearsModule } from "./modules/academic-years/academic-years.module";
 import { TenantsModule } from "./modules/tenants/tenants.module";
+import { SubjectsModule } from "./modules/subjects/subjects.module";
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { TenantsModule } from "./modules/tenants/tenants.module";
     CommunicationsModule,
     AcademicYearsModule,
     TenantsModule,
+    SubjectsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

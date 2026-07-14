@@ -14,6 +14,9 @@ import {
   CalendarDays,
   Calculator,
   ScrollText,
+  BookOpen,
+  Layers,
+  ClipboardList,
 } from "lucide-react";
 import { cn } from "@scholaris/ui";
 
@@ -22,6 +25,9 @@ const NAV_ITEMS = [
   { href: "/academics/structure", label: "Structure pédagogique", icon: Network },
   { href: "/academics/classrooms", label: "Classes", icon: School },
   { href: "/academics/rooms", label: "Salles", icon: DoorOpen },
+  { href: "/academics/subjects", label: "Matières", icon: BookOpen },
+  { href: "/academics/teaching-units", label: "UE & EC", icon: Layers },
+  { href: "/academics/assignments", label: "Assignations", icon: ClipboardList },
   { href: "/students", label: "Élèves", icon: GraduationCap },
   { href: "/communications", label: "Communication", icon: MessageSquare },
   { href: "/settings/users", label: "Utilisateurs", icon: Users },
