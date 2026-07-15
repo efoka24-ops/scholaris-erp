@@ -78,9 +78,10 @@ async function bootstrap() {
   SwaggerModule.setup(`${globalPrefix}/docs`, app, document);
 
   const port = config.get<number>("PORT") || config.get<number>("API_PORT", 3001);
-  console.log(`🎯 Écoute sur le port ${port}...`);
+  const host = "0.0.0.0"; // Écoute sur toutes les interfaces (requis pour Railway/Docker)
+  console.log(`🎯 Écoute sur ${host}:${port}...`);
   
-  await app.listen(port);
+  await app.listen(port, host);
   
   console.log(`✅ SCHOLARIS API démarrée avec succès`);
   console.log(`📍 Health: http://localhost:${port}/${globalPrefix}/health`);
