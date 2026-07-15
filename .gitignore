@@ -12,3 +12,6 @@ packages/prisma/generated
 playwright-report
 test-results
 *.tsbuildinfo
+
+# Claude worktrees
+.claude/
