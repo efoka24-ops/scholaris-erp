@@ -11,6 +11,13 @@ import { AppModule } from "./app.module";
 
 async function bootstrap() {
   console.log("🚀 SCHOLARIS API - Démarrage...");
+  console.log("📋 Diagnostic des variables d'environnement :");
+  console.log(`   NODE_ENV: ${process.env.NODE_ENV || 'non défini'}`);
+  console.log(`   PORT: ${process.env.PORT || 'non défini'}`);
+  console.log(`   DATABASE_URL: ${process.env.DATABASE_URL ? '✅ définie' : '❌ MANQUANTE'}`);
+  console.log(`   JWT_ACCESS_SECRET: ${process.env.JWT_ACCESS_SECRET ? '✅ définie' : '❌ MANQUANTE'}`);
+  console.log(`   JWT_REFRESH_SECRET: ${process.env.JWT_REFRESH_SECRET ? '✅ définie' : '❌ MANQUANTE'}`);
+  console.log(`   CORS_ORIGIN: ${process.env.CORS_ORIGIN || 'non défini'}`);
   
   const app = await NestFactory.create(AppModule, {
     logger: WinstonModule.createLogger({
