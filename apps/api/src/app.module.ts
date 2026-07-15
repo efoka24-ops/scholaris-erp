@@ -23,7 +23,14 @@ import { GradesModule } from "./modules/grades/grades.module";
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      // Charge .env depuis la racine du monorepo (2 niveaux au-dessus de apps/api/src)
+      envFilePath: [
+        "../../.env",
+        ".env", // Fallback vers .env local si présent dans apps/api
+      ],
+    }),
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]),
     RequestContextModule,
     PrismaModule,
