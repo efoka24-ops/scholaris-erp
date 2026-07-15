@@ -11,6 +11,7 @@ export interface ChannelMessage {
 
 export interface ChannelSendResult {
   providerMessageId?: string;
+  error?: string;
 }
 
 /** Adaptateur de canal — une implémentation par canal (§23.1), injectée dans CommunicationsService. */

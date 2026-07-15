@@ -13,8 +13,12 @@ export class SmsSenderService implements ChannelSender {
   constructor(private readonly config: ConfigService) {}
 
   async send(message: ChannelMessage): Promise<ChannelSendResult> {
-    const apiKey = this.config.getOrThrow<string>("AFRICASTALKING_API_KEY");
-    const username = this.config.getOrThrow<string>("AFRICASTALKING_USERNAME");
+    const apiKey = this.config.get<string>("AFRICASTALKING_API_KEY");
+    const username = this.config.get<string>("AFRICASTALKING_USERNAME");
+    if (!apiKey || !username) {
+      this.logger.warn("AFRICASTALKING_API_KEY/USERNAME non configurées — SMS non envoyé");
+      return { error: "Africa's Talking non configuré" };
+    }
 
     const body = new URLSearchParams({
       username,

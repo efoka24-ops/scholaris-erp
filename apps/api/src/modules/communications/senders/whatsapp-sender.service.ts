@@ -11,8 +11,12 @@ export class WhatsappSenderService implements ChannelSender {
   constructor(private readonly config: ConfigService) {}
 
   async send(message: ChannelMessage): Promise<ChannelSendResult> {
-    const token = this.config.getOrThrow<string>("WHATSAPP_CLOUD_API_TOKEN");
-    const phoneNumberId = this.config.getOrThrow<string>("WHATSAPP_PHONE_NUMBER_ID");
+    const token = this.config.get<string>("WHATSAPP_CLOUD_API_TOKEN");
+    const phoneNumberId = this.config.get<string>("WHATSAPP_PHONE_NUMBER_ID");
+    if (!token || !phoneNumberId) {
+      this.logger.warn("WHATSAPP_CLOUD_API_TOKEN/PHONE_NUMBER_ID non configurées — WhatsApp non envoyé");
+      return { error: "WhatsApp non configuré" };
+    }
     const endpoint = `https://graph.facebook.com/v20.0/${phoneNumberId}/messages`;
 
     const response = await axios.post(

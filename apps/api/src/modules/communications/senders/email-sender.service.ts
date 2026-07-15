@@ -13,7 +13,11 @@ export class EmailSenderService implements ChannelSender {
   constructor(private readonly config: ConfigService) {}
 
   async send(message: ChannelMessage): Promise<ChannelSendResult> {
-    const apiKey = this.config.getOrThrow<string>("BREVO_API_KEY");
+    const apiKey = this.config.get<string>("BREVO_API_KEY");
+    if (!apiKey) {
+      this.logger.warn("BREVO_API_KEY non configurée — email non envoyé");
+      return { error: "BREVO_API_KEY manquante" };
+    }
     const senderEmail = this.config.get<string>("BREVO_SENDER_EMAIL", "no-reply@scholaris.dev");
 
     const response = await axios.post(
