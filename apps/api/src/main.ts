@@ -41,20 +41,27 @@ async function bootstrap() {
     console.warn("");
   }
   
-  const app = await NestFactory.create(AppModule, {
-    logger: WinstonModule.createLogger({
-      transports: [
-        new winston.transports.Console({
-          format: winston.format.combine(winston.format.timestamp(), winston.format.simple()),
-        }),
-        new (winston.transports as any).DailyRotateFile({
-          dirname: "logs",
-          filename: "scholaris-api-%DATE%.log",
-          datePattern: "YYYY-MM-DD",
-          maxFiles: "30d",
-        }),
-      ],
+  // Configuration des transports Winston
+  const transports: any[] = [
+    new winston.transports.Console({
+      format: winston.format.combine(winston.format.timestamp(), winston.format.simple()),
     }),
+  ];
+
+  // Logs fichier uniquement en développement local
+  if (process.env.NODE_ENV !== "production") {
+    transports.push(
+      new (winston.transports as any).DailyRotateFile({
+        dirname: "logs",
+        filename: "scholaris-api-%DATE%.log",
+        datePattern: "YYYY-MM-DD",
+        maxFiles: "30d",
+      }),
+    );
+  }
+
+  const app = await NestFactory.create(AppModule, {
+    logger: WinstonModule.createLogger({ transports }),
   });
   console.log("✅ Application NestJS créée");
 
