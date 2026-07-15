@@ -84,7 +84,9 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup(`${globalPrefix}/docs`, app, document);
 
-  const port = config.get<number>("PORT") || config.get<number>("API_PORT", 3001);
+  // Railway fournit PORT comme chaîne - conversion explicite en nombre
+  const portEnv = process.env.PORT || process.env.API_PORT || "3001";
+  const port = parseInt(portEnv, 10);
   const host = "0.0.0.0"; // Écoute sur toutes les interfaces (requis pour Railway/Docker)
   console.log(`🎯 Écoute sur ${host}:${port}...`);
   
