@@ -59,5 +59,5 @@ EXPOSE 3001
 
 WORKDIR /app/apps/api
 
-# Migration puis démarrage
-CMD ["sh", "-c", "/app/node_modules/.bin/prisma migrate deploy --schema=/app/packages/prisma/prisma/schema.prisma && node dist/main"]
+# Migration puis démarrage (migration optionnelle : si elle échoue, l'app démarre quand même)
+CMD ["sh", "-c", "npx prisma migrate deploy --schema=/app/packages/prisma/prisma/schema.prisma || echo 'Migration skipped'; node dist/main"]

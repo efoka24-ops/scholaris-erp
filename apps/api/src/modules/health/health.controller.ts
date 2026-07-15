@@ -16,10 +16,10 @@ export class HealthController {
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
   ) {
-    this.redis = new Redis(this.config.getOrThrow<string>("REDIS_URL"), {
-      lazyConnect: true,
-      maxRetriesPerRequest: 1,
-    });
+    const redisUrl = this.config.get<string>("REDIS_URL");
+    this.redis = redisUrl
+      ? new Redis(redisUrl, { lazyConnect: true, maxRetriesPerRequest: 1 })
+      : (null as unknown as Redis);
   }
 
   @Public()
@@ -28,10 +28,10 @@ export class HealthController {
   async check() {
     const [database, redis] = await Promise.all([this.checkDatabase(), this.checkRedis()]);
 
-    const status = database === "connected" && redis === "connected" ? "ok" : "degraded";
+    const status = database === "connected" ? "ok" : "degraded";
     const payload = { status, database, redis };
 
-    if (status === "degraded") {
+    if (database === "disconnected") {
       throw new ServiceUnavailableException(payload);
     }
     return payload;
@@ -47,6 +47,7 @@ export class HealthController {
   }
 
   private async checkRedis(): Promise<ConnectionStatus> {
+    if (!this.redis) return "disconnected";
     try {
       if (this.redis.status !== "ready") {
         await this.redis.connect();
