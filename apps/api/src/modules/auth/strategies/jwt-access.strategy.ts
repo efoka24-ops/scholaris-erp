@@ -11,10 +11,14 @@ export class JwtAccessStrategy extends PassportStrategy(Strategy, "jwt-access") 
     config: ConfigService,
     private readonly context: RequestContextService,
   ) {
+    const secret = config.get<string>("JWT_ACCESS_SECRET") || "dev-jwt-access-secret-CHANGE-IN-PRODUCTION";
+    if (!config.get<string>("JWT_ACCESS_SECRET")) {
+      console.warn("⚠️  JWT_ACCESS_SECRET non défini, utilisation de la valeur par défaut (dev uniquement)");
+    }
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: config.getOrThrow<string>("JWT_ACCESS_SECRET"),
+      secretOrKey: secret,
     });
   }
 

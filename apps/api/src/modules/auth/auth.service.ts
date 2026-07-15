@@ -82,8 +82,9 @@ export class AuthService {
   async refresh(refreshToken: string): Promise<TokenPair> {
     let payload: JwtRefreshPayload;
     try {
+      const refreshSecret = this.config.get<string>("JWT_REFRESH_SECRET") || "dev-jwt-refresh-secret-CHANGE-IN-PRODUCTION";
       payload = await this.jwt.verifyAsync<JwtRefreshPayload>(refreshToken, {
-        secret: this.config.getOrThrow<string>("JWT_REFRESH_SECRET"),
+        secret: refreshSecret,
       });
     } catch {
       throw new UnauthorizedException("Refresh token invalide ou expiré");
@@ -208,13 +209,16 @@ export class AuthService {
 
     const accessExpiresIn = this.config.get<string>("JWT_ACCESS_EXPIRES_IN", "15m");
 
+    const accessSecret = this.config.get<string>("JWT_ACCESS_SECRET") || "dev-jwt-access-secret-CHANGE-IN-PRODUCTION";
+    const refreshSecret = this.config.get<string>("JWT_REFRESH_SECRET") || "dev-jwt-refresh-secret-CHANGE-IN-PRODUCTION";
+
     const [accessToken, refreshToken] = await Promise.all([
       this.jwt.signAsync(accessPayload, {
-        secret: this.config.getOrThrow<string>("JWT_ACCESS_SECRET"),
+        secret: accessSecret,
         expiresIn: accessExpiresIn,
       }),
       this.jwt.signAsync(refreshPayload, {
-        secret: this.config.getOrThrow<string>("JWT_REFRESH_SECRET"),
+        secret: refreshSecret,
         expiresIn: this.config.get<string>("JWT_REFRESH_EXPIRES_IN", "7d"),
       }),
     ]);

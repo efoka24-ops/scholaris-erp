@@ -15,9 +15,31 @@ async function bootstrap() {
   console.log(`   NODE_ENV: ${process.env.NODE_ENV || 'non défini'}`);
   console.log(`   PORT: ${process.env.PORT || 'non défini'}`);
   console.log(`   DATABASE_URL: ${process.env.DATABASE_URL ? '✅ définie' : '❌ MANQUANTE'}`);
-  console.log(`   JWT_ACCESS_SECRET: ${process.env.JWT_ACCESS_SECRET ? '✅ définie' : '❌ MANQUANTE'}`);
-  console.log(`   JWT_REFRESH_SECRET: ${process.env.JWT_REFRESH_SECRET ? '✅ définie' : '❌ MANQUANTE'}`);
+  console.log(`   JWT_ACCESS_SECRET: ${process.env.JWT_ACCESS_SECRET ? '✅ définie' : '⚠️  VALEUR PAR DÉFAUT (DEV)'}`);
+  console.log(`   JWT_REFRESH_SECRET: ${process.env.JWT_REFRESH_SECRET ? '✅ définie' : '⚠️  VALEUR PAR DÉFAUT (DEV)'}`);
   console.log(`   CORS_ORIGIN: ${process.env.CORS_ORIGIN || 'non défini'}`);
+  console.log("");
+  
+  // Vérification critique : DATABASE_URL est obligatoire
+  if (!process.env.DATABASE_URL) {
+    console.error("❌ ERREUR FATALE : DATABASE_URL n'est pas définie !");
+    console.error("");
+    console.error("L'application ne peut pas démarrer sans connexion à la base de données.");
+    console.error("");
+    console.error("Solutions :");
+    console.error("  1. En local : Créez un fichier .env à la racine avec DATABASE_URL");
+    console.error("  2. Sur Railway : Ajoutez DATABASE_URL dans Settings > Variables");
+    console.error("     Utilisez 'Add a Reference' pour lier au service PostgreSQL");
+    console.error("");
+    process.exit(1);
+  }
+  
+  if (!process.env.JWT_ACCESS_SECRET || !process.env.JWT_REFRESH_SECRET) {
+    console.warn("⚠️  ATTENTION : Secrets JWT non configurés !");
+    console.warn("   L'application utilise des valeurs par défaut pour le développement.");
+    console.warn("   En production, configurez JWT_ACCESS_SECRET et JWT_REFRESH_SECRET.");
+    console.warn("");
+  }
   
   const app = await NestFactory.create(AppModule, {
     logger: WinstonModule.createLogger({
