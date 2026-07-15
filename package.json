@@ -19,6 +19,7 @@
     "db:studio": "npm run studio --workspace=@scholaris/prisma"
   },
   "devDependencies": {
+    "@faker-js/faker": "^10.5.0",
     "turbo": "^2.1.2",
     "typescript": "^5.5.4"
   },
