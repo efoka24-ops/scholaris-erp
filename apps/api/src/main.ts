@@ -10,6 +10,8 @@ import "winston-daily-rotate-file";
 import { AppModule } from "./app.module";
 
 async function bootstrap() {
+  console.log("🚀 SCHOLARIS API - Démarrage...");
+  
   const app = await NestFactory.create(AppModule, {
     logger: WinstonModule.createLogger({
       transports: [
@@ -25,8 +27,10 @@ async function bootstrap() {
       ],
     }),
   });
+  console.log("✅ Application NestJS créée");
 
   const config = app.get(ConfigService);
+  console.log("✅ ConfigService chargé");
 
   app.use(helmet());
   app.enableCors({ origin: config.get<string>("CORS_ORIGIN", "http://localhost:3000"), credentials: true });
@@ -45,9 +49,31 @@ async function bootstrap() {
   SwaggerModule.setup(`${globalPrefix}/docs`, app, document);
 
   const port = config.get<number>("PORT") || config.get<number>("API_PORT", 3001);
+  console.log(`🎯 Écoute sur le port ${port}...`);
+  
   await app.listen(port);
-  // eslint-disable-next-line no-console
-  console.log(`SCHOLARIS API démarrée sur http://localhost:${port}/${globalPrefix}`);
+  
+  console.log(`✅ SCHOLARIS API démarrée avec succès`);
+  console.log(`📍 Health: http://localhost:${port}/${globalPrefix}/health`);
+  console.log(`📚 Swagger: http://localhost:${port}/${globalPrefix}/docs`);
 }
 
-bootstrap();
+bootstrap().catch((error) => {
+  console.error("❌ ERREUR FATALE AU DÉMARRAGE :");
+  console.error(error);
+  
+  if (error.message?.includes("JWT_ACCESS_SECRET")) {
+    console.error("\n⚠️  Variable JWT_ACCESS_SECRET manquante !");
+    console.error("   Ajoutez-la dans Railway Settings > Variables");
+  }
+  if (error.message?.includes("JWT_REFRESH_SECRET")) {
+    console.error("\n⚠️  Variable JWT_REFRESH_SECRET manquante !");
+    console.error("   Ajoutez-la dans Railway Settings > Variables");
+  }
+  if (error.message?.includes("DATABASE_URL") || error.message?.includes("prisma") || error.message?.includes("connect")) {
+    console.error("\n⚠️  Erreur de connexion à la base de données !");
+    console.error("   Vérifiez DATABASE_URL dans les variables");
+  }
+  
+  process.exit(1);
+});
