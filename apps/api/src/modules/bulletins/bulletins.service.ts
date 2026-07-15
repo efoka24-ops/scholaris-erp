@@ -30,7 +30,7 @@ export class BulletinsService {
         include: { level: true, room: true },
       }),
       this.prisma.period.findFirst({
-        where: { id: periodId, tenantId },
+        where: { id: periodId },
         include: { academicYear: true },
       }),
     ]);
@@ -48,7 +48,7 @@ export class BulletinsService {
       where: {
         classroomId,
         academicYearId: period.academicYearId,
-        status: "active",
+        status: "ACTIVE",
       },
       include: {
         student: true,
@@ -70,14 +70,14 @@ export class BulletinsService {
         );
         results.push({
           studentId: enrollment.studentId,
-          matricule: enrollment.student.matricule,
+          matricule: (enrollment as any).student?.matricule,
           status: "success",
           bulletinId: bulletin.id,
         });
       } catch (error) {
         results.push({
           studentId: enrollment.studentId,
-          matricule: enrollment.student.matricule,
+          matricule: (enrollment as any).student?.matricule,
           status: "error",
           error: error instanceof Error ? error.message : "Unknown error",
         });
@@ -105,7 +105,7 @@ export class BulletinsService {
       include: {
         enrollments: {
           where: {
-            status: "active",
+            status: "ACTIVE",
           },
           include: {
             classroom: {
@@ -134,8 +134,8 @@ export class BulletinsService {
       throw new NotFoundException(`Period ${periodId} not found`);
     }
 
-    const enrollment = student.enrollments.find(
-      (e) => e.academicYearId === period.academicYearId,
+    const enrollment = (student as any).enrollments?.find(
+      (e: any) => e.academicYearId === period.academicYearId,
     );
 
     if (!enrollment) {
@@ -162,11 +162,16 @@ export class BulletinsService {
 
     // Calculer la moyenne générale
     const totalWeightedScore = grades.reduce(
-      (sum, g) => sum + (g.score / g.maxScore) * 20 * (g.subject.coefficient || 1),
+      (sum, g) => {
+        const value = Number(g.value || 0);
+        const maxValue = Number(g.maxValue || 20);
+        const coeff = Number(g.subject?.coefficient || 1);
+        return sum + (value / maxValue) * 20 * coeff;
+      },
       0,
     );
     const totalCoefficient = grades.reduce(
-      (sum, g) => sum + (g.subject.coefficient || 1),
+      (sum, g) => sum + Number(g.subject?.coefficient || 1),
       0,
     );
     const average = totalCoefficient > 0 ? totalWeightedScore / totalCoefficient : 0;
@@ -175,12 +180,11 @@ export class BulletinsService {
     const classGrades = await this.prisma.grade.groupBy({
       by: ["studentId"],
       where: {
-        classroomId: enrollment.classroom.id,
         periodId,
         tenantId,
       },
       _avg: {
-        score: true,
+        value: true,
       },
     });
 

@@ -2,7 +2,6 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RecordAttendanceDto } from './dto/record-attendance.dto';
 import { FindAttendanceQueryDto } from './dto/find-attendance-query.dto';
-import { AttendanceStatus } from '@scholaris/prisma';
 
 @Injectable()
 export class AttendanceService {
@@ -14,7 +13,7 @@ export class AttendanceService {
     query: FindAttendanceQueryDto,
   ) {
     const { startDate, endDate } = query;
-    const where: any = { tenantId, enrollment: { classroomId } };
+    const where: any = { tenantId, classroomId };
 
     if (startDate || endDate) {
       where.date = {};
@@ -22,15 +21,10 @@ export class AttendanceService {
       if (endDate) where.date.lte = new Date(endDate);
     }
 
-    return this.prisma.attendanceRecord.findMany({
+    return this.prisma.attendance.findMany({
       where,
       include: {
-        enrollment: {
-          include: {
-            student: { select: { firstName: true, lastName: true, registrationNumber: true } },
-          },
-        },
-        recordedBy: { select: { firstName: true, lastName: true } },
+        student: { select: { firstName: true, lastName: true } },
       },
       orderBy: { date: 'desc' },
     });
@@ -38,7 +32,7 @@ export class AttendanceService {
 
   async findByStudent(tenantId: string, studentId: string, query: FindAttendanceQueryDto) {
     const { startDate, endDate } = query;
-    const where: any = { tenantId, enrollment: { studentId } };
+    const where: any = { tenantId, studentId };
 
     if (startDate || endDate) {
       where.date = {};
@@ -46,41 +40,42 @@ export class AttendanceService {
       if (endDate) where.date.lte = new Date(endDate);
     }
 
-    return this.prisma.attendanceRecord.findMany({
+    return this.prisma.attendance.findMany({
       where,
       include: {
-        enrollment: {
-          include: {
-            classroom: { select: { name: true } },
-          },
-        },
-        recordedBy: { select: { firstName: true, lastName: true } },
+        classroom: { select: { name: true } },
       },
       orderBy: { date: 'desc' },
     });
   }
 
   async getStats(tenantId: string, classroomId: string) {
-    const enrollments = await this.prisma.enrollment.findMany({
+    const records = await this.prisma.attendance.findMany({
       where: { tenantId, classroomId },
       include: {
         student: { select: { id: true, firstName: true, lastName: true } },
-        attendanceRecords: {
-          select: { status: true },
-        },
       },
     });
 
-    return enrollments.map((enrollment) => {
-      const records = enrollment.attendanceRecords;
-      const total = records.length;
-      const present = records.filter((r) => r.status === 'PRESENT').length;
-      const absent = records.filter((r) => r.status === 'ABSENT').length;
-      const late = records.filter((r) => r.status === 'LATE').length;
-      const excused = records.filter((r) => r.status === 'EXCUSED').length;
+    // Grouper par étudiant
+    const byStudent = records.reduce((acc: any, r) => {
+      const key = r.studentId;
+      if (!acc[key]) {
+        acc[key] = { student: r.student, records: [] };
+      }
+      acc[key].records.push(r);
+      return acc;
+    }, {});
+
+    return Object.values(byStudent).map((entry: any) => {
+      const total = entry.records.length;
+      const present = entry.records.filter((r: any) => r.status === 'PRESENT').length;
+      const absent = entry.records.filter((r: any) => r.status === 'ABSENT').length;
+      const late = entry.records.filter((r: any) => r.status === 'LATE').length;
+      const excused = entry.records.filter((r: any) => r.status === 'EXCUSED').length;
 
       return {
-        student: enrollment.student,
+        student: entry.student,
         stats: {
           total,
           present,
@@ -95,22 +90,18 @@ export class AttendanceService {
 
   async recordAttendance(tenantId: string, dto: RecordAttendanceDto, recordedById: string) {
     const records = await Promise.all(
-      dto.records.map((record) =>
-        this.prisma.attendanceRecord.create({
+      dto.records.map((record: any) =>
+        this.prisma.attendance.create({
           data: {
             tenantId,
-            enrollmentId: record.enrollmentId,
+            studentId: record.studentId,
+            classroomId: record.classroomId,
             date: new Date(dto.date),
-            status: record.status as AttendanceStatus,
-            notes: record.notes,
-            recordedById,
+            status: record.status,
+            reason: record.notes,
           },
           include: {
-            enrollment: {
-              include: {
-                student: { select: { firstName: true, lastName: true } },
-              },
-            },
+            student: { select: { firstName: true, lastName: true } },
           },
         }),
       ),
@@ -120,7 +111,7 @@ export class AttendanceService {
   }
 
   async justifyAbsence(tenantId: string, id: string, justification: string) {
-    const record = await this.prisma.attendanceRecord.findFirst({
+    const record = await this.prisma.attendance.findFirst({
       where: { id, tenantId },
     });
 
@@ -128,11 +119,12 @@ export class AttendanceService {
       throw new NotFoundException('Enregistrement de présence non trouvé');
     }
 
-    return this.prisma.attendanceRecord.update({
+    return this.prisma.attendance.update({
       where: { id },
       data: {
-        status: 'EXCUSED',
-        notes: justification,
+        status: 'EXCUSED' as any,
+        reason: justification,
+        justifiedBy: id, // ID du justificateur
       },
     });
   }

@@ -19,7 +19,7 @@ export class AssetsService {
         skip,
         take: limit,
         include: {
-          maintenanceRecords: { select: { id: true, maintenanceDate: true, type: true } },
+          maintenances: { select: { id: true, date: true, description: true, cost: true } },
         },
         orderBy: { createdAt: 'desc' },
       }),
@@ -33,7 +33,7 @@ export class AssetsService {
     const asset = await this.prisma.asset.findFirst({
       where: { id, tenantId },
       include: {
-        maintenanceRecords: { orderBy: { maintenanceDate: 'desc' } },
+        maintenances: { orderBy: { date: 'desc' } },
       },
     });
 

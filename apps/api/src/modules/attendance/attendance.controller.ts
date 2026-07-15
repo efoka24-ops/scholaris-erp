@@ -42,7 +42,7 @@ export class AttendanceController {
   @Post('record')
   @RequirePermissions('attendance:create')
   async recordAttendance(@CurrentUser() user: AuthenticatedUser, @Body() dto: RecordAttendanceDto) {
-    return this.attendanceService.recordAttendance(user.tenantId, dto, user.id);
+    return this.attendanceService.recordAttendance(user.tenantId, dto, user.userId);
   }
 
   @Put(':id/justify')
