@@ -1,0 +1,15 @@
+[phases.setup]
+nixPkgs = ["nodejs_20", "npm-10_x", "openssl"]
+
+[phases.install]
+cmds = ["npm ci"]
+
+[phases.build]
+cmds = [
+  "npx prisma generate --schema=packages/prisma/prisma/schema.prisma",
+  "npm run build --workspace=@scholaris/shared",
+  "npm run build --workspace=@scholaris/api"
+]
+
+[start]
+cmd = "sh -c 'npx prisma migrate deploy --schema=packages/prisma/prisma/schema.prisma && node apps/api/dist/main.js'"

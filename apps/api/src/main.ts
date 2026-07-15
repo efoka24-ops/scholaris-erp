@@ -44,7 +44,7 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup(`${globalPrefix}/docs`, app, document);
 
-  const port = config.get<number>("API_PORT", 3001);
+  const port = config.get<number>("PORT") || config.get<number>("API_PORT", 3001);
   await app.listen(port);
   // eslint-disable-next-line no-console
   console.log(`SCHOLARIS API démarrée sur http://localhost:${port}/${globalPrefix}`);

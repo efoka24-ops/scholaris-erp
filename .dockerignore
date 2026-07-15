@@ -1,0 +1,32 @@
+# Dépendances locales (réinstallées dans Docker)
+node_modules/
+apps/api/node_modules/
+apps/web/node_modules/
+packages/prisma/node_modules/
+packages/shared/node_modules/
+packages/ui/node_modules/
+
+# Artefacts de build
+apps/api/dist/
+apps/web/.next/
+packages/shared/dist/
+packages/ui/dist/
+
+# Fichiers de développement web (non nécessaires au backend)
+apps/web/
+
+# Git
+.git/
+.gitignore
+
+# Logs
+*.log
+logs/
+
+# Variables d'environnement locales
+.env
+.env.*
+!.env.example
+
+# Outils CI/CD locaux
+.claude/
