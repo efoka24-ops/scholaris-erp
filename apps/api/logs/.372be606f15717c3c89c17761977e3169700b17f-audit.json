@@ -1,0 +1,15 @@
+{
+    "keep": {
+        "days": true,
+        "amount": 30
+    },
+    "auditLog": "logs\\.372be606f15717c3c89c17761977e3169700b17f-audit.json",
+    "files": [
+        {
+            "date": 1784110865895,
+            "name": "logs\\scholaris-api-2026-07-15.log",
+            "hash": "35757eff4615e444bfe4c119cf03bce47fa542502cabafc6cdacac85bc6aff9b"
+        }
+    ],
+    "hashType": "sha256"
+}

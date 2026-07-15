@@ -128,12 +128,12 @@ async function main() {
     ),
   );
 
-  console.log("→ Seed du rôle SUPER_ADMIN (système, tous établissements)…");
+  console.log("→ Seed du rôle SUPER_ADMIN (système)…");
   const superAdminRole = await prisma.role.upsert({
-    where: { tenantId_name: { tenantId: null as unknown as string, name: "SUPER_ADMIN" } },
+    where: { tenantId_name: { tenantId: tenant.id, name: "SUPER_ADMIN" } },
     update: {},
     create: {
-      tenantId: null,
+      tenantId: tenant.id,
       name: "SUPER_ADMIN",
       description: "Accès complet, tous établissements",
       isSystem: true,

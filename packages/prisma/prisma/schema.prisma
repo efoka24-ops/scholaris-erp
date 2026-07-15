@@ -85,6 +85,28 @@ model Tenant {
   periodResults     PeriodResult[]
   annualResults     AnnualResult[]
 
+  // Module 6 : Bulletins et diplômes
+  bulletins Bulletin[]
+
+  // Modules 9-18 : Extensions
+  timetableSlots      TimetableSlot[]
+  attendances         Attendance[]
+  disciplineIncidents DisciplineIncident[]
+  healthRecords       HealthRecord[]
+  clubs               Club[]
+  clubMembers         ClubMember[]
+  schoolEvents        SchoolEvent[]
+  libraryBooks        LibraryBook[]
+  libraryBorrows      LibraryBorrow[]
+  transportRoutes     TransportRoute[]
+  transportVehicles   TransportVehicle[]
+  transportSubscriptions TransportSubscription[]
+  cateringMenus       CateringMenu[]
+  assets              Asset[]
+  assetMaintenances   AssetMaintenance[]
+  employees           Employee[]
+  leaveRequests       LeaveRequest[]
+
   @@map("tenants")
 }
 
@@ -139,6 +161,13 @@ model User {
 
   // Module 5 : un User peut être référencé comme enseignant saisissant une note.
   gradesEntered Grade[] @relation("GradeTeacher")
+
+  // Modules 9-18 : Relations pour les nouveaux modules
+  timetablesAsTeacher    TimetableSlot[]      @relation("TeacherTimetables")
+  reportedIncidents      DisciplineIncident[] @relation("IncidentReporter")
+  supervisedClubs        Club[]               @relation("ClubSupervisor")
+  organizedEvents        SchoolEvent[]        @relation("EventOrganizer")
+  employeeProfile        Employee[]           @relation("EmployeeUser")
 
   @@unique([tenantId, email])
   @@map("users")
@@ -238,6 +267,9 @@ model AcademicYear {
   // Module 5 : Notes & moteur de calcul
   annualResults AnnualResult[]
 
+  // Modules 9-18 : Relations pour les nouveaux modules
+  timetableSlots TimetableSlot[]
+
   @@unique([tenantId, label])
   @@map("academic_years")
 }
@@ -257,6 +289,9 @@ model Period {
   grades            Grade[]
   gradeCalculations GradeCalculation[]
   periodResults     PeriodResult[]
+
+  // Module 6 : Bulletins et diplômes
+  bulletins Bulletin[]
 
   @@unique([academicYearId, type, number])
   @@map("periods")
@@ -393,6 +428,9 @@ model Room {
   tenant     Tenant      @relation(fields: [tenantId], references: [id])
   classrooms ClassRoom[]
 
+  // Modules 9-18 : Relations pour les nouveaux modules
+  timetableSlots TimetableSlot[]
+
   @@unique([tenantId, code])
   @@map("rooms")
 }
@@ -424,6 +462,13 @@ model ClassRoom {
   gradeCalculations GradeCalculation[]
   periodResults     PeriodResult[]
   annualResults     AnnualResult[]
+
+  // Module 6 : Bulletins et diplômes
+  bulletins Bulletin[]
+
+  // Modules 9-18 : Relations pour les nouveaux modules
+  timetableSlots TimetableSlot[]
+  attendances    Attendance[]
 
   @@unique([tenantId, code])
   @@map("classrooms")
@@ -613,6 +658,17 @@ model Student {
   periodResults     PeriodResult[]
   annualResults     AnnualResult[]
 
+  // Module 6 : Bulletins et diplômes
+  bulletins Bulletin[]
+
+  // Modules 9-18 : Relations pour les nouveaux modules
+  attendances         Attendance[]
+  disciplineIncidents DisciplineIncident[]
+  healthRecord        HealthRecord?
+  libraryBorrows      LibraryBorrow[]
+  clubMemberships     ClubMember[]
+  transportSubscriptions TransportSubscription[]
+
   @@unique([tenantId, matricule])
   @@index([tenantId, lastName, firstName])
   @@map("students")
@@ -780,6 +836,9 @@ model Subject {
   // Module 5 : Notes & moteur de calcul
   grades            Grade[]
   gradeCalculations GradeCalculation[]
+
+  // Modules 9-18 : Relations pour les nouveaux modules
+  timetableSlots TimetableSlot[]
 
   @@unique([tenantId, code])
   @@map("subjects")
@@ -1036,6 +1095,384 @@ model ReceiptSequence {
   @@map("receipt_sequences")
 }
 
+// ─── Module 9 : Emplois du temps (Timetables) ────────────────────────────────
+
+enum DayOfWeek {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
+model TimetableSlot {
+  id             String     @id @default(uuid())
+  tenantId       String     @map("tenant_id")
+  academicYearId String     @map("academic_year_id")
+  classroomId    String     @map("classroom_id")
+  subjectId      String     @map("subject_id")
+  teacherId      String     @map("teacher_id")
+  roomId         String?    @map("room_id")
+  dayOfWeek      DayOfWeek  @map("day_of_week")
+  startTime      String     @map("start_time")
+  endTime        String     @map("end_time")
+  createdAt      DateTime   @default(now()) @map("created_at")
+  updatedAt      DateTime   @updatedAt @map("updated_at")
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id])
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id])
+  classroom    ClassRoom    @relation(fields: [classroomId], references: [id])
+  subject      Subject      @relation(fields: [subjectId], references: [id])
+  teacher      User         @relation("TeacherTimetables", fields: [teacherId], references: [id])
+  room         Room?        @relation(fields: [roomId], references: [id])
+
+  @@map("timetable_slots")
+}
+
+// ─── Module 10 : Présences (Attendance) ───────────────────────────────────────
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  EXCUSED
+}
+
+model Attendance {
+  id          String           @id @default(uuid())
+  tenantId    String           @map("tenant_id")
+  studentId   String           @map("student_id")
+  classroomId String           @map("classroom_id")
+  date        DateTime
+  status      AttendanceStatus
+  reason      String?
+  justifiedBy String?          @map("justified_by")
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+
+  tenant    Tenant    @relation(fields: [tenantId], references: [id])
+  student   Student   @relation(fields: [studentId], references: [id])
+  classroom ClassRoom @relation(fields: [classroomId], references: [id])
+
+  @@map("attendances")
+}
+
+// ─── Module 11 : Discipline ───────────────────────────────────────────────────
+
+enum IncidentType {
+  RETARD
+  ABSENCE_INJUSTIFIEE
+  INSOLENCE
+  BAGARRE
+  TRICHERIE
+  AUTRE
+}
+
+enum SanctionType {
+  AVERTISSEMENT
+  BLAME
+  EXCLUSION_COURS
+  EXCLUSION_TEMPORAIRE
+  CONVOCATION_PARENTS
+  AUTRE
+}
+
+model DisciplineIncident {
+  id          String        @id @default(uuid())
+  tenantId    String        @map("tenant_id")
+  studentId   String        @map("student_id")
+  reportedBy  String        @map("reported_by")
+  type        IncidentType
+  description String
+  date        DateTime
+  sanction    SanctionType?
+  sanctionDetails String?   @map("sanction_details")
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  tenant    Tenant  @relation(fields: [tenantId], references: [id])
+  student   Student @relation(fields: [studentId], references: [id])
+  reporter  User    @relation("IncidentReporter", fields: [reportedBy], references: [id])
+
+  @@map("discipline_incidents")
+}
+
+// ─── Module 12 : Santé (Health) ───────────────────────────────────────────────
+
+model HealthRecord {
+  id             String   @id @default(uuid())
+  tenantId       String   @map("tenant_id")
+  studentId      String   @unique @map("student_id")
+  bloodType      String?  @map("blood_type")
+  allergies      String?
+  chronicDiseases String? @map("chronic_diseases")
+  medications    String?
+  vaccinations   String?
+  emergencyContact String? @map("emergency_contact")
+  notes          String?
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id])
+  student Student @relation(fields: [studentId], references: [id])
+
+  @@unique([tenantId, studentId])
+  @@map("health_records")
+}
+
+// ─── Module 13 : Vie scolaire (School Life) ───────────────────────────────────
+
+model Club {
+  id          String   @id @default(uuid())
+  tenantId    String   @map("tenant_id")
+  name        String
+  description String?
+  supervisorId String? @map("supervisor_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  tenant     Tenant        @relation(fields: [tenantId], references: [id])
+  supervisor User?         @relation("ClubSupervisor", fields: [supervisorId], references: [id])
+  members    ClubMember[]
+
+  @@map("clubs")
+}
+
+model ClubMember {
+  id        String   @id @default(uuid())
+  tenantId  String   @map("tenant_id")
+  clubId    String   @map("club_id")
+  studentId String   @map("student_id")
+  joinedAt  DateTime @default(now()) @map("joined_at")
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id])
+  club    Club    @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([clubId, studentId])
+  @@map("club_members")
+}
+
+model SchoolEvent {
+  id          String   @id @default(uuid())
+  tenantId    String   @map("tenant_id")
+  name        String
+  description String?
+  startDate   DateTime @map("start_date")
+  endDate     DateTime @map("end_date")
+  location    String?
+  organizerId String?  @map("organizer_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  tenant    Tenant @relation(fields: [tenantId], references: [id])
+  organizer User?  @relation("EventOrganizer", fields: [organizerId], references: [id])
+
+  @@map("school_events")
+}
+
+// ─── Module 14 : Bibliothèque (Library) ───────────────────────────────────────
+
+model LibraryBook {
+  id        String   @id @default(uuid())
+  tenantId  String   @map("tenant_id")
+  title     String
+  author    String?
+  isbn      String?
+  category  String?
+  quantity  Int      @default(1)
+  available Int      @default(1)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenant  Tenant          @relation(fields: [tenantId], references: [id])
+  borrows LibraryBorrow[]
+
+  @@map("library_books")
+}
+
+model LibraryBorrow {
+  id         String    @id @default(uuid())
+  tenantId   String    @map("tenant_id")
+  bookId     String    @map("book_id")
+  studentId  String    @map("student_id")
+  borrowDate DateTime  @map("borrow_date")
+  dueDate    DateTime  @map("due_date")
+  returnDate DateTime? @map("return_date")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  tenant  Tenant      @relation(fields: [tenantId], references: [id])
+  book    LibraryBook @relation(fields: [bookId], references: [id])
+  student Student     @relation(fields: [studentId], references: [id])
+
+  @@map("library_borrows")
+}
+
+// ─── Module 15 : Transport ────────────────────────────────────────────────────
+
+model TransportRoute {
+  id        String   @id @default(uuid())
+  tenantId  String   @map("tenant_id")
+  name      String
+  vehicleId String?  @map("vehicle_id")
+  stops     String?
+  schedule  String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenant  Tenant            @relation(fields: [tenantId], references: [id])
+  vehicle TransportVehicle? @relation(fields: [vehicleId], references: [id])
+  subscriptions TransportSubscription[]
+
+  @@map("transport_routes")
+}
+
+model TransportVehicle {
+  id        String   @id @default(uuid())
+  tenantId  String   @map("tenant_id")
+  name      String
+  capacity  Int
+  status    String   @default("ACTIVE")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenant Tenant           @relation(fields: [tenantId], references: [id])
+  routes TransportRoute[]
+
+  @@map("transport_vehicles")
+}
+
+model TransportSubscription {
+  id       String   @id @default(uuid())
+  tenantId String   @map("tenant_id")
+  routeId  String   @map("route_id")
+  studentId String  @map("student_id")
+  stopName String?  @map("stop_name")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenant  Tenant         @relation(fields: [tenantId], references: [id])
+  route   TransportRoute @relation(fields: [routeId], references: [id])
+  student Student        @relation(fields: [studentId], references: [id])
+
+  @@map("transport_subscriptions")
+}
+
+// ─── Module 16 : Cantine (Catering) ───────────────────────────────────────────
+
+model CateringMenu {
+  id        String   @id @default(uuid())
+  tenantId  String   @map("tenant_id")
+  date      DateTime
+  meal      String
+  items     String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@map("catering_menus")
+}
+
+// ─── Module 17 : Patrimoine (Assets) ──────────────────────────────────────────
+
+enum AssetCategory {
+  MOBILIER
+  EQUIPEMENT
+  BATIMENT
+  VEHICULE
+}
+
+enum AssetStatus {
+  ACTIF
+  ENDOMMAGE
+  HORS_SERVICE
+}
+
+model Asset {
+  id              String          @id @default(uuid())
+  tenantId        String          @map("tenant_id")
+  name            String
+  category        AssetCategory
+  acquisitionDate DateTime?       @map("acquisition_date")
+  acquisitionValue Float?         @map("acquisition_value")
+  status          AssetStatus     @default(ACTIF)
+  location        String?
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+
+  tenant       Tenant             @relation(fields: [tenantId], references: [id])
+  maintenances AssetMaintenance[]
+
+  @@map("assets")
+}
+
+model AssetMaintenance {
+  id          String   @id @default(uuid())
+  tenantId    String   @map("tenant_id")
+  assetId     String   @map("asset_id")
+  date        DateTime
+  description String
+  cost        Float?
+  technician  String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  asset  Asset  @relation(fields: [assetId], references: [id])
+
+  @@map("asset_maintenances")
+}
+
+// ─── Module 18 : RH & Paie (HR) ───────────────────────────────────────────────
+
+model Employee {
+  id           String   @id @default(uuid())
+  tenantId     String   @map("tenant_id")
+  userId       String?  @map("user_id")
+  firstName    String   @map("first_name")
+  lastName     String   @map("last_name")
+  position     String
+  department   String?
+  hireDate     DateTime @map("hire_date")
+  salary       Float?
+  status       String   @default("ACTIVE")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  tenant        Tenant         @relation(fields: [tenantId], references: [id])
+  user          User?          @relation("EmployeeUser", fields: [userId], references: [id])
+  leaveRequests LeaveRequest[]
+
+  @@map("employees")
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model LeaveRequest {
+  id         String      @id @default(uuid())
+  tenantId   String      @map("tenant_id")
+  employeeId String      @map("employee_id")
+  startDate  DateTime    @map("start_date")
+  endDate    DateTime    @map("end_date")
+  reason     String
+  status     LeaveStatus @default(PENDING)
+  createdAt  DateTime    @default(now()) @map("created_at")
+  updatedAt  DateTime    @updatedAt @map("updated_at")
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+  employee Employee @relation(fields: [employeeId], references: [id])
+
+  @@map("leave_requests")
+}
+
 // ─── Module 5 : Saisie des notes et moteur de calcul (§5 du guide) ──────────
 // Grade (note unitaire) → GradeCalculation (moyenne matière/EC calculée pour
 // une période) → PeriodResult (moyenne générale + classement + délibération
@@ -1198,4 +1635,30 @@ model AnnualResult {
   @@unique([tenantId, studentId, academicYearId])
   @@index([tenantId, classroomId, academicYearId])
   @@map("annual_results")
+}
+
+// Bulletin scolaire (§6 - Bulletins et diplômes)
+// Généré après calcul des moyennes pour une période donnée
+model Bulletin {
+  id               String    @id @default(uuid())
+  tenantId         String    @map("tenant_id")
+  studentId        String    @map("student_id")
+  periodId         String    @map("period_id")
+  classroomId      String    @map("classroom_id")
+  verificationCode String    @unique @map("verification_code")
+  status           String    @default("draft") // draft, published, sent
+  pdfUrl           String?   @map("pdf_url")
+  data             Json      // Snapshot des notes, moyennes, etc.
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+  deletedAt        DateTime? @map("deleted_at")
+
+  tenant    Tenant    @relation(fields: [tenantId], references: [id])
+  student   Student   @relation(fields: [studentId], references: [id])
+  period    Period    @relation(fields: [periodId], references: [id])
+  classroom ClassRoom @relation(fields: [classroomId], references: [id])
+
+  @@unique([tenantId, studentId, periodId])
+  @@index([tenantId, classroomId, periodId])
+  @@map("bulletins")
 }

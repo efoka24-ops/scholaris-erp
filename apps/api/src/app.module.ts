@@ -20,6 +20,18 @@ import { EnrollmentsModule } from "./modules/enrollments/enrollments.module";
 import { AdmissionsModule } from "./modules/admissions/admissions.module";
 import { FinanceModule } from "./modules/finance/finance.module";
 import { GradesModule } from "./modules/grades/grades.module";
+import { UsersModule } from "./modules/users/users.module";
+import { BulletinsModule } from "./modules/bulletins/bulletins.module";
+// Modules 9-18
+import { TimetablesModule } from "./modules/timetables/timetables.module";
+import { AttendanceModule } from "./modules/attendance/attendance.module";
+import { DisciplineModule } from "./modules/discipline/discipline.module";
+import { SchoolLifeModule } from "./modules/school-life/school-life.module";
+import { LibraryModule } from "./modules/library/library.module";
+import { TransportModule } from "./modules/transport/transport.module";
+import { CateringModule } from "./modules/catering/catering.module";
+import { AssetsModule } from "./modules/assets/assets.module";
+import { HrModule } from "./modules/hr/hr.module";
 
 @Module({
   imports: [
@@ -47,6 +59,18 @@ import { GradesModule } from "./modules/grades/grades.module";
     AdmissionsModule,
     FinanceModule,
     GradesModule,
+    UsersModule,
+    BulletinsModule,
+    // Modules 9-18
+    TimetablesModule,
+    AttendanceModule,
+    DisciplineModule,
+    SchoolLifeModule,
+    LibraryModule,
+    TransportModule,
+    CateringModule,
+    AssetsModule,
+    HrModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
