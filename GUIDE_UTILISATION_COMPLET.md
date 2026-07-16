@@ -1,9 +1,11 @@
 # GUIDE D'UTILISATION - SCHOLARIS ERP v2.0
 ## Documentation complète pour tous les profils utilisateurs
 
-**Version** : 2.0  
-**Date** : 15 Juillet 2026  
+**Version** : 2.1  
+**Date** : 16 Juillet 2026 (mise à jour post-corrections)  
 **Environnement** : Production (Railway) + Development (localhost)  
+
+> **Changements depuis la v2.0** : gestion des utilisateurs et des rôles/permissions désormais pleinement fonctionnelle, CRUD établissement complet, templates de communication corrigés, signalement d'incidents (Discipline) fonctionnel, inscriptions et bulletins connectés au backend, niveaux scolaires seedés de manière exhaustive (primaire SIL→CM2, collège 6ème→3ème, lycée 2nde→Tle, supérieur L1→Doctorat). Voir §2.15, §2.19, §2.20, §2.21.
 
 ---
 
@@ -47,30 +49,43 @@ L'interface est composée de :
 - **Topbar** : Fil d'Ariane + email utilisateur + bouton Déconnexion
 - **Zone principale** : Contenu de la page courante
 
-### 1.5 Menu de navigation (20 pages disponibles)
+### 1.5 Menu de navigation (sidebar groupée par section)
+
+La sidebar est organisée en sections repliables. L'affichage réel dépend des permissions du profil connecté (un enseignant ne verra pas "Configuration", par exemple) :
 
 ```
-📊 Tableau de bord
-📚 Structure pédagogique
-🏫 Classes
-🚪 Salles
-📖 Matières
-📑 UE & EC (Enseignement Supérieur)
-👨‍🏫 Assignations (Enseignants ↔ Matières)
-👨‍🎓 Élèves
-📝 Notes
-📋 Admissions
-🔄 Réinscriptions
-💵 Grilles tarifaires
-🧾 Factures
-💰 Finances (Dashboard)
+📊 Principal
+   Tableau de bord
+
+📚 Académique
+   Structure pédagogique · Classes · Salles · Matières
+   UE & EC · Assignations · Années académiques
+
+🎓 Élèves
+   Élèves · Admissions · Inscriptions
+
+📝 Notes & Bulletins
+   Saisie des notes · Calculs · Bulletins
+
+💰 Finance
+   Tableau de bord · Grilles tarifaires · Factures · Paiements
+
+🏫 Vie Scolaire
+   Emplois du temps · Présences · Discipline · Santé scolaire
+   Clubs & Activités · Bibliothèque · Transport · Cantine & Internat
+
+🗂️ Gestion
+   Patrimoine · RH & Paie
+
 📧 Communication
-👥 Utilisateurs
-📅 Années académiques
-🧮 Moteur de calcul
-📜 Journal d'audit
-⚙️ Établissement
+   Messages · Templates
+
+⚙️ Configuration
+   Établissement · Utilisateurs · Rôles & Permissions
+   Moteur de calcul · Journal d'audit
 ```
+
+> **Note sur les modules "Vie Scolaire" et "Gestion"** : leur backend existe (modules 9 à 18), mais certains écrans sont plus récents et moins éprouvés que le socle académique/financier (modules 1 à 8). Voir §2.21 pour le détail de ce qui est pleinement opérationnel aujourd'hui.
 
 ---
 
@@ -100,16 +115,19 @@ L'interface est composée de :
 - Coordonnées (adresse, téléphone, email)
 - Logo (upload)
 - Configuration JSON (paramètres avancés)
+- **Modules activés** : active/désactive les modules complémentaires (§2.21) visibles pour cet établissement, sans affecter les autres établissements du système (multi-tenant)
 
 **Actions disponibles** :
 1. Consulter les informations actuelles
 2. Modifier les informations générales
 3. Uploader un logo
-4. Sauvegarder les modifications
+4. Cocher/décocher les modules activés pour l'établissement
+5. Sauvegarder les modifications
 
 **API Backend** :
 - `GET /api/tenants/:id` - Récupérer les infos
 - `PUT /api/tenants/:id` - Modifier les infos
+- `GET/PUT /api/tenants/:id/modules` - Consulter/modifier les modules activés
 
 ### 2.3 Structure Pédagogique
 
@@ -121,10 +139,18 @@ Cycles (Primaire, Secondaire, Supérieur)
   ↓
 Programmes / Filières (Scientifique C, Littéraire A, etc.)
   ↓
-Niveaux (6ème, 5ème, 4ème, 3ème, 2nde, 1ère, Tle)
+Niveaux
   ↓
 Classes (6ème A, 6ème B, Tle C1, etc.)
 ```
+
+**Niveaux disponibles par défaut** (seed exhaustif du système camerounais, ajustable par établissement) :
+- **Primaire** : SIL, CP, CE1, CE2, CM1, CM2
+- **Collège** : 6ème, 5ème, 4ème, 3ème
+- **Lycée** : 2nde, 1ère, Terminale
+- **Supérieur** (établissements de type SUPERIEUR) : Licence 1, Licence 2, Licence 3, Master 1, Master 2, Doctorat
+
+Ces niveaux sont chargés dynamiquement depuis l'API (aucun filtre codé en dur) : ils apparaissent aussi bien dans les sélecteurs de la structure pédagogique que dans la saisie des notes (§2.12).
 
 **Actions disponibles** :
 1. **Créer un cycle** :
@@ -816,7 +842,7 @@ EC (Élément Constitutif) - 6 + 4 crédits
 
 **URL** : `/settings/users`
 
-**Profils disponibles** :
+**Profils disponibles** (rôles seedés par défaut, personnalisables — voir §2.19) :
 - SUPER_ADMIN
 - Directeur
 - Censeur
@@ -831,39 +857,33 @@ EC (Élément Constitutif) - 6 + 4 crédits
    - DataTable paginée
    - Filtres : rôle, statut (actif/inactif/suspendu)
    - Recherche : nom, email
-   - Affichage : nom, email, rôle, statut, dernière connexion
+   - Affichage : nom, email, rôle(s), statut, dernière connexion
 
 2. **Créer un utilisateur** :
-   - URL : `/settings/users/new`
+   - URL : `/settings/users` (formulaire intégré)
    - Formulaire :
-     - Nom, prénom
-     - Email (unique)
+     - Nom, prénom, téléphone
+     - Email (unique par établissement)
      - Mot de passe initial
-     - Rôle (sélecteur)
-     - Statut (actif/inactif/suspendu)
+     - Rôle(s) — sélection par cases à cocher
    - Valider
-   - Email de bienvenue automatique
 
-3. **Modifier un utilisateur** :
-   - URL : `/settings/users/:id/edit`
-   - Modifier infos
-   - Changer rôle
-     - Assigner/retirer permissions
-   - Réinitialiser mot de passe
-   - Suspendre/Réactiver
+3. **Gérer un utilisateur existant** :
+   - **Activer / Suspendre / Désactiver** : bouton dédié dans la liste, change immédiatement le statut (`PUT /api/users/:id/status`)
+   - **Réinitialiser le mot de passe** : génère un mot de passe temporaire côté serveur, affiché une seule fois à l'administrateur pour transmission sécurisée à l'utilisateur (`POST /api/users/:id/reset-password`)
+   - **Modifier les informations** et **réassigner les rôles**
 
 4. **Audit des actions** :
-   - Historique complet des actions utilisateur
-   - Filtrable par date, ressource, action
+   - Historique complet des actions utilisateur (voir §2.18 Journal d'audit)
 
 **API Backend** :
-⚠️ **MODULE À IMPLÉMENTER** - Endpoints manquants :
-- `GET /api/users` - Liste des utilisateurs
+- `GET /api/users` - Liste paginée avec filtres
 - `GET /api/users/:id` - Détail utilisateur
 - `POST /api/users` - Créer utilisateur
 - `PUT /api/users/:id` - Modifier utilisateur
-- `DELETE /api/users/:id` - Soft delete
-- `PUT /api/users/:id/roles` - Assigner rôles
+- `PUT /api/users/:id/status` - Activer/Suspendre/Désactiver
+- `POST /api/users/:id/reset-password` - Réinitialiser le mot de passe
+- `PUT /api/users/:id/roles` - Assigner des rôles
 
 ### 2.16 Années Académiques et Périodes
 
@@ -964,6 +984,63 @@ EC (Élément Constitutif) - 6 + 4 crédits
 
 **API Backend** :
 - `GET /api/audit-logs` - Liste paginée
+
+### 2.19 Rôles & Permissions
+
+**URL** : `/settings/roles`
+
+**Objectif** : créer des rôles personnalisés au-delà des 8 rôles fournis par défaut, avec des permissions granulaires par module (ressource + action : create/read/update/delete/...).
+
+**Fonctionnalités** :
+1. **Liste des rôles** : rôles système (fournis par défaut, non modifiables/non supprimables) et rôles personnalisés de l'établissement.
+2. **Créer un rôle personnalisé** :
+   - Nom, description
+   - Sélection des permissions par cases à cocher, groupées par module (ex : toutes les permissions "grades:*", ou seulement "grades:read")
+   - Valider
+3. **Modifier / Supprimer un rôle** :
+   - Un rôle système ne peut pas être modifié ni supprimé
+   - Un rôle encore assigné à au moins un utilisateur ne peut pas être supprimé (le retirer des utilisateurs concernés d'abord)
+4. **Consulter la liste des permissions disponibles** : `/api/permissions`, groupées par ressource, sert à construire l'écran de sélection.
+
+**API Backend** :
+- `GET /api/roles` - Liste des rôles (système + personnalisés de l'établissement)
+- `POST /api/roles` - Créer un rôle personnalisé
+- `GET /api/roles/:id` - Détail d'un rôle
+- `PUT /api/roles/:id` - Modifier (refusé pour les rôles système)
+- `DELETE /api/roles/:id` - Supprimer (refusé si système ou encore utilisé)
+- `GET /api/permissions` - Liste des permissions groupées par ressource
+
+### 2.20 Bulletins Scolaires
+
+**URL** : `/bulletins`
+
+**Fonctionnalités** :
+1. **Génération en lot** : sélectionner une classe et une période, générer les bulletins PDF de tous les élèves de la classe en une seule action.
+2. **Consultation par élève** : depuis le dossier élève (§2.9, onglet Notes) ou directement depuis `/bulletins`, retrouver l'historique des bulletins générés pour un élève.
+3. **Téléchargement PDF** : chaque bulletin généré est téléchargeable individuellement via le proxy applicatif.
+
+**Prérequis** : les notes de la période doivent être saisies, verrouillées, calculées (§2.12) et idéalement déjà déliberées avant génération, sinon le bulletin reflète un état provisoire.
+
+**API Backend** : voir `bulletins.controller.ts` (génération, liste, téléchargement PDF) — endpoints exacts consultables via Swagger (`/api/docs`).
+
+### 2.21 Modules Complémentaires (9 à 18)
+
+Ces modules disposent tous d'un backend enregistré (`apps/api/src/modules/{timetables,attendance,discipline,school-life,library,transport,catering,assets,hr}`) et d'une entrée dans la sidebar. État réel au 16 juillet 2026 :
+
+| Module | Fonctionnalité clé | État |
+|---|---|---|
+| **Discipline** | Signaler un incident, liste filtrable, sanctions liées | ✅ Fonctionnel (corrigé) |
+| **Emplois du temps** | Créneaux, salles, enseignants | ⚠️ Backend disponible, écran à valider en usage réel |
+| **Présences** | Appel de classe, registre, taux de présence | ⚠️ Backend disponible, écran à valider |
+| **Santé scolaire** | Dossiers médicaux, allergies, vaccinations | ⚠️ Backend disponible, écran à valider |
+| **Clubs & Activités** | Clubs, événements scolaires | ⚠️ Backend disponible, écran à valider |
+| **Bibliothèque** | Catalogue, emprunts/retours | ⚠️ Backend disponible, écran à valider |
+| **Transport** | Circuits, véhicules, abonnements | ⚠️ Backend disponible, écran à valider |
+| **Cantine & Internat** | Menus, abonnements, dortoirs | ⚠️ Backend disponible, écran à valider |
+| **Patrimoine** | Inventaire, maintenance | ⚠️ Backend disponible, écran à valider |
+| **RH & Paie** | Employés, bulletins de paie, congés | ⚠️ Backend disponible, écran à valider |
+
+Ces modules sont utilisables mais moins éprouvés que le socle académique/financier (structure, notes, finance, communication, discipline) qui a fait l'objet de tests unitaires systématiques et de corrections ciblées. Si un écran affiche une erreur ou un comportement inattendu, signalez-le pour correction — le backend expose déjà les endpoints CRUD nécessaires dans la majorité des cas.
 
 ---
 
