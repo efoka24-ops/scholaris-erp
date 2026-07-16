@@ -20,6 +20,33 @@ export class TenantsService {
     return tenant;
   }
 
+  /**
+   * Résolution publique d'un établissement par son code (page vitrine, sans
+   * authentification). Ne retourne que des informations non sensibles :
+   * jamais configJson ni aucun champ interne.
+   */
+  async findPublicByCode(code: string): Promise<{
+    id: string;
+    code: string;
+    name: string;
+    type: Tenant["type"];
+    address: string | null;
+    logoUrl: string | null;
+  }> {
+    const tenant = await this.prisma.tenant.findFirst({ where: { code, deletedAt: null } });
+    if (!tenant) {
+      throw new NotFoundException("Établissement introuvable");
+    }
+    return {
+      id: tenant.id,
+      code: tenant.code,
+      name: tenant.name,
+      type: tenant.type,
+      address: tenant.address,
+      logoUrl: tenant.logoUrl,
+    };
+  }
+
   async update(id: string, dto: UpdateTenantDto): Promise<Tenant> {
     const before = await this.findOne(id);
 
