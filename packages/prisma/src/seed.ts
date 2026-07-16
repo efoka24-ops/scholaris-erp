@@ -91,6 +91,87 @@ const BASE_PERMISSIONS: Array<{ resource: string; action: string; description: s
   { resource: "grades", action: "publish", description: "Publier les résultats aux parents/élèves" },
 ];
 
+/**
+ * Seed idempotent des cycles et niveaux du système éducatif camerounais.
+ * Upsert par contrainte unique (tenantId, code) — ne casse pas la structure Cycle → Level existante.
+ */
+async function seedAcademicStructure(tenantId: string, tenantType: TenantType) {
+  const cycleDefs: Array<{ code: string; name: string; order: number; levels: Array<{ code: string; name: string; order: number }> }> = [
+    {
+      code: "PRIMAIRE",
+      name: "Primaire",
+      order: 1,
+      levels: [
+        { code: "SIL", name: "SIL (Section d'Initiation au Langage)", order: 1 },
+        { code: "CP", name: "CP (Cours Préparatoire)", order: 2 },
+        { code: "CE1", name: "CE1 (Cours Élémentaire 1)", order: 3 },
+        { code: "CE2", name: "CE2 (Cours Élémentaire 2)", order: 4 },
+        { code: "CM1", name: "CM1 (Cours Moyen 1)", order: 5 },
+        { code: "CM2", name: "CM2 (Cours Moyen 2)", order: 6 },
+      ],
+    },
+    {
+      code: "COLLEGE",
+      name: "Secondaire 1er cycle (Collège)",
+      order: 2,
+      levels: [
+        { code: "6EME", name: "6ème", order: 1 },
+        { code: "5EME", name: "5ème", order: 2 },
+        { code: "4EME", name: "4ème", order: 3 },
+        { code: "3EME", name: "3ème", order: 4 },
+      ],
+    },
+    {
+      code: "LYCEE",
+      name: "Secondaire 2nd cycle (Lycée)",
+      order: 3,
+      levels: [
+        { code: "2NDE", name: "2nde", order: 1 },
+        { code: "1ERE", name: "1ère", order: 2 },
+        { code: "TLE", name: "Terminale", order: 3 },
+      ],
+    },
+  ];
+
+  if (tenantType === TenantType.SUPERIEUR) {
+    cycleDefs.push({
+      code: "SUPERIEUR",
+      name: "Supérieur",
+      order: 4,
+      levels: [
+        { code: "L1", name: "Licence 1", order: 1 },
+        { code: "L2", name: "Licence 2", order: 2 },
+        { code: "L3", name: "Licence 3", order: 3 },
+        { code: "M1", name: "Master 1", order: 4 },
+        { code: "M2", name: "Master 2", order: 5 },
+        { code: "DOCTORAT", name: "Doctorat", order: 6 },
+      ],
+    });
+  }
+
+  for (const cycleDef of cycleDefs) {
+    const cycle = await prisma.cycle.upsert({
+      where: { tenantId_code: { tenantId, code: cycleDef.code } },
+      update: { name: cycleDef.name, order: cycleDef.order },
+      create: { tenantId, code: cycleDef.code, name: cycleDef.name, order: cycleDef.order },
+    });
+
+    for (const levelDef of cycleDef.levels) {
+      await prisma.level.upsert({
+        where: { tenantId_code: { tenantId, code: levelDef.code } },
+        update: { name: levelDef.name, order: levelDef.order, cycleId: cycle.id },
+        create: {
+          tenantId,
+          code: levelDef.code,
+          name: levelDef.name,
+          order: levelDef.order,
+          cycleId: cycle.id,
+        },
+      });
+    }
+  }
+}
+
 async function main() {
   const tenantCode = process.env.SEED_TENANT_CODE ?? "DEMO";
   const tenantName = process.env.SEED_TENANT_NAME ?? "Établissement Démo";
@@ -116,6 +197,9 @@ async function main() {
       },
     },
   });
+
+  console.log("→ Seed des cycles et niveaux scolaires (système camerounais)…");
+  await seedAcademicStructure(tenant.id, tenant.type);
 
   console.log("→ Seed des permissions de base…");
   const permissions = await Promise.all(
