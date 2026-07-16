@@ -1,0 +1,134 @@
+version: "3.9"
+
+# Stack de production auto-hébergée (VPS/serveur dédié).
+# NOTE : en production Railway (déploiement actuel, voir railway.json/nixpacks.toml),
+# cette stack n'est PAS utilisée — Railway build/déploie apps/api directement depuis
+# le Dockerfile racine et gère Postgres/Redis en services managés séparés.
+# Ce docker-compose.production.yml est une alternative pour un déploiement
+# auto-hébergé (VPS, serveur on-premise) avec nginx en reverse proxy + MinIO pour le
+# stockage des fichiers (logos, documents élèves, PDF bulletins/reçus).
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: scholaris-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-scholaris}
+      POSTGRES_USER: ${POSTGRES_USER:-scholaris}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD requis}
+    volumes:
+      - scholaris_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-scholaris} -d ${POSTGRES_DB:-scholaris}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - scholaris-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: scholaris-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - scholaris_redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - scholaris-net
+
+  minio:
+    image: minio/minio:latest
+    container_name: scholaris-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?MINIO_ROOT_USER requis}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD requis}
+    volumes:
+      - scholaris_miniodata:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - scholaris-net
+    # Ports exposés uniquement en interne (via nginx si besoin d'accès public à la console) :
+    # décommenter pour exposer directement sur l'hôte :
+    # ports:
+    #   - "9000:9000"
+    #   - "9001:9001"
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: scholaris-api
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"require('http').get('http://127.0.0.1:3001/api/health', r => process.exit(r.statusCode < 500 ? 0 : 1)).on('error', () => process.exit(1))\""]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - scholaris-net
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: scholaris-web
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+    depends_on:
+      - api
+    networks:
+      - scholaris-net
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: scholaris-nginx
+    restart: unless-stopped
+    depends_on:
+      - api
+      - web
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/certbot/www:/var/www/certbot:ro
+      - ./nginx/certbot/conf:/etc/letsencrypt:ro
+    networks:
+      - scholaris-net
+
+networks:
+  scholaris-net:
+    driver: bridge
+
+volumes:
+  scholaris_pgdata:
+  scholaris_redisdata:
+  scholaris_miniodata:

@@ -1,0 +1,22 @@
+# Configuration de scrape Prometheus minimale pour SCHOLARIS ERP.
+# Usage : prometheus --config.file=monitoring/prometheus.yml
+# (Prometheus/Grafana ne sont pas déployés par ce repo — cette config est prête à
+# être branchée sur une instance existante, ou ajoutée au docker-compose.production.yml
+# via un service "prometheus" additionnel si souhaité.)
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: "scholaris-api"
+    metrics_path: /api/metrics
+    static_configs:
+      # Auto-hébergé (docker-compose.production.yml) : nom du service Docker
+      - targets: ["api:3001"]
+        labels:
+          env: "production"
+      # Local / dev :
+      # - targets: ["localhost:3001"]
+      #   labels:
+      #     env: "development"

@@ -1,26 +1,35 @@
-# SCHOLARIS ERP v2.0 — Phase 0 (socle du monorepo)
+# SCHOLARIS ERP v2.0
 
-Monorepo Turborepo posé selon le Guide de développement §0.A/0.B : `apps/api` (NestJS),
-`apps/web` (Next.js 14), `packages/prisma|shared|ui`.
+ERP de gestion scolaire (Cameroun). Monorepo Turborepo : `apps/api` (NestJS), `apps/web`
+(Next.js 14), `packages/prisma|shared|ui`. Modules livrés à date : socle (auth JWT, RBAC,
+multi-tenancy, health), structure pédagogique, matières/UE/EC, inscriptions & admissions,
+gestion financière, saisie des notes & moteur de calcul, bulletins, communication
+multicanal (email/SMS/WhatsApp), emplois du temps, présences, discipline, vie scolaire,
+bibliothèque, transport, restauration, immobilisations, RH.
 
-## Prérequis
+## Sommaire
 
-- Node.js ≥ 20, npm ≥ 10
-- Docker Desktop (PostgreSQL 16 + Redis 7) — **non installé sur cette machine au moment de
-  la génération de ce scaffold**. Les commandes ci-dessous supposent que Docker est
-  disponible sur la machine qui les exécute.
+- [Installation locale](#installation-locale)
+- [Développement](#développement)
+- [Tests](#tests)
+- [Déploiement de production](#déploiement-de-production)
+- [Variables d'environnement](#variables-denvironnement)
+- [Choix d'architecture](#choix-darchitecture)
+- [Structure du monorepo](#structure-du-monorepo)
 
-## Installation
+## Installation locale
+
+Prérequis : Node.js ≥ 20, npm ≥ 10, Docker Desktop.
 
 ```bash
 npm install
 cp .env.example .env
-cp apps/web/.env.local.example apps/web/.env.local
+cp apps/web/.env.local.example apps/web/.env.local   # si présent
 
-docker-compose up -d          # PostgreSQL 16 + Redis 7
+docker-compose up -d          # PostgreSQL 16 + Redis 7 (dev uniquement)
 npm run db:generate           # génère le client Prisma (@scholaris/prisma)
-npm run db:migrate            # applique le schéma (nomme la migration, ex: "init")
-npm run db:seed               # crée le tenant démo + le super admin
+npm run db:migrate            # applique le schéma
+npm run db:seed               # crée le tenant démo + le super admin (upsert, sans risque à rejouer)
 ```
 
 ## Développement
@@ -29,62 +38,136 @@ npm run db:seed               # crée le tenant démo + le super admin
 npm run dev          # turbo run dev → apps/api sur :3001, apps/web sur :3000
 ```
 
-## Les 10 tests de validation Phase 0 (§0.B)
+- API : http://localhost:3001/api
+- Health : http://localhost:3001/api/health
+- Métriques Prometheus : http://localhost:3001/api/metrics
+- Swagger : http://localhost:3001/api/docs
+- Web : http://localhost:3000
 
-| # | Test | Commande | Statut à la génération de ce scaffold |
-|---|------|----------|----------------------------------------|
-| 1 | Postgres/Redis démarrent | `docker-compose up -d` | ⏳ Docker non installé ici — à valider sur une machine avec Docker |
-| 2 | API sur :3001 | `npm run start:dev --workspace=@scholaris/api` | ⏳ nécessite Postgres/Redis |
-| 3 | Web sur :3000 | `npm run dev --workspace=@scholaris/web` | ✅ démarre indépendamment de la base |
-| 4 | Migrations appliquées | `npm run db:migrate` | ⏳ nécessite Postgres |
-| 5 | Seed super admin | `npm run db:seed` | ⏳ nécessite Postgres |
-| 6 | Login → JWT | `POST http://localhost:3001/api/auth/login` | ⏳ nécessite 1, 4, 5 |
-| 7 | `GET /api/health` | `curl http://localhost:3001/api/health` | ⏳ nécessite 1 |
-| 8 | Page de login affichée | `http://localhost:3000` | ✅ (redirige `/` → `/login`) |
-| 9 | Swagger | `http://localhost:3001/api/docs` | ⏳ nécessite l'API démarrée |
-| 10 | Build complet | `npm run build` | À vérifier après `npm install` |
+### Identifiants du seed (dev)
 
-Sur cette machine, Docker n'étant pas installé, les tests 1, 2, 4, 5, 6, 7, 9 n'ont pas pu
-être exécutés en conditions réelles — le code est en place et prêt à être validé dès que
-Docker Desktop (ou un Postgres/Redis accessibles) est disponible.
-
-## Identifiants du seed
-
-| Champ | Valeur (par défaut, voir `.env`) |
+| Champ | Valeur (voir `.env`) |
 |---|---|
 | Email | `admin@scholaris.dev` |
 | Mot de passe | `ChangeMe123!` |
 | Tenant | `DEMO` — Établissement Démo |
 
-## Choix d'architecture Phase 0 (à connaître avant le Module 1)
+## Tests
+
+```bash
+npm run test                                     # tests unitaires (tous les workspaces)
+npm run test:e2e --workspace=@scholaris/api       # tests e2e API (Jest + Supertest)
+npx playwright test --config=apps/web/playwright.config.ts   # tests e2e web (Playwright)
+
+# Test de charge (k6) — nécessite k6 installé (https://k6.io/docs/get-started/installation/)
+k6 run load-tests.js
+
+# Tests de sécurité (Playwright) — injections, auth bypass, headers, etc.
+npx playwright test apps/web/e2e/security/security-tests.spec.ts
+```
+
+Ces mêmes étapes (lint, build, tests unitaires, tests e2e API) tournent automatiquement
+sur chaque Pull Request via `.github/workflows/ci.yml`.
+
+## Déploiement de production
+
+### Railway (déploiement actuel, en production)
+
+Le déploiement de production réel de SCHOLARIS ERP tourne sur **Railway**, configuré via :
+
+- `railway.json` — build Docker depuis le `Dockerfile` racine, healthcheck sur `/api/health`.
+- `nixpacks.toml` — configuration Nixpacks alternative (build sans Docker).
+
+Railway surveille la branche `main` et **redéploie automatiquement** à chaque push — aucune
+action manuelle supplémentaire n'est nécessaire. Les variables d'environnement de
+production sont configurées directement dans Railway (Settings > Variables), pas via un
+fichier `.env` commité. `apps/api/src/main.ts` gère explicitement le port fourni par
+Railway (`process.env.PORT`) et l'écoute sur `0.0.0.0` — ne pas modifier ce fichier hors
+ajouts strictement additifs.
+
+Le workflow `.github/workflows/deploy.yml` build et publie les images Docker (api + web)
+sur GitHub Container Registry (ghcr.io) à chaque push sur `main` — utile pour l'archivage
+et le déploiement auto-hébergé ci-dessous, **mais ne déclenche pas** de déploiement
+Railway (Railway le fait déjà seul).
+
+### Déploiement auto-hébergé (VPS / serveur dédié)
+
+Alternative complète avec reverse proxy nginx, MinIO (stockage S3-compatible pour logos,
+documents élèves, PDF bulletins/reçus) et TLS via Let's Encrypt :
+
+```bash
+cp .env.production.example .env.production   # renseigner les vraies valeurs, ne pas committer
+docker compose -f docker-compose.production.yml up -d --build
+
+# Première application des migrations (si non gérée automatiquement par le conteneur api) :
+./scripts/migrate-production.sh
+```
+
+Services : `postgres` (16-alpine), `redis` (7-alpine), `minio` (stockage fichiers),
+`api` (Dockerfile racine), `web` (`apps/web/Dockerfile`, build Next.js standalone),
+`nginx` (reverse proxy, TLS, gzip, cache `_next/static`, headers de sécurité — voir
+`nginx/nginx.conf` et `nginx/conf.d/scholaris.conf`).
+
+### Sauvegardes
+
+`scripts/backup-db.sh` : `pg_dump` quotidien compressé, upload optionnel vers MinIO/S3.
+Exemple de crontab dans le script (2h du matin, rétention 30 jours par défaut).
+
+### Monitoring
+
+- `GET /api/metrics` (apps/api) expose des métriques au format Prometheus (compteur de
+  requêtes HTTP, histogramme de latence, uptime du process) — voir
+  `apps/api/src/modules/metrics/`.
+- `monitoring/prometheus.yml` : config de scrape prête à brancher sur une instance
+  Prometheus existante.
+- `monitoring/grafana-dashboard.json` : dashboard minimal importable dans Grafana
+  (requêtes/s, taux d'erreur 5xx, latence p95, uptime).
+
+## Variables d'environnement
+
+- `.env.example` — développement local (docker-compose.yml).
+- `.env.production.example` — production (documente aussi les clés MinIO/backup et les
+  intégrations Module 8 : Brevo, Africa's Talking, WhatsApp Cloud API).
+
+En production Railway, ces variables sont définies dans le dashboard Railway, pas dans un
+fichier commité.
+
+## Choix d'architecture
 
 - **Multi-tenancy** : middleware Prisma (`$use`) dans `apps/api/src/prisma/prisma.service.ts`,
-  pas de Row-Level Security PostgreSQL pour l'instant (suit la convention §0.3 du guide :
-  "middleware global"). Le contexte tenant/user courant est porté par
+  pas de Row-Level Security PostgreSQL. Le contexte tenant/user courant est porté par
   `RequestContextService` (AsyncLocalStorage), peuplé par `JwtAccessStrategy`.
-- **Soft delete** : même mécanisme, sur `Tenant` et `User` (seuls modèles avec `deletedAt`
-  en Phase 0).
+- **Soft delete** : même mécanisme, notamment sur `Tenant` et `User`.
 - **JWT en cookies httpOnly** : l'API NestJS renvoie des tokens JSON classiques ; c'est
   `apps/web` qui les transforme en cookies httpOnly via ses propres Route Handlers
   (`app/api/auth/login|refresh|logout|me`), jamais exposés au JS du navigateur.
 - **RBAC** : `Role`/`Permission`/`RolePermission`/`UserRole` en base, permissions résolues
   à la connexion et embarquées dans le JWT (`permissions: string[]`), vérifiées par
   `PermissionsGuard` + `@RequirePermissions(...)`.
-- **Hors scope Phase 0** (explicitement réservé au Module 1, §1.3/§1.6) : `register`, MFA,
-  forgot/reset password, verrouillage après 5 échecs de connexion, écrans
-  `/settings/users`, `/settings/establishment`, `/settings/calculation-engine`, journal
-  d'audit exploité en interface, tests Playwright de ces parcours.
+- **Seed idempotent** : `packages/prisma/src/seed.ts` utilise `upsert` pour le tenant, les
+  permissions, le rôle SUPER_ADMIN et l'utilisateur admin — rejouable sans danger en
+  production (ne réinitialise jamais les mots de passe ou données existantes).
 
-## Structure
+## Structure du monorepo
 
 ```
 scholaris-erp/
 ├── apps/
-│   ├── api/     NestJS — Prisma module, Auth (login/refresh/me), Health, RBAC
-│   └── web/     Next.js 14 — login, layout dashboard, AuthProvider/TenantProvider
+│   ├── api/     NestJS — modules métier (auth, RBAC, structure, finance, notes, etc.)
+│   │            + /api/health (probe Railway) et /api/metrics (Prometheus)
+│   └── web/     Next.js 14 — app router, dashboard, e2e (Playwright, incl. security)
 ├── packages/
-│   ├── prisma/  schéma centralisé + seed
-│   ├── shared/  types, constantes RBAC, schémas Zod (réutilisés en frontend)
-│   └── ui/      cn() + preset Tailwind (les composants Shadcn vivent dans apps/web)
-└── turbo.json
+│   ├── prisma/  schéma centralisé + seed (upsert, sans danger en production)
+│   ├── shared/  types, constantes RBAC, schémas Zod partagés
+│   └── ui/      cn() + preset Tailwind
+├── nginx/                       reverse proxy prod (auto-hébergé)
+├── monitoring/                  config Prometheus + dashboard Grafana
+├── scripts/                     migrate-production.sh, backup-db.sh (+ scripts Railway existants)
+├── .github/workflows/           ci.yml, deploy.yml
+├── Dockerfile                   image apps/api (utilisée par Railway ET docker-compose.production.yml)
+├── apps/web/Dockerfile          image apps/web (Next.js standalone)
+├── docker-compose.yml           dev local (postgres + redis)
+├── docker-compose.production.yml  stack complète auto-hébergée
+├── load-tests.js                test de charge k6
+└── railway.json / nixpacks.toml   configuration du déploiement Railway (production actuelle)
 ```

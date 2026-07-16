@@ -1,0 +1,75 @@
+name: Deploy
+
+# NOTE IMPORTANTE SUR LE DÉPLOIEMENT DE PRODUCTION :
+# SCHOLARIS ERP est déployé en production sur Railway (voir railway.json et
+# nixpacks.toml à la racine). Railway surveille directement la branche `main` du dépôt
+# GitHub et rebuild/redéploie AUTOMATIQUEMENT à chaque push — aucune action de ce
+# workflow ne pousse quoi que ce soit vers Railway, et ce n'est pas nécessaire.
+#
+# Ce workflow se contente de builder et publier les images Docker (api + web) sur le
+# GitHub Container Registry (ghcr.io), utile pour :
+#   - un déploiement auto-hébergé alternatif via docker-compose.production.yml,
+#   - un archivage versionné des images de chaque release,
+#   - un audit/scan de sécurité des images.
+
+on:
+  push:
+    branches: [main]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_API: ${{ github.repository }}/api
+  IMAGE_WEB: ${{ github.repository }}/web
+
+jobs:
+  build-and-push:
+    name: Build & push images Docker
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Se connecter à GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build & push image API
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_API }}:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_API }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build & push image Web
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./apps/web/Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_WEB }}:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_WEB }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Rappel
+        run: |
+          echo "Images publiées sur ghcr.io. Railway redéploie automatiquement depuis"
+          echo "la branche main (voir railway.json) — aucune action supplémentaire requise"
+          echo "pour la production actuelle. Ces images servent au déploiement"
+          echo "auto-hébergé (docker-compose.production.yml) ou à l'archivage."

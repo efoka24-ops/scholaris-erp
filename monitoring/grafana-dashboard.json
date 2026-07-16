@@ -1,0 +1,56 @@
+{
+  "title": "SCHOLARIS ERP — API Overview",
+  "uid": "scholaris-api-overview",
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-6h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Requêtes HTTP / seconde",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum(rate(scholaris_http_requests_total[5m])) by (route)",
+          "legendFormat": "{{route}}"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Taux d'erreur (5xx)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum(rate(scholaris_http_requests_total{status_code=~\"5..\"}[5m]))",
+          "legendFormat": "erreurs 5xx"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Latence p95 (secondes)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(scholaris_http_request_duration_seconds_bucket[5m])) by (le, route))",
+          "legendFormat": "{{route}} p95"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Uptime du process API",
+      "type": "stat",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "targets": [
+        { "expr": "scholaris_process_uptime_seconds", "legendFormat": "uptime (s)" }
+      ]
+    }
+  ]
+}
