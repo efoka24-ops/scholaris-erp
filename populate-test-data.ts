@@ -488,6 +488,102 @@ async function main() {
 
   console.log(`✅ Secrétaire créé: ${secretaire.email}\n`);
 
+  // Admin Établissement
+  const adminEtablissement = await prisma.user.upsert({
+    where: { tenantId_email: { tenantId: tenant.id, email: "admin-etablissement@demo.scholaris.cm" } },
+    update: {},
+    create: {
+      tenantId: tenant.id,
+      email: "admin-etablissement@demo.scholaris.cm",
+      passwordHash,
+      firstName: "Alain",
+      lastName: "AdminEtablissement",
+      status: "ACTIVE",
+    },
+  });
+
+  if (findRole("Admin Établissement")) {
+    await prisma.userRole.upsert({
+      where: { userId_roleId: { userId: adminEtablissement.id, roleId: findRole("Admin Établissement")!.id } },
+      update: {},
+      create: { userId: adminEtablissement.id, roleId: findRole("Admin Établissement")!.id },
+    });
+  }
+
+  console.log(`✅ Admin Établissement créé: ${adminEtablissement.email}`);
+
+  // Chef de département
+  const chefDepartement = await prisma.user.upsert({
+    where: { tenantId_email: { tenantId: tenant.id, email: "chef-departement@demo.scholaris.cm" } },
+    update: {},
+    create: {
+      tenantId: tenant.id,
+      email: "chef-departement@demo.scholaris.cm",
+      passwordHash,
+      firstName: "Denise",
+      lastName: "ChefDepartement",
+      status: "ACTIVE",
+    },
+  });
+
+  if (findRole("Chef de département")) {
+    await prisma.userRole.upsert({
+      where: { userId_roleId: { userId: chefDepartement.id, roleId: findRole("Chef de département")!.id } },
+      update: {},
+      create: { userId: chefDepartement.id, roleId: findRole("Chef de département")!.id },
+    });
+  }
+
+  console.log(`✅ Chef de département créé: ${chefDepartement.email}`);
+
+  // Infirmier(ère)
+  const infirmier = await prisma.user.upsert({
+    where: { tenantId_email: { tenantId: tenant.id, email: "infirmier@demo.scholaris.cm" } },
+    update: {},
+    create: {
+      tenantId: tenant.id,
+      email: "infirmier@demo.scholaris.cm",
+      passwordHash,
+      firstName: "Isabelle",
+      lastName: "Infirmiere",
+      status: "ACTIVE",
+    },
+  });
+
+  if (findRole("Infirmier(ère)")) {
+    await prisma.userRole.upsert({
+      where: { userId_roleId: { userId: infirmier.id, roleId: findRole("Infirmier(ère)")!.id } },
+      update: {},
+      create: { userId: infirmier.id, roleId: findRole("Infirmier(ère)")!.id },
+    });
+  }
+
+  console.log(`✅ Infirmier(ère) créé: ${infirmier.email}`);
+
+  // Bibliothécaire
+  const bibliothecaire = await prisma.user.upsert({
+    where: { tenantId_email: { tenantId: tenant.id, email: "bibliothecaire@demo.scholaris.cm" } },
+    update: {},
+    create: {
+      tenantId: tenant.id,
+      email: "bibliothecaire@demo.scholaris.cm",
+      passwordHash,
+      firstName: "Blaise",
+      lastName: "Bibliothecaire",
+      status: "ACTIVE",
+    },
+  });
+
+  if (findRole("Bibliothécaire")) {
+    await prisma.userRole.upsert({
+      where: { userId_roleId: { userId: bibliothecaire.id, roleId: findRole("Bibliothécaire")!.id } },
+      update: {},
+      create: { userId: bibliothecaire.id, roleId: findRole("Bibliothécaire")!.id },
+    });
+  }
+
+  console.log(`✅ Bibliothécaire créé: ${bibliothecaire.email}\n`);
+
   // 5. ÉLÈVES
   console.log("👨‍🎓 Création des élèves...");
 
@@ -528,11 +624,118 @@ async function main() {
 
   console.log(`✅ ${students.length} élèves créés et inscrits\n`);
 
+  // 5bis. COMPTES PARENT / ÉLÈVE LIÉS (pour tests RBAC scopé, anti-IDOR)
+  console.log("👨‍👩‍👧 Création des comptes Parent/Élève liés...");
+
+  // Élève de démo dédié, lié à un compte de connexion (Student.userId)
+  const eleveUser = await prisma.user.upsert({
+    where: { tenantId_email: { tenantId: tenant.id, email: "eleve@demo.scholaris.cm" } },
+    update: {},
+    create: {
+      tenantId: tenant.id,
+      email: "eleve@demo.scholaris.cm",
+      passwordHash,
+      firstName: "Yves",
+      lastName: "EleveDemo",
+      status: "ACTIVE",
+    },
+  });
+
+  if (findRole("Élève")) {
+    await prisma.userRole.upsert({
+      where: { userId_roleId: { userId: eleveUser.id, roleId: findRole("Élève")!.id } },
+      update: {},
+      create: { userId: eleveUser.id, roleId: findRole("Élève")!.id },
+    });
+  }
+
+  const eleveStudent = await prisma.student.upsert({
+    where: { tenantId_matricule: { tenantId: tenant.id, matricule: "DEMO/2026/9001" } },
+    update: { userId: eleveUser.id },
+    create: {
+      tenantId: tenant.id,
+      matricule: "DEMO/2026/9001",
+      firstName: "Yves",
+      lastName: "EleveDemo",
+      dateOfBirth: new Date("2011-03-20"),
+      placeOfBirth: "Yaoundé",
+      gender: "MALE",
+      nationality: "Camerounaise",
+      status: "ACTIVE",
+      userId: eleveUser.id,
+    },
+  });
+
+  await prisma.enrollment.upsert({
+    where: { studentId_academicYearId: { studentId: eleveStudent.id, academicYearId: academicYear.id } },
+    update: {},
+    create: {
+      tenantId: tenant.id,
+      studentId: eleveStudent.id,
+      classroomId: classes[0].id,
+      academicYearId: academicYear.id,
+      enrollmentType: "new",
+      regimeType: "external",
+      status: "ACTIVE",
+    },
+  });
+
+  console.log(`✅ Élève (compte lié) créé: ${eleveUser.email} → Student ${eleveStudent.matricule}`);
+
+  // Parent de démo, lié via Parent.userId + StudentParent au même élève
+  const parentUser = await prisma.user.upsert({
+    where: { tenantId_email: { tenantId: tenant.id, email: "parent@demo.scholaris.cm" } },
+    update: {},
+    create: {
+      tenantId: tenant.id,
+      email: "parent@demo.scholaris.cm",
+      passwordHash,
+      firstName: "Odette",
+      lastName: "ParentDemo",
+      status: "ACTIVE",
+    },
+  });
+
+  if (findRole("Parent")) {
+    await prisma.userRole.upsert({
+      where: { userId_roleId: { userId: parentUser.id, roleId: findRole("Parent")!.id } },
+      update: {},
+      create: { userId: parentUser.id, roleId: findRole("Parent")!.id },
+    });
+  }
+
+  const existingParent = await prisma.parent.findUnique({ where: { userId: parentUser.id } });
+  const parentRecord = existingParent
+    ? existingParent
+    : await prisma.parent.create({
+        data: {
+          tenantId: tenant.id,
+          firstName: "Odette",
+          lastName: "ParentDemo",
+          phone: "+237600000000",
+          email: "parent@demo.scholaris.cm",
+          relationship: "MOTHER",
+          userId: parentUser.id,
+        },
+      });
+
+  await prisma.studentParent.upsert({
+    where: { studentId_parentId: { studentId: eleveStudent.id, parentId: parentRecord.id } },
+    update: {},
+    create: {
+      studentId: eleveStudent.id,
+      parentId: parentRecord.id,
+      relationship: "MOTHER",
+    },
+  });
+
+  console.log(`✅ Parent (compte lié) créé: ${parentUser.email} → enfant ${eleveStudent.matricule}\n`);
+
   // 6. QUELQUES NOTES (pour tests)
   console.log("📝 Création de notes de test...");
 
   let gradesCount = 0;
-  for (const student of students.slice(0, 5)) {
+  for (const student of [...students.slice(0, 5), eleveStudent]) {
     for (const subject of subjects.slice(0, 3)) {
       await prisma.grade.create({
         data: {
@@ -564,8 +767,8 @@ async function main() {
   console.log(`  - ${rooms.length} salles`);
   console.log(`  - ${subjects.length} matières`);
   console.log(`  - 1 année académique avec ${periods.length} périodes`);
-  console.log(`  - 6 utilisateurs (directeur, censeur, enseignant, intendant, secrétaire + admin existant)`);
-  console.log(`  - ${students.length} élèves inscrits`);
+  console.log(`  - 12 utilisateurs métier + admin existant (12 rôles couverts)`);
+  console.log(`  - ${students.length + 1} élèves inscrits (dont 1 lié à un compte Élève)`);
   console.log(`  - ${gradesCount} notes`);
   console.log("\n🔑 Comptes de test:");
   console.log("  - admin@scholaris.dev / ChangeMe123! (Super Admin)");
@@ -574,6 +777,12 @@ async function main() {
   console.log("  - enseignant@demo.scholaris.cm / Test123! (Enseignant)");
   console.log("  - intendant@demo.scholaris.cm / Test123! (Intendant)");
   console.log("  - secretaire@demo.scholaris.cm / Test123! (Secrétaire)");
+  console.log("  - admin-etablissement@demo.scholaris.cm / Test123! (Admin Établissement)");
+  console.log("  - chef-departement@demo.scholaris.cm / Test123! (Chef de département)");
+  console.log("  - infirmier@demo.scholaris.cm / Test123! (Infirmier(ère))");
+  console.log("  - bibliothecaire@demo.scholaris.cm / Test123! (Bibliothécaire)");
+  console.log("  - parent@demo.scholaris.cm / Test123! (Parent, enfant = DEMO/2026/9001)");
+  console.log("  - eleve@demo.scholaris.cm / Test123! (Élève, matricule DEMO/2026/9001)");
 }
 
 main()

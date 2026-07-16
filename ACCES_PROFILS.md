@@ -43,11 +43,44 @@
 | **Parent** | **5 perms** | Scopé à ses enfants (anti-IDOR, cf. `student-scope.util.ts`) |
 | **Élève** | **3 perms** | Scopé à lui-même (anti-IDOR, cf. `student-scope.util.ts`) |
 
-**Comptes de démonstration** (`directeur@demo.scholaris.cm`, etc.) : seuls 5 existent
-historiquement côté données de test (`populate-test-data.ts`). Les 4 nouveaux rôles
-(Admin Établissement, Chef de département, Infirmier(ère), Bibliothécaire) et les
-comptes Parent/Élève doivent être créés/assignés via `PUT /api/users/:id/roles`
-après le seed.
+**Mise à jour (e2e-profiles-testing)** : `populate-test-data.ts` crée désormais **un
+compte de démonstration pour les 12 rôles métier** (mot de passe `Test123!` pour
+tous, tenant `DEMO`), en plus du Super Admin système. Script idempotent (upsert).
+
+| Rôle | Email démo |
+|------|-----------|
+| Super Admin | `admin@scholaris.dev` (mot de passe `ChangeMe123!`) |
+| Directeur | `directeur@demo.scholaris.cm` |
+| Censeur | `censeur@demo.scholaris.cm` |
+| Enseignant | `enseignant@demo.scholaris.cm` |
+| Intendant | `intendant@demo.scholaris.cm` |
+| Secrétaire | `secretaire@demo.scholaris.cm` |
+| Admin Établissement | `admin-etablissement@demo.scholaris.cm` |
+| Chef de département | `chef-departement@demo.scholaris.cm` |
+| Infirmier(ère) | `infirmier@demo.scholaris.cm` |
+| Bibliothécaire | `bibliothecaire@demo.scholaris.cm` |
+| Parent | `parent@demo.scholaris.cm` (enfant = matricule `DEMO/2026/9001`) |
+| Élève | `eleve@demo.scholaris.cm` (matricule `DEMO/2026/9001`, même élève que le Parent ci-dessus) |
+
+Pour Parent/Élève, le scoping anti-IDOR (`apps/api/src/common/guards/student-scope.util.ts`,
+`assertStudentAccess`) est fail-closed : le script lie explicitement
+`Student.userId` → compte Élève, et `Parent.userId` + `StudentParent` → compte
+Parent, sur le **même** élève (`DEMO/2026/9001`), pour que les tests E2E positifs
+(consultation de « son » enfant / de « ses » notes) et négatifs (accès à un autre
+élève → 403) soient réalisables.
+
+### ⚠️ Écart constaté : la sidebar frontend n'est pas filtrée par permission
+
+`apps/web/src/components/layout/sidebar.tsx` affiche la totalité des 9 sections /
+33 liens à **tout utilisateur connecté**, quel que soit son rôle — alors que
+`useAuth().hasPermission()` existe déjà côté `apps/web/src/lib/auth-context.tsx`
+et n'est simplement pas branché dans la sidebar. La protection réelle reste donc
+uniquement côté API (403 sur les routes non autorisées) et, partiellement, au
+niveau de certaines pages qui font leurs propres checks. Les tests E2E de ce
+commit vérifient donc l'absence d'accès fonctionnel (actions bloquées, 403 API)
+plutôt que l'absence de liens dans la sidebar, et documentent ce point plutôt que
+de corriger le composant (hors périmètre de cette mission — RBAC frontend non
+touché intentionnellement, cf. consignes).
 
 ---
 
