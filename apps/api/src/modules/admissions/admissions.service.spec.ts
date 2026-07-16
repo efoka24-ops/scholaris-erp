@@ -8,6 +8,7 @@ describe("AdmissionsService", () => {
   let prisma: {
     academicYear: { findFirst: jest.Mock };
     admissionApplication: { create: jest.Mock; findFirst: jest.Mock; findMany: jest.Mock; count: jest.Mock; update: jest.Mock };
+    tenant: { findFirst: jest.Mock };
   };
 
   beforeEach(() => {
@@ -20,6 +21,7 @@ describe("AdmissionsService", () => {
         count: jest.fn().mockResolvedValue(0),
         update: jest.fn(),
       },
+      tenant: { findFirst: jest.fn().mockResolvedValue({ id: "tenant-1", code: "DEMO" }) },
     };
     service = new AdmissionsService(prisma as unknown as PrismaService);
   });
@@ -58,5 +60,51 @@ describe("AdmissionsService", () => {
     prisma.admissionApplication.findFirst.mockResolvedValue(null);
 
     await expect(service.decide("inconnue", { status: AdmissionStatus.REJECTED })).rejects.toThrow(NotFoundException);
+  });
+
+  describe("createPublic (pré-inscription publique)", () => {
+    const basePayload = {
+      tenantCode: "DEMO",
+      studentLastName: "Essomba",
+      studentFirstName: "Marie-Claire",
+      studentDateOfBirth: "2015-03-12",
+      desiredLevel: "6ème",
+      parentName: "Essomba Jean",
+      parentPhone: "+237691234567",
+    };
+
+    it("crée une candidature DOSSIER en statut PENDING via le tenant résolu par code", async () => {
+      prisma.admissionApplication.create.mockResolvedValue({ id: "adm-public-1" });
+
+      const result = await service.createPublic(basePayload as any);
+
+      expect(prisma.tenant.findFirst).toHaveBeenCalledWith({ where: { code: "DEMO", deletedAt: null } });
+      expect(prisma.admissionApplication.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          applicantName: "Essomba Marie-Claire",
+          type: AdmissionType.DOSSIER,
+          tenantId: "tenant-1",
+          academicYearId: "year-1",
+        }),
+      });
+      expect(result).toEqual({ id: "adm-public-1" });
+    });
+
+    it("rejette avec 404 si le code établissement est inconnu", async () => {
+      prisma.tenant.findFirst.mockResolvedValue(null);
+
+      await expect(service.createPublic({ ...basePayload, tenantCode: "INCONNU" } as any)).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(prisma.admissionApplication.create).not.toHaveBeenCalled();
+    });
+
+    it("ignore silencieusement une soumission dont le honeypot est rempli (bot)", async () => {
+      const result = await service.createPublic({ ...basePayload, website: "http://bot.example" } as any);
+
+      expect(prisma.tenant.findFirst).not.toHaveBeenCalled();
+      expect(prisma.admissionApplication.create).not.toHaveBeenCalled();
+      expect(result).toEqual({ accepted: true });
+    });
   });
 });

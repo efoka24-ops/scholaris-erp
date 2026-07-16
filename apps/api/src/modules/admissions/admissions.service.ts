@@ -1,9 +1,10 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
-import { AdmissionApplication, AdmissionStatus, Prisma } from "@scholaris/prisma";
+import { AdmissionApplication, AdmissionStatus, AdmissionType, Prisma } from "@scholaris/prisma";
 import { buildPaginationMeta, DEFAULT_LIMIT, DEFAULT_PAGE, MAX_LIMIT, PaginatedResult } from "@scholaris/shared";
 import { PrismaService } from "../../prisma/prisma.service";
 import { AdmissionDecisionDto } from "./dto/admission-decision.dto";
 import { CreateAdmissionDto } from "./dto/create-admission.dto";
+import { CreatePublicAdmissionDto } from "./dto/create-public-admission.dto";
 
 export interface FindAdmissionsQuery {
   page?: number;
@@ -32,6 +33,60 @@ export class AdmissionsService {
         tenantId,
       },
     });
+  }
+
+  /**
+   * Pré-inscription publique (formulaire parent, sans authentification).
+   * Résout le tenant par son code public, rattache la candidature à l'année
+   * académique active la plus récente, et rejette silencieusement les bots
+   * (honeypot rempli) en simulant un succès sans écrire en base.
+   */
+  async createPublic(dto: CreatePublicAdmissionDto): Promise<{ id: string } | { accepted: true }> {
+    if (dto.website) {
+      // Honeypot rempli : très probablement un bot. On ne révèle rien à l'appelant.
+      return { accepted: true };
+    }
+
+    const tenant = await this.prisma.tenant.findFirst({ where: { code: dto.tenantCode, deletedAt: null } });
+    if (!tenant) {
+      throw new NotFoundException("Établissement introuvable pour ce code");
+    }
+
+    const academicYear = await this.prisma.academicYear.findFirst({
+      where: { tenantId: tenant.id, status: "ACTIVE" },
+      orderBy: { startDate: "desc" },
+    });
+    if (!academicYear) {
+      throw new BadRequestException("Aucune année académique active pour cet établissement");
+    }
+
+    const applicantName = `${dto.studentLastName.trim()} ${dto.studentFirstName.trim()}`.trim();
+
+    const application = await this.prisma.admissionApplication.create({
+      data: {
+        applicantName,
+        type: AdmissionType.DOSSIER,
+        academicYearId: academicYear.id,
+        tenantId: tenant.id,
+        applicantInfo: {
+          source: "public-enrollment-form",
+          student: {
+            lastName: dto.studentLastName.trim(),
+            firstName: dto.studentFirstName.trim(),
+            dateOfBirth: dto.studentDateOfBirth,
+            desiredLevel: dto.desiredLevel,
+            previousSchool: dto.previousSchool ?? null,
+          },
+          parent: {
+            name: dto.parentName.trim(),
+            phone: dto.parentPhone.trim(),
+            email: dto.parentEmail ?? null,
+          },
+        } as Prisma.InputJsonValue,
+      },
+    });
+
+    return { id: application.id };
   }
 
   async findAll(query: FindAdmissionsQuery): Promise<PaginatedResult<AdmissionApplication>> {
