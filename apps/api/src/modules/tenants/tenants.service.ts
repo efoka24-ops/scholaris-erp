@@ -63,9 +63,14 @@ export class TenantsService {
       throw new BadRequestException(`Configuration du moteur de calcul invalide — ${details}`);
     }
 
+    // On fusionne avec le config_json existant (plutôt que de l'écraser) pour préserver
+    // les clés hors moteur de calcul, ex: enabledModules (§ modules activés par établissement).
+    const existing = (before.configJson as Record<string, unknown> | null) ?? {};
+    const merged = { ...existing, ...parsed.data };
+
     await this.prisma.tenant.update({
       where: { id },
-      data: { configJson: parsed.data as unknown as Prisma.InputJsonValue },
+      data: { configJson: merged as unknown as Prisma.InputJsonValue },
     });
 
     await this.audit.log({
@@ -76,5 +81,38 @@ export class TenantsService {
       newValue: parsed.data,
     });
     return parsed.data;
+  }
+
+  /**
+   * Modules/fonctionnalités activés pour cet établissement (§ CRUD établissement).
+   * Stockés sous une clé dédiée de Tenant.config_json, séparée du moteur de calcul
+   * (qui est, lui, validé et remplacé en intégralité par le schéma Zod strict).
+   */
+  async getEnabledModules(id: string): Promise<string[]> {
+    const tenant = await this.findOne(id);
+    const configJson = (tenant.configJson as Record<string, unknown> | null) ?? {};
+    const enabledModules = configJson.enabledModules;
+    return Array.isArray(enabledModules) ? (enabledModules as string[]) : [];
+  }
+
+  async updateEnabledModules(id: string, enabledModules: string[]): Promise<string[]> {
+    const before = await this.findOne(id);
+    const existing = (before.configJson as Record<string, unknown> | null) ?? {};
+    const merged = { ...existing, enabledModules };
+
+    await this.prisma.tenant.update({
+      where: { id },
+      data: { configJson: merged as unknown as Prisma.InputJsonValue },
+    });
+
+    await this.audit.log({
+      action: "update",
+      resource: "tenants:modules",
+      resourceId: id,
+      oldValue: existing.enabledModules ?? [],
+      newValue: enabledModules,
+    });
+
+    return enabledModules;
   }
 }

@@ -5,6 +5,7 @@ import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import type { AuthenticatedUser } from "../auth/jwt-payload.interface";
 import { TenantsService } from "./tenants.service";
 import { UpdateTenantDto } from "./dto/update-tenant.dto";
+import { UpdateEnabledModulesDto } from "./dto/update-enabled-modules.dto";
 
 @ApiTags("tenants")
 @ApiBearerAuth()
@@ -41,6 +42,26 @@ export class TenantsController {
   updateConfig(@Param("id") id: string, @Body() config: unknown, @CurrentUser() user: AuthenticatedUser) {
     this.assertOwnTenant(id, user);
     return this.tenantsService.updateConfig(id, config);
+  }
+
+  @Get(":id/modules")
+  @RequirePermissions("tenants:read")
+  @ApiOperation({ summary: "Modules/fonctionnalités activés pour cet établissement" })
+  getEnabledModules(@Param("id") id: string, @CurrentUser() user: AuthenticatedUser) {
+    this.assertOwnTenant(id, user);
+    return this.tenantsService.getEnabledModules(id);
+  }
+
+  @Put(":id/modules")
+  @RequirePermissions("tenants:update")
+  @ApiOperation({ summary: "Remplace la liste des modules/fonctionnalités activés pour cet établissement" })
+  updateEnabledModules(
+    @Param("id") id: string,
+    @Body() dto: UpdateEnabledModulesDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    this.assertOwnTenant(id, user);
+    return this.tenantsService.updateEnabledModules(id, dto.enabledModules);
   }
 
   /** Le modèle Tenant ne porte pas de tenant_id : l'isolation est vérifiée ici. */

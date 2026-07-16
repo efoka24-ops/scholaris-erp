@@ -9,6 +9,8 @@ import { CreateUserDto } from "./dto/create-user.dto";
 import { UpdateUserDto } from "./dto/update-user.dto";
 import { FindUsersQueryDto } from "./dto/find-users-query.dto";
 import * as bcrypt from "bcrypt";
+import * as crypto from "crypto";
+import { UserStatus } from "@scholaris/prisma";
 
 @Injectable()
 export class UsersService {
@@ -358,6 +360,56 @@ export class UsersService {
     });
 
     return { message: "User deleted successfully" };
+  }
+
+  /** Active, suspend ou désactive un compte (§ gestion des comptes utilisateurs). */
+  async updateStatus(id: string, status: UserStatus, tenantId: string) {
+    const user = await this.prisma.user.findFirst({ where: { id, tenantId, deletedAt: null } });
+    if (!user) {
+      throw new NotFoundException(`User ${id} not found`);
+    }
+
+    const updated = await this.prisma.user.update({
+      where: { id },
+      data: { status },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        status: true,
+        updatedAt: true,
+      },
+    });
+
+    return updated;
+  }
+
+  /**
+   * Génère un mot de passe temporaire et le hash immédiatement (aucun flux d'email
+   * transactionnel n'existe encore dans ce dépôt — voir modules/auth : pas de
+   * forgot-password). Le mot de passe en clair est retourné une seule fois dans la
+   * réponse pour être communiqué à l'utilisateur par l'administrateur.
+   */
+  async resetPassword(id: string, tenantId: string): Promise<{ temporaryPassword: string }> {
+    const user = await this.prisma.user.findFirst({ where: { id, tenantId, deletedAt: null } });
+    if (!user) {
+      throw new NotFoundException(`User ${id} not found`);
+    }
+
+    const temporaryPassword = crypto.randomBytes(9).toString("base64url");
+    const passwordHash = await bcrypt.hash(temporaryPassword, 10);
+
+    await this.prisma.user.update({
+      where: { id },
+      data: {
+        passwordHash,
+        failedLoginAttempts: 0,
+        lockedUntil: null,
+      },
+    });
+
+    return { temporaryPassword };
   }
 
   async assignRoles(userId: string, roleIds: string[], tenantId: string) {

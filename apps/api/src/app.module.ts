@@ -21,6 +21,7 @@ import { AdmissionsModule } from "./modules/admissions/admissions.module";
 import { FinanceModule } from "./modules/finance/finance.module";
 import { GradesModule } from "./modules/grades/grades.module";
 import { UsersModule } from "./modules/users/users.module";
+import { RolesModule } from "./modules/roles/roles.module";
 import { BulletinsModule } from "./modules/bulletins/bulletins.module";
 // Modules 9-18
 import { TimetablesModule } from "./modules/timetables/timetables.module";
@@ -60,6 +61,7 @@ import { HrModule } from "./modules/hr/hr.module";
     FinanceModule,
     GradesModule,
     UsersModule,
+    RolesModule,
     BulletinsModule,
     // Modules 9-18
     TimetablesModule,

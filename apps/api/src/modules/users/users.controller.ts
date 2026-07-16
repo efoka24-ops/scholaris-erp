@@ -17,6 +17,7 @@ import { CreateUserDto } from "./dto/create-user.dto";
 import { UpdateUserDto } from "./dto/update-user.dto";
 import { FindUsersQueryDto } from "./dto/find-users-query.dto";
 import { AssignRolesDto } from "./dto/assign-roles.dto";
+import { UpdateUserStatusDto } from "./dto/update-user-status.dto";
 
 @ApiTags("users")
 @ApiBearerAuth()
@@ -81,6 +82,28 @@ export class UsersController {
   @ApiResponse({ status: 404, description: "User not found" })
   remove(@Param("id") id: string, @CurrentUser() user: AuthenticatedUser) {
     return this.usersService.remove(id, user.tenantId);
+  }
+
+  @Put(":id/status")
+  @RequirePermissions("users:update")
+  @ApiOperation({ summary: "Activer, suspendre ou désactiver un compte utilisateur" })
+  @ApiResponse({ status: 200, description: "Statut mis à jour" })
+  @ApiResponse({ status: 404, description: "User not found" })
+  updateStatus(
+    @Param("id") id: string,
+    @Body() dto: UpdateUserStatusDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.usersService.updateStatus(id, dto.status, user.tenantId);
+  }
+
+  @Post(":id/reset-password")
+  @RequirePermissions("users:update")
+  @ApiOperation({ summary: "Génère un mot de passe temporaire pour l'utilisateur" })
+  @ApiResponse({ status: 200, description: "Mot de passe temporaire généré" })
+  @ApiResponse({ status: 404, description: "User not found" })
+  resetPassword(@Param("id") id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.usersService.resetPassword(id, user.tenantId);
   }
 
   @Put(":id/roles")

@@ -53,3 +53,42 @@ export interface Tenant {
   logoUrl: string | null;
   configJson: unknown;
 }
+
+export type UserAccountStatus = "ACTIVE" | "INACTIVE" | "SUSPENDED";
+
+export interface RoleSummary {
+  id: string;
+  name: string;
+  description: string | null;
+}
+
+export interface UserAccount {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  phone: string | null;
+  status: UserAccountStatus;
+  mfaEnabled: boolean;
+  lastLogin: string | null;
+  avatarUrl: string | null;
+  createdAt: string;
+  roles: RoleSummary[];
+}
+
+export interface Permission {
+  id: string;
+  resource: string;
+  action: string;
+  description: string | null;
+}
+
+export interface Role {
+  id: string;
+  tenantId: string | null;
+  name: string;
+  description: string | null;
+  isSystem: boolean;
+  createdAt: string;
+  permissions: Permission[];
+}
