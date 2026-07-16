@@ -1134,8 +1134,8 @@ EC (Élément Constitutif) - 6 + 4 crédits
 
 ### 5.5 Permissions
 
-✅ **Peut** : Déverrouiller notes, calculer, délibérer  
-❌ **Ne peut PAS** : Publier résultats (réservé Directeur)
+✅ **Peut** : Déverrouiller notes, calculer les moyennes, délibérer, superviser les présences (lecture + saisie) et traiter les signalements de discipline (lecture + création)  
+❌ **Ne peut PAS** : Publier résultats (réservé Directeur), saisir/modifier une note (réservé Enseignant)
 
 ---
 
@@ -1186,7 +1186,7 @@ EC (Élément Constitutif) - 6 + 4 crédits
 
 ### 6.5 Permissions
 
-✅ **Peut** : Toutes opérations financières  
+✅ **Peut** : Toutes opérations financières, gestion du patrimoine (biens/équipements), gestion transport et cantine  
 ❌ **Ne peut PAS** : Modifier structure, notes, admissions
 
 ---
@@ -1218,7 +1218,7 @@ EC (Élément Constitutif) - 6 + 4 crédits
 
 ### 7.4 Permissions
 
-✅ **Peut** : CRUD élèves, inscriptions, documents  
+✅ **Peut** : CRUD élèves, inscriptions, documents, envoi de communications, gestion de la bibliothèque (catalogue et emprunts)  
 ❌ **Ne peut PAS** : Modifier structure, notes, finances, décisions admission
 
 ---

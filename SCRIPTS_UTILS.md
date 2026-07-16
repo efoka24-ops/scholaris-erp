@@ -4,45 +4,19 @@ Ce document liste tous les scripts utilitaires créés pour la gestion de la bas
 
 ## 📝 Scripts disponibles
 
-### 1. `create-roles.ts` - Création des rôles métier
+### 1. et 2. `create-roles.ts` / `assign-roles.ts` — **SUPPRIMÉS**
 
-Crée les 7 rôles métier avec leurs permissions assignées :
-- Directeur (37 permissions)
-- Censeur (18 permissions)
-- Enseignant (15 permissions)
-- Intendant (13 permissions)
-- Secrétaire (21 permissions)
-- Parent (5 permissions)
-- Élève (3 permissions)
+⚠️ Ces deux scripts autonomes ont été supprimés (fix-rbac-roles). La création
+des 7 rôles métier (Directeur, Censeur, Enseignant, Intendant, Secrétaire,
+Parent, Élève) est désormais intégrée directement dans `packages/prisma/src/seed.ts`
+(fonction `main()`, tableau `BUSINESS_ROLES`). Un seul `npx prisma db seed`
+crée maintenant le tenant, le SUPER_ADMIN et les 7 rôles métier avec leurs
+permissions à jour — plus besoin d'exécuter un script séparé, ce qui éliminait
+le risque de dérive entre le seed et les rôles.
 
-**Usage :**
-```bash
-npx tsx create-roles.ts
-```
-
-**Résultat :**
-```
-🎉 7 rôles créés avec succès !
-```
-
----
-
-### 2. `assign-roles.ts` - Assignment des rôles aux utilisateurs
-
-Assigne les rôles métier aux 5 utilisateurs de test.
-
-**Usage :**
-```bash
-npx tsx assign-roles.ts
-```
-
-**Résultat :**
-```
-✅ Tous les rôles ont été assignés !
-directeur@demo.scholaris.cm: Directeur (37 perms)
-censeur@demo.scholaris.cm: Censeur (18 perms)
-...
-```
+L'assignation d'un rôle métier à un utilisateur précis reste à faire via
+`PUT /api/users/:id/roles` (permission `users:assign-roles`, portée par le
+rôle Directeur) ou directement en base pour les comptes de démonstration.
 
 ---
 
@@ -105,7 +79,7 @@ npx tsx populate-test-data.ts
 - 2 périodes (Séquence 1 & 2)
 - 6 utilisateurs (admin, directeur, censeur, enseignant, intendant, secrétaire)
 
-**⚠️ Note** : Ce script ne crée PAS les rôles métier. Exécutez `create-roles.ts` puis `assign-roles.ts` après.
+**⚠️ Note** : Ce script ne crée PAS les rôles métier — ils sont créés par le seed (voir ci-dessus).
 
 ---
 
@@ -114,23 +88,17 @@ npx tsx populate-test-data.ts
 Pour initialiser une base de données vide :
 
 ```bash
-# 1. Exécuter le seed (crée le tenant et SUPER_ADMIN)
+# 1. Exécuter le seed (crée le tenant, SUPER_ADMIN et les 7 rôles métier)
 cd packages/prisma
 npm run db:seed
 
 # 2. Revenir à la racine
 cd ../..
 
-# 3. Créer les rôles métier
-npx tsx create-roles.ts
-
-# 4. Peupler les données de test
+# 3. Peupler les données de test
 npx tsx populate-test-data.ts
 
-# 5. Assigner les rôles aux utilisateurs
-npx tsx assign-roles.ts
-
-# 6. Vérifier
+# 4. Vérifier
 npx tsx check-roles.ts
 npx tsx check-user-roles.ts
 ```
@@ -151,10 +119,10 @@ npx tsx check-user-roles.ts
 ## 🐛 Dépannage
 
 ### Problème : "0 permission(s) résolue(s)"
-**Solution** : Exécutez `assign-roles.ts`
+**Solution** : Vérifiez qu'un rôle est assigné à l'utilisateur (`PUT /api/users/:id/roles`)
 
 ### Problème : "Rôle XXXX introuvable"
-**Solution** : Exécutez `create-roles.ts`
+**Solution** : Relancez `npx prisma db seed` (les 7 rôles métier sont créés par le seed)
 
 ### Problème : "Utilisateur introuvable"
 **Solution** : Exécutez `populate-test-data.ts`

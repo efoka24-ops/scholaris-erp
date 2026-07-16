@@ -89,6 +89,170 @@ const BASE_PERMISSIONS: Array<{ resource: string; action: string; description: s
   { resource: "grades", action: "progress", description: "Consulter l'avancement de la saisie des notes" },
   { resource: "grades", action: "deliberation", description: "Délibérer (décisions, observations) sur une période" },
   { resource: "grades", action: "publish", description: "Publier les résultats aux parents/élèves" },
+  // Module 6 — Bulletins et diplômes
+  { resource: "bulletins", action: "generate", description: "Générer les bulletins d'une classe/période" },
+  { resource: "bulletins", action: "read", description: "Consulter/télécharger un bulletin" },
+  { resource: "bulletins", action: "send", description: "Envoyer les bulletins aux parents/élèves" },
+  // Module 9 — Emplois du temps
+  { resource: "timetables", action: "read", description: "Consulter les emplois du temps" },
+  { resource: "timetables", action: "create", description: "Créer un créneau d'emploi du temps" },
+  { resource: "timetables", action: "update", description: "Modifier un créneau d'emploi du temps" },
+  { resource: "timetables", action: "delete", description: "Supprimer un créneau d'emploi du temps" },
+  // Module 10 — Présences
+  { resource: "attendance", action: "read", description: "Consulter les présences/absences" },
+  { resource: "attendance", action: "create", description: "Faire l'appel / saisir une absence" },
+  { resource: "attendance", action: "update", description: "Modifier une présence saisie" },
+  // Module 11 — Discipline
+  { resource: "discipline", action: "read", description: "Consulter les incidents disciplinaires" },
+  { resource: "discipline", action: "create", description: "Déclarer un incident disciplinaire" },
+  // Module 12 — Vie scolaire (clubs, activités)
+  { resource: "school-life", action: "read", description: "Consulter les clubs et activités scolaires" },
+  { resource: "school-life", action: "create", description: "Créer un club/une activité scolaire" },
+  // Module 14 — Bibliothèque
+  { resource: "library", action: "read", description: "Consulter le catalogue et les emprunts" },
+  { resource: "library", action: "create", description: "Enregistrer un ouvrage ou un emprunt" },
+  { resource: "library", action: "update", description: "Modifier/retourner un emprunt" },
+  // Module 15 — Transport scolaire
+  { resource: "transport", action: "read", description: "Consulter les circuits et abonnements transport" },
+  { resource: "transport", action: "create", description: "Créer un circuit ou un abonnement transport" },
+  // Module 16 — Cantine / internat
+  { resource: "catering", action: "read", description: "Consulter les menus et abonnements cantine" },
+  { resource: "catering", action: "create", description: "Créer un menu ou un abonnement cantine" },
+  // Module 17 — Patrimoine
+  { resource: "assets", action: "read", description: "Consulter le patrimoine (biens, équipements)" },
+  { resource: "assets", action: "create", description: "Enregistrer un bien au patrimoine" },
+  { resource: "assets", action: "update", description: "Modifier un bien du patrimoine" },
+  { resource: "assets", action: "delete", description: "Retirer un bien du patrimoine" },
+  // Module 18 — RH & paie
+  { resource: "hr", action: "read", description: "Consulter les dossiers employés et congés" },
+  { resource: "hr", action: "create", description: "Créer un employé ou une demande de congé" },
+  { resource: "hr", action: "update", description: "Modifier un dossier employé ou statut de congé" },
+  // Gestion des utilisateurs — assignation de rôles
+  { resource: "users", action: "assign-roles", description: "Assigner un ou plusieurs rôles à un utilisateur" },
+];
+
+/**
+ * Rôles métier (établissement) — matrice alignée sur les responsabilités
+ * réelles de chaque profil scolaire camerounais (cf. audit RBAC) :
+ * - Directeur : lecture large + décisions stratégiques, pas de saisie opérationnelle.
+ * - Censeur : responsable pédagogique — calcule et délibère (la publication reste Directeur).
+ * - Enseignant : saisie notes/présences de sa classe (filtrage fin géré côté service).
+ * - Intendant : finance + patrimoine/transport/cantine.
+ * - Secrétaire : inscriptions, admissions (hors décision), communication, bibliothèque.
+ * - Parent / Élève : lecture seule, scopée à leurs propres données (cf. student-scope.util.ts).
+ *
+ * Remplace les anciens scripts autonomes create-roles.ts / assign-roles.ts,
+ * désormais intégrés ici pour qu'un seul `npx prisma db seed` produise un
+ * état complet et cohérent (idempotent, upsert partout).
+ */
+const BUSINESS_ROLES: Array<{ name: string; description: string; permissions: string[] }> = [
+  {
+    name: "Directeur",
+    description: "Directeur de l'établissement — vision globale, décisions stratégiques",
+    permissions: [
+      // Lecture large sur l'ensemble de l'établissement
+      "tenants:read", "users:read", "academic-years:read", "periods:read",
+      "cycles:read", "departments:read", "programs:read", "levels:read",
+      "classrooms:read", "rooms:read", "structure:read",
+      "subjects:read", "teaching-units:read", "course-elements:read", "subject-assignments:read",
+      "students:read", "enrollments:read", "admissions:read",
+      "grades:read", "grades:progress",
+      "fee-structures:read", "invoices:read", "payments:read", "finance-dashboard:read",
+      "communications:read", "communication-templates:read",
+      "internal-messages:read", "internal-messages:create",
+      "audit-logs:read",
+      "bulletins:read", "timetables:read", "attendance:read", "discipline:read",
+      "school-life:read", "library:read", "transport:read", "catering:read",
+      "assets:read", "hr:read",
+      // Décisions stratégiques et gestion administrative
+      "admissions:decide", "grades:publish",
+      "users:create", "users:update", "users:assign-roles",
+      "academic-years:create", "academic-years:update",
+      "periods:create", "periods:update",
+      "bulletins:generate", "bulletins:send",
+    ],
+  },
+  {
+    name: "Censeur",
+    description: "Censeur — responsable pédagogique (calcul, délibération, vie scolaire)",
+    permissions: [
+      "cycles:read", "departments:read", "programs:read", "levels:read",
+      "classrooms:read", "rooms:read", "structure:read",
+      "subjects:read", "subject-assignments:read",
+      "students:read", "enrollments:read",
+      "academic-years:read", "periods:read", "timetables:read",
+      // Pédagogie : calcule et délibère (la publication reste au Directeur)
+      "grades:read", "grades:unlock", "grades:calculate", "grades:progress", "grades:deliberation",
+      // Vie scolaire : supervision présences et traitement des signalements
+      "attendance:read", "attendance:create",
+      "discipline:read", "discipline:create",
+      "internal-messages:read", "internal-messages:create",
+    ],
+  },
+  {
+    name: "Enseignant",
+    description: "Enseignant — saisie notes/présences, consultation de sa classe",
+    permissions: [
+      "classrooms:read", "students:read", "enrollments:read",
+      "subjects:read", "subject-assignments:read",
+      "academic-years:read", "periods:read", "timetables:read",
+      // Saisie notes (filtrage classe/matière géré côté service)
+      "grades:create", "grades:read", "grades:update", "grades:lock", "grades:import", "grades:progress",
+      // Appel et signalement
+      "attendance:create", "attendance:read",
+      "discipline:create",
+      "internal-messages:read", "internal-messages:create",
+    ],
+  },
+  {
+    name: "Intendant",
+    description: "Intendant — finance, patrimoine, transport, cantine",
+    permissions: [
+      "fee-structures:create", "fee-structures:read",
+      "invoices:create", "invoices:read",
+      "payments:create", "payments:read",
+      "discounts:create",
+      "finance-dashboard:read",
+      "assets:read", "assets:create", "assets:update",
+      "transport:read", "transport:create",
+      "catering:read", "catering:create",
+      "students:read", "enrollments:read", "classrooms:read",
+      "internal-messages:read", "internal-messages:create",
+    ],
+  },
+  {
+    name: "Secrétaire",
+    description: "Secrétaire — inscriptions, admissions, communication, bibliothèque",
+    permissions: [
+      "students:create", "students:read", "students:update", "students:import",
+      "enrollments:create", "enrollments:read", "enrollments:update",
+      "admissions:create", "admissions:read",
+      "cycles:read", "departments:read", "programs:read", "levels:read",
+      "classrooms:read", "rooms:read", "structure:read", "academic-years:read",
+      "communications:create", "communications:read", "communication-templates:read",
+      "library:read", "library:create",
+      "internal-messages:read", "internal-messages:create",
+    ],
+  },
+  {
+    name: "Parent",
+    description: "Parent d'élève — consultation scopée à ses propres enfants",
+    permissions: [
+      "grades:read", // Scopé à ses enfants (cf. student-scope.util.ts)
+      "students:read", // Scopé à ses enfants
+      "communications:read",
+      "internal-messages:read", "internal-messages:create",
+    ],
+  },
+  {
+    name: "Élève",
+    description: "Élève — consultation scopée à ses propres données",
+    permissions: [
+      "grades:read", // Scopé à lui-même (cf. student-scope.util.ts)
+      "students:read", // Scopé à lui-même
+      "internal-messages:read",
+    ],
+  },
 ];
 
 async function main() {
@@ -170,6 +334,37 @@ async function main() {
     update: {},
     create: { userId: superAdmin.id, roleId: superAdminRole.id },
   });
+
+  console.log("→ Seed des rôles métier (Directeur, Censeur, Enseignant, Intendant, Secrétaire, Parent, Élève)…");
+  const permissionMap = new Map(permissions.map((p) => [`${p.resource}:${p.action}`, p.id]));
+  for (const roleConfig of BUSINESS_ROLES) {
+    const role = await prisma.role.upsert({
+      where: { tenantId_name: { tenantId: tenant.id, name: roleConfig.name } },
+      update: { description: roleConfig.description },
+      create: {
+        tenantId: tenant.id,
+        name: roleConfig.name,
+        description: roleConfig.description,
+        isSystem: false,
+      },
+    });
+
+    let assignedCount = 0;
+    for (const permKey of roleConfig.permissions) {
+      const permissionId = permissionMap.get(permKey);
+      if (!permissionId) {
+        console.warn(`  ⚠ Permission inconnue pour le rôle "${roleConfig.name}" : ${permKey}`);
+        continue;
+      }
+      await prisma.rolePermission.upsert({
+        where: { roleId_permissionId: { roleId: role.id, permissionId } },
+        update: {},
+        create: { roleId: role.id, permissionId },
+      });
+      assignedCount++;
+    }
+    console.log(`  ✔ ${roleConfig.name} : ${assignedCount} permission(s)`);
+  }
 
   console.log("✔ Seed terminé.");
   console.log(`  Tenant   : ${tenant.code} (${tenant.id})`);

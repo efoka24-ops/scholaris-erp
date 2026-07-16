@@ -152,6 +152,11 @@ model User {
   sentInternalMessages    InternalMessage[]       @relation("InternalMessageSender")
   receivedInternalMessages InternalMessage[]      @relation("InternalMessageRecipient")
 
+  // Anti-IDOR : lien optionnel vers le dossier Élève/Parent correspondant,
+  // utilisé pour scoper l'accès en lecture des rôles Parent et Élève.
+  studentProfile Student? @relation("StudentUser")
+  parentProfile  Parent?  @relation("ParentUser")
+
   // Module 3 : un User peut être référencé comme enseignant assigné à une matière/un EC.
   subjectAssignments SubjectAssignment[] @relation("SubjectAssignmentTeacher")
 
@@ -643,7 +648,12 @@ model Student {
   updatedAt        DateTime      @updatedAt @map("updated_at")
   deletedAt        DateTime?     @map("deleted_at")
 
+  // Lien optionnel vers un compte de connexion (rôle Élève) : permet de
+  // scoper l'accès en lecture de l'élève à ses seules données (anti-IDOR).
+  userId String? @unique @map("user_id")
+
   tenant      Tenant          @relation(fields: [tenantId], references: [id])
+  user        User?           @relation("StudentUser", fields: [userId], references: [id])
   parents     StudentParent[]
   enrollments Enrollment[]
 
@@ -689,7 +699,12 @@ model Parent {
   updatedAt    DateTime           @updatedAt @map("updated_at")
   deletedAt    DateTime?          @map("deleted_at")
 
+  // Lien optionnel vers un compte de connexion (rôle Parent) : permet de
+  // scoper l'accès en lecture du parent à ses seuls enfants (anti-IDOR).
+  userId String? @unique @map("user_id")
+
   tenant   Tenant          @relation(fields: [tenantId], references: [id])
+  user     User?           @relation("ParentUser", fields: [userId], references: [id])
   students StudentParent[]
 
   @@map("parents")

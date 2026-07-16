@@ -7,9 +7,15 @@
 **Cause racine** : Les utilisateurs n'avaient **aucun rôle assigné** dans la base de données, donc aucune permission.
 
 **Solution appliquée** :
-1. ✅ Création des 7 rôles métier avec leurs permissions (`create-roles.ts`)
-2. ✅ Assignment des rôles aux utilisateurs (`assign-roles.ts`)
-3. ✅ Vérification réussie : **37 permissions pour le Directeur** !
+1. ✅ Création des 7 rôles métier avec leurs permissions, intégrée au seed canonique (`packages/prisma/src/seed.ts`, tableau `BUSINESS_ROLES`)
+2. ✅ Assignation des rôles aux utilisateurs de test via `PUT /api/users/:id/roles`
+3. ✅ Correction RBAC (fix-rbac-roles) : 34 permissions manquantes (modules 6, 9-18) ajoutées, matrice de rôles recalibrée sur les responsabilités réelles
+
+> ⚠️ Mise à jour (fix-rbac-roles) : les nombres ci-dessous ont changé suite à
+> l'ajout des permissions manquantes des modules 9-18 (auparavant absentes de
+> la base — tous les contrôleurs de ces modules renvoyaient 403 pour tout le
+> monde, y compris Super Admin) et à la recalibration des rôles métier
+> (Censeur, Intendant, Secrétaire notamment). Voir détail par rôle plus bas.
 
 ---
 
@@ -17,12 +23,14 @@
 
 | Profil | Email | Mot de passe | Permissions |
 |--------|-------|--------------|-------------|
-| **Super Admin** | admin@scholaris.dev | ChangeMe123! | 79 perms (toutes) |
-| **Directeur** | directeur@demo.scholaris.cm | Test123! | **37 perms** ✅ |
-| **Censeur** | censeur@demo.scholaris.cm | Test123! | **18 perms** ✅ |
-| **Enseignant** | enseignant@demo.scholaris.cm | Test123! | **15 perms** ✅ |
-| **Intendant** | intendant@demo.scholaris.cm | Test123! | **13 perms** ✅ |
-| **Secrétaire** | secretaire@demo.scholaris.cm | Test123! | **21 perms** ✅ |
+| **Super Admin** | admin@scholaris.dev | ChangeMe123! | **108 perms** (toutes) |
+| **Directeur** | directeur@demo.scholaris.cm | Test123! | **50 perms** ✅ |
+| **Censeur** | censeur@demo.scholaris.cm | Test123! | **25 perms** ✅ (+ grades:calculate/deliberation, attendance, discipline) |
+| **Enseignant** | enseignant@demo.scholaris.cm | Test123! | **19 perms** ✅ (+ attendance, discipline:create, timetables:read) |
+| **Intendant** | intendant@demo.scholaris.cm | Test123! | **20 perms** ✅ (+ assets, transport, catering) |
+| **Secrétaire** | secretaire@demo.scholaris.cm | Test123! | **24 perms** ✅ (+ library:read/create) |
+| **Parent** | (à créer, lié via `Parent.userId`) | — | **5 perms** (scopées à ses enfants) |
+| **Élève** | (à créer, lié via `Student.userId`) | — | **3 perms** (scopées à lui-même) |
 
 **Tous les comptes sont prêts à être testés !**
 

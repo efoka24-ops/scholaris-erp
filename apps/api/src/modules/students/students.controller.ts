@@ -9,6 +9,8 @@ import { CreateStudentDto } from "./dto/create-student.dto";
 import { UpdateStudentDto } from "./dto/update-student.dto";
 import { FindStudentsQueryDto } from "./dto/find-students-query.dto";
 import { ImportStudentsDto } from "./dto/import-students.dto";
+import { assertStudentAccess } from "../../common/guards/student-scope.util";
+import { PrismaService } from "../../prisma/prisma.service";
 
 @ApiTags("students")
 @ApiBearerAuth()
@@ -17,6 +19,7 @@ export class StudentsController {
   constructor(
     private readonly studentsService: StudentsService,
     private readonly importService: StudentsImportService,
+    private readonly prisma: PrismaService,
   ) {}
 
   @Get()
@@ -27,7 +30,9 @@ export class StudentsController {
 
   @Get(":id")
   @RequirePermissions("students:read")
-  findOne(@Param("id") id: string) {
+  async findOne(@Param("id") id: string, @CurrentUser() user: AuthenticatedUser) {
+    // Anti-IDOR : un Parent/Élève ne peut consulter que son propre dossier (cf. audit RBAC).
+    await assertStudentAccess(this.prisma, user, id);
     return this.studentsService.findOne(id);
   }
 
