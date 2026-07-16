@@ -111,6 +111,57 @@ export const PERMISSIONS = {
   GRADES_DELIBERATION: "grades:deliberation",
   // Rendre les résultats visibles aux parents/élèves (directeur/admin).
   GRADES_PUBLISH: "grades:publish",
+
+  // Module 6 — Bulletins et diplômes
+  BULLETINS_GENERATE: "bulletins:generate",
+  BULLETINS_READ: "bulletins:read",
+  BULLETINS_SEND: "bulletins:send",
+
+  // Module 9 — Emplois du temps
+  TIMETABLES_READ: "timetables:read",
+  TIMETABLES_CREATE: "timetables:create",
+  TIMETABLES_UPDATE: "timetables:update",
+  TIMETABLES_DELETE: "timetables:delete",
+
+  // Module 10 — Présences
+  ATTENDANCE_READ: "attendance:read",
+  ATTENDANCE_CREATE: "attendance:create",
+  ATTENDANCE_UPDATE: "attendance:update",
+
+  // Module 11 — Discipline
+  DISCIPLINE_READ: "discipline:read",
+  DISCIPLINE_CREATE: "discipline:create",
+
+  // Module 12 — Vie scolaire (clubs, activités)
+  SCHOOL_LIFE_READ: "school-life:read",
+  SCHOOL_LIFE_CREATE: "school-life:create",
+
+  // Module 14 — Bibliothèque
+  LIBRARY_READ: "library:read",
+  LIBRARY_CREATE: "library:create",
+  LIBRARY_UPDATE: "library:update",
+
+  // Module 15 — Transport scolaire
+  TRANSPORT_READ: "transport:read",
+  TRANSPORT_CREATE: "transport:create",
+
+  // Module 16 — Cantine / internat
+  CATERING_READ: "catering:read",
+  CATERING_CREATE: "catering:create",
+
+  // Module 17 — Patrimoine
+  ASSETS_READ: "assets:read",
+  ASSETS_CREATE: "assets:create",
+  ASSETS_UPDATE: "assets:update",
+  ASSETS_DELETE: "assets:delete",
+
+  // Module 18 — RH & paie
+  HR_READ: "hr:read",
+  HR_CREATE: "hr:create",
+  HR_UPDATE: "hr:update",
+
+  // Gestion des utilisateurs — assignation de rôles
+  USERS_ASSIGN_ROLES: "users:assign-roles",
 } as const;
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

@@ -1211,8 +1211,8 @@ Ces modules sont utilisables mais moins éprouvés que le socle académique/fina
 
 ### 5.5 Permissions
 
-✅ **Peut** : Déverrouiller notes, calculer, délibérer  
-❌ **Ne peut PAS** : Publier résultats (réservé Directeur)
+✅ **Peut** : Déverrouiller notes, calculer les moyennes, délibérer, générer les bulletins, gérer périodes/classes/assignations, gérer emplois du temps (génération, CRUD, remplacements), superviser les présences (lecture + saisie + validation des sorties) et traiter les signalements de discipline (lecture + création), gérer clubs/événements et l'internat  
+❌ **Ne peut PAS** : Publier résultats (réservé Directeur), saisir/modifier une note (réservé Enseignant)
 
 ---
 
@@ -1263,7 +1263,7 @@ Ces modules sont utilisables mais moins éprouvés que le socle académique/fina
 
 ### 6.5 Permissions
 
-✅ **Peut** : Toutes opérations financières  
+✅ **Peut** : Toutes opérations financières, gestion du patrimoine (biens/équipements), gestion transport et cantine, gestion de la paie/bulletins de paie/déclarations CNPS (RH)  
 ❌ **Ne peut PAS** : Modifier structure, notes, admissions
 
 ---
@@ -1295,8 +1295,56 @@ Ces modules sont utilisables mais moins éprouvés que le socle académique/fina
 
 ### 7.4 Permissions
 
-✅ **Peut** : CRUD élèves, inscriptions, documents  
+✅ **Peut** : CRUD élèves, inscriptions, documents, envoi de communications, gestion de la bibliothèque (catalogue et emprunts), génération/envoi de bulletins, inscriptions transport/cantine  
 ❌ **Ne peut PAS** : Modifier structure, notes, finances, décisions admission
+
+---
+
+## 7bis. NOUVEAUX RÔLES (matrice officielle TRU GROUP SARL)
+
+> Rôles ajoutés lors de l'alignement RBAC sur la matrice officielle 12 rôles /
+> 15 domaines. Voir `packages/prisma/src/seed.ts` (`BUSINESS_ROLES`) pour le
+> détail exact des permissions.
+
+### Admin Établissement
+
+**Profil** : Administrateur technique d'UN SEUL établissement (à la différence du
+Super Admin, multi-établissements).
+
+✅ **Peut** : Configuration de l'établissement et du moteur de calcul, CRUD
+utilisateurs (y compris suppression), CRUD structure pédagogique complète,
+CRUD RH/patrimoine, total sur inscriptions/factures/emplois du temps/bulletins.  
+❌ **Ne peut PAS** : Publier les résultats (`grades:publish` reste réservé au
+Directeur — validation pédagogique fine hors périmètre de l'admin technique).
+
+### Chef de département
+
+**Profil** : Coordination pédagogique d'un département/filière.
+
+✅ **Peut** : CRUD matières/UE-EC/assignations et classes de son département,
+CRUD emplois du temps, saisir présences/pointage enseignants, signaler des
+incidents disciplinaires (convoque conseil, attribue récompenses), gérer
+clubs/événements.  
+❌ **Ne peut PAS** : Notes, finances, décisions administratives.
+
+### Infirmier(ère)
+
+**Profil** : Santé scolaire.
+
+⚠️ **Écart connu** : aucun module backend dédié à la santé scolaire (dossiers
+médicaux, consultations, stock infirmerie) n'existe à ce jour — le modèle
+Prisma `HealthRecord` existe dans le schéma mais n'est exposé par aucun
+contrôleur/service. Le rôle est créé avec un **socle minimal** (lecture des
+élèves + messagerie interne) en attendant l'implémentation d'un module santé
+et de permissions `health:*` dédiées.
+
+### Bibliothécaire
+
+**Profil** : Gestion de la bibliothèque.
+
+✅ **Peut** : CRUD catalogue de livres, emprunts, retours.  
+⚠️ **Écart connu** : pas de gestion des pénalités (`library:delete` n'existe
+pas — aucun endpoint ne l'expose actuellement).
 
 ---
 

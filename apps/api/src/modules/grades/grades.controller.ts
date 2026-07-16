@@ -11,6 +11,8 @@ import { UpdateGradeDto } from "./dto/update-grade.dto";
 import { ImportGradesDto } from "./dto/import-grades.dto";
 import { DeliberationDto } from "./dto/deliberation.dto";
 import { CalculateAnnualQueryDto } from "./dto/calculate-annual-query.dto";
+import { assertStudentAccess } from "../../common/guards/student-scope.util";
+import { PrismaService } from "../../prisma/prisma.service";
 
 @ApiTags("grades")
 @ApiBearerAuth()
@@ -19,6 +21,7 @@ export class GradesController {
   constructor(
     private readonly gradesService: GradesService,
     private readonly importService: GradesImportService,
+    private readonly prisma: PrismaService,
   ) {}
 
   @Post("batch")
@@ -99,7 +102,9 @@ export class GradesController {
   @Get("student/:studentId")
   @RequirePermissions(PERMISSIONS.GRADES_READ)
   @ApiOperation({ summary: "Historique des notes et résultats d'un élève" })
-  findByStudent(@Param("studentId") studentId: string, @CurrentUser() user: AuthenticatedUser) {
+  async findByStudent(@Param("studentId") studentId: string, @CurrentUser() user: AuthenticatedUser) {
+    // Anti-IDOR : un Parent/Élève ne peut consulter que ses propres notes (cf. audit RBAC).
+    await assertStudentAccess(this.prisma, user, studentId);
     return this.gradesService.findByStudent(studentId, user.tenantId, this.canViewUnpublished(user));
   }
 
