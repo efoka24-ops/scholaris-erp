@@ -132,13 +132,33 @@ const BASE_PERMISSIONS: Array<{ resource: string; action: string; description: s
 ];
 
 /**
- * Rôles métier (établissement) — matrice alignée sur les responsabilités
- * réelles de chaque profil scolaire camerounais (cf. audit RBAC) :
+ * Rôles métier (établissement) — matrice alignée sur le document de
+ * référence officiel TRU GROUP SARL (12 rôles × 15 domaines fonctionnels,
+ * ~120 fonctionnalités), traduite en permissions resource:action réellement
+ * vérifiées par les contrôleurs NestJS. Quand la matrice officielle distingue
+ * une étape "Valider" d'une étape "Créer" sans qu'une permission dédiée
+ * existe côté backend, on retient la permission la plus proche déjà
+ * existante (souvent la lecture, ou la même permission que "Créer") — ces
+ * cas sont documentés dans le rapport d'audit RBAC, PAS résolus ici (un vrai
+ * système d'approbation/workflow est hors scope RBAC).
+ *
+ * - Super Admin : toutes permissions, tous établissements (dynamique).
+ * - Admin Établissement : administrateur technique d'UN tenant — config,
+ *   moteur de calcul, utilisateurs (y compris suppression), structure
+ *   pédagogique CRUD. Pas de validation pédagogique fine (pas grades:publish).
  * - Directeur : lecture large + décisions stratégiques, pas de saisie opérationnelle.
  * - Censeur : responsable pédagogique — calcule et délibère (la publication reste Directeur).
+ * - Chef de département : coordination pédagogique d'un département (matières/UE-EC/
+ *   assignations/classes/emplois du temps de son périmètre, filtrage fin côté service).
  * - Enseignant : saisie notes/présences de sa classe (filtrage fin géré côté service).
- * - Intendant : finance + patrimoine/transport/cantine.
+ * - Intendant : finance + patrimoine/transport/cantine + paie.
  * - Secrétaire : inscriptions, admissions (hors décision), communication, bibliothèque.
+ * - Infirmier(ère) : santé scolaire — AUCUN module backend dédié n'existe encore
+ *   (le modèle Prisma HealthRecord existe mais n'est exposé par aucun controller) ;
+ *   rôle créé avec un socle minimal (lecture élèves + messagerie) en attendant
+ *   l'implémentation d'un module santé (permissions health:* à créer alors).
+ * - Bibliothécaire : catalogue/emprunts/retours (library:*). Pas de library:delete
+ *   (pénalités) : aucun endpoint ne l'expose actuellement.
  * - Parent / Élève : lecture seule, scopée à leurs propres données (cf. student-scope.util.ts).
  *
  * Remplace les anciens scripts autonomes create-roles.ts / assign-roles.ts,
@@ -146,6 +166,56 @@ const BASE_PERMISSIONS: Array<{ resource: string; action: string; description: s
  * état complet et cohérent (idempotent, upsert partout).
  */
 const BUSINESS_ROLES: Array<{ name: string; description: string; permissions: string[] }> = [
+  {
+    name: "Admin Établissement",
+    description: "Administrateur technique de l'établissement — config, moteur de calcul, utilisateurs",
+    permissions: [
+      // Administration (tenant, utilisateurs, années académiques, périodes, audit)
+      "tenants:read", "tenants:update",
+      "users:create", "users:read", "users:update", "users:delete", "users:assign-roles",
+      "academic-years:create", "academic-years:read", "academic-years:update",
+      "periods:read", "periods:create", "periods:update", "periods:unlock",
+      "audit-logs:read",
+      // Structure pédagogique — CRUD complet
+      "cycles:read", "cycles:create",
+      "departments:read", "departments:create", "departments:update",
+      "programs:read", "programs:create", "programs:update",
+      "levels:read", "levels:create", "levels:update", "levels:delete",
+      "classrooms:read", "classrooms:create", "classrooms:update",
+      "rooms:read", "rooms:create", "rooms:update",
+      "structure:read",
+      "subjects:read", "subjects:create", "subjects:update", "subjects:delete",
+      "teaching-units:read", "teaching-units:create",
+      "course-elements:read", "course-elements:create",
+      "subject-assignments:read", "subject-assignments:create",
+      // Inscriptions/élèves — total sauf décision d'admission (Directeur)
+      "students:create", "students:read", "students:update", "students:import",
+      "enrollments:create", "enrollments:read", "enrollments:update", "enrollments:re-enroll",
+      "admissions:create", "admissions:read",
+      // Notes : déverrouillage/calcul/import (pas de saisie/publication)
+      "grades:read", "grades:unlock", "grades:calculate", "grades:import", "grades:progress",
+      // Bulletins — total génération/envoi
+      "bulletins:generate", "bulletins:read", "bulletins:send",
+      // Finance — CRUD grilles tarifaires, total factures
+      "fee-structures:create", "fee-structures:read",
+      "invoices:create", "invoices:read",
+      "finance-dashboard:read",
+      // Emplois du temps — total
+      "timetables:read", "timetables:create", "timetables:update", "timetables:delete",
+      // Vie scolaire, bibliothèque, transport, cantine, présences, discipline — oversight
+      "attendance:read", "discipline:read",
+      "school-life:read", "school-life:create",
+      "library:read",
+      "transport:read", "transport:create",
+      "catering:read", "catering:create",
+      // RH & Patrimoine — CRUD complet
+      "hr:read", "hr:create", "hr:update",
+      "assets:read", "assets:create", "assets:update", "assets:delete",
+      // Communication — CRUD templates
+      "communications:read", "communication-templates:create", "communication-templates:read", "communication-templates:update",
+      "internal-messages:read", "internal-messages:create",
+    ],
+  },
   {
     name: "Directeur",
     description: "Directeur de l'établissement — vision globale, décisions stratégiques",
@@ -166,6 +236,8 @@ const BUSINESS_ROLES: Array<{ name: string; description: string; permissions: st
       "assets:read", "hr:read",
       // Décisions stratégiques et gestion administrative
       "admissions:decide", "grades:publish",
+      // Discipline : valide sanctions/conseil de discipline/décisions/récompenses
+      "discipline:create",
       "users:create", "users:update", "users:assign-roles",
       "academic-years:create", "academic-years:update",
       "periods:create", "periods:update",
@@ -177,15 +249,49 @@ const BUSINESS_ROLES: Array<{ name: string; description: string; permissions: st
     description: "Censeur — responsable pédagogique (calcul, délibération, vie scolaire)",
     permissions: [
       "cycles:read", "departments:read", "programs:read", "levels:read",
-      "classrooms:read", "rooms:read", "structure:read",
-      "subjects:read", "subject-assignments:read",
-      "students:read", "enrollments:read",
-      "academic-years:read", "periods:read", "timetables:read",
+      "classrooms:read", "classrooms:create", "classrooms:update",
+      "rooms:read", "structure:read",
+      "subjects:read", "subject-assignments:read", "subject-assignments:create",
+      "students:read", "enrollments:read", "enrollments:update",
+      "academic-years:read", "periods:read", "periods:create", "periods:update",
+      // Emplois du temps : génération, CRUD, remplacements
+      "timetables:read", "timetables:create", "timetables:update", "timetables:delete",
       // Pédagogie : calcule et délibère (la publication reste au Directeur)
       "grades:read", "grades:unlock", "grades:calculate", "grades:progress", "grades:deliberation",
-      // Vie scolaire : supervision présences et traitement des signalements
-      "attendance:read", "attendance:create",
+      // Bulletins : génération
+      "bulletins:generate", "bulletins:read",
+      // Vie scolaire : supervision présences (dont sorties) et traitement des signalements
+      "attendance:read", "attendance:create", "attendance:update",
       "discipline:read", "discipline:create",
+      // Clubs/événements, internat (registre de présence rattaché à catering:*)
+      "school-life:read", "school-life:create",
+      "catering:read", "catering:create",
+      "internal-messages:read", "internal-messages:create",
+    ],
+  },
+  {
+    name: "Chef de département",
+    description: "Coordination pédagogique d'un département/filière (matières, classes, emplois du temps)",
+    permissions: [
+      "cycles:read", "departments:read", "programs:read", "levels:read",
+      "structure:read", "academic-years:read", "periods:read",
+      // Matières / UE / EC / assignations de son département
+      "subjects:read", "subjects:create", "subjects:update",
+      "teaching-units:read", "teaching-units:create",
+      "course-elements:read", "course-elements:create",
+      "subject-assignments:read", "subject-assignments:create",
+      // Classes en CRUD
+      "classrooms:read", "classrooms:create", "classrooms:update",
+      "rooms:read",
+      "students:read", "enrollments:read",
+      // Emplois du temps en CRUD
+      "timetables:read", "timetables:create", "timetables:update", "timetables:delete",
+      // Présences : appel/retards, pointage enseignants
+      "attendance:read", "attendance:create",
+      // Discipline : convoque conseil, attribue récompenses
+      "discipline:read", "discipline:create",
+      // Clubs/événements
+      "school-life:read", "school-life:create",
       "internal-messages:read", "internal-messages:create",
     ],
   },
@@ -206,23 +312,25 @@ const BUSINESS_ROLES: Array<{ name: string; description: string; permissions: st
   },
   {
     name: "Intendant",
-    description: "Intendant — finance, patrimoine, transport, cantine",
+    description: "Intendant — finance, patrimoine, transport, cantine, paie",
     permissions: [
       "fee-structures:create", "fee-structures:read",
       "invoices:create", "invoices:read",
       "payments:create", "payments:read",
       "discounts:create",
       "finance-dashboard:read",
-      "assets:read", "assets:create", "assets:update",
+      "assets:read", "assets:create", "assets:update", "assets:delete",
       "transport:read", "transport:create",
       "catering:read", "catering:create",
+      // Paie, bulletins de paie, déclarations CNPS (portées par hr:*)
+      "hr:read", "hr:create", "hr:update",
       "students:read", "enrollments:read", "classrooms:read",
       "internal-messages:read", "internal-messages:create",
     ],
   },
   {
     name: "Secrétaire",
-    description: "Secrétaire — inscriptions, admissions, communication, bibliothèque",
+    description: "Secrétaire — inscriptions, admissions, communication, bibliothèque, transport/cantine",
     permissions: [
       "students:create", "students:read", "students:update", "students:import",
       "enrollments:create", "enrollments:read", "enrollments:update",
@@ -230,7 +338,29 @@ const BUSINESS_ROLES: Array<{ name: string; description: string; permissions: st
       "cycles:read", "departments:read", "programs:read", "levels:read",
       "classrooms:read", "rooms:read", "structure:read", "academic-years:read",
       "communications:create", "communications:read", "communication-templates:read",
+      "bulletins:generate", "bulletins:read", "bulletins:send",
       "library:read", "library:create",
+      "transport:read", "transport:create",
+      "catering:read", "catering:create",
+      "internal-messages:read", "internal-messages:create",
+    ],
+  },
+  {
+    name: "Infirmier(ère)",
+    description: "Santé scolaire — socle minimal en attendant un module santé dédié (cf. écarts documentés)",
+    permissions: [
+      // Aucune permission health:* n'existe : aucun controller n'expose HealthRecord.
+      // Socle minimal accordé pour rester opérationnel (identifier un élève, communiquer).
+      "students:read",
+      "internal-messages:read", "internal-messages:create",
+    ],
+  },
+  {
+    name: "Bibliothécaire",
+    description: "Bibliothèque — catalogue, emprunts, retours",
+    permissions: [
+      "library:read", "library:create", "library:update",
+      "students:read",
       "internal-messages:read", "internal-messages:create",
     ],
   },

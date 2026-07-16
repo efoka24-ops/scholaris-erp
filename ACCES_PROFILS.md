@@ -19,20 +19,35 @@
 
 ---
 
-## 📧 ACCÈS DE TEST DISPONIBLES (TOUS FONCTIONNELS)
+## 📧 ACCÈS DE TEST DISPONIBLES — MATRICE 12 RÔLES (alignée sur le document officiel TRU GROUP SARL)
 
-| Profil | Email | Mot de passe | Permissions |
-|--------|-------|--------------|-------------|
-| **Super Admin** | admin@scholaris.dev | ChangeMe123! | **108 perms** (toutes) |
-| **Directeur** | directeur@demo.scholaris.cm | Test123! | **50 perms** ✅ |
-| **Censeur** | censeur@demo.scholaris.cm | Test123! | **25 perms** ✅ (+ grades:calculate/deliberation, attendance, discipline) |
-| **Enseignant** | enseignant@demo.scholaris.cm | Test123! | **19 perms** ✅ (+ attendance, discipline:create, timetables:read) |
-| **Intendant** | intendant@demo.scholaris.cm | Test123! | **20 perms** ✅ (+ assets, transport, catering) |
-| **Secrétaire** | secretaire@demo.scholaris.cm | Test123! | **24 perms** ✅ (+ library:read/create) |
-| **Parent** | (à créer, lié via `Parent.userId`) | — | **5 perms** (scopées à ses enfants) |
-| **Élève** | (à créer, lié via `Student.userId`) | — | **3 perms** (scopées à lui-même) |
+> ⚠️ Mise à jour (fix-rbac-roles, 2e passe) : la matrice de rôles a été
+> refondue pour coller au document de référence officiel (12 rôles × 15
+> domaines fonctionnels). 4 nouveaux rôles ajoutés : **Admin Établissement**,
+> **Chef de département**, **Infirmier(ère)**, **Bibliothécaire**. Les 8
+> rôles existants ont été recalibrés (voir `packages/prisma/src/seed.ts`,
+> commentaires `BUSINESS_ROLES`, pour le détail domaine par domaine).
 
-**Tous les comptes sont prêts à être testés !**
+| Profil | Permissions | Notes |
+|--------|-------------|-------|
+| **Super Admin** | **108 perms** (toutes) | Multi-établissements |
+| **Admin Établissement** | **93 perms** | Nouveau — admin technique d'UN tenant : config, moteur de calcul, users (dont delete), structure CRUD, RH/patrimoine CRUD. Pas de grades:publish (validation pédagogique = Directeur) |
+| **Directeur** | **51 perms** | +discipline:create (valide sanctions/conseil de discipline) |
+| **Censeur** | **41 perms** | +periods CRUD, +classrooms CRUD, +subject-assignments:create, +timetables CRUD, +bulletins:generate/read, +attendance:update, +school-life, +catering |
+| **Chef de département** | **34 perms** | Nouveau — matières/UE-EC/assignations/classes/emplois du temps de son département, discipline:create, clubs/événements |
+| **Enseignant** | **19 perms** | Inchangé (déjà aligné) |
+| **Intendant** | **24 perms** | +hr:read/create/update (paie, bulletins de paie, CNPS), +assets:delete |
+| **Secrétaire** | **31 perms** | +bulletins:generate/read/send, +transport:read/create, +catering:read/create |
+| **Infirmier(ère)** | **3 perms** | Nouveau — socle minimal (students:read, internal-messages). ⚠️ Aucun module santé backend n'existe (voir écarts documentés) |
+| **Bibliothécaire** | **6 perms** | Nouveau — library:read/create/update + students:read + internal-messages |
+| **Parent** | **5 perms** | Scopé à ses enfants (anti-IDOR, cf. `student-scope.util.ts`) |
+| **Élève** | **3 perms** | Scopé à lui-même (anti-IDOR, cf. `student-scope.util.ts`) |
+
+**Comptes de démonstration** (`directeur@demo.scholaris.cm`, etc.) : seuls 5 existent
+historiquement côté données de test (`populate-test-data.ts`). Les 4 nouveaux rôles
+(Admin Établissement, Chef de département, Infirmier(ère), Bibliothécaire) et les
+comptes Parent/Élève doivent être créés/assignés via `PUT /api/users/:id/roles`
+après le seed.
 
 ---
 
