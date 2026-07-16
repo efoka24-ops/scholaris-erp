@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { resourceClient } from "@/lib/api-client";
 import { formatAmount, PAYMENT_METHOD_LABELS, type Invoice, type PaymentMethod } from "@/types/finance";
@@ -10,6 +10,14 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function NewPaymentPage() {
+  return (
+    <Suspense fallback={null}>
+      <NewPaymentForm />
+    </Suspense>
+  );
+}
+
+function NewPaymentForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const invoiceIdParam = searchParams?.get("invoiceId") ?? "";
