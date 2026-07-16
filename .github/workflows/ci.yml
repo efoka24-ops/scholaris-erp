@@ -1,0 +1,121 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main, preprod]
+  push:
+    branches: [main, preprod]
+
+env:
+  NODE_VERSION: "20"
+
+jobs:
+  lint-build-test:
+    name: Lint, build & tests unitaires
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: scholaris_test
+          POSTGRES_USER: scholaris
+          POSTGRES_PASSWORD: scholaris_test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U scholaris -d scholaris_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://scholaris:scholaris_test_password@localhost:5432/scholaris_test?schema=public
+      REDIS_URL: redis://localhost:6379
+      JWT_ACCESS_SECRET: ci-test-access-secret
+      JWT_REFRESH_SECRET: ci-test-refresh-secret
+      CORS_ORIGIN: http://localhost:3000
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+
+      - name: Installer les dépendances
+        run: npm ci
+
+      - name: Générer le client Prisma
+        run: npm run db:generate
+
+      - name: Appliquer les migrations (base de test)
+        run: npx prisma migrate deploy --schema=packages/prisma/prisma/schema.prisma
+
+      - name: Lint (tsc --noEmit sur chaque workspace)
+        run: npm run lint
+
+      - name: Build (turbo run build)
+        run: npm run build
+
+      - name: Tests unitaires
+        run: npm run test
+
+      - name: Tests e2e — apps/api
+        run: npm run test:e2e --workspace=@scholaris/api
+
+  # Job optionnel, ne bloque pas la PR par défaut si les navigateurs Playwright ne sont
+  # pas encore installés dans l'image — décommenter `continue-on-error: false` une fois
+  # le pipeline stabilisé.
+  e2e-web:
+    name: Tests e2e — apps/web (Playwright)
+    runs-on: ubuntu-latest
+    needs: lint-build-test
+    continue-on-error: true
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: scholaris_test
+          POSTGRES_USER: scholaris
+          POSTGRES_PASSWORD: scholaris_test_password
+        ports:
+          - 5432:5432
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+
+    env:
+      DATABASE_URL: postgresql://scholaris:scholaris_test_password@localhost:5432/scholaris_test?schema=public
+      REDIS_URL: redis://localhost:6379
+      JWT_ACCESS_SECRET: ci-test-access-secret
+      JWT_REFRESH_SECRET: ci-test-refresh-secret
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+      - run: npm ci
+      - run: npm run db:generate
+      - run: npx prisma migrate deploy --schema=packages/prisma/prisma/schema.prisma
+      - run: npx playwright install --with-deps chromium
+        working-directory: apps/web
+      - run: npm run build --workspace=@scholaris/web
+      - run: npx playwright test
+        working-directory: apps/web

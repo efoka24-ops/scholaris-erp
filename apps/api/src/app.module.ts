@@ -9,6 +9,7 @@ import { PermissionsGuard } from "./common/guards/permissions.guard";
 import { PrismaModule } from "./prisma/prisma.module";
 import { AuthModule } from "./modules/auth/auth.module";
 import { HealthModule } from "./modules/health/health.module";
+import { MetricsModule } from "./modules/metrics/metrics.module";
 import { StructureModule } from "./modules/structure/structure.module";
 import { CommunicationsModule } from "./modules/communications/communications.module";
 import { AuditModule } from "./modules/audit/audit.module";
@@ -50,6 +51,7 @@ import { HrModule } from "./modules/hr/hr.module";
     AuditModule,
     AuthModule,
     HealthModule,
+    MetricsModule,
     StructureModule,
     CommunicationsModule,
     AcademicYearsModule,
@@ -83,5 +85,6 @@ import { HrModule } from "./modules/hr/hr.module";
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
     consumer.apply(RequestContextMiddleware).forRoutes("*");
+    // Le middleware de métriques Prometheus est appliqué via MetricsModule (voir metrics.module.ts).
   }
 }
