@@ -20,6 +20,7 @@ const tenantSchema = z.object({
   phone: z.string().optional(),
   email: z.union([z.string().email("Email invalide"), z.literal("")]).optional(),
   logoUrl: z.union([z.string().url("URL invalide"), z.literal("")]).optional(),
+  publicEnrollmentEnabled: z.boolean().optional(),
 });
 type TenantInput = z.infer<typeof tenantSchema>;
 
@@ -51,7 +52,7 @@ export default function EstablishmentSettingsPage() {
 
   const form = useForm<TenantInput>({
     resolver: zodResolver(tenantSchema),
-    defaultValues: { name: "", address: "", phone: "", email: "", logoUrl: "" },
+    defaultValues: { name: "", address: "", phone: "", email: "", logoUrl: "", publicEnrollmentEnabled: false },
   });
 
   useEffect(() => {
@@ -70,6 +71,7 @@ export default function EstablishmentSettingsPage() {
           phone: t.phone ?? "",
           email: t.email ?? "",
           logoUrl: t.logoUrl ?? "",
+          publicEnrollmentEnabled: t.publicEnrollmentEnabled ?? false,
         });
         setEnabledModules(modulesRes.data?.data ?? modulesRes.data ?? []);
       })
@@ -88,6 +90,7 @@ export default function EstablishmentSettingsPage() {
         ...(values.phone ? { phone: values.phone } : {}),
         ...(values.email ? { email: values.email } : {}),
         ...(values.logoUrl ? { logoUrl: values.logoUrl } : {}),
+        publicEnrollmentEnabled: values.publicEnrollmentEnabled ?? false,
       };
       const { data } = await resourceClient.put(`/tenants/${user.tenantId}`, payload);
       setTenant(data?.data ?? data);
@@ -210,6 +213,30 @@ export default function EstablishmentSettingsPage() {
                   )}
                 />
               </div>
+              <FormField
+                control={form.control}
+                name="publicEnrollmentEnabled"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start gap-2 space-y-0">
+                    <FormControl>
+                      <input
+                        type="checkbox"
+                        checked={field.value ?? false}
+                        onChange={(e) => field.onChange(e.target.checked)}
+                        disabled={!canUpdate}
+                        className="mt-1 h-4 w-4 rounded border-border"
+                      />
+                    </FormControl>
+                    <div>
+                      <FormLabel>Visible dans l'annuaire public de pré-inscription</FormLabel>
+                      <p className="text-xs text-muted-foreground">
+                        Les parents pourront choisir cet établissement depuis le formulaire de pré-inscription en
+                        ligne (page vitrine, sans authentification).
+                      </p>
+                    </div>
+                  </FormItem>
+                )}
+              />
               {canUpdate ? (
                 <Button type="submit" disabled={form.formState.isSubmitting} className="w-fit">
                   {form.formState.isSubmitting ? "Enregistrement…" : "Enregistrer les modifications"}

@@ -1,4 +1,5 @@
-import { Body, Controller, Get, Param, Post, Put, Query } from "@nestjs/common";
+import { Body, Controller, Get, Param, Post, Put, Query, Res } from "@nestjs/common";
+import type { Response } from "express";
 import { ApiBearerAuth, ApiQuery, ApiTags } from "@nestjs/swagger";
 import { AdmissionStatus } from "@scholaris/prisma";
 import { RequirePermissions } from "../../common/decorators/require-permissions.decorator";
@@ -53,5 +54,16 @@ export class AdmissionsController {
   @RequirePermissions("admissions:decide")
   decide(@Param("id") id: string, @Body() dto: AdmissionDecisionDto) {
     return this.admissionsService.decide(id, dto);
+  }
+
+  @Get(":id/documents/:fileName")
+  @RequirePermissions("admissions:read")
+  async downloadDocument(
+    @Param("id") id: string,
+    @Param("fileName") fileName: string,
+    @Res() res: Response,
+  ) {
+    const path = await this.admissionsService.getDocumentPath(id, fileName);
+    res.sendFile(path);
   }
 }

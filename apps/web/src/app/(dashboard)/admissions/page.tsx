@@ -105,6 +105,32 @@ export default function AdmissionsPage() {
       cell: ({ row }) => ADMISSION_STATUS_LABELS[row.original.status],
     },
     {
+      id: "documents",
+      header: "Bulletins",
+      cell: ({ row }) => {
+        const documents = (row.original.applicantInfo?.documents ?? []) as Array<{
+          fileName: string;
+          originalName: string;
+        }>;
+        if (documents.length === 0) return <span className="text-muted-foreground">—</span>;
+        return (
+          <div className="flex flex-col gap-0.5">
+            {documents.map((doc) => (
+              <a
+                key={doc.fileName}
+                href={`/api/admissions/${row.original.id}/documents/${doc.fileName}`}
+                target="_blank"
+                rel="noreferrer"
+                className="truncate text-xs text-primary underline underline-offset-2"
+              >
+                {doc.originalName}
+              </a>
+            ))}
+          </div>
+        );
+      },
+    },
+    {
       id: "actions",
       header: "Décision",
       cell: ({ row }) =>

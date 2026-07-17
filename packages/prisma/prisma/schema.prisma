@@ -33,6 +33,8 @@ model Tenant {
   phone      String?
   email      String?
   logoUrl    String?      @map("logo_url")
+  // Visible dans l'annuaire public de pré-inscription (site vitrine) — opt-in explicite.
+  publicEnrollmentEnabled Boolean @default(false) @map("public_enrollment_enabled")
   // Configuration du moteur de calcul et autres paramètres (§1.4 du guide)
   configJson Json?        @map("config_json")
   createdAt  DateTime     @default(now()) @map("created_at")

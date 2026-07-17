@@ -15,3 +15,6 @@ test-results
 
 # Claude worktrees
 .claude/
+
+# Documents deposes via l'upload (pieces jointes admissions, etc.)
+apps/api/uploads/

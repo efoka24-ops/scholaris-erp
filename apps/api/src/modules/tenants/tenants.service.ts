@@ -21,6 +21,33 @@ export class TenantsService {
   }
 
   /**
+   * Annuaire public des établissements ayant explicitement activé la
+   * pré-inscription en ligne (publicEnrollmentEnabled=true). Utilisé par le
+   * sélecteur d'établissement du formulaire public /inscription — aucune
+   * authentification, donc aucun champ sensible retourné.
+   */
+  async findPublicList(search?: string): Promise<
+    Array<{ id: string; code: string; name: string; type: Tenant["type"]; logoUrl: string | null }>
+  > {
+    const tenants = await this.prisma.tenant.findMany({
+      where: {
+        deletedAt: null,
+        publicEnrollmentEnabled: true,
+        ...(search ? { name: { contains: search, mode: "insensitive" as const } } : {}),
+      },
+      orderBy: { name: "asc" },
+      take: 50,
+    });
+    return tenants.map((tenant) => ({
+      id: tenant.id,
+      code: tenant.code,
+      name: tenant.name,
+      type: tenant.type,
+      logoUrl: tenant.logoUrl,
+    }));
+  }
+
+  /**
    * Résolution publique d'un établissement par son code (page vitrine, sans
    * authentification). Ne retourne que des informations non sensibles :
    * jamais configJson ni aucun champ interne.

@@ -480,12 +480,13 @@ async function main() {
   console.log(`→ Seed du tenant "${tenantCode}"…`);
   const tenant = await prisma.tenant.upsert({
     where: { code: tenantCode },
-    update: {},
+    update: { publicEnrollmentEnabled: true },
     create: {
       code: tenantCode,
       name: tenantName,
       type: TenantType.SECONDAIRE,
       status: TenantStatus.PUBLIC,
+      publicEnrollmentEnabled: true,
       configJson: {
         moteurCalcul: {
           typeOrganisation: "SEQUENTIEL",

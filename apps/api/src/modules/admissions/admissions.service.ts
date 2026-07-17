@@ -5,6 +5,14 @@ import { PrismaService } from "../../prisma/prisma.service";
 import { AdmissionDecisionDto } from "./dto/admission-decision.dto";
 import { CreateAdmissionDto } from "./dto/create-admission.dto";
 import { CreatePublicAdmissionDto } from "./dto/create-public-admission.dto";
+import {
+  ALLOWED_DOCUMENT_MIME_TYPES,
+  MAX_DOCUMENTS_PER_APPLICATION,
+  MAX_DOCUMENT_SIZE_BYTES,
+  resolveAdmissionDocumentPath,
+  saveAdmissionDocument,
+  StoredDocumentMeta,
+} from "./admission-documents.storage";
 
 export interface FindAdmissionsQuery {
   page?: number;
@@ -136,5 +144,55 @@ export class AdmissionsService {
         ...(dto.rank !== undefined ? { rank: dto.rank } : {}),
       },
     });
+  }
+
+  /**
+   * Dépôt des pièces jointes d'une pré-inscription publique (bulletins de
+   * l'ancien établissement). Appelé juste après createPublic, sans
+   * authentification — d'où la validation stricte de type/taille/quota.
+   */
+  async addDocuments(applicationId: string, files: Express.Multer.File[]): Promise<StoredDocumentMeta[]> {
+    const application = await this.findOne(applicationId);
+
+    const existing = ((application.applicantInfo as Record<string, unknown> | null)?.documents ??
+      []) as StoredDocumentMeta[];
+    if (existing.length + files.length > MAX_DOCUMENTS_PER_APPLICATION) {
+      throw new BadRequestException(`Maximum ${MAX_DOCUMENTS_PER_APPLICATION} documents par candidature`);
+    }
+    for (const file of files) {
+      if (!ALLOWED_DOCUMENT_MIME_TYPES.includes(file.mimetype)) {
+        throw new BadRequestException(`Type de fichier non autorisé : ${file.mimetype} (PDF, JPEG ou PNG uniquement)`);
+      }
+      if (file.size > MAX_DOCUMENT_SIZE_BYTES) {
+        throw new BadRequestException(`Fichier trop volumineux : ${file.originalname} (5 Mo maximum)`);
+      }
+    }
+
+    const saved = await Promise.all(files.map((file) => saveAdmissionDocument(applicationId, file)));
+    const documents = [...existing, ...saved];
+
+    await this.prisma.admissionApplication.update({
+      where: { id: applicationId },
+      data: {
+        applicantInfo: {
+          ...(application.applicantInfo as Record<string, unknown> | null),
+          documents,
+        } as unknown as Prisma.InputJsonValue,
+      },
+    });
+
+    return documents;
+  }
+
+  /** Résout le chemin disque d'un document déjà attaché à la candidature (pour téléchargement authentifié). */
+  async getDocumentPath(applicationId: string, fileName: string): Promise<string> {
+    const application = await this.findOne(applicationId);
+    const documents = ((application.applicantInfo as Record<string, unknown> | null)?.documents ??
+      []) as StoredDocumentMeta[];
+    const found = documents.find((doc) => doc.fileName === fileName);
+    if (!found) {
+      throw new NotFoundException("Document introuvable pour cette candidature");
+    }
+    return resolveAdmissionDocumentPath(applicationId, fileName);
   }
 }

@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from "@nestjs/swagger";
-import { IsEmail, IsNotEmpty, IsOptional, IsString, IsUrl } from "class-validator";
+import { IsBoolean, IsEmail, IsNotEmpty, IsOptional, IsString, IsUrl } from "class-validator";
 
 export class UpdateTenantDto {
   @ApiPropertyOptional({ example: "Lycée Bilingue de Yaoundé" })
@@ -27,4 +27,9 @@ export class UpdateTenantDto {
   @IsOptional()
   @IsUrl({}, { message: "URL de logo invalide" })
   logoUrl?: string;
+
+  @ApiPropertyOptional({ description: "Visible dans l'annuaire public de pré-inscription en ligne" })
+  @IsOptional()
+  @IsBoolean()
+  publicEnrollmentEnabled?: boolean;
 }

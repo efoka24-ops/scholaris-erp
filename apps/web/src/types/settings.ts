@@ -51,6 +51,7 @@ export interface Tenant {
   phone: string | null;
   email: string | null;
   logoUrl: string | null;
+  publicEnrollmentEnabled?: boolean;
   configJson: unknown;
 }
 
