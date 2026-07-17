@@ -28,11 +28,18 @@ export default function LoginPage() {
     try {
       await login(values.email, values.password, values.mfaCode || undefined);
     } catch (error: any) {
+      const status = error.response?.status;
       if (error.response?.data?.mfaRequired) {
         setMfaRequired(true);
         setServerError("Ce compte est protégé par MFA : saisissez le code de votre application d'authentification.");
       } else if (mfaRequired) {
         setServerError("Code MFA invalide ou identifiants incorrects.");
+      } else if (status && status !== 401) {
+        // 500/502/... : ne PAS afficher "identifiants invalides", c'est trompeur —
+        // le problème vient du serveur (ex : NEST_API_URL mal configuré), pas du mot de passe.
+        setServerError(
+          error.response?.data?.error ?? "Erreur de connexion au serveur. Réessayez dans un instant.",
+        );
       } else {
         setServerError("Identifiants invalides. Vérifiez votre email et votre mot de passe.");
       }

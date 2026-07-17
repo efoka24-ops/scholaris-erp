@@ -6,7 +6,8 @@
     },
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**", ".next/**", "!.next/cache/**"]
+      "outputs": ["dist/**", ".next/**", "!.next/cache/**"],
+      "env": ["NEST_API_URL", "NEXT_PUBLIC_TENANT_CODE", "DATABASE_URL"]
     },
     "dev": {
       "cache": false,
