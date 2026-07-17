@@ -1,8 +1,10 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
-import { Payment } from "@scholaris/prisma";
+import { Payment, Prisma } from "@scholaris/prisma";
+import { buildPaginationMeta, DEFAULT_LIMIT, DEFAULT_PAGE, MAX_LIMIT, PaginatedResult } from "@scholaris/shared";
 import { PrismaService } from "../../prisma/prisma.service";
 import { ReceiptService } from "./receipt.service";
 import { CreatePaymentDto } from "./dto/create-payment.dto";
+import { FindPaymentsQueryDto } from "./dto/find-payments-query.dto";
 import { computeInvoiceStatus, roundAmount } from "./invoice-status.util";
 
 @Injectable()
@@ -65,6 +67,42 @@ export class PaymentsService {
 
       return payment;
     });
+  }
+
+  /** Liste paginée des paiements, triée par date de paiement décroissante (le plus récent en premier). */
+  async findAll(query: FindPaymentsQueryDto): Promise<PaginatedResult<Payment>> {
+    const page = query.page ?? DEFAULT_PAGE;
+    const limit = Math.min(query.limit ?? DEFAULT_LIMIT, MAX_LIMIT);
+
+    const where: Prisma.PaymentWhereInput = {
+      ...(query.studentId ? { studentId: query.studentId } : {}),
+      ...(query.invoiceId ? { invoiceId: query.invoiceId } : {}),
+      ...(query.method ? { method: query.method } : {}),
+      ...(query.dateFrom || query.dateTo
+        ? {
+            paidAt: {
+              ...(query.dateFrom ? { gte: new Date(query.dateFrom) } : {}),
+              ...(query.dateTo ? { lte: new Date(query.dateTo) } : {}),
+            },
+          }
+        : {}),
+    };
+
+    const [data, total] = await Promise.all([
+      this.prisma.payment.findMany({
+        where,
+        orderBy: { paidAt: "desc" },
+        skip: (page - 1) * limit,
+        take: limit,
+        include: {
+          student: true,
+          invoice: true,
+        },
+      }),
+      this.prisma.payment.count({ where }),
+    ]);
+
+    return { data, meta: buildPaginationMeta(total, page, limit) };
   }
 
   async findOne(id: string): Promise<Payment> {

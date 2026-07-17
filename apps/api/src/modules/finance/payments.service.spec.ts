@@ -9,7 +9,7 @@ describe("PaymentsService", () => {
   let prisma: {
     invoice: { findFirst: jest.Mock; update: jest.Mock };
     tenant: { findFirst: jest.Mock };
-    payment: { create: jest.Mock; findFirst: jest.Mock };
+    payment: { create: jest.Mock; findFirst: jest.Mock; findMany: jest.Mock; count: jest.Mock };
     receiptSequence: { upsert: jest.Mock };
     $transaction: jest.Mock;
   };
@@ -29,7 +29,7 @@ describe("PaymentsService", () => {
     prisma = {
       invoice: { findFirst: jest.fn().mockResolvedValue(invoice), update: jest.fn() },
       tenant: { findFirst: jest.fn().mockResolvedValue({ id: "tenant-1", code: "LBD" }) },
-      payment: { create: jest.fn(), findFirst: jest.fn() },
+      payment: { create: jest.fn(), findFirst: jest.fn(), findMany: jest.fn(), count: jest.fn() },
       receiptSequence: { upsert: jest.fn().mockResolvedValue({ lastNumber: 1 }) },
       $transaction: jest.fn((callback: (tx: unknown) => unknown) => callback(prisma)),
     };
@@ -97,6 +97,56 @@ describe("PaymentsService", () => {
         where: { tenantId_year: { tenantId: "tenant-1", year: String(new Date().getFullYear()) } },
         update: { lastNumber: { increment: 1 } },
         create: { tenantId: "tenant-1", year: String(new Date().getFullYear()), lastNumber: 1 },
+      });
+    });
+  });
+
+  describe("findAll", () => {
+    it("retourne une liste paginée triée par date de paiement décroissante", async () => {
+      const payments = [{ id: "payment-2" }, { id: "payment-1" }];
+      prisma.payment.findMany.mockResolvedValue(payments);
+      prisma.payment.count.mockResolvedValue(2);
+
+      const result = await service.findAll({});
+
+      expect(prisma.payment.findMany).toHaveBeenCalledWith({
+        where: {},
+        orderBy: { paidAt: "desc" },
+        skip: 0,
+        take: 20,
+        include: { student: true, invoice: true },
+      });
+      expect(result).toEqual({
+        data: payments,
+        meta: { total: 2, page: 1, limit: 20, totalPages: 1 },
+      });
+    });
+
+    it("applique les filtres studentId/invoiceId/method/dates et la pagination", async () => {
+      prisma.payment.findMany.mockResolvedValue([]);
+      prisma.payment.count.mockResolvedValue(0);
+
+      await service.findAll({
+        page: 2,
+        limit: 10,
+        studentId: "student-1",
+        invoiceId: "invoice-1",
+        method: PaymentMethod.MOBILE_MONEY,
+        dateFrom: "2026-01-01",
+        dateTo: "2026-01-31",
+      });
+
+      expect(prisma.payment.findMany).toHaveBeenCalledWith({
+        where: {
+          studentId: "student-1",
+          invoiceId: "invoice-1",
+          method: PaymentMethod.MOBILE_MONEY,
+          paidAt: { gte: new Date("2026-01-01"), lte: new Date("2026-01-31") },
+        },
+        orderBy: { paidAt: "desc" },
+        skip: 10,
+        take: 10,
+        include: { student: true, invoice: true },
       });
     });
   });

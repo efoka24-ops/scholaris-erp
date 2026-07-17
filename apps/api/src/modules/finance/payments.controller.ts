@@ -1,9 +1,10 @@
-import { Body, Controller, Get, Param, Post } from "@nestjs/common";
+import { Body, Controller, Get, Param, Post, Query } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { RequirePermissions } from "../../common/decorators/require-permissions.decorator";
 import type { AuthenticatedUser } from "../auth/jwt-payload.interface";
 import { CreatePaymentDto } from "./dto/create-payment.dto";
+import { FindPaymentsQueryDto } from "./dto/find-payments-query.dto";
 import { PaymentsService } from "./payments.service";
 
 @ApiTags("payments")
@@ -16,6 +17,12 @@ export class PaymentsController {
   @RequirePermissions("payments:create")
   create(@Body() dto: CreatePaymentDto, @CurrentUser() user: AuthenticatedUser) {
     return this.paymentsService.create(dto, user.tenantId, user.userId);
+  }
+
+  @Get()
+  @RequirePermissions("payments:read")
+  findAll(@Query() query: FindPaymentsQueryDto) {
+    return this.paymentsService.findAll(query);
   }
 
   @Get(":id")
