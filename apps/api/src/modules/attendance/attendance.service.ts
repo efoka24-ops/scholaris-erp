@@ -95,7 +95,7 @@ export class AttendanceService {
           data: {
             tenantId,
             studentId: record.studentId,
-            classroomId: record.classroomId,
+            classroomId: dto.classroomId,
             date: new Date(dto.date),
             status: record.status,
             reason: record.notes,

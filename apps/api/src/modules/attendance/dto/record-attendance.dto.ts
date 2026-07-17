@@ -4,7 +4,7 @@ import { Type } from 'class-transformer';
 class AttendanceRecordItem {
   @IsString()
   @IsNotEmpty()
-  enrollmentId!: string;
+  studentId!: string;
 
   @IsEnum(['PRESENT', 'ABSENT', 'LATE', 'EXCUSED'])
   status!: string;
@@ -18,6 +18,10 @@ export class RecordAttendanceDto {
   @IsString()
   @IsNotEmpty()
   date!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  classroomId!: string;
 
   @IsArray()
   @ValidateNested({ each: true })
