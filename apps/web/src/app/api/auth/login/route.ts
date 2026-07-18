@@ -18,6 +18,12 @@ export async function POST(request: NextRequest) {
     const message = error.response?.data?.message ?? "Erreur de connexion au serveur";
     // mfaRequired : le compte exige un code TOTP — le formulaire de login affiche le champ.
     const mfaRequired = error.response?.data?.mfaRequired === true;
-    return NextResponse.json({ success: false, error: message, mfaRequired }, { status });
+    // Diagnostic temporaire (retirer une fois la connexion Vercel<->Railway confirmée stable) :
+    // sans .response, error.code (ENOTFOUND/ECONNREFUSED/ETIMEDOUT...) révèle la vraie cause
+    // réseau sans avoir besoin des Runtime Logs Vercel.
+    const debug = !error.response
+      ? { code: error.code ?? null, cause: error.cause?.message ?? null, baseURL: error.config?.baseURL ?? null }
+      : undefined;
+    return NextResponse.json({ success: false, error: message, mfaRequired, debug }, { status });
   }
 }
