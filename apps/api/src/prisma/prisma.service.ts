@@ -76,11 +76,23 @@ const TENANT_SCOPED_MODELS = new Set([
 const READ_ACTIONS = new Set(["findFirst", "findMany", "count", "aggregate", "groupBy"]);
 const WRITE_MANY_ACTIONS = new Set(["updateMany", "deleteMany"]);
 
-function mergeTenantWhere(where: Record<string, unknown> | undefined, model: string, tenantId: string) {
+// `uniqueWhere` = true pour update/delete/findUnique, où Prisma exige que
+// l'identifiant unique (id / tenantId_name) reste AU PREMIER NIVEAU du `where`.
+// La forme `{ AND: [ {id}, {OR:...} ] }` enfouit l'id dans un AND et Prisma
+// rejette alors l'opération ("needs at least one of id or tenantId_name") —
+// c'était la cause des 500 sur PUT/DELETE /api/roles/:id. Pour ces actions on
+// étale donc le where et on ajoute le filtre tenant en `OR` de premier niveau.
+function mergeTenantWhere(
+  where: Record<string, unknown> | undefined,
+  model: string,
+  tenantId: string,
+  uniqueWhere = false,
+) {
   const base = where ?? {};
   if (model === "Role") {
     // Un utilisateur voit les rôles de son établissement + les rôles système (tenantId null).
-    return { AND: [base, { OR: [{ tenantId }, { tenantId: null }] }] };
+    const tenantFilter = { OR: [{ tenantId }, { tenantId: null }] };
+    return uniqueWhere ? { ...base, ...tenantFilter } : { AND: [base, tenantFilter] };
   }
   return { ...base, tenantId };
 }
@@ -151,12 +163,14 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
       params.args = params.args ?? {};
 
       if (action === "findUnique") {
+        // findUnique devient findFirst : son where ciblait déjà un identifiant unique.
         params.action = "findFirst";
-        params.args.where = mergeTenantWhere(params.args.where, model, tenantId);
+        params.args.where = mergeTenantWhere(params.args.where, model, tenantId, true);
       } else if (READ_ACTIONS.has(action) || WRITE_MANY_ACTIONS.has(action)) {
         params.args.where = mergeTenantWhere(params.args.where, model, tenantId);
       } else if (action === "update" || action === "delete") {
-        params.args.where = mergeTenantWhere(params.args.where, model, tenantId);
+        // update/delete par identifiant unique : garder l'id au premier niveau.
+        params.args.where = mergeTenantWhere(params.args.where, model, tenantId, true);
       }
       // "create" n'est pas auto-filtré : le service appelant doit poser tenantId
       // explicitement (une création n'a pas de "where" sur lequel greffer un filtre).

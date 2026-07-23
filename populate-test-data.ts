@@ -624,6 +624,19 @@ async function main() {
 
   console.log(`✅ ${students.length} élèves créés et inscrits\n`);
 
+  // 5ter. SÉQUENCE DE MATRICULE — synchroniser avec les matricules déjà posés.
+  // Les élèves ci-dessus ont des matricules figés (DEMO/2026/0001..0010). Sans
+  // initialiser la séquence, la 1ʳᵉ inscription via l'API repartirait à 0001 et
+  // collisionnerait (contrainte unique [tenantId, matricule]) → 500. On cale donc
+  // la séquence 2026 sur le plus grand numéro séquentiel utilisé (10), pour que la
+  // prochaine génération produise DEMO/2026/0011.
+  await prisma.matriculeSequence.upsert({
+    where: { tenantId_year: { tenantId: tenant.id, year: "2026" } },
+    update: { lastNumber: Math.max(10, students.length) },
+    create: { tenantId: tenant.id, year: "2026", lastNumber: Math.max(10, students.length) },
+  });
+  console.log("✅ Séquence de matricule 2026 synchronisée\n");
+
   // 5bis. COMPTES PARENT / ÉLÈVE LIÉS (pour tests RBAC scopé, anti-IDOR)
   console.log("👨‍👩‍👧 Création des comptes Parent/Élève liés...");
 
