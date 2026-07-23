@@ -133,13 +133,16 @@ export default function EstablishmentSettingsPage() {
           <CardDescription>Nom, adresse, contacts et identifiants officiels</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Libellés simples (hors <Form>) : FormLabel appelle useFormContext()
+              qui est null en dehors du provider → crash client. On utilise donc
+              des <label> natifs pour ces deux champs en lecture seule. */}
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <FormLabel>Code établissement</FormLabel>
+              <label className="text-sm font-medium">Code établissement</label>
               <Input value={tenant?.code ?? ""} disabled />
             </div>
             <div className="space-y-2">
-              <FormLabel>Type</FormLabel>
+              <label className="text-sm font-medium">Type</label>
               <Input value={tenant?.type ?? ""} disabled />
             </div>
           </div>
