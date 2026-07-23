@@ -123,6 +123,7 @@ const NAV_SECTIONS: NavSection[] = [
     label: "Configuration",
     items: [
       { href: "/settings/establishments", label: "Établissements", icon: Building },
+      { href: "/settings/establishment-requests", label: "Demandes d'établissement", icon: ClipboardList },
       { href: "/settings/establishment", label: "Mon établissement", icon: Settings },
       { href: "/settings/users", label: "Utilisateurs", icon: Users },
       { href: "/settings/roles", label: "Rôles & Permissions", icon: Users },

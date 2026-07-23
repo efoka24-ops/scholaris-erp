@@ -1679,3 +1679,38 @@ model Bulletin {
   @@index([tenantId, classroomId, periodId])
   @@map("bulletins")
 }
+
+// ─── Demande de création d'établissement (auto-inscription directeur) ────────
+// Modèle B : un directeur soumet une demande publique (sans authentification),
+// le Super Admin la valide, ce qui crée le Tenant + le compte directeur (rôle
+// Admin Établissement) et déclenche l'envoi des identifiants par email.
+// N'EST PAS tenant-scopé : aucun établissement n'existe encore au dépôt.
+
+enum EstablishmentRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model EstablishmentRequest {
+  id     String       @id @default(uuid())
+  name   String
+  code   String
+  type   TenantType
+  status TenantStatus @default(PUBLIC)
+  address String?
+  phone   String?
+  email   String?
+  directorFirstName String @map("director_first_name")
+  directorLastName  String @map("director_last_name")
+  directorEmail     String @map("director_email")
+  directorPhone     String? @map("director_phone")
+  requestStatus   EstablishmentRequestStatus @default(PENDING) @map("request_status")
+  rejectionReason String?                    @map("rejection_reason")
+  createdTenantId String?                    @map("created_tenant_id")
+  createdAt       DateTime                   @default(now()) @map("created_at")
+  updatedAt       DateTime                   @updatedAt @map("updated_at")
+
+  @@index([requestStatus])
+  @@map("establishment_requests")
+}

@@ -68,9 +68,16 @@ export default function RootPage() {
               <Link href="/inscription">Faire une pré-inscription</Link>
             </Button>
             <Button asChild variant="outline" size="lg">
+              <Link href="/creer-etablissement">Créer un établissement</Link>
+            </Button>
+            <Button asChild variant="outline" size="lg">
               <Link href="/login">Se connecter</Link>
             </Button>
           </div>
+          <p className="text-xs text-muted-foreground">
+            Directeur d&apos;école ? « Créer un établissement » vous permet de demander l&apos;ouverture de votre
+            espace ; après validation, vous recevrez vos identifiants par email.
+          </p>
         </section>
 
         <section>

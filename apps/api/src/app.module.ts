@@ -34,6 +34,8 @@ import { TransportModule } from "./modules/transport/transport.module";
 import { CateringModule } from "./modules/catering/catering.module";
 import { AssetsModule } from "./modules/assets/assets.module";
 import { HrModule } from "./modules/hr/hr.module";
+import { MailModule } from "./common/mail/mail.module";
+import { EstablishmentRequestsModule } from "./modules/establishment-requests/establishment-requests.module";
 
 @Module({
   imports: [
@@ -48,6 +50,7 @@ import { HrModule } from "./modules/hr/hr.module";
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]),
     RequestContextModule,
     PrismaModule,
+    MailModule,
     AuditModule,
     AuthModule,
     HealthModule,
@@ -75,6 +78,7 @@ import { HrModule } from "./modules/hr/hr.module";
     CateringModule,
     AssetsModule,
     HrModule,
+    EstablishmentRequestsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
