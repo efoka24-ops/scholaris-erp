@@ -23,11 +23,23 @@ interface UsersStats {
 
 interface AcademicYear {
   id: string;
-  name: string;
+  label: string;
   startDate: string;
   endDate: string;
   status: string;
 }
+
+const TENANT_TYPE_LABELS: Record<string, string> = {
+  PRIMAIRE: "Primaire",
+  SECONDAIRE: "Secondaire",
+  SUPERIEUR: "Supérieur",
+  TECHNIQUE: "Technique",
+  FORMATION_PRO: "Formation professionnelle",
+};
+const TENANT_STATUS_LABELS: Record<string, string> = {
+  PUBLIC: "Public",
+  PRIVE: "Privé",
+};
 
 export default function DashboardPage() {
   const { user, isLoading: authLoading } = useAuth();
@@ -92,8 +104,8 @@ export default function DashboardPage() {
               <>
                 <div className="text-2xl font-bold">{tenant.name}</div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {tenant.type === "public" ? "Public" : "Privé"} •{" "}
-                  {tenant.status === "active" ? "Actif" : "Inactif"}
+                  {TENANT_TYPE_LABELS[tenant.type] ?? tenant.type} •{" "}
+                  {TENANT_STATUS_LABELS[tenant.status] ?? tenant.status}
                 </p>
               </>
             ) : (
@@ -132,7 +144,7 @@ export default function DashboardPage() {
           <CardContent>
             {academicYear ? (
               <>
-                <div className="text-2xl font-bold">{academicYear.name}</div>
+                <div className="text-2xl font-bold">{academicYear.label}</div>
                 <p className="text-xs text-muted-foreground mt-1">
                   {new Date(academicYear.startDate).toLocaleDateString("fr-FR")} →{" "}
                   {new Date(academicYear.endDate).toLocaleDateString("fr-FR")}
