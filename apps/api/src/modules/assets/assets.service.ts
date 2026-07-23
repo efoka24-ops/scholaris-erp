@@ -45,8 +45,14 @@ export class AssetsService {
   }
 
   async create(tenantId: string, dto: any) {
+    // acquisitionDate vient d'un <input type="date"> (chaîne "AAAA-MM-JJ") :
+    // conversion explicite en DateTime pour Prisma (évite un 500 quand rempli).
     return this.prisma.asset.create({
-      data: { ...dto, tenantId },
+      data: {
+        ...dto,
+        ...(dto.acquisitionDate ? { acquisitionDate: new Date(dto.acquisitionDate) } : {}),
+        tenantId,
+      },
     });
   }
 

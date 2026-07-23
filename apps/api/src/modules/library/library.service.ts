@@ -33,8 +33,16 @@ export class LibraryService {
   }
 
   async borrowBook(tenantId: string, dto: any) {
+    // dueDate vient d'un <input type="date"> (chaîne "AAAA-MM-JJ") : conversion
+    // explicite en DateTime pour Prisma (évite un 500 sur l'emprunt).
     return this.prisma.libraryBorrow.create({
-      data: { ...dto, tenantId, borrowDate: new Date(), status: 'BORROWED' },
+      data: {
+        ...dto,
+        ...(dto.dueDate ? { dueDate: new Date(dto.dueDate) } : {}),
+        tenantId,
+        borrowDate: new Date(),
+        status: 'BORROWED',
+      },
     });
   }
 

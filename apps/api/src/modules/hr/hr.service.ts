@@ -46,8 +46,14 @@ export class HrService {
   }
 
   async createEmployee(tenantId: string, dto: any) {
+    // hireDate vient d'un <input type="date"> (chaîne "AAAA-MM-JJ") : conversion
+    // explicite en DateTime, sinon Prisma rejette (champ hireDate requis) → 500.
     return this.prisma.employee.create({
-      data: { ...dto, tenantId },
+      data: {
+        ...dto,
+        ...(dto.hireDate ? { hireDate: new Date(dto.hireDate) } : {}),
+        tenantId,
+      },
     });
   }
 

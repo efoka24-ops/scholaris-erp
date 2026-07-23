@@ -32,8 +32,16 @@ export class SchoolLifeService {
   }
 
   async createEvent(tenantId: string, dto: any) {
+    // Le formulaire envoie startDate/endDate depuis un <input type="date"> (chaîne
+    // "AAAA-MM-JJ"). Prisma exige un DateTime : on convertit explicitement, sinon
+    // la chaîne date-only fait échouer la création (500).
     return this.prisma.schoolEvent.create({
-      data: { ...dto, tenantId },
+      data: {
+        ...dto,
+        ...(dto.startDate ? { startDate: new Date(dto.startDate) } : {}),
+        ...(dto.endDate ? { endDate: new Date(dto.endDate) } : {}),
+        tenantId,
+      },
     });
   }
 }

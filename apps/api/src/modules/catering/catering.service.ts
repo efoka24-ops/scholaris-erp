@@ -13,8 +13,14 @@ export class CateringService {
   }
 
   async createMenu(tenantId: string, dto: any) {
+    // date : conversion explicite en DateTime pour accepter aussi bien une chaîne
+    // ISO complète qu'une date seule "AAAA-MM-JJ" (robustesse, évite un 500).
     return this.prisma.cateringMenu.create({
-      data: { ...dto, tenantId },
+      data: {
+        ...dto,
+        ...(dto.date ? { date: new Date(dto.date) } : {}),
+        tenantId,
+      },
     });
   }
 
