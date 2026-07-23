@@ -122,8 +122,10 @@ const NAV_SECTIONS: NavSection[] = [
   {
     label: "Configuration",
     items: [
-      { href: "/settings/establishment", label: "Établissement", icon: Settings },
+      { href: "/settings/establishments", label: "Établissements", icon: Building },
+      { href: "/settings/establishment", label: "Mon établissement", icon: Settings },
       { href: "/settings/users", label: "Utilisateurs", icon: Users },
+      { href: "/settings/roles", label: "Rôles & Permissions", icon: Users },
       { href: "/settings/calculation-engine", label: "Moteur de calcul", icon: Calculator },
       { href: "/settings/audit-logs", label: "Journal d'audit", icon: ScrollText },
     ],

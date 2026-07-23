@@ -8,6 +8,7 @@ const BASE_PERMISSIONS: Array<{ resource: string; action: string; description: s
   { resource: "users", action: "read", description: "Consulter les utilisateurs" },
   { resource: "users", action: "update", description: "Modifier un utilisateur" },
   { resource: "users", action: "delete", description: "Désactiver un utilisateur" },
+  { resource: "tenants", action: "create", description: "Créer un établissement (Super Admin)" },
   { resource: "tenants", action: "read", description: "Consulter l'établissement" },
   { resource: "tenants", action: "update", description: "Modifier la configuration de l'établissement" },
   { resource: "roles", action: "create", description: "Créer un rôle personnalisé" },
@@ -170,7 +171,7 @@ const BASE_PERMISSIONS: Array<{ resource: string; action: string; description: s
  * désormais intégrés ici pour qu'un seul `npx prisma db seed` produise un
  * état complet et cohérent (idempotent, upsert partout).
  */
-const BUSINESS_ROLES: Array<{ name: string; description: string; permissions: string[] }> = [
+export const BUSINESS_ROLES: Array<{ name: string; description: string; permissions: string[] }> = [
   {
     name: "Admin Établissement",
     description: "Administrateur technique de l'établissement — config, moteur de calcul, utilisateurs",
@@ -592,11 +593,16 @@ async function main() {
   console.log(`  Mot de passe : ${adminPassword} (à changer immédiatement)`);
 }
 
-main()
-  .catch((err) => {
-    console.error("✘ Échec du seed :", err);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+// Ne lance le seed que lorsque le fichier est exécuté directement
+// (`prisma db seed` / ts-node src/seed.ts), pas quand il est importé pour
+// réutiliser ses constantes (ex: BUSINESS_ROLES).
+if (require.main === module) {
+  main()
+    .catch((err) => {
+      console.error("✘ Échec du seed :", err);
+      process.exit(1);
+    })
+    .finally(async () => {
+      await prisma.$disconnect();
+    });
+}

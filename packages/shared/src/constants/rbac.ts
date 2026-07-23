@@ -14,6 +14,7 @@ export const PERMISSIONS = {
   USERS_READ: "users:read",
   USERS_UPDATE: "users:update",
   USERS_DELETE: "users:delete",
+  TENANTS_CREATE: "tenants:create",
   TENANTS_READ: "tenants:read",
   TENANTS_UPDATE: "tenants:update",
   ROLES_CREATE: "roles:create",

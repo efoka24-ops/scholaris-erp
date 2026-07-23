@@ -1,8 +1,9 @@
-import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
-import { Prisma, Tenant } from "@scholaris/prisma";
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from "@nestjs/common";
+import { Prisma, Tenant, TenantStatus } from "@scholaris/prisma";
 import { calculationEngineSchema, CalculationEngineConfig } from "@scholaris/shared";
 import { PrismaService } from "../../prisma/prisma.service";
 import { AuditService } from "../audit/audit.service";
+import { CreateTenantDto } from "./dto/create-tenant.dto";
 import { UpdateTenantDto } from "./dto/update-tenant.dto";
 
 @Injectable()
@@ -11,6 +12,62 @@ export class TenantsService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
   ) {}
+
+  /**
+   * Création d'un établissement (Super Admin). Le Tenant n'est PAS un modèle
+   * tenant-scopé, la création est donc transverse. Le code doit être unique ;
+   * la config du moteur de calcul, si fournie, est validée puis stockée au
+   * premier niveau de config_json (même forme que updateConfig).
+   */
+  async create(dto: CreateTenantDto): Promise<Tenant> {
+    const existing = await this.prisma.tenant.findFirst({ where: { code: dto.code } });
+    if (existing) {
+      throw new ConflictException(`Un établissement avec le code "${dto.code}" existe déjà`);
+    }
+
+    let configJson: Prisma.InputJsonValue | undefined;
+    if (dto.config !== undefined && dto.config !== null) {
+      const parsed = calculationEngineSchema.safeParse(dto.config);
+      if (!parsed.success) {
+        throw new BadRequestException(
+          "Configuration du moteur de calcul invalide — " +
+            parsed.error.issues.map((issue) => `${issue.path.join(".") || "config"} : ${issue.message}`).join(" ; "),
+        );
+      }
+      configJson = parsed.data as unknown as Prisma.InputJsonValue;
+    }
+
+    const tenant = await this.prisma.tenant.create({
+      data: {
+        name: dto.name,
+        code: dto.code,
+        type: dto.type,
+        status: dto.status ?? TenantStatus.PUBLIC,
+        address: dto.address ?? null,
+        phone: dto.phone ?? null,
+        email: dto.email ?? null,
+        logoUrl: dto.logoUrl ?? null,
+        ...(configJson !== undefined ? { configJson } : {}),
+      },
+    });
+
+    await this.audit.log({
+      action: "create",
+      resource: "tenants",
+      resourceId: tenant.id,
+      newValue: { name: tenant.name, code: tenant.code, type: tenant.type },
+    });
+
+    return tenant;
+  }
+
+  /** Liste de tous les établissements (Super Admin — vue multi-établissements). */
+  async findAll(): Promise<Tenant[]> {
+    return this.prisma.tenant.findMany({
+      where: { deletedAt: null },
+      orderBy: { name: "asc" },
+    });
+  }
 
   async findOne(id: string): Promise<Tenant> {
     const tenant = await this.prisma.tenant.findFirst({ where: { id } });
