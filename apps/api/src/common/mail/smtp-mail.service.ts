@@ -18,13 +18,24 @@ export class SmtpMailService {
   private buildTransport(): nodemailer.Transporter | null {
     const host = this.config.get<string>("SMTP_HOST");
     const user = this.config.get<string>("SMTP_USER");
-    const pass = this.config.get<string>("SMTP_PASS");
+    // Accepte les deux conventions de nommage (SMTP_PASSWORD est celle documentée
+    // dans .env.production.example ; SMTP_PASS reste accepté en repli).
+    const pass = this.config.get<string>("SMTP_PASSWORD") ?? this.config.get<string>("SMTP_PASS");
     if (!host || !user || !pass) {
       return null;
     }
     const port = Number(this.config.get<string>("SMTP_PORT") ?? "587");
     const secure = this.config.get<string>("SMTP_SECURE") === "true" || port === 465;
     return nodemailer.createTransport({ host, port, secure, auth: { user, pass } });
+  }
+
+  private resolveFrom(): string {
+    const fromName = this.config.get<string>("SMTP_FROM_NAME");
+    const fromEmail =
+      this.config.get<string>("SMTP_FROM_EMAIL") ??
+      this.config.get<string>("SMTP_FROM") ??
+      this.config.get<string>("SMTP_USER")!;
+    return fromName ? `${fromName} <${fromEmail}>` : fromEmail;
   }
 
   /** Retourne true si l'email a été envoyé, false s'il a été ignoré (SMTP non configuré). */
@@ -34,7 +45,7 @@ export class SmtpMailService {
       this.logger.warn(`SMTP non configuré — email « ${params.subject} » à ${params.to} non envoyé`);
       return false;
     }
-    const from = this.config.get<string>("SMTP_FROM") ?? this.config.get<string>("SMTP_USER")!;
+    const from = this.resolveFrom();
     try {
       await transport.sendMail({
         from,
