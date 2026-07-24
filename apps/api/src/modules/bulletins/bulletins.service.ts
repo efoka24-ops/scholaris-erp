@@ -142,51 +142,13 @@ export class BulletinsService {
       throw new BadRequestException("Student not enrolled for this academic year");
     }
 
-    // Récupérer toutes les notes de l'élève pour cette période
-    const grades = await this.prisma.grade.findMany({
-      where: {
-        studentId,
-        periodId,
-        tenantId,
-      },
-      include: {
-        subject: true,
-        teacher: {
-          select: {
-            firstName: true,
-            lastName: true,
-          },
-        },
-      },
-    });
-
-    // Calculer la moyenne générale
-    const totalWeightedScore = grades.reduce(
-      (sum, g) => {
-        const value = Number(g.value || 0);
-        const maxValue = Number(g.maxValue || 20);
-        const coeff = Number(g.subject?.coefficient || 1);
-        return sum + (value / maxValue) * 20 * coeff;
-      },
-      0,
+    // Snapshot enrichi au format MINESEC (Seq1/Seq2, groupes, rangs, profil classe, conduite).
+    const bulletinData = await this.buildSecondaryBulletinData(
+      tenantId,
+      studentId,
+      enrollment.classroom,
+      period,
     );
-    const totalCoefficient = grades.reduce(
-      (sum, g) => sum + Number(g.subject?.coefficient || 1),
-      0,
-    );
-    const average = totalCoefficient > 0 ? totalWeightedScore / totalCoefficient : 0;
-
-    // Calculer le rang (simplifié - comparer avec les autres élèves de la classe)
-    const classGrades = await this.prisma.grade.groupBy({
-      by: ["studentId"],
-      where: {
-        periodId,
-        tenantId,
-      },
-      _avg: {
-        value: true,
-      },
-    });
 
     // Générer un code QR unique pour vérification
     const verificationCode = crypto.randomBytes(16).toString("hex");
@@ -206,6 +168,9 @@ export class BulletinsService {
             firstName: student.firstName,
             lastName: student.lastName,
             dateOfBirth: student.dateOfBirth,
+            placeOfBirth: (student as any).placeOfBirth ?? null,
+            gender: student.gender,
+            repeating: (enrollment as any).isRepeating ?? false,
           },
           classroom: {
             name: enrollment.classroom.name,
@@ -213,19 +178,24 @@ export class BulletinsService {
           },
           period: {
             name: `${period.type === "SEQUENCE" ? "Séquence" : period.type === "TRIMESTER" ? "Trimestre" : "Semestre"} ${period.number}`,
+            type: period.type,
+            number: period.number,
             academicYear: period.academicYear.label,
           },
-          grades: grades.map((g) => ({
-            subject: g.subject?.name || 'N/A',
-            score: Number(g.value || 0),
-            maxScore: Number(g.maxValue || 20),
-            coefficient: g.subject ? Number(g.subject.coefficient) : 1,
-            average: g.value && g.maxValue ? (Number(g.value) / Number(g.maxValue)) * 20 : 0,
-            teacher: `${g.teacher.firstName} ${g.teacher.lastName}`,
+          // Champs enrichis MINESEC (consommés par le template PDF secondaire).
+          minesec: bulletinData,
+          // Champs hérités (rétro-compatibilité de l'ancien template simple).
+          grades: bulletinData.subjects.map((s) => ({
+            subject: s.name,
+            score: s.seq1 ?? s.moy ?? 0,
+            maxScore: 20,
+            coefficient: s.coefficient,
+            average: s.moy ?? 0,
+            teacher: s.teacher,
           })),
-          average,
-          rank: null, // À calculer après
-          totalStudents: classGrades.length,
+          average: bulletinData.generalAverage,
+          rank: bulletinData.rank,
+          totalStudents: bulletinData.classSize,
         },
       },
     });
@@ -243,6 +213,288 @@ export class BulletinsService {
     }
 
     return bulletin;
+  }
+
+  /**
+   * Construit le snapshot enrichi d'un bulletin secondaire (format MINESEC) :
+   * Seq1/Seq2 par matière, moyenne matière, coef, total, rang/%réussite/max/min
+   * calculés sur la classe, regroupement en 3 groupes, moyenne générale, rang,
+   * profil de classe et conduite (absences).
+   *
+   * Convention MINESEC : un bulletin de TRIMESTRE N agrège les séquences
+   * (2N-1) et (2N) ; un bulletin de SÉQUENCE n'a que Seq1.
+   */
+  private async buildSecondaryBulletinData(
+    tenantId: string,
+    studentId: string,
+    classroom: { id: string; name: string; level: { name: string } },
+    period: { id: string; type: string; number: number; academicYearId: string },
+  ) {
+    // 1) Périodes de séquence concernées.
+    let seqPeriodIds: { seq1?: string; seq2?: string } = {};
+    if (period.type === "TRIMESTER") {
+      const seqs = await this.prisma.period.findMany({
+        where: {
+          academicYearId: period.academicYearId,
+          type: "SEQUENCE",
+          number: { in: [period.number * 2 - 1, period.number * 2] },
+        },
+        orderBy: { number: "asc" },
+      });
+      seqPeriodIds.seq1 = seqs.find((s) => s.number === period.number * 2 - 1)?.id;
+      seqPeriodIds.seq2 = seqs.find((s) => s.number === period.number * 2)?.id;
+    } else {
+      // SÉQUENCE ou SEMESTRE : la période elle-même tient lieu de Seq1.
+      seqPeriodIds.seq1 = period.id;
+    }
+    const periodIds = [seqPeriodIds.seq1, seqPeriodIds.seq2].filter(Boolean) as string[];
+
+    // En-tête établissement (nom, adresse/BP, tél, logo).
+    const tenant = await this.prisma.tenant.findFirst({
+      where: { id: tenantId },
+      select: { name: true, address: true, phone: true, email: true, logoUrl: true },
+    });
+
+    // 2) Élèves de la classe (inscriptions actives).
+    const enrollments = await this.prisma.enrollment.findMany({
+      where: { classroomId: classroom.id, academicYearId: period.academicYearId, status: "ACTIVE" },
+      select: { studentId: true },
+    });
+    const classStudentIds = enrollments.map((e) => e.studentId);
+
+    // 3) Toutes les notes de la classe sur les périodes concernées.
+    const grades = await this.prisma.grade.findMany({
+      where: {
+        tenantId,
+        studentId: { in: classStudentIds },
+        periodId: { in: periodIds },
+        subjectId: { not: null },
+      },
+      include: {
+        subject: { select: { id: true, name: true, coefficient: true, category: true } },
+        teacher: { select: { firstName: true, lastName: true } },
+      },
+    });
+
+    // Note /20 d'une note brute.
+    const toTwenty = (g: (typeof grades)[number]): number | null => {
+      if (g.isAbsent) return 0;
+      if (g.value == null) return null;
+      const max = Number(g.maxValue) || 20;
+      return (Number(g.value) / max) * 20;
+    };
+
+    // 4) Moyenne d'un élève dans une matière pour une séquence (moyenne pondérée des notes).
+    //    Puis moyenne matière = moyenne(Seq1, Seq2) sur les séquences renseignées.
+    type SubjMeta = { id: string; name: string; coefficient: number; category: string; teacher: string };
+    const subjectMeta = new Map<string, SubjMeta>();
+    // studentId -> subjectId -> periodId -> {sum, weight}
+    const acc = new Map<string, Map<string, Map<string, { sum: number; w: number }>>>();
+
+    for (const g of grades) {
+      if (!g.subject) continue;
+      const note = toTwenty(g);
+      if (note == null) continue;
+      const w = Number(g.weight) || 1;
+      if (!subjectMeta.has(g.subject.id)) {
+        subjectMeta.set(g.subject.id, {
+          id: g.subject.id,
+          name: g.subject.name,
+          coefficient: Number(g.subject.coefficient) || 1,
+          category: String(g.subject.category),
+          teacher: `${g.teacher.firstName} ${g.teacher.lastName}`.trim(),
+        });
+      }
+      const byStudent = acc.get(g.studentId) ?? new Map();
+      acc.set(g.studentId, byStudent);
+      const bySubject = byStudent.get(g.subject.id) ?? new Map();
+      byStudent.set(g.subject.id, bySubject);
+      const cell = bySubject.get(g.periodId) ?? { sum: 0, w: 0 };
+      cell.sum += note * w;
+      cell.w += w;
+      bySubject.set(g.periodId, cell);
+    }
+
+    const seqAvg = (studentId: string, subjectId: string, seqPeriodId?: string): number | null => {
+      if (!seqPeriodId) return null;
+      const cell = acc.get(studentId)?.get(subjectId)?.get(seqPeriodId);
+      if (!cell || cell.w === 0) return null;
+      return cell.sum / cell.w;
+    };
+    const subjectMoy = (studentId: string, subjectId: string): number | null => {
+      const s1 = seqAvg(studentId, subjectId, seqPeriodIds.seq1);
+      const s2 = seqAvg(studentId, subjectId, seqPeriodIds.seq2);
+      const vals = [s1, s2].filter((v): v is number => v != null);
+      if (vals.length === 0) return null;
+      return vals.reduce((a, b) => a + b, 0) / vals.length;
+    };
+
+    const round2 = (v: number) => Math.round(v * 100) / 100;
+
+    // 5) Lignes de matières pour l'élève cible + stats de classe par matière.
+    const subjects = [...subjectMeta.values()].map((meta) => {
+      const s1 = seqAvg(studentId, meta.id, seqPeriodIds.seq1);
+      const s2 = seqAvg(studentId, meta.id, seqPeriodIds.seq2);
+      const moy = subjectMoy(studentId, meta.id);
+
+      // Moyennes de tous les élèves dans cette matière (pour rang/max/min/%réussite).
+      const classMoys = classStudentIds
+        .map((sid) => subjectMoy(sid, meta.id))
+        .filter((v): v is number => v != null);
+      const max = classMoys.length ? Math.max(...classMoys) : null;
+      const min = classMoys.length ? Math.min(...classMoys) : null;
+      const successRate = classMoys.length
+        ? Math.round((classMoys.filter((v) => v >= 10).length / classMoys.length) * 100)
+        : null;
+      const rank =
+        moy != null ? classMoys.filter((v) => v > moy).length + 1 : null;
+
+      return {
+        id: meta.id,
+        name: meta.name,
+        teacher: meta.teacher,
+        category: meta.category,
+        group: this.groupForCategory(meta.category),
+        coefficient: meta.coefficient,
+        seq1: s1 != null ? round2(s1) : null,
+        seq2: s2 != null ? round2(s2) : null,
+        moy: moy != null ? round2(moy) : null,
+        total: moy != null ? round2(moy * meta.coefficient) : null,
+        rank,
+        successRate,
+        max: max != null ? round2(max) : null,
+        min: min != null ? round2(min) : null,
+        appreciation: this.appreciationFor(moy),
+      };
+    });
+
+    // 6) Regroupement en 3 groupes + sous-totaux.
+    const groups = [1, 2, 3].map((groupNo) => {
+      const rows = subjects.filter((s) => s.group === groupNo);
+      const coefSum = rows.reduce((a, s) => a + s.coefficient, 0);
+      const totalSum = rows.reduce((a, s) => a + (s.total ?? 0), 0);
+      return {
+        group: groupNo,
+        label: this.groupLabel(groupNo),
+        subjects: rows,
+        coefSum: round2(coefSum),
+        totalSum: round2(totalSum),
+        average: coefSum > 0 ? round2(totalSum / coefSum) : null,
+      };
+    }).filter((g) => g.subjects.length > 0);
+
+    // 7) Moyenne générale de chaque élève + rang + profil de classe.
+    const generalAverageOf = (sid: string): number | null => {
+      let tot = 0;
+      let coef = 0;
+      for (const meta of subjectMeta.values()) {
+        const m = subjectMoy(sid, meta.id);
+        if (m != null) {
+          tot += m * meta.coefficient;
+          coef += meta.coefficient;
+        }
+      }
+      return coef > 0 ? tot / coef : null;
+    };
+
+    const generalAverage = generalAverageOf(studentId);
+    const classGenerals = classStudentIds
+      .map((sid) => generalAverageOf(sid))
+      .filter((v): v is number => v != null);
+    const rank =
+      generalAverage != null ? classGenerals.filter((v) => v > generalAverage).length + 1 : null;
+    const classAverage = classGenerals.length
+      ? round2(classGenerals.reduce((a, b) => a + b, 0) / classGenerals.length)
+      : null;
+    const nbrMoy = classGenerals.filter((v) => v >= 10).length;
+
+    const totalCoef = subjects.reduce((a, s) => a + s.coefficient, 0);
+    const totalPoints = subjects.reduce((a, s) => a + (s.total ?? 0), 0);
+
+    // 8) Conduite : absences comptabilisées via les notes marquées absentes.
+    const absencesAll = grades.filter((g) => g.studentId === studentId && g.isAbsent);
+    const conduct = {
+      absencesUnjustified: absencesAll.filter((g) => !g.isJustified).length,
+      absencesJustified: absencesAll.filter((g) => g.isJustified).length,
+    };
+
+    return {
+      establishment: {
+        name: tenant?.name ?? "Établissement",
+        address: tenant?.address ?? null,
+        phone: tenant?.phone ?? null,
+        email: tenant?.email ?? null,
+        logoUrl: tenant?.logoUrl ?? null,
+      },
+      seqLabels: {
+        seq1: seqPeriodIds.seq1 ? `Séq${period.type === "TRIMESTER" ? period.number * 2 - 1 : period.number}` : "Séq1",
+        seq2: seqPeriodIds.seq2 ? `Séq${period.number * 2}` : null,
+      },
+      subjects,
+      groups,
+      totalCoef: round2(totalCoef),
+      totalPoints: round2(totalPoints),
+      generalAverage: generalAverage != null ? round2(generalAverage) : null,
+      mention: generalAverage != null ? this.getMentionLabel(generalAverage) : null,
+      rank,
+      classSize: classStudentIds.length,
+      classProfile: {
+        classAverage,
+        successRate: classGenerals.length
+          ? Math.round((nbrMoy / classGenerals.length) * 100)
+          : null,
+        nbrMoy,
+        max: classGenerals.length ? round2(Math.max(...classGenerals)) : null,
+        min: classGenerals.length ? round2(Math.min(...classGenerals)) : null,
+      },
+      conduct,
+    };
+  }
+
+  private groupForCategory(category: string): number {
+    switch (category) {
+      case "LITERARY":
+      case "LANGUAGE":
+        return 1; // Groupe 1 : littéraire / langues
+      case "SCIENTIFIC":
+      case "TECHNICAL":
+        return 2; // Groupe 2 : scientifique / technique
+      case "SPORTS":
+        return 3; // Groupe 3 : EPS / autres
+      default:
+        return 2;
+    }
+  }
+
+  private groupLabel(groupNo: number): string {
+    switch (groupNo) {
+      case 1:
+        return "Groupe 1 — Littéraire & Langues";
+      case 2:
+        return "Groupe 2 — Scientifique & Technique";
+      case 3:
+        return "Groupe 3 — EPS & Autres";
+      default:
+        return `Groupe ${groupNo}`;
+    }
+  }
+
+  private appreciationFor(moy: number | null): string {
+    if (moy == null) return "—";
+    if (moy >= 16) return "Très Bien";
+    if (moy >= 14) return "Bien";
+    if (moy >= 12) return "Assez Bien";
+    if (moy >= 10) return "Passable";
+    return "Insuffisant";
+  }
+
+  private getMentionLabel(average: number): string {
+    if (average >= 18) return "EXCELLENT";
+    if (average >= 16) return "TRÈS BIEN";
+    if (average >= 14) return "BIEN";
+    if (average >= 12) return "ASSEZ BIEN";
+    if (average >= 10) return "PASSABLE";
+    return "INSUFFISANT";
   }
 
   /**
