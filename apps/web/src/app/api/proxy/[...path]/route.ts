@@ -30,16 +30,43 @@ async function forward(request: NextRequest, { params }: RouteContext) {
   }
 
   try {
+    // On récupère la réponse en octets bruts pour pouvoir relayer aussi bien du
+    // JSON que des documents (PDF/HTML/CSV/XLSX) sans les corrompre.
     const response = await backendClient.request({
       url: targetPath,
       method: request.method,
       data: body,
+      responseType: "arraybuffer",
       headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+      // On gère nous-mêmes les statuts >= 400 (pas d'exception) pour relayer le corps tel quel.
+      validateStatus: () => true,
     });
-    return NextResponse.json(response.data, { status: response.status });
+
+    const contentType = String(response.headers["content-type"] ?? "");
+    const buffer = Buffer.from(response.data);
+
+    // Réponses JSON : reparsées et renvoyées en JSON (comportement historique).
+    if (contentType.includes("application/json") || contentType === "") {
+      const text = buffer.toString("utf8");
+      const json = text ? JSON.parse(text) : null;
+      return NextResponse.json(json, { status: response.status });
+    }
+
+    // Autres types (HTML, CSV, PDF, XLSX…) : relayés tels quels avec leurs en-têtes.
+    const headers: Record<string, string> = { "content-type": contentType };
+    const disposition = response.headers["content-disposition"];
+    if (disposition) headers["content-disposition"] = String(disposition);
+    return new NextResponse(buffer, { status: response.status, headers });
   } catch (error: any) {
     const status = error.response?.status ?? 500;
-    const data = error.response?.data ?? { message: "Erreur de communication avec le serveur" };
+    let data: unknown = { message: "Erreur de communication avec le serveur" };
+    if (error.response?.data) {
+      try {
+        data = JSON.parse(Buffer.from(error.response.data).toString("utf8"));
+      } catch {
+        data = error.response.data;
+      }
+    }
     return NextResponse.json(data, { status });
   }
 }

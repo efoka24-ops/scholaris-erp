@@ -7,7 +7,8 @@ import { resourceClient } from "./api-client";
  */
 export async function downloadCsv(path: string, filename: string): Promise<void> {
   const { data } = await resourceClient.get<string>(path);
-  const blob = new Blob(["﻿" + String(data)], { type: "text/csv;charset=utf-8" });
+  // Le backend émet déjà le BOM UTF-8 ; on n'en rajoute pas.
+  const blob = new Blob([String(data)], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -34,13 +35,20 @@ export async function downloadBase64(path: string): Promise<void> {
 }
 
 export async function openPrintable(path: string): Promise<void> {
-  const { data } = await resourceClient.get<string>(path);
+  // Ouvre la fenêtre AVANT l'await (dans le geste utilisateur) pour éviter le
+  // blocage des pop-ups.
   const w = window.open("", "_blank");
-  if (!w) return;
+  const { data } = await resourceClient.get<string>(path);
+  if (!w) {
+    // Pop-up bloquée : repli sur un téléchargement du document HTML.
+    const blob = new Blob([String(data)], { type: "text/html;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    window.open(url, "_blank");
+    return;
+  }
   w.document.open();
   w.document.write(String(data));
   w.document.close();
   w.focus();
-  // Laisse le rendu se faire avant d'ouvrir la boîte d'impression.
   setTimeout(() => w.print(), 400);
 }
