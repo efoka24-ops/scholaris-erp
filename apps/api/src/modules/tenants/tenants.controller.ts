@@ -61,6 +61,26 @@ export class TenantsController {
     return this.tenantsService.updateConfig(id, config);
   }
 
+  @Get(":id/bulletin-groups")
+  @RequirePermissions("tenants:read")
+  @ApiOperation({ summary: "Configuration des groupes de matières du bulletin" })
+  getBulletinGroups(@Param("id") id: string, @CurrentUser() user: AuthenticatedUser) {
+    this.assertOwnTenant(id, user);
+    return this.tenantsService.getBulletinGroups(id);
+  }
+
+  @Put(":id/bulletin-groups")
+  @RequirePermissions("tenants:update")
+  @ApiOperation({ summary: "Définit les groupes de matières et l'affectation des matières" })
+  updateBulletinGroups(
+    @Param("id") id: string,
+    @Body() config: any,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    this.assertOwnTenant(id, user);
+    return this.tenantsService.updateBulletinGroups(id, config);
+  }
+
   @Get(":id/modules")
   @RequirePermissions("tenants:read")
   @ApiOperation({ summary: "Modules/fonctionnalités activés pour cet établissement" })

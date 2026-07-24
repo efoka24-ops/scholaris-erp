@@ -6,6 +6,52 @@ import { AuditService } from "../audit/audit.service";
 import { CreateTenantDto } from "./dto/create-tenant.dto";
 import { UpdateTenantDto } from "./dto/update-tenant.dto";
 
+export interface BulletinGroup {
+  number: number;
+  label: string;
+}
+export interface BulletinGroupsConfig {
+  groups: BulletinGroup[];
+  assignments: Record<string, number>; // subjectId -> group number
+  categoryDefaults: Record<string, number>; // SubjectCategory -> group number
+}
+
+// Défaut MINESEC : 3 groupes, mapping par catégorie de matière.
+export const DEFAULT_BULLETIN_GROUPS: BulletinGroupsConfig = {
+  groups: [
+    { number: 1, label: "Groupe 1 — Littéraire & Langues" },
+    { number: 2, label: "Groupe 2 — Scientifique & Technique" },
+    { number: 3, label: "Groupe 3 — EPS & Autres" },
+  ],
+  assignments: {},
+  categoryDefaults: {
+    LITERARY: 1,
+    LANGUAGE: 1,
+    SCIENTIFIC: 2,
+    TECHNICAL: 2,
+    SPORTS: 3,
+  },
+};
+
+/** Complète une config partielle avec les défauts MINESEC (robuste aux entrées incomplètes). */
+export function normalizeBulletinGroups(config?: Partial<BulletinGroupsConfig> | null): BulletinGroupsConfig {
+  if (!config || typeof config !== "object") return { ...DEFAULT_BULLETIN_GROUPS };
+  const groups =
+    Array.isArray(config.groups) && config.groups.length > 0
+      ? config.groups
+          .filter((g) => g && typeof g.number === "number")
+          .map((g) => ({ number: g.number, label: String(g.label ?? `Groupe ${g.number}`) }))
+      : DEFAULT_BULLETIN_GROUPS.groups;
+  return {
+    groups,
+    assignments: (config.assignments && typeof config.assignments === "object" ? config.assignments : {}) as Record<string, number>,
+    categoryDefaults: {
+      ...DEFAULT_BULLETIN_GROUPS.categoryDefaults,
+      ...(config.categoryDefaults && typeof config.categoryDefaults === "object" ? config.categoryDefaults : {}),
+    },
+  };
+}
+
 @Injectable()
 export class TenantsService {
   constructor(
@@ -199,6 +245,42 @@ export class TenantsService {
    * Stockés sous une clé dédiée de Tenant.config_json, séparée du moteur de calcul
    * (qui est, lui, validé et remplacé en intégralité par le schéma Zod strict).
    */
+  /**
+   * Configuration des groupes de matières du bulletin (MINESEC) pour cet
+   * établissement. Stockée sous la clé `bulletinGroups` de Tenant.config_json,
+   * séparée du moteur de calcul. Structure :
+   *   { groups: [{ number, label }], assignments: { [subjectId]: number },
+   *     categoryDefaults: { LITERARY, LANGUAGE, SCIENTIFIC, TECHNICAL, SPORTS } }
+   * Si absente, un défaut MINESEC (3 groupes, mapping par catégorie) est renvoyé.
+   */
+  async getBulletinGroups(id: string): Promise<BulletinGroupsConfig> {
+    const tenant = await this.findOne(id);
+    const configJson = (tenant.configJson as Record<string, unknown> | null) ?? {};
+    const stored = configJson.bulletinGroups as BulletinGroupsConfig | undefined;
+    return normalizeBulletinGroups(stored);
+  }
+
+  async updateBulletinGroups(id: string, config: BulletinGroupsConfig): Promise<BulletinGroupsConfig> {
+    const before = await this.findOne(id);
+    const normalized = normalizeBulletinGroups(config);
+    const existing = (before.configJson as Record<string, unknown> | null) ?? {};
+    const merged = { ...existing, bulletinGroups: normalized };
+
+    await this.prisma.tenant.update({
+      where: { id },
+      data: { configJson: merged as unknown as Prisma.InputJsonValue },
+    });
+
+    await this.audit.log({
+      action: "update",
+      resource: "tenants:bulletin-groups",
+      resourceId: id,
+      oldValue: existing.bulletinGroups ?? null,
+      newValue: normalized,
+    });
+    return normalized;
+  }
+
   async getEnabledModules(id: string): Promise<string[]> {
     const tenant = await this.findOne(id);
     const configJson = (tenant.configJson as Record<string, unknown> | null) ?? {};

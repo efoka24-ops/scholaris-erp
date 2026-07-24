@@ -132,6 +132,7 @@ const NAV_SECTIONS: NavSection[] = [
       { href: "/settings/users", label: "Utilisateurs", icon: Users },
       { href: "/settings/roles", label: "Rôles & Permissions", icon: Users },
       { href: "/settings/calculation-engine", label: "Moteur de calcul", icon: Calculator },
+      { href: "/settings/bulletin-groups", label: "Groupes de matières", icon: Layers },
       { href: "/settings/audit-logs", label: "Journal d'audit", icon: ScrollText },
     ],
   },

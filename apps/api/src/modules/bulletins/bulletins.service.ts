@@ -5,6 +5,7 @@ import {
 } from "@nestjs/common";
 import { PrismaService } from "../../prisma/prisma.service";
 import { BulletinPdfService } from "./bulletin-pdf.service";
+import { normalizeBulletinGroups } from "../tenants/tenants.service";
 import * as crypto from "crypto";
 
 @Injectable()
@@ -249,11 +250,21 @@ export class BulletinsService {
     }
     const periodIds = [seqPeriodIds.seq1, seqPeriodIds.seq2].filter(Boolean) as string[];
 
-    // En-tête établissement (nom, adresse/BP, tél, logo).
+    // En-tête établissement (nom, adresse/BP, tél, logo) + config des groupes de matières.
     const tenant = await this.prisma.tenant.findFirst({
       where: { id: tenantId },
-      select: { name: true, address: true, phone: true, email: true, logoUrl: true },
+      select: { name: true, address: true, phone: true, email: true, logoUrl: true, configJson: true },
     });
+    const groupsConfig = normalizeBulletinGroups(
+      (tenant?.configJson as any)?.bulletinGroups,
+    );
+    // Résolution du groupe d'une matière : affectation explicite > défaut catégorie > 2.
+    const resolveGroup = (subjectId: string, category: string): number =>
+      groupsConfig.assignments[subjectId] ??
+      groupsConfig.categoryDefaults[category] ??
+      2;
+    const resolveGroupLabel = (groupNo: number): string =>
+      groupsConfig.groups.find((g) => g.number === groupNo)?.label ?? `Groupe ${groupNo}`;
 
     // 2) Élèves de la classe (inscriptions actives).
     const enrollments = await this.prisma.enrollment.findMany({
@@ -354,7 +365,7 @@ export class BulletinsService {
         name: meta.name,
         teacher: meta.teacher,
         category: meta.category,
-        group: this.groupForCategory(meta.category),
+        group: resolveGroup(meta.id, meta.category),
         coefficient: meta.coefficient,
         seq1: s1 != null ? round2(s1) : null,
         seq2: s2 != null ? round2(s2) : null,
@@ -368,14 +379,15 @@ export class BulletinsService {
       };
     });
 
-    // 6) Regroupement en 3 groupes + sous-totaux.
-    const groups = [1, 2, 3].map((groupNo) => {
+    // 6) Regroupement selon la config (groupes configurables) + sous-totaux.
+    const groupNumbers = [...new Set(groupsConfig.groups.map((g) => g.number))].sort((a, b) => a - b);
+    const groups = groupNumbers.map((groupNo) => {
       const rows = subjects.filter((s) => s.group === groupNo);
       const coefSum = rows.reduce((a, s) => a + s.coefficient, 0);
       const totalSum = rows.reduce((a, s) => a + (s.total ?? 0), 0);
       return {
         group: groupNo,
-        label: this.groupLabel(groupNo),
+        label: resolveGroupLabel(groupNo),
         subjects: rows,
         coefSum: round2(coefSum),
         totalSum: round2(totalSum),
@@ -678,34 +690,6 @@ export class BulletinsService {
       mgp,
       decision,
     };
-  }
-
-  private groupForCategory(category: string): number {
-    switch (category) {
-      case "LITERARY":
-      case "LANGUAGE":
-        return 1; // Groupe 1 : littéraire / langues
-      case "SCIENTIFIC":
-      case "TECHNICAL":
-        return 2; // Groupe 2 : scientifique / technique
-      case "SPORTS":
-        return 3; // Groupe 3 : EPS / autres
-      default:
-        return 2;
-    }
-  }
-
-  private groupLabel(groupNo: number): string {
-    switch (groupNo) {
-      case 1:
-        return "Groupe 1 — Littéraire & Langues";
-      case 2:
-        return "Groupe 2 — Scientifique & Technique";
-      case 3:
-        return "Groupe 3 — EPS & Autres";
-      default:
-        return `Groupe ${groupNo}`;
-    }
   }
 
   private appreciationFor(moy: number | null): string {
