@@ -6,6 +6,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { FileUp, Plus } from "lucide-react";
 import type { PaginatedResult } from "@scholaris/shared";
 import { resourceClient } from "@/lib/api-client";
+import { downloadCsv, openPrintable } from "@/lib/download";
 import type { ClassRoom } from "@/types/structure";
 import { STUDENT_STATUS_LABELS, type Student, type StudentStatus } from "@/types/students";
 import { Button } from "@/components/ui/button";
@@ -88,7 +89,13 @@ export default function StudentsPage() {
           <h1 className="text-2xl font-semibold">Élèves</h1>
           <p className="text-sm text-muted-foreground">Dossiers des élèves de l'établissement</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" onClick={() => downloadCsv("/students/export/csv", "eleves.csv")}>
+            Export CSV
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => openPrintable("/students/print/class-list")}>
+            Imprimer la liste
+          </Button>
           <Button asChild variant="outline" size="sm">
             <Link href="/students/import">
               <FileUp className="mr-2 h-4 w-4" />

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { resourceClient } from "@/lib/api-client";
+import { downloadCsv, openPrintable } from "@/lib/download";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -217,7 +218,20 @@ export default function ExamDetailPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Candidats inscrits ({candidates.length})</CardTitle>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <CardTitle>Candidats inscrits ({candidates.length})</CardTitle>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" size="sm" onClick={() => openPrintable(`/exams/${examId}/print/candidate-list`)}>
+                Liste officielle (imprimer)
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => openPrintable(`/exams/${examId}/print/receipts`)}>
+                Récépissés
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => downloadCsv(`/exams/${examId}/export/candidates`, "candidats.csv")}>
+                Export CSV
+              </Button>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           {candidates.length === 0 ? (
@@ -280,7 +294,17 @@ export default function ExamDetailPage() {
       {results ? (
         <Card>
           <CardHeader>
-            <CardTitle>Résultats</CardTitle>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <CardTitle>Résultats</CardTitle>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" size="sm" onClick={() => openPrintable(`/exams/${examId}/print/results-board`)}>
+                  Tableau d&apos;affichage
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => downloadCsv(`/exams/${examId}/export/results`, "resultats.csv")}>
+                  Export CSV
+                </Button>
+              </div>
+            </div>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
