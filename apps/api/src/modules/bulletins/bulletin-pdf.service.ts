@@ -12,9 +12,11 @@ export class BulletinPdfService {
     const data = bulletin.data as any;
     // Nouveau template officiel MINESEC si le snapshot enrichi est présent ;
     // sinon on retombe sur l'ancien template simple (rétro-compatibilité).
-    const html = data?.minesec
-      ? this.generateSecondaryHtml(bulletin)
-      : this.generateHtml(bulletin);
+    const html = data?.lmd
+      ? this.generateTranscriptHtml(bulletin)
+      : data?.minesec
+        ? this.generateSecondaryHtml(bulletin)
+        : this.generateHtml(bulletin);
 
     // Pour l'instant, retourne le HTML en Buffer
     // TODO: Utiliser Puppeteer pour convertir HTML → PDF
@@ -178,6 +180,123 @@ export class BulletinPdfService {
 
   <div class="foot">
     Code de vérification : ${esc(bulletin.verificationCode)} · Authenticité : https://scholaris.cm/verify/${esc(bulletin.verificationCode)}
+  </div>
+</div></body></html>`;
+  }
+
+  /**
+   * Template officiel du relevé de notes / transcript LMD (supérieur), bilingue
+   * FR/EN, conforme au modèle universitaire camerounais : en-tête République,
+   * bloc identité, UE regroupées par catégorie (Fondamentale/Complémentaire/
+   * Transversale) avec Code UE / Intitulé / Crédit / Moy /100 / Grade /
+   * Semestre-Année / Décision, crédits capitalisés, MGP /4, décision et légende
+   * du barème de mentions.
+   */
+  private generateTranscriptHtml(bulletin: any): string {
+    const data = bulletin.data as any;
+    const t = data.lmd;
+    const est = t.establishment;
+    const s = data.student;
+    const esc = (v: any) => String(v ?? "").replace(/[&<>]/g, (c: string) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c] as string));
+
+    const groupBlocks = (t.groups as any[])
+      .map((g) => {
+        const rows = (g.units as any[])
+          .map(
+            (u) => `
+        <tr>
+          <td class="code">${esc(u.code)}</td>
+          <td>${esc(u.name)}</td>
+          <td class="c">${u.credits}</td>
+          <td class="c">${Number(u.note100).toFixed(2)}</td>
+          <td class="c b">${esc(u.grade)}</td>
+          <td class="c">${u.semester} · ${esc(u.year)}</td>
+          <td class="c">${esc(u.decision)}</td>
+        </tr>`,
+          )
+          .join("");
+        return `
+        <tr class="cat"><td colspan="7">${esc(g.label)}</td></tr>
+        ${rows}`;
+      })
+      .join("");
+
+    return `<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<title>Relevé de notes ${esc(s.matricule)}</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Times New Roman',serif; font-size:10pt; color:#111; padding:10mm; }
+  .sheet { max-width:210mm; margin:0 auto; }
+  .head { display:grid; grid-template-columns:1fr auto 1fr; align-items:center; text-align:center; }
+  .head .sub { font-size:8pt; line-height:1.4; }
+  .head .sub b { font-size:9pt; }
+  .head .logo { width:20mm; height:20mm; border-radius:50%; border:1px solid #999; display:flex; align-items:center; justify-content:center; font-size:7pt; color:#999; margin:0 auto; }
+  .estab { text-align:center; font-weight:bold; margin:2mm 0; font-size:11pt; }
+  .title { text-align:center; font-size:14pt; font-weight:bold; letter-spacing:1px; margin:3mm 0; text-decoration:underline; }
+  .id { font-size:9.5pt; line-height:1.7; margin-bottom:2mm; }
+  .id .row { display:flex; justify-content:space-between; }
+  table.ue { width:100%; border-collapse:collapse; margin-top:2mm; }
+  table.ue th, table.ue td { border:1px solid #333; padding:1.2mm 2mm; font-size:9pt; }
+  table.ue th { background:#e8e8e8; text-align:center; font-size:8.5pt; }
+  td.c { text-align:center; } td.b { font-weight:bold; } td.code { font-weight:bold; }
+  tr.cat td { background:#f0f0f0; font-weight:bold; font-style:italic; font-size:8.5pt; }
+  .summary { margin-top:3mm; font-size:10pt; line-height:1.8; }
+  .summary b { font-size:11pt; }
+  .legend { margin-top:4mm; border:1px solid #999; padding:2mm; font-size:7.5pt; }
+  .legend h4 { font-size:8pt; margin-bottom:1mm; }
+  .legend table { border-collapse:collapse; }
+  .legend td { border:1px solid #ccc; padding:0.6mm 2mm; }
+  .sign { display:grid; grid-template-columns:1fr 1fr; gap:4mm; margin-top:8mm; text-align:center; font-size:8.5pt; }
+  .sign .slot { height:16mm; }
+  .foot { margin-top:4mm; text-align:center; font-size:7pt; color:#777; font-style:italic; }
+</style></head>
+<body><div class="sheet">
+  <div class="head">
+    <div class="sub"><b>RÉPUBLIQUE DU CAMEROUN</b><br>Paix – Travail – Patrie</div>
+    <div class="logo">${est.logoUrl ? `<img src="${esc(est.logoUrl)}" style="width:100%;height:100%;border-radius:50%;object-fit:cover">` : "LOGO"}</div>
+    <div class="sub"><b>REPUBLIC OF CAMEROON</b><br>Peace – Work – Fatherland</div>
+  </div>
+  <div class="estab">${esc(est.name)}${est.address ? `<br><span style="font-weight:normal;font-size:8.5pt">${esc(est.address)}</span>` : ""}</div>
+  <div class="title">RELEVÉ DE NOTES / TRANSCRIPT</div>
+
+  <div class="id">
+    <div class="row"><span><b>Noms et Prénoms</b> / Surname and Name : ${esc(s.lastName)} ${esc(s.firstName)}</span><span><b>Matricule</b> / Reg. N° : ${esc(s.matricule)}</span></div>
+    <div class="row"><span><b>Né(e) le</b> / Born on : ${s.dateOfBirth ? new Date(s.dateOfBirth).toLocaleDateString("fr-FR") : "—"}</span><span><b>À</b> / At : ${esc(s.placeOfBirth ?? "—")}</span></div>
+    <div class="row"><span><b>Niveau</b> / Level : ${esc(data.classroom.level)}</span><span><b>Année Académique</b> / Academic Year : ${esc(data.period.academicYear)} — ${esc(data.period.name)}</span></div>
+  </div>
+
+  <table class="ue">
+    <thead><tr>
+      <th>Code UE</th><th>Intitulé de l'UE / UE Title</th><th>Crédit</th><th>Moy /100</th>
+      <th>Grade</th><th>Sem. · Année</th><th>Décision</th>
+    </tr></thead>
+    <tbody>${groupBlocks}</tbody>
+  </table>
+
+  <div class="summary">
+    <b>Crédits capitalisés / Credits earned :</b> ${t.creditsEarned} / ${t.totalCredits} (${t.totalCredits > 0 ? Math.round((t.creditsEarned / t.totalCredits) * 100) : 0}%)<br>
+    <b>Moyenne Générale Pondérée (MGP) / GPA :</b> ${Number(t.mgp).toFixed(2)} / 4<br>
+    <b>Décision / Decision :</b> ${esc(t.decision)}
+  </div>
+
+  <div class="legend">
+    <h4>Légende — Barème des mentions</h4>
+    <table>
+      <tr><td>≥80 : A (4.00) Très bien</td><td>75-79 : A- (3.70)</td><td>70-74 : B+ (3.30) Bien</td><td>65-69 : B (3.00) Assez bien</td></tr>
+      <tr><td>60-64 : B- (2.70)</td><td>55-59 : C+ (2.30)</td><td>50-54 : C (2.00) Passable</td><td>45-49 : C- (1.70) Capitalisé non transférable</td></tr>
+      <tr><td>40-44 : D+ (1.30)</td><td>35-39 : D (1.00)</td><td>30-34 : E (1.00)</td><td>&lt;30 : F (0.00) Échec</td></tr>
+    </table>
+    <p style="margin-top:1mm">CA = Capitalisée · NC = Non capitalisée</p>
+  </div>
+
+  <div class="sign">
+    <div><div class="slot"></div>Le Chef de Département / Head of Department</div>
+    <div><div class="slot"></div>Le Chef de Division des Affaires Académiques</div>
+  </div>
+
+  <div class="foot">
+    N.B. : Il n'est délivré qu'un seul exemplaire de relevé de notes. · Code de vérification : ${esc(bulletin.verificationCode)}
   </div>
 </div></body></html>`;
   }

@@ -55,6 +55,21 @@ export class BulletinsController {
     );
   }
 
+  @Post("generate/transcript")
+  @RequirePermissions("bulletins:generate")
+  @ApiOperation({ summary: "Générer un relevé de notes LMD (transcript) pour un étudiant" })
+  @ApiResponse({ status: 201, description: "Transcript generated successfully" })
+  generateTranscript(
+    @Body() dto: GenerateSingleBulletinDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.bulletinsService.generateTranscript(
+      dto.studentId,
+      dto.periodId,
+      user.tenantId,
+    );
+  }
+
   @Get(":id")
   @RequirePermissions("bulletins:read")
   @ApiOperation({ summary: "Get bulletin by ID" })

@@ -451,6 +451,235 @@ export class BulletinsService {
     };
   }
 
+  /**
+   * Génère un relevé de notes / transcript LMD (supérieur) pour un étudiant sur
+   * une période semestrielle. Regroupe les notes d'EC par UE, calcule la moyenne
+   * d'UE pondérée par les crédits (Moy_UE = Σ(Note_EC×crédits)/Σcrédits), les
+   * crédits capitalisés, le grade lettré + points GPA (barème LMD camerounais),
+   * la MGP (Σ(points×crédits)/Σcrédits sur /4) et la décision.
+   */
+  async generateTranscript(studentId: string, periodId: string, tenantId: string) {
+    const student = await this.prisma.student.findFirst({
+      where: { id: studentId, tenantId },
+      include: {
+        enrollments: {
+          where: { status: "ACTIVE" },
+          include: { classroom: { include: { level: true } }, academicYear: true },
+        },
+      },
+    });
+    if (!student) throw new NotFoundException(`Student ${studentId} not found`);
+
+    const period = await this.prisma.period.findFirst({
+      where: { id: periodId },
+      include: { academicYear: true },
+    });
+    if (!period) throw new NotFoundException(`Period ${periodId} not found`);
+
+    const enrollment = (student as any).enrollments?.find(
+      (e: any) => e.academicYearId === period.academicYearId,
+    );
+    if (!enrollment) throw new BadRequestException("Student not enrolled for this academic year");
+
+    const lmd = await this.buildTranscriptData(tenantId, studentId, period);
+
+    const verificationCode = crypto.randomBytes(16).toString("hex");
+    const bulletin = await this.prisma.bulletin.create({
+      data: {
+        tenantId,
+        studentId,
+        periodId,
+        classroomId: enrollment.classroom.id,
+        verificationCode,
+        status: "published",
+        data: {
+          student: {
+            matricule: student.matricule,
+            firstName: student.firstName,
+            lastName: student.lastName,
+            dateOfBirth: student.dateOfBirth,
+            placeOfBirth: (student as any).placeOfBirth ?? null,
+          },
+          classroom: { name: enrollment.classroom.name, level: enrollment.classroom.level.name },
+          period: { name: `Semestre ${period.number}`, academicYear: period.academicYear.label },
+          lmd,
+          // Rétro-compat minimale.
+          grades: [],
+          average: lmd.mgp,
+          rank: null,
+          totalStudents: 0,
+        },
+      },
+    });
+
+    try {
+      await this.pdfService.generate(bulletin);
+      await this.prisma.bulletin.update({
+        where: { id: bulletin.id },
+        data: { pdfUrl: `bulletins/${bulletin.id}.pdf` },
+      });
+    } catch (error) {
+      console.error("Transcript PDF generation failed:", error);
+    }
+    return bulletin;
+  }
+
+  private async buildTranscriptData(
+    tenantId: string,
+    studentId: string,
+    period: { id: string; number: number; academicYearId: string; academicYear: { label: string } },
+  ) {
+    const tenant = await this.prisma.tenant.findFirst({
+      where: { id: tenantId },
+      select: { name: true, address: true, phone: true, logoUrl: true },
+    });
+
+    // Notes de l'étudiant sur cette période, portées par un EC (courseElementId).
+    const grades = await this.prisma.grade.findMany({
+      where: { tenantId, studentId, periodId: period.id, courseElementId: { not: null } },
+      include: {
+        courseElement: {
+          select: {
+            id: true,
+            code: true,
+            name: true,
+            credits: true,
+            teachingUnit: {
+              select: { id: true, code: true, name: true, credits: true, isFundamental: true },
+            },
+          },
+        },
+      },
+    });
+
+    const round2 = (v: number) => Math.round(v * 100) / 100;
+    const toTwenty = (g: (typeof grades)[number]): number | null => {
+      if (g.isAbsent) return 0;
+      if (g.value == null) return null;
+      const max = Number(g.maxValue) || 20;
+      return (Number(g.value) / max) * 20;
+    };
+
+    // Moyenne EC = moyenne pondérée des notes de l'EC (par weight).
+    // ueMap: ueId -> { meta, elements: ecId -> {meta, sum, w} }
+    const ueMap = new Map<string, any>();
+    for (const g of grades) {
+      const ec = g.courseElement;
+      if (!ec || !ec.teachingUnit) continue;
+      const note = toTwenty(g);
+      if (note == null) continue;
+      const w = Number(g.weight) || 1;
+      const ue = ec.teachingUnit;
+      const ueEntry =
+        ueMap.get(ue.id) ??
+        {
+          id: ue.id,
+          code: ue.code,
+          name: ue.name,
+          credits: ue.credits,
+          isFundamental: ue.isFundamental,
+          elements: new Map<string, any>(),
+        };
+      ueMap.set(ue.id, ueEntry);
+      const ecEntry =
+        ueEntry.elements.get(ec.id) ??
+        { id: ec.id, code: ec.code, name: ec.name, credits: ec.credits, sum: 0, w: 0 };
+      ecEntry.sum += note * w;
+      ecEntry.w += w;
+      ueEntry.elements.set(ec.id, ecEntry);
+    }
+
+    // Barème LMD camerounais (note /100 → grade lettré + points GPA /4),
+    // conforme à la légende du relevé officiel.
+    const gpaFor = (on100: number): { grade: string; points: number } => {
+      if (on100 >= 80) return { grade: "A", points: 4.0 };
+      if (on100 >= 75) return { grade: "A-", points: 3.7 };
+      if (on100 >= 70) return { grade: "B+", points: 3.3 };
+      if (on100 >= 65) return { grade: "B", points: 3.0 };
+      if (on100 >= 60) return { grade: "B-", points: 2.7 };
+      if (on100 >= 55) return { grade: "C+", points: 2.3 };
+      if (on100 >= 50) return { grade: "C", points: 2.0 };
+      if (on100 >= 45) return { grade: "C-", points: 1.7 };
+      if (on100 >= 40) return { grade: "D+", points: 1.3 };
+      if (on100 >= 35) return { grade: "D", points: 1.0 };
+      if (on100 >= 30) return { grade: "E", points: 1.0 };
+      return { grade: "F", points: 0.0 };
+    };
+
+    const units = [...ueMap.values()].map((ue) => {
+      const elements = [...ue.elements.values()].map((ec: any) => {
+        const ecAvg20 = ec.w > 0 ? ec.sum / ec.w : 0;
+        const on100 = ecAvg20 * 5;
+        return {
+          code: ec.code,
+          name: ec.name,
+          credits: ec.credits,
+          note100: round2(on100),
+          ...gpaFor(on100),
+        };
+      });
+      // Moyenne d'UE pondérée par les crédits des EC.
+      const totalEcCredits = elements.reduce((a: number, ec: any) => a + ec.credits, 0);
+      const ueAvg100 =
+        totalEcCredits > 0
+          ? elements.reduce((a: number, ec: any) => a + ec.note100 * ec.credits, 0) / totalEcCredits
+          : 0;
+      const { grade, points } = gpaFor(ueAvg100);
+      const validated = ueAvg100 >= 50;
+      return {
+        code: ue.code,
+        name: ue.name,
+        credits: ue.credits,
+        category: ue.isFundamental ? "FONDAMENTALE" : "COMPLEMENTAIRE",
+        note100: round2(ueAvg100),
+        grade,
+        points,
+        semester: period.number,
+        year: period.academicYear.label,
+        decision: validated ? "CA" : "NC", // Capitalisée / Non capitalisée
+        validated,
+      };
+    });
+
+    // Groupes par catégorie d'UE.
+    const categories = ["FONDAMENTALE", "COMPLEMENTAIRE", "TRANSVERSALE"];
+    const groups = categories
+      .map((cat) => ({
+        category: cat,
+        label:
+          cat === "FONDAMENTALE"
+            ? "Unité(s) d'Enseignement Fondamentale(s)"
+            : cat === "COMPLEMENTAIRE"
+              ? "Unité(s) d'Enseignement Complémentaire(s)"
+              : "Unité(s) d'Enseignement Transversale(s)",
+        units: units.filter((u) => u.category === cat),
+      }))
+      .filter((g) => g.units.length > 0);
+
+    const totalCredits = units.reduce((a, u) => a + u.credits, 0);
+    const creditsEarned = units.filter((u) => u.validated).reduce((a, u) => a + u.credits, 0);
+    // MGP = Σ(points×crédits)/Σ(crédits).
+    const mgp =
+      totalCredits > 0
+        ? round2(units.reduce((a, u) => a + u.points * u.credits, 0) / totalCredits)
+        : 0;
+    const decision = creditsEarned === totalCredits || mgp >= 2.0 ? "ADMIS" : "AJOURNÉ";
+
+    return {
+      establishment: {
+        name: tenant?.name ?? "Institution",
+        address: tenant?.address ?? null,
+        phone: tenant?.phone ?? null,
+        logoUrl: tenant?.logoUrl ?? null,
+      },
+      groups,
+      totalCredits,
+      creditsEarned,
+      mgp,
+      decision,
+    };
+  }
+
   private groupForCategory(category: string): number {
     switch (category) {
       case "LITERARY":
