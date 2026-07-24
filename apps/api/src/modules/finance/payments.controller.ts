@@ -1,5 +1,6 @@
-import { Body, Controller, Get, Param, Post, Query } from "@nestjs/common";
-import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
+import { Body, Controller, Get, Param, Post, Query, Res } from "@nestjs/common";
+import { Response } from "express";
+import { ApiBearerAuth, ApiOperation, ApiTags } from "@nestjs/swagger";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { RequirePermissions } from "../../common/decorators/require-permissions.decorator";
 import type { AuthenticatedUser } from "../auth/jwt-payload.interface";
@@ -35,5 +36,14 @@ export class PaymentsController {
   @RequirePermissions("payments:read")
   getReceipt(@Param("id") id: string) {
     return this.paymentsService.getReceipt(id);
+  }
+
+  @Get(":id/receipt/print")
+  @RequirePermissions("payments:read")
+  @ApiOperation({ summary: "Reçu de paiement imprimable (HTML A5, en-tête établissement)" })
+  async printReceipt(@Param("id") id: string, @Res() res: Response) {
+    const html = await this.paymentsService.getReceiptHtml(id);
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.send(html);
   }
 }

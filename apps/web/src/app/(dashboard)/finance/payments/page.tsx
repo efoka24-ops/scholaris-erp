@@ -6,6 +6,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import type { PaginatedResult } from "@scholaris/shared";
 import { Wallet, Plus } from "lucide-react";
 import { resourceClient } from "@/lib/api-client";
+import { openPrintable } from "@/lib/download";
 import { formatAmount, PAYMENT_METHOD_LABELS, type Payment, type PaymentMethod } from "@/types/finance";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -47,9 +48,14 @@ const columns: ColumnDef<PaymentRow>[] = [
     id: "actions",
     header: "",
     cell: ({ row }) => (
-      <Button asChild variant="outline" size="sm">
-        <Link href={`/finance/invoices/${row.original.invoiceId}`}>Voir la facture</Link>
-      </Button>
+      <div className="flex gap-2">
+        <Button variant="outline" size="sm" onClick={() => openPrintable(`/payments/${row.original.id}/receipt/print`)}>
+          Reçu
+        </Button>
+        <Button asChild variant="outline" size="sm">
+          <Link href={`/finance/invoices/${row.original.invoiceId}`}>Facture</Link>
+        </Button>
+      </div>
     ),
   },
 ];
