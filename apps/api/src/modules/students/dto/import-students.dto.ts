@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { IsNotEmpty, IsOptional, IsString } from "class-validator";
+import { IsBoolean, IsNotEmpty, IsOptional, IsString } from "class-validator";
 
 /**
  * Le fichier Excel transite en base64 dans un corps JSON : le proxy générique
@@ -15,4 +15,12 @@ export class ImportStudentsDto {
   @IsString()
   @IsNotEmpty({ message: "Le contenu du fichier est requis" })
   contentBase64!: string;
+
+  @ApiPropertyOptional({
+    description: "Créer automatiquement les classes absentes présentes dans le fichier (défaut : true)",
+    default: true,
+  })
+  @IsOptional()
+  @IsBoolean()
+  autoCreateClasses?: boolean;
 }

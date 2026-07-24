@@ -17,6 +17,7 @@ export interface ImportReport {
   created: number;
   duplicates: number;
   enrolled: number;
+  classesCreated: string[];
   errors: ImportRowError[];
 }
 
@@ -208,8 +209,9 @@ export class StudentsImportService {
    */
   async import(dto: ImportStudentsDto, tenantId: string): Promise<ImportReport> {
     const rows = await this.parseWorkbook(dto.contentBase64);
-    const report: ImportReport = { created: 0, duplicates: 0, enrolled: 0, errors: [] };
+    const report: ImportReport = { created: 0, duplicates: 0, enrolled: 0, classesCreated: [], errors: [] };
     const seenInFile = new Set<string>();
+    const autoCreate = dto.autoCreateClasses !== false;
 
     // Résolution des classes + année académique active (inscription automatique).
     const classrooms = await this.prisma.classRoom.findMany({ select: { id: true, code: true } });
@@ -242,9 +244,23 @@ export class StudentsImportService {
         const student = await this.studentsService.create(studentDto, tenantId);
         report.created += 1;
 
-        // Inscription automatique si un code classe valide est fourni.
+        // Inscription automatique si un code classe est fourni (classe créée si absente).
         if (parsed.classCode && activeYear) {
-          const classroomId = classByCode.get(normalizeName(parsed.classCode));
+          let classroomId = classByCode.get(normalizeName(parsed.classCode));
+          if (!classroomId && autoCreate) {
+            try {
+              classroomId = await this.ensureClassroom(parsed.classCode, tenantId);
+              classByCode.set(normalizeName(parsed.classCode), classroomId);
+              if (!report.classesCreated.includes(parsed.classCode)) {
+                report.classesCreated.push(parsed.classCode);
+              }
+            } catch (error) {
+              report.errors.push({
+                row: rowNumber,
+                message: `Impossible de créer la classe « ${parsed.classCode} » : ${(error as Error).message}`,
+              });
+            }
+          }
           if (classroomId) {
             try {
               await this.enrollmentsService.enroll(
@@ -270,6 +286,51 @@ export class StudentsImportService {
     }
 
     return report;
+  }
+
+  /**
+   * Résout (ou crée) une classe par son code. Si la classe n'existe pas, crée
+   * au besoin le cycle et le niveau parents (niveau déduit du code de classe en
+   * retirant la section, ex : « 3ème A » → niveau « 3ème »), puis la classe.
+   */
+  private async ensureClassroom(rawCode: string, tenantId: string): Promise<string> {
+    const existing = await this.prisma.classRoom.findFirst({ where: { code: rawCode } });
+    if (existing) return existing.id;
+
+    // Cycle : réutilise le premier existant, sinon en crée un par défaut.
+    let cycle = await this.prisma.cycle.findFirst({ orderBy: { order: "asc" } });
+    if (!cycle) {
+      cycle = await this.prisma.cycle.create({
+        data: { tenantId, code: "GEN", name: "Cycle général", order: 1 },
+      });
+    }
+
+    // Niveau : déduit du code de classe ; réutilisé s'il existe déjà.
+    const levelName = this.deriveLevelName(rawCode);
+    let level = await this.prisma.level.findFirst({ where: { name: levelName } });
+    if (!level) {
+      const order = (await this.prisma.level.count()) + 1;
+      const baseCode = levelName.replace(/[^A-Za-z0-9]/g, "").toUpperCase().slice(0, 16) || `NIV${order}`;
+      level = await this.prisma.level.create({
+        data: { tenantId, code: baseCode, name: levelName, order, cycleId: cycle.id },
+      });
+    }
+
+    const classroom = await this.prisma.classRoom.create({
+      data: { tenantId, code: rawCode, name: rawCode, capacity: 100, levelId: level.id },
+    });
+    return classroom.id;
+  }
+
+  /** Déduit le niveau du code de classe en retirant la section finale courte. */
+  private deriveLevelName(code: string): string {
+    const parts = code.trim().split(/[\s-]+/);
+    if (parts.length > 1) {
+      const last = parts[parts.length - 1];
+      // Section = jeton court (ex: A, B, C1, T) → on le retire pour obtenir le niveau.
+      if (last.length <= 2) return parts.slice(0, -1).join(" ");
+    }
+    return code.trim();
   }
 
   private async parseWorkbook(

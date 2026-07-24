@@ -87,6 +87,8 @@ export interface AdmissionApplication {
 export interface ImportReport {
   created: number;
   duplicates: number;
+  enrolled?: number;
+  classesCreated?: string[];
   errors: Array<{ row: number; message: string }>;
 }
 

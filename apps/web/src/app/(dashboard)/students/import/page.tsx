@@ -197,10 +197,15 @@ export default function ImportStudentsPage() {
           <CardContent className="flex flex-col gap-4">
             <div className="grid grid-cols-4 gap-3 text-center">
               <Stat value={report.created} label="créé(s)" className="text-primary" />
-              <Stat value={(report as any).enrolled ?? 0} label="inscrit(s)" />
+              <Stat value={report.enrolled ?? 0} label="inscrit(s)" />
               <Stat value={report.duplicates} label="doublon(s)" />
               <Stat value={report.errors.length} label="erreur(s)" className="text-destructive" />
             </div>
+            {report.classesCreated && report.classesCreated.length > 0 ? (
+              <p className="text-sm text-muted-foreground">
+                Classes créées automatiquement : <strong>{report.classesCreated.join(", ")}</strong>
+              </p>
+            ) : null}
             {report.errors.length > 0 ? (
               <div className="max-h-64 overflow-auto rounded-md border border-border">
                 <table className="w-full text-sm">

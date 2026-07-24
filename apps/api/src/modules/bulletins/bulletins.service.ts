@@ -5,6 +5,7 @@ import {
 } from "@nestjs/common";
 import { PrismaService } from "../../prisma/prisma.service";
 import { BulletinPdfService } from "./bulletin-pdf.service";
+import { SmtpMailService } from "../../common/mail/smtp-mail.service";
 import { normalizeBulletinGroups } from "../tenants/tenants.service";
 import * as crypto from "crypto";
 
@@ -13,7 +14,68 @@ export class BulletinsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly pdfService: BulletinPdfService,
+    private readonly mail: SmtpMailService,
   ) {}
+
+  /**
+   * Envoie par email aux parents les bulletins publiés d'une classe/période.
+   * Le corps contient l'identité, la moyenne, le rang et le lien de vérification.
+   * Retourne un rapport (envoyés / sans email / échecs). Nécessite la config SMTP
+   * (sinon les envois sont ignorés proprement, cf. SmtpMailService).
+   */
+  async sendForClassroom(classroomId: string, periodId: string, tenantId: string) {
+    const bulletins = await this.prisma.bulletin.findMany({
+      where: { classroomId, periodId, tenantId },
+      include: {
+        student: {
+          include: { parents: { include: { parent: { select: { firstName: true, lastName: true, email: true } } } } },
+        },
+        period: { include: { academicYear: true } },
+      },
+    });
+
+    const tenant = await this.prisma.tenant.findFirst({ where: { id: tenantId }, select: { name: true } });
+    let sent = 0;
+    let noEmail = 0;
+    let failed = 0;
+
+    for (const b of bulletins) {
+      const data = b.data as any;
+      const recipients = b.student.parents
+        .map((p) => p.parent.email)
+        .filter((e): e is string => !!e);
+      if (recipients.length === 0) {
+        noEmail += 1;
+        continue;
+      }
+      const avg = data?.average != null ? Number(data.average).toFixed(2) : "—";
+      const rank = data?.rank ?? "—";
+      const html = `
+        <p>Bonjour,</p>
+        <p>Le bulletin de <strong>${b.student.lastName} ${b.student.firstName}</strong>
+        (${data?.period?.name ?? ""} — ${data?.period?.academicYear ?? ""}) est disponible.</p>
+        <ul>
+          <li>Moyenne générale : <strong>${avg}/20</strong></li>
+          <li>Rang : <strong>${rank}</strong></li>
+          <li>Mention : <strong>${data?.minesec?.mention ?? "—"}</strong></li>
+        </ul>
+        <p>Vérifier l'authenticité : https://scholaris.cm/verify/${b.verificationCode}</p>
+        <p>Cordialement,<br>${tenant?.name ?? "L'établissement"}</p>`;
+      const ok = await this.mail.send({
+        to: recipients.join(","),
+        subject: `Bulletin de ${b.student.lastName} ${b.student.firstName} — ${data?.period?.name ?? ""}`,
+        html,
+      });
+      if (ok) {
+        sent += 1;
+        await this.prisma.bulletin.update({ where: { id: b.id }, data: { status: "sent" } });
+      } else {
+        failed += 1;
+      }
+    }
+
+    return { total: bulletins.length, sent, noEmail, failed };
+  }
 
   /**
    * Génère les bulletins pour tous les élèves d'une classe pour une période donnée

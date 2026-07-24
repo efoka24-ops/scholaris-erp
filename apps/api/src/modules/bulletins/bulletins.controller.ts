@@ -125,12 +125,6 @@ export class BulletinsController {
   @ApiOperation({ summary: "Send bulletins to parents" })
   @ApiResponse({ status: 200, description: "Bulletins sent successfully" })
   send(@Body() dto: SendBulletinsDto, @CurrentUser() user: AuthenticatedUser) {
-    // TODO: Implémenter l'envoi via communication module
-    return {
-      message: "Bulletin sending not implemented yet",
-      classroomId: dto.classroomId,
-      periodId: dto.periodId,
-      channel: dto.channel,
-    };
+    return this.bulletinsService.sendForClassroom(dto.classroomId, dto.periodId, user.tenantId);
   }
 }
