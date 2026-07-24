@@ -1,8 +1,11 @@
 import { BadRequestException, ConflictException, Injectable } from "@nestjs/common";
-import { Gender } from "@scholaris/prisma";
+import { Gender, ParentRelationship } from "@scholaris/prisma";
 import * as ExcelJS from "exceljs";
+import { PrismaService } from "../../prisma/prisma.service";
+import { EnrollmentsService } from "../enrollments/enrollments.service";
 import { StudentsService, normalizeName } from "./students.service";
 import { CreateStudentDto } from "./dto/create-student.dto";
+import { CreateParentDto } from "./dto/create-parent.dto";
 import { ImportStudentsDto } from "./dto/import-students.dto";
 
 export interface ImportRowError {
@@ -13,7 +16,23 @@ export interface ImportRowError {
 export interface ImportReport {
   created: number;
   duplicates: number;
+  enrolled: number;
   errors: ImportRowError[];
+}
+
+export interface ValidationRow {
+  row: number;
+  name: string;
+  status: "valid" | "warning" | "error";
+  messages: string[];
+}
+
+export interface ValidationReport {
+  total: number;
+  valid: number;
+  warnings: number;
+  errors: number;
+  rows: ValidationRow[];
 }
 
 /** En-têtes reconnues (insensibles à la casse et aux accents). */
@@ -38,6 +57,35 @@ const HEADER_ALIASES: Record<string, string> = {
   allergies: "allergies",
   "contact urgence": "emergencyContact",
   "contact d urgence": "emergencyContact",
+  // Classe (inscription automatique)
+  classe: "classCode",
+  "classe code": "classCode",
+  "code classe": "classCode",
+  class: "classCode",
+  // Parent / tuteur
+  "parent nom": "parentLastName",
+  "nom parent": "parentLastName",
+  "parent prenom": "parentFirstName",
+  "prenom parent": "parentFirstName",
+  "parent telephone": "parentPhone",
+  "telephone parent": "parentPhone",
+  "parent whatsapp": "parentWhatsapp",
+  "parent email": "parentEmail",
+  "parent profession": "parentProfession",
+  "parent relation": "parentRelation",
+  relation: "parentRelation",
+};
+
+const RELATION_ALIASES: Record<string, ParentRelationship> = {
+  pere: ParentRelationship.FATHER,
+  father: ParentRelationship.FATHER,
+  papa: ParentRelationship.FATHER,
+  mere: ParentRelationship.MOTHER,
+  mother: ParentRelationship.MOTHER,
+  maman: ParentRelationship.MOTHER,
+  tuteur: ParentRelationship.GUARDIAN,
+  guardian: ParentRelationship.GUARDIAN,
+  tutrice: ParentRelationship.GUARDIAN,
 };
 
 const GENDER_ALIASES: Record<string, Gender> = {
@@ -54,7 +102,97 @@ const GENDER_ALIASES: Record<string, Gender> = {
 
 @Injectable()
 export class StudentsImportService {
-  constructor(private readonly studentsService: StudentsService) {}
+  constructor(
+    private readonly studentsService: StudentsService,
+    private readonly enrollmentsService: EnrollmentsService,
+    private readonly prisma: PrismaService,
+  ) {}
+
+  /**
+   * Validation à blanc (dry-run) : parse le classeur et classe chaque ligne
+   * (valide / avertissement / erreur) SANS rien créer. Sert au rapport de
+   * pré-import affiché avant confirmation.
+   */
+  async validate(dto: ImportStudentsDto, tenantId: string): Promise<ValidationReport> {
+    const rows = await this.parseWorkbook(dto.contentBase64);
+    // Codes de classe existants (pour vérifier l'existence + capacité).
+    const classrooms = await this.prisma.classRoom.findMany({
+      select: { id: true, code: true, name: true, capacity: true },
+    });
+    const classByCode = new Map(classrooms.map((c) => [normalizeName(c.code), c]));
+
+    const seenInFile = new Set<string>();
+    const out: ValidationRow[] = [];
+
+    for (const { rowNumber, values } of rows) {
+      const messages: string[] = [];
+      let status: ValidationRow["status"] = "valid";
+      let name = "";
+      try {
+        const parsed = this.parseRow(values);
+        name = `${parsed.dto.lastName} ${parsed.dto.firstName}`;
+        // Doublon dans le fichier.
+        const key = [normalizeName(parsed.dto.firstName), normalizeName(parsed.dto.lastName), parsed.dto.dateOfBirth].join("|");
+        if (seenInFile.has(key)) {
+          status = "warning";
+          messages.push("Doublon dans le fichier");
+        }
+        seenInFile.add(key);
+        // Classe.
+        if (parsed.classCode) {
+          const cls = classByCode.get(normalizeName(parsed.classCode));
+          if (!cls) {
+            status = "warning";
+            messages.push(`Classe « ${parsed.classCode} » introuvable (élève créé sans inscription)`);
+          }
+        } else {
+          if (status === "valid") status = "warning";
+          messages.push("Aucune classe indiquée (élève non inscrit)");
+        }
+        // Parent sans téléphone.
+        if (parsed.parent && !parsed.parent.phone) {
+          if (status === "valid") status = "warning";
+          messages.push("Parent sans téléphone");
+        }
+      } catch (error) {
+        status = "error";
+        messages.push((error as Error).message);
+      }
+      out.push({ row: rowNumber, name, status, messages });
+    }
+
+    return {
+      total: out.length,
+      valid: out.filter((r) => r.status === "valid").length,
+      warnings: out.filter((r) => r.status === "warning").length,
+      errors: out.filter((r) => r.status === "error").length,
+      rows: out,
+    };
+  }
+
+  /** Génère le template Excel d'import (en-têtes obligatoires + parents + classe). */
+  async generateTemplate(): Promise<Buffer> {
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet("Élèves");
+    ws.columns = [
+      { header: "Nom", key: "nom", width: 20 },
+      { header: "Prénom", key: "prenom", width: 20 },
+      { header: "Sexe", key: "sexe", width: 8 },
+      { header: "Date_naissance", key: "dob", width: 16 },
+      { header: "Lieu_naissance", key: "lieu", width: 18 },
+      { header: "Nationalité", key: "nat", width: 16 },
+      { header: "Classe_code", key: "classe", width: 14 },
+      { header: "Parent_nom", key: "pnom", width: 18 },
+      { header: "Parent_prénom", key: "pprenom", width: 18 },
+      { header: "Parent_téléphone", key: "ptel", width: 18 },
+      { header: "Parent_email", key: "pmail", width: 22 },
+      { header: "Parent_relation", key: "prel", width: 14 },
+    ];
+    ws.getRow(1).font = { bold: true };
+    ws.addRow(["MBALLA", "Jean", "M", "12/03/2012", "Yaoundé", "Camerounaise", "6EME-A", "MBALLA", "Paul", "+237690000001", "paul@example.com", "Père"]);
+    const buf = await wb.xlsx.writeBuffer();
+    return Buffer.from(buf as ArrayBuffer);
+  }
 
   /**
    * Importe un classeur Excel (première feuille, ligne 1 = en-têtes).
@@ -63,17 +201,24 @@ export class StudentsImportService {
    */
   async import(dto: ImportStudentsDto, tenantId: string): Promise<ImportReport> {
     const rows = await this.parseWorkbook(dto.contentBase64);
-    const report: ImportReport = { created: 0, duplicates: 0, errors: [] };
+    const report: ImportReport = { created: 0, duplicates: 0, enrolled: 0, errors: [] };
     const seenInFile = new Set<string>();
 
+    // Résolution des classes + année académique active (inscription automatique).
+    const classrooms = await this.prisma.classRoom.findMany({ select: { id: true, code: true } });
+    const classByCode = new Map(classrooms.map((c) => [normalizeName(c.code), c.id]));
+    const activeYear = await this.prisma.academicYear.findFirst({ where: { status: "ACTIVE" } });
+
     for (const { rowNumber, values } of rows) {
-      let studentDto: CreateStudentDto;
+      let parsed: { dto: CreateStudentDto; classCode?: string; parent?: CreateParentDto };
       try {
-        studentDto = this.toStudentDto(values);
+        parsed = this.parseRow(values);
       } catch (error) {
         report.errors.push({ row: rowNumber, message: (error as Error).message });
         continue;
       }
+      const studentDto = parsed.dto;
+      if (parsed.parent) studentDto.parents = [parsed.parent];
 
       const fileKey = [
         normalizeName(studentDto.firstName),
@@ -87,8 +232,27 @@ export class StudentsImportService {
       seenInFile.add(fileKey);
 
       try {
-        await this.studentsService.create(studentDto, tenantId);
+        const student = await this.studentsService.create(studentDto, tenantId);
         report.created += 1;
+
+        // Inscription automatique si un code classe valide est fourni.
+        if (parsed.classCode && activeYear) {
+          const classroomId = classByCode.get(normalizeName(parsed.classCode));
+          if (classroomId) {
+            try {
+              await this.enrollmentsService.enroll(
+                { studentId: (student as any).id, classroomId, academicYearId: activeYear.id } as any,
+                tenantId,
+              );
+              report.enrolled += 1;
+            } catch (error) {
+              report.errors.push({
+                row: rowNumber,
+                message: `Élève créé mais non inscrit : ${(error as Error).message}`,
+              });
+            }
+          }
+        }
       } catch (error) {
         if (error instanceof ConflictException) {
           report.duplicates += 1;
@@ -148,7 +312,11 @@ export class StudentsImportService {
     return rows;
   }
 
-  private toStudentDto(values: Record<string, unknown>): CreateStudentDto {
+  private parseRow(values: Record<string, unknown>): {
+    dto: CreateStudentDto;
+    classCode?: string;
+    parent?: CreateParentDto;
+  } {
     const lastName = this.asText(values.lastName);
     const firstName = this.asText(values.firstName);
     if (!lastName || !firstName) {
@@ -165,7 +333,7 @@ export class StudentsImportService {
       throw new Error("Sexe manquant ou invalide (M/F attendu)");
     }
 
-    return {
+    const dto: CreateStudentDto = {
       firstName,
       lastName,
       dateOfBirth,
@@ -176,6 +344,26 @@ export class StudentsImportService {
       allergies: this.asText(values.allergies),
       emergencyContact: this.asText(values.emergencyContact),
     };
+
+    // Parent (créé seulement si un nom ou un téléphone est présent).
+    let parent: CreateParentDto | undefined;
+    const parentLastName = this.asText(values.parentLastName);
+    const parentPhone = this.asText(values.parentPhone);
+    if (parentLastName || parentPhone) {
+      parent = {
+        firstName: this.asText(values.parentFirstName),
+        lastName: parentLastName,
+        phone: parentPhone,
+        whatsapp: this.asText(values.parentWhatsapp),
+        email: this.asText(values.parentEmail),
+        profession: this.asText(values.parentProfession),
+        relationship:
+          RELATION_ALIASES[normalizeName(this.asText(values.parentRelation) ?? "")] ??
+          ParentRelationship.GUARDIAN,
+      } as CreateParentDto;
+    }
+
+    return { dto, classCode: this.asText(values.classCode), parent };
   }
 
   private asText(value: unknown): string | undefined {

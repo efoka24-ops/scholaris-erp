@@ -109,6 +109,25 @@ export class StudentsController {
     return this.importService.import(dto, user.tenantId);
   }
 
+  @Post("import/validate")
+  @RequirePermissions("students:import")
+  @ApiOperation({ summary: "Valider un fichier d'import (dry-run) et retourner le rapport de pré-import" })
+  validateImport(@Body() dto: ImportStudentsDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.importService.validate(dto, user.tenantId);
+  }
+
+  @Get("import/template")
+  @RequirePermissions("students:import")
+  @ApiOperation({ summary: "Template Excel d'import (base64, à décoder côté client)" })
+  async importTemplate() {
+    const buffer = await this.importService.generateTemplate();
+    return {
+      filename: "template-import-eleves.xlsx",
+      contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      base64: buffer.toString("base64"),
+    };
+  }
+
   @Put(":id")
   @RequirePermissions("students:update")
   update(@Param("id") id: string, @Body() dto: UpdateStudentDto) {

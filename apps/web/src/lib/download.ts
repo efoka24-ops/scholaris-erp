@@ -18,6 +18,21 @@ export async function downloadCsv(path: string, filename: string): Promise<void>
   URL.revokeObjectURL(url);
 }
 
+/** Télécharge un fichier binaire renvoyé en base64 (ex: template Excel via le proxy JSON). */
+export async function downloadBase64(path: string): Promise<void> {
+  const { data } = await resourceClient.get<{ filename: string; contentType: string; base64: string }>(path);
+  const bytes = Uint8Array.from(atob(data.base64), (c) => c.charCodeAt(0));
+  const blob = new Blob([bytes], { type: data.contentType });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = data.filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 export async function openPrintable(path: string): Promise<void> {
   const { data } = await resourceClient.get<string>(path);
   const w = window.open("", "_blank");
