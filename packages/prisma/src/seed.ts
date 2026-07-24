@@ -140,6 +140,8 @@ const BASE_PERMISSIONS: Array<{ resource: string; action: string; description: s
   { resource: "hr", action: "update", description: "Modifier un dossier employé ou statut de congé" },
   // Gestion des utilisateurs — assignation de rôles
   { resource: "users", action: "assign-roles", description: "Assigner un ou plusieurs rôles à un utilisateur" },
+  // Module Paiement — passerelle CAMOO
+  { resource: "payments", action: "cashout", description: "Initier un décaissement / paiement via CAMOO" },
 ];
 
 /**
@@ -228,6 +230,8 @@ export const BUSINESS_ROLES: Array<{ name: string; description: string; permissi
       // Examens officiels — total (création, inscription, saisie résultats)
       "exams:create", "exams:read", "exams:register", "exams:results",
       "reports:read",
+      // Paiement — décaissement via CAMOO
+      "payments:cashout",
     ],
   },
   {
@@ -343,6 +347,8 @@ export const BUSINESS_ROLES: Array<{ name: string; description: string; permissi
       "hr:read", "hr:create", "hr:update",
       "students:read", "enrollments:read", "classrooms:read",
       "internal-messages:read", "internal-messages:create",
+      // Paiement — décaissement via CAMOO
+      "payments:cashout",
     ],
   },
   {

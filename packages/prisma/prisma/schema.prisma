@@ -1812,3 +1812,31 @@ model ExamResult {
   @@index([registrationId])
   @@map("exam_results")
 }
+
+// Module Paiement — Passerelle CAMOO Payment API
+// Transactions de décaissement/paiement initiées via le gateway CAMOO.
+// Modèle volontairement dénormalisé (FK scalaires, pas de relations) pour
+// éviter toute modification des modèles Tenant/Student/Invoice existants.
+model PaymentTransaction {
+  id                String   @id @default(uuid())
+  tenantId          String   @map("tenant_id")
+  gatewayId         String?  @map("gateway_id")
+  externalReference String?  @map("external_reference")
+  amount            Decimal  @db.Decimal(12, 2)
+  currency          String   @default("XAF")
+  phoneNumber       String   @map("phone_number")
+  network           String?
+  status            String   @default("PENDING")
+  fees              Decimal? @db.Decimal(12, 2)
+  netAmount         Decimal? @map("net_amount") @db.Decimal(12, 2)
+  studentId         String?  @map("student_id")
+  invoiceId         String?  @map("invoice_id")
+  rawResponse       Json?    @map("raw_response")
+  notifiedAt        DateTime? @map("notified_at")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  @@index([tenantId])
+  @@index([gatewayId])
+  @@map("payment_transactions")
+}

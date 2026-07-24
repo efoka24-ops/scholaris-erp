@@ -77,6 +77,8 @@ const TENANT_SCOPED_MODELS = new Set([
   "OfficialExam",
   "ExamRegistration",
   "ExamResult",
+  // Module Paiement — passerelle CAMOO
+  "PaymentTransaction",
 ]);
 
 const READ_ACTIONS = new Set(["findFirst", "findMany", "count", "aggregate", "groupBy"]);
