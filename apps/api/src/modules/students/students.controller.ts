@@ -6,6 +6,7 @@ import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import type { AuthenticatedUser } from "../auth/jwt-payload.interface";
 import { StudentsService } from "./students.service";
 import { StudentsImportService } from "./students-import.service";
+import { StudentCardsService } from "./student-cards.service";
 import { CreateStudentDto } from "./dto/create-student.dto";
 import { UpdateStudentDto } from "./dto/update-student.dto";
 import { FindStudentsQueryDto } from "./dto/find-students-query.dto";
@@ -20,6 +21,7 @@ export class StudentsController {
   constructor(
     private readonly studentsService: StudentsService,
     private readonly importService: StudentsImportService,
+    private readonly cardsService: StudentCardsService,
     private readonly prisma: PrismaService,
   ) {}
 
@@ -56,6 +58,24 @@ export class StudentsController {
     res.setHeader("Content-Type", "text/csv; charset=utf-8");
     res.setHeader("Content-Disposition", `attachment; filename="eleves.csv"`);
     res.send("﻿" + [head.join(";"), ...lines].join("\r\n"));
+  }
+
+  @Get("print/cards")
+  @RequirePermissions("students:read")
+  @ApiOperation({ summary: "Cartes scolaires avec QR (A4, 8 par page)" })
+  async printCards(@Query() query: FindStudentsQueryDto, @CurrentUser() user: AuthenticatedUser, @Res() res: Response) {
+    const html = await this.cardsService.cardsHtml(query, user.tenantId);
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.send(html);
+  }
+
+  @Get("print/labels")
+  @RequirePermissions("students:read")
+  @ApiOperation({ summary: "Étiquettes de dossiers (A4, format Avery)" })
+  async printLabels(@Query() query: FindStudentsQueryDto, @CurrentUser() user: AuthenticatedUser, @Res() res: Response) {
+    const html = await this.cardsService.labelsHtml(query, user.tenantId);
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.send(html);
   }
 
   @Get("print/class-list")

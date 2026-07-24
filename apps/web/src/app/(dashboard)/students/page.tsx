@@ -96,6 +96,12 @@ export default function StudentsPage() {
           <Button variant="outline" size="sm" onClick={() => openPrintable("/students/print/class-list")}>
             Imprimer la liste
           </Button>
+          <Button variant="outline" size="sm" onClick={() => openPrintable("/students/print/cards")}>
+            Cartes (QR)
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => openPrintable("/students/print/labels")}>
+            Étiquettes
+          </Button>
           <Button asChild variant="outline" size="sm">
             <Link href="/students/import">
               <FileUp className="mr-2 h-4 w-4" />
