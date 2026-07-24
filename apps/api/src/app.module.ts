@@ -37,6 +37,7 @@ import { HrModule } from "./modules/hr/hr.module";
 import { MailModule } from "./common/mail/mail.module";
 import { EstablishmentRequestsModule } from "./modules/establishment-requests/establishment-requests.module";
 import { ExamsModule } from "./modules/exams/exams.module";
+import { ReportsModule } from "./modules/reports/reports.module";
 
 @Module({
   imports: [
@@ -81,6 +82,7 @@ import { ExamsModule } from "./modules/exams/exams.module";
     HrModule,
     EstablishmentRequestsModule,
     ExamsModule,
+    ReportsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

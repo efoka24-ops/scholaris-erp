@@ -28,6 +28,7 @@ const BASE_PERMISSIONS: Array<{ resource: string; action: string; description: s
   { resource: "exams", action: "read", description: "Consulter les examens, candidats et résultats" },
   { resource: "exams", action: "register", description: "Inscrire/valider des candidats aux examens" },
   { resource: "exams", action: "results", description: "Saisir/importer les résultats d'examen" },
+  { resource: "reports", action: "read", description: "Consulter les rapports par niveau et tableaux de bord" },
   // Module 2 — Structure pédagogique
   { resource: "cycles", action: "read", description: "Consulter les cycles" },
   { resource: "cycles", action: "create", description: "Créer un cycle" },
@@ -226,6 +227,7 @@ export const BUSINESS_ROLES: Array<{ name: string; description: string; permissi
       "internal-messages:read", "internal-messages:create",
       // Examens officiels — total (création, inscription, saisie résultats)
       "exams:create", "exams:read", "exams:register", "exams:results",
+      "reports:read",
     ],
   },
   {
@@ -256,6 +258,7 @@ export const BUSINESS_ROLES: Array<{ name: string; description: string; permissi
       "bulletins:generate", "bulletins:send",
       // Examens officiels — supervision (création + résultats)
       "exams:create", "exams:read", "exams:results",
+      "reports:read",
     ],
   },
   {
