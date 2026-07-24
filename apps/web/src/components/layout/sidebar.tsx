@@ -84,6 +84,10 @@ const NAV_SECTIONS: NavSection[] = [
     ],
   },
   {
+    label: "Examens officiels",
+    items: [{ href: "/exams", label: "Examens (CEP/BEPC/BAC)", icon: ScrollText }],
+  },
+  {
     label: "Finance",
     items: [
       { href: "/finance/dashboard", label: "Tableau de bord", icon: Wallet },

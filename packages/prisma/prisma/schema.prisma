@@ -1714,3 +1714,101 @@ model EstablishmentRequest {
   @@index([requestStatus])
   @@map("establishment_requests")
 }
+
+// ============================================================================
+// Module Examens officiels (CEP / BEPC / Probatoire / BAC + configurables)
+// FK scalaires (pas de @relation vers Tenant/Student/Level/AcademicYear) pour
+// isoler ce module ; le tenant scoping est assuré par le middleware Prisma.
+// ============================================================================
+
+enum OfficialExamCode {
+  CEP
+  BEPC
+  PROBATOIRE
+  BAC
+  CUSTOM
+}
+
+enum ExamRegistrationStatus {
+  PENDING
+  VALIDATED
+  REJECTED
+  ABSENT
+  PASSED
+  FAILED
+}
+
+model OfficialExam {
+  id                String           @id @default(uuid())
+  tenantId          String           @map("tenant_id")
+  name              String
+  code              OfficialExamCode
+  levelId           String?          @map("level_id")
+  academicYearId    String           @map("academic_year_id")
+  registrationStart DateTime         @map("registration_start")
+  registrationEnd   DateTime         @map("registration_end")
+  examStart         DateTime?        @map("exam_start")
+  examEnd           DateTime?        @map("exam_end")
+  feeAmount         Decimal          @default(0) @db.Decimal(12, 2) @map("fee_amount")
+  minAge            Int?             @map("min_age")
+  maxAge            Int?             @map("max_age")
+  requiredSequences Int              @default(0) @map("required_sequences")
+  passMark          Decimal          @default(10) @db.Decimal(5, 2) @map("pass_mark")
+  oralMinMark       Decimal?         @db.Decimal(5, 2) @map("oral_min_mark")
+  isOfficial        Boolean          @default(true) @map("is_official")
+  configJson        Json?            @map("config_json")
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime         @updatedAt @map("updated_at")
+  deletedAt         DateTime?        @map("deleted_at")
+
+  registrations     ExamRegistration[]
+
+  @@unique([tenantId, academicYearId, code, name])
+  @@index([tenantId])
+  @@map("official_exams")
+}
+
+model ExamRegistration {
+  id                 String                 @id @default(uuid())
+  tenantId           String                 @map("tenant_id")
+  examId             String                 @map("exam_id")
+  studentId          String                 @map("student_id")
+  registrationNumber String                 @map("registration_number")
+  centerCode         String?                @map("center_code")
+  centerName         String?                @map("center_name")
+  series             String?
+  status             ExamRegistrationStatus @default(PENDING)
+  feePaid            Boolean                @default(false) @map("fee_paid")
+  average            Decimal?               @db.Decimal(5, 2)
+  mention            String?
+  rank               Int?
+  registeredAt       DateTime               @default(now()) @map("registered_at")
+  validatedBy        String?                @map("validated_by")
+  createdAt          DateTime               @default(now()) @map("created_at")
+  updatedAt          DateTime               @updatedAt @map("updated_at")
+
+  exam    OfficialExam @relation(fields: [examId], references: [id], onDelete: Cascade)
+  results ExamResult[]
+
+  @@unique([examId, studentId])
+  @@index([tenantId])
+  @@index([examId])
+  @@map("exam_registrations")
+}
+
+model ExamResult {
+  id             String   @id @default(uuid())
+  tenantId       String   @map("tenant_id")
+  registrationId String   @map("registration_id")
+  subject        String
+  coefficient    Decimal  @default(1) @db.Decimal(5, 2)
+  mark           Decimal? @db.Decimal(5, 2)
+  isAbsent       Boolean  @default(false) @map("is_absent")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  registration ExamRegistration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([registrationId])
+  @@map("exam_results")
+}

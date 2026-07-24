@@ -24,6 +24,10 @@ const BASE_PERMISSIONS: Array<{ resource: string; action: string; description: s
   { resource: "periods", action: "update", description: "Ouvrir/fermer/verrouiller une période de saisie" },
   { resource: "periods", action: "unlock", description: "Rouvrir une période verrouillée (Admin uniquement)" },
   { resource: "audit-logs", action: "read", description: "Consulter le journal d'audit" },
+  { resource: "exams", action: "create", description: "Créer un examen officiel ou configurable" },
+  { resource: "exams", action: "read", description: "Consulter les examens, candidats et résultats" },
+  { resource: "exams", action: "register", description: "Inscrire/valider des candidats aux examens" },
+  { resource: "exams", action: "results", description: "Saisir/importer les résultats d'examen" },
   // Module 2 — Structure pédagogique
   { resource: "cycles", action: "read", description: "Consulter les cycles" },
   { resource: "cycles", action: "create", description: "Créer un cycle" },
@@ -220,6 +224,8 @@ export const BUSINESS_ROLES: Array<{ name: string; description: string; permissi
       // Communication — CRUD templates
       "communications:read", "communication-templates:create", "communication-templates:read", "communication-templates:update",
       "internal-messages:read", "internal-messages:create",
+      // Examens officiels — total (création, inscription, saisie résultats)
+      "exams:create", "exams:read", "exams:register", "exams:results",
     ],
   },
   {
@@ -248,6 +254,8 @@ export const BUSINESS_ROLES: Array<{ name: string; description: string; permissi
       "academic-years:create", "academic-years:update",
       "periods:create", "periods:update",
       "bulletins:generate", "bulletins:send",
+      // Examens officiels — supervision (création + résultats)
+      "exams:create", "exams:read", "exams:results",
     ],
   },
   {
@@ -349,6 +357,8 @@ export const BUSINESS_ROLES: Array<{ name: string; description: string; permissi
       "transport:read", "transport:create",
       "catering:read", "catering:create",
       "internal-messages:read", "internal-messages:create",
+      // Examens officiels — inscription des candidats + consultation
+      "exams:read", "exams:register",
     ],
   },
   {
