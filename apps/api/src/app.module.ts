@@ -38,6 +38,7 @@ import { MailModule } from "./common/mail/mail.module";
 import { EstablishmentRequestsModule } from "./modules/establishment-requests/establishment-requests.module";
 import { ExamsModule } from "./modules/exams/exams.module";
 import { ReportsModule } from "./modules/reports/reports.module";
+import { PaymentsGatewayModule } from "./modules/payments-gateway/payments-gateway.module";
 
 @Module({
   imports: [
@@ -83,6 +84,7 @@ import { ReportsModule } from "./modules/reports/reports.module";
     EstablishmentRequestsModule,
     ExamsModule,
     ReportsModule,
+    PaymentsGatewayModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
