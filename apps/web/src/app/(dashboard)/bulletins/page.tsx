@@ -5,6 +5,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import type { PaginatedResult } from "@scholaris/shared";
 import { Download } from "lucide-react";
 import { resourceClient } from "@/lib/api-client";
+import { openPrintable } from "@/lib/download";
 import type { ClassRoom } from "@/types/structure";
 import type { Period } from "@/types/settings";
 import type { Student } from "@/types/students";
@@ -91,11 +92,13 @@ export default function BulletinsPage() {
       id: "actions",
       header: "",
       cell: ({ row }) => (
-        <Button asChild variant="outline" size="sm">
-          <a href={`/api/proxy/bulletins/${row.original.id}/pdf`} target="_blank" rel="noreferrer">
-            <Download className="mr-1 h-3.5 w-3.5" />
-            PDF
-          </a>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => openPrintable(`/bulletins/${row.original.id}/pdf`)}
+        >
+          <Download className="mr-1 h-3.5 w-3.5" />
+          PDF
         </Button>
       ),
     },
