@@ -69,11 +69,18 @@ const HEADER_ALIASES: Record<string, string> = {
   "prenom parent": "parentFirstName",
   "parent telephone": "parentPhone",
   "telephone parent": "parentPhone",
+  "tel parent": "parentPhone",
+  "parent tel": "parentPhone",
   "parent whatsapp": "parentWhatsapp",
+  whatsapp: "parentWhatsapp",
   "parent email": "parentEmail",
+  "email parent": "parentEmail",
+  email: "parentEmail",
   "parent profession": "parentProfession",
+  profession: "parentProfession",
   "parent relation": "parentRelation",
   relation: "parentRelation",
+  regime: "regime",
 };
 
 const RELATION_ALIASES: Record<string, ParentRelationship> = {

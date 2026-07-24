@@ -692,12 +692,14 @@ export class BulletinsService {
     };
   }
 
+  // Barème MINESEC : bande « Médiocre » 08 ≤ moy < 10, « Insuffisant » < 08.
   private appreciationFor(moy: number | null): string {
     if (moy == null) return "—";
     if (moy >= 16) return "Très Bien";
     if (moy >= 14) return "Bien";
     if (moy >= 12) return "Assez Bien";
     if (moy >= 10) return "Passable";
+    if (moy >= 8) return "Médiocre";
     return "Insuffisant";
   }
 
@@ -707,6 +709,7 @@ export class BulletinsService {
     if (average >= 14) return "BIEN";
     if (average >= 12) return "ASSEZ BIEN";
     if (average >= 10) return "PASSABLE";
+    if (average >= 8) return "MÉDIOCRE";
     return "INSUFFISANT";
   }
 
