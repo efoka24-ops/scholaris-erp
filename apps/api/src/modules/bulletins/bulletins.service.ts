@@ -216,50 +216,59 @@ export class BulletinsService {
     // Générer un code QR unique pour vérification
     const verificationCode = crypto.randomBytes(16).toString("hex");
 
-    // Créer l'enregistrement bulletin
-    const bulletin = await this.prisma.bulletin.create({
-      data: {
+    const snapshot = {
+      student: {
+        matricule: student.matricule,
+        firstName: student.firstName,
+        lastName: student.lastName,
+        dateOfBirth: student.dateOfBirth,
+        placeOfBirth: (student as any).placeOfBirth ?? null,
+        gender: student.gender,
+        repeating: (enrollment as any).isRepeating ?? false,
+      },
+      classroom: {
+        name: enrollment.classroom.name,
+        level: enrollment.classroom.level.name,
+      },
+      period: {
+        name: `${period.type === "SEQUENCE" ? "Séquence" : period.type === "TRIMESTER" ? "Trimestre" : "Semestre"} ${period.number}`,
+        type: period.type,
+        number: period.number,
+        academicYear: period.academicYear.label,
+      },
+      // Champs enrichis MINESEC (consommés par le template PDF secondaire).
+      minesec: bulletinData,
+      // Champs hérités (rétro-compatibilité de l'ancien template simple).
+      grades: bulletinData.subjects.map((s) => ({
+        subject: s.name,
+        score: s.seq1 ?? s.moy ?? 0,
+        maxScore: 20,
+        coefficient: s.coefficient,
+        average: s.moy ?? 0,
+        teacher: s.teacher,
+      })),
+      average: bulletinData.generalAverage,
+      rank: bulletinData.rank,
+      totalStudents: bulletinData.classSize,
+    };
+
+    // Upsert : régénérer un bulletin déjà existant (même élève/période) le met à
+    // jour au lieu d'échouer sur la contrainte unique (tenant, élève, période).
+    const bulletin = await this.prisma.bulletin.upsert({
+      where: { tenantId_studentId_periodId: { tenantId, studentId, periodId } },
+      create: {
         tenantId,
         studentId,
         periodId,
         classroomId: enrollment.classroom.id,
         verificationCode,
         status: "published",
-        data: {
-          student: {
-            matricule: student.matricule,
-            firstName: student.firstName,
-            lastName: student.lastName,
-            dateOfBirth: student.dateOfBirth,
-            placeOfBirth: (student as any).placeOfBirth ?? null,
-            gender: student.gender,
-            repeating: (enrollment as any).isRepeating ?? false,
-          },
-          classroom: {
-            name: enrollment.classroom.name,
-            level: enrollment.classroom.level.name,
-          },
-          period: {
-            name: `${period.type === "SEQUENCE" ? "Séquence" : period.type === "TRIMESTER" ? "Trimestre" : "Semestre"} ${period.number}`,
-            type: period.type,
-            number: period.number,
-            academicYear: period.academicYear.label,
-          },
-          // Champs enrichis MINESEC (consommés par le template PDF secondaire).
-          minesec: bulletinData,
-          // Champs hérités (rétro-compatibilité de l'ancien template simple).
-          grades: bulletinData.subjects.map((s) => ({
-            subject: s.name,
-            score: s.seq1 ?? s.moy ?? 0,
-            maxScore: 20,
-            coefficient: s.coefficient,
-            average: s.moy ?? 0,
-            teacher: s.teacher,
-          })),
-          average: bulletinData.generalAverage,
-          rank: bulletinData.rank,
-          totalStudents: bulletinData.classSize,
-        },
+        data: snapshot as any,
+      },
+      update: {
+        classroomId: enrollment.classroom.id,
+        status: "published",
+        data: snapshot as any,
       },
     });
 
@@ -558,31 +567,38 @@ export class BulletinsService {
     const lmd = await this.buildTranscriptData(tenantId, studentId, period);
 
     const verificationCode = crypto.randomBytes(16).toString("hex");
-    const bulletin = await this.prisma.bulletin.create({
-      data: {
+    const snapshot = {
+      student: {
+        matricule: student.matricule,
+        firstName: student.firstName,
+        lastName: student.lastName,
+        dateOfBirth: student.dateOfBirth,
+        placeOfBirth: (student as any).placeOfBirth ?? null,
+      },
+      classroom: { name: enrollment.classroom.name, level: enrollment.classroom.level.name },
+      period: { name: `Semestre ${period.number}`, academicYear: period.academicYear.label },
+      lmd,
+      // Rétro-compat minimale.
+      grades: [] as unknown[],
+      average: lmd.mgp,
+      rank: null,
+      totalStudents: 0,
+    };
+    const bulletin = await this.prisma.bulletin.upsert({
+      where: { tenantId_studentId_periodId: { tenantId, studentId, periodId } },
+      create: {
         tenantId,
         studentId,
         periodId,
         classroomId: enrollment.classroom.id,
         verificationCode,
         status: "published",
-        data: {
-          student: {
-            matricule: student.matricule,
-            firstName: student.firstName,
-            lastName: student.lastName,
-            dateOfBirth: student.dateOfBirth,
-            placeOfBirth: (student as any).placeOfBirth ?? null,
-          },
-          classroom: { name: enrollment.classroom.name, level: enrollment.classroom.level.name },
-          period: { name: `Semestre ${period.number}`, academicYear: period.academicYear.label },
-          lmd,
-          // Rétro-compat minimale.
-          grades: [],
-          average: lmd.mgp,
-          rank: null,
-          totalStudents: 0,
-        },
+        data: snapshot as any,
+      },
+      update: {
+        classroomId: enrollment.classroom.id,
+        status: "published",
+        data: snapshot as any,
       },
     });
 
