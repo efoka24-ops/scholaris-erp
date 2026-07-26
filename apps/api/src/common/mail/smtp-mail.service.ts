@@ -24,42 +24,52 @@ export class SmtpMailService {
 
   constructor(private readonly config: ConfigService) {}
 
+  /**
+   * Lit une variable d'env en retirant les espaces/tabulations parasites
+   * (un simple copier-coller dans Railway peut introduire une tabulation en tête,
+   * ce qui casse la résolution DNS du host — erreur EBADNAME).
+   */
+  private cfg(key: string): string | undefined {
+    const value = this.config.get<string>(key);
+    return value == null ? undefined : value.trim() || undefined;
+  }
+
   /** true si les variables minimales (host, user, pass) sont présentes. */
   isConfigured(): boolean {
-    const host = this.config.get<string>("SMTP_HOST");
-    const user = this.config.get<string>("SMTP_USER");
-    const pass = this.config.get<string>("SMTP_PASSWORD") ?? this.config.get<string>("SMTP_PASS");
+    const host = this.cfg("SMTP_HOST");
+    const user = this.cfg("SMTP_USER");
+    const pass = this.cfg("SMTP_PASSWORD") ?? this.cfg("SMTP_PASS");
     return Boolean(host && user && pass);
   }
 
   /** Détail de la config (sans exposer le mot de passe) — pour le diagnostic. */
   describeConfig(): Record<string, unknown> {
-    const port = Number(this.config.get<string>("SMTP_PORT") ?? "587");
+    const port = Number(this.cfg("SMTP_PORT") ?? "587");
     return {
-      host: this.config.get<string>("SMTP_HOST") ?? null,
+      host: this.cfg("SMTP_HOST") ?? null,
       port,
-      secure: this.config.get<string>("SMTP_SECURE") === "true" || port === 465,
-      user: this.config.get<string>("SMTP_USER") ?? null,
-      hasPassword: Boolean(this.config.get<string>("SMTP_PASSWORD") ?? this.config.get<string>("SMTP_PASS")),
+      secure: this.cfg("SMTP_SECURE") === "true" || port === 465,
+      user: this.cfg("SMTP_USER") ?? null,
+      hasPassword: Boolean(this.cfg("SMTP_PASSWORD") ?? this.cfg("SMTP_PASS")),
       from: this.resolveFrom(),
-      tlsInsecure: this.config.get<string>("SMTP_TLS_INSECURE") !== "false",
+      tlsInsecure: this.cfg("SMTP_TLS_INSECURE") !== "false",
     };
   }
 
   private buildTransport(): nodemailer.Transporter | null {
-    const host = this.config.get<string>("SMTP_HOST");
-    const user = this.config.get<string>("SMTP_USER");
-    const pass = this.config.get<string>("SMTP_PASSWORD") ?? this.config.get<string>("SMTP_PASS");
+    const host = this.cfg("SMTP_HOST");
+    const user = this.cfg("SMTP_USER");
+    const pass = this.cfg("SMTP_PASSWORD") ?? this.cfg("SMTP_PASS");
     if (!host || !user || !pass) {
       return null;
     }
-    const port = Number(this.config.get<string>("SMTP_PORT") ?? "587");
-    const secure = this.config.get<string>("SMTP_SECURE") === "true" || port === 465;
+    const port = Number(this.cfg("SMTP_PORT") ?? "587");
+    const secure = this.cfg("SMTP_SECURE") === "true" || port === 465;
     // Par défaut on n'impose pas la validation stricte du certificat : beaucoup de
     // serveurs mail privés (ex: mx-*.ewodi.net) présentent un certificat dont le CN
     // ne correspond pas exactement au host, ce qui faisait échouer l'envoi
     // silencieusement. Mettre SMTP_TLS_INSECURE="false" pour réactiver la vérif.
-    const rejectUnauthorized = this.config.get<string>("SMTP_TLS_INSECURE") === "false";
+    const rejectUnauthorized = this.cfg("SMTP_TLS_INSECURE") === "false";
     return nodemailer.createTransport({
       host,
       port,
@@ -73,11 +83,11 @@ export class SmtpMailService {
   }
 
   private resolveFrom(): string {
-    const fromName = this.config.get<string>("SMTP_FROM_NAME");
+    const fromName = this.cfg("SMTP_FROM_NAME");
     const fromEmail =
-      this.config.get<string>("SMTP_FROM_EMAIL") ??
-      this.config.get<string>("SMTP_FROM") ??
-      this.config.get<string>("SMTP_USER") ??
+      this.cfg("SMTP_FROM_EMAIL") ??
+      this.cfg("SMTP_FROM") ??
+      this.cfg("SMTP_USER") ??
       "no-reply@scholaris.cm";
     return fromName ? `${fromName} <${fromEmail}>` : fromEmail;
   }
