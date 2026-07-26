@@ -55,20 +55,46 @@ export default function EstablishmentRequestsPage() {
     setMessage(null);
     setBusyId(id);
     try {
-      const { data } = await resourceClient.put<{ tenantId: string; directorEmail: string; emailSent: boolean }>(
-        `/establishment-requests/${id}/approve`,
-        {},
-      );
+      const { data } = await resourceClient.put<{
+        tenantId: string;
+        directorEmail: string;
+        emailSent: boolean;
+        emailError?: string;
+        temporaryPassword?: string;
+      }>(`/establishment-requests/${id}/approve`, {});
       setMessage(
-        `Établissement créé. ${
-          data.emailSent
-            ? `Identifiants envoyés à ${data.directorEmail}.`
-            : `⚠️ Email non envoyé (SMTP non configuré) — communiquez les identifiants manuellement.`
-        }`,
+        data.emailSent
+          ? `Établissement créé. Identifiants envoyés à ${data.directorEmail}.`
+          : `Établissement créé, mais l'email n'est pas parti (${data.emailError ?? "SMTP"}). ` +
+              `Mot de passe temporaire à communiquer à ${data.directorEmail} : ${data.temporaryPassword ?? "—"}`,
       );
       load();
     } catch (e: any) {
       setError(e.response?.data?.message ?? "Impossible de valider la demande.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function resend(id: string) {
+    setError(null);
+    setMessage(null);
+    setBusyId(id);
+    try {
+      const { data } = await resourceClient.put<{
+        directorEmail: string;
+        emailSent: boolean;
+        emailError?: string;
+        temporaryPassword?: string;
+      }>(`/establishment-requests/${id}/resend-credentials`, {});
+      setMessage(
+        data.emailSent
+          ? `Nouveaux identifiants envoyés à ${data.directorEmail}.`
+          : `Email non parti (${data.emailError ?? "SMTP"}). Mot de passe temporaire pour ${data.directorEmail} : ${data.temporaryPassword ?? "—"}`,
+      );
+      load();
+    } catch (e: any) {
+      setError(e.response?.data?.message ?? "Impossible de renvoyer les identifiants.");
     } finally {
       setBusyId(null);
     }
@@ -164,6 +190,7 @@ export default function EstablishmentRequestsPage() {
                     <th className="py-2 pr-4 font-medium">Établissement</th>
                     <th className="py-2 pr-4 font-medium">Directeur</th>
                     <th className="py-2 pr-4 font-medium">Statut</th>
+                    <th className="py-2 pr-4 font-medium"></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -176,6 +203,13 @@ export default function EstablishmentRequestsPage() {
                       <td className="py-2 pr-4">
                         {STATUS_LABELS[r.requestStatus]}
                         {r.rejectionReason ? ` — ${r.rejectionReason}` : ""}
+                      </td>
+                      <td className="py-2 pr-4">
+                        {r.requestStatus === "APPROVED" ? (
+                          <Button size="sm" variant="outline" disabled={busyId === r.id} onClick={() => resend(r.id)}>
+                            {busyId === r.id ? "Envoi…" : "Renvoyer les identifiants"}
+                          </Button>
+                        ) : null}
                       </td>
                     </tr>
                   ))}

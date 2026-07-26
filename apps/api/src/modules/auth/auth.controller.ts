@@ -6,6 +6,7 @@ import { AuthService } from "./auth.service";
 import { LoginDto } from "./dto/login.dto";
 import { MfaVerifyDto } from "./dto/mfa-verify.dto";
 import { RefreshTokenDto } from "./dto/refresh-token.dto";
+import { ChangePasswordDto } from "./dto/change-password.dto";
 import { AuthenticatedUser } from "./jwt-payload.interface";
 
 @ApiTags("auth")
@@ -34,6 +35,14 @@ export class AuthController {
   @ApiOperation({ summary: "Profil courant (permissions résolues) — vérifie que le JwtAuthGuard fonctionne" })
   me(@CurrentUser() user: AuthenticatedUser) {
     return this.authService.me(user.userId, user.tenantId);
+  }
+
+  @Post("change-password")
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Change le mot de passe de l'utilisateur connecté (tous rôles)" })
+  changePassword(@Body() dto: ChangePasswordDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.authService.changePassword(user.userId, dto.currentPassword, dto.newPassword);
   }
 
   @Post("mfa/enable")

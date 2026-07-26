@@ -50,6 +50,31 @@ export class AuthService {
     return user;
   }
 
+  /**
+   * Changement de mot de passe par l'utilisateur connecté : vérifie le mot de
+   * passe actuel, impose une longueur minimale, puis remplace le hash bcrypt.
+   */
+  async changePassword(userId: string, currentPassword: string, newPassword: string): Promise<{ success: true }> {
+    if (!newPassword || newPassword.length < 8) {
+      throw new BadRequestException("Le nouveau mot de passe doit contenir au moins 8 caractères");
+    }
+    const user = await this.prisma.user.findFirst({ where: { id: userId } });
+    if (!user) {
+      throw new UnauthorizedException("Utilisateur introuvable");
+    }
+    const matches = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!matches) {
+      throw new BadRequestException("Le mot de passe actuel est incorrect");
+    }
+    if (await bcrypt.compare(newPassword, user.passwordHash)) {
+      throw new BadRequestException("Le nouveau mot de passe doit être différent de l'ancien");
+    }
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    await this.prisma.user.update({ where: { id: user.id }, data: { passwordHash } });
+    await this.audit.log({ action: "change-password", resource: "users", resourceId: user.id });
+    return { success: true };
+  }
+
   async login(email: string, password: string, mfaCode?: string): Promise<TokenPair> {
     const user = await this.validateUser(email, password);
 

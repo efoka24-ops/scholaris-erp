@@ -28,6 +28,13 @@ export class EstablishmentRequestsController {
     return this.service.approve(id);
   }
 
+  @Put(":id/resend-credentials")
+  @RequirePermissions("tenants:create")
+  @ApiOperation({ summary: "Réinitialise le mot de passe du directeur et renvoie ses identifiants par email" })
+  resendCredentials(@Param("id") id: string) {
+    return this.service.resendCredentials(id);
+  }
+
   @Put(":id/reject")
   @RequirePermissions("tenants:create")
   @ApiOperation({ summary: "Rejeter la demande d'établissement" })

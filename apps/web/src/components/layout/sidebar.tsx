@@ -130,6 +130,7 @@ const NAV_SECTIONS: NavSection[] = [
   {
     label: "Configuration",
     items: [
+      { href: "/settings/profile", label: "Mon profil", icon: UserCheck },
       { href: "/settings/establishments", label: "Établissements", icon: Building },
       { href: "/settings/establishment-requests", label: "Demandes d'établissement", icon: ClipboardList },
       { href: "/settings/establishment", label: "Mon établissement", icon: Settings },
