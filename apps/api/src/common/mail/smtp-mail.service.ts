@@ -1,5 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import axios from "axios";
 import * as nodemailer from "nodemailer";
 
 /**
@@ -34,26 +35,70 @@ export class SmtpMailService {
     return value == null ? undefined : value.trim() || undefined;
   }
 
-  /** true si les variables minimales (host, user, pass) sont présentes. */
+  /** Clé API Brevo — si présente, l'envoi passe par l'API HTTP (port 443). */
+  private brevoKey(): string | undefined {
+    return this.cfg("BREVO_API_KEY");
+  }
+
+  /** Fournisseur d'envoi effectif : Brevo (API HTTP) prioritaire, sinon SMTP. */
+  private provider(): "brevo" | "smtp" | "none" {
+    if (this.brevoKey()) return "brevo";
+    if (this.cfg("SMTP_HOST") && this.cfg("SMTP_USER") && (this.cfg("SMTP_PASSWORD") ?? this.cfg("SMTP_PASS"))) {
+      return "smtp";
+    }
+    return "none";
+  }
+
+  /** true si au moins un fournisseur (Brevo ou SMTP) est configuré. */
   isConfigured(): boolean {
-    const host = this.cfg("SMTP_HOST");
-    const user = this.cfg("SMTP_USER");
-    const pass = this.cfg("SMTP_PASSWORD") ?? this.cfg("SMTP_PASS");
-    return Boolean(host && user && pass);
+    return this.provider() !== "none";
+  }
+
+  private senderEmail(): string | undefined {
+    return this.cfg("SMTP_FROM_EMAIL") ?? this.cfg("SMTP_FROM") ?? this.cfg("SMTP_USER") ?? this.cfg("BREVO_SENDER_EMAIL");
   }
 
   /** Détail de la config (sans exposer le mot de passe) — pour le diagnostic. */
   describeConfig(): Record<string, unknown> {
     const port = Number(this.cfg("SMTP_PORT") ?? "587");
     return {
+      provider: this.provider(),
+      brevoConfigured: Boolean(this.brevoKey()),
+      sender: this.senderEmail() ?? null,
+      from: this.resolveFrom(),
+      // Détail SMTP (utilisé seulement si provider = smtp)
       host: this.cfg("SMTP_HOST") ?? null,
       port,
       secure: this.cfg("SMTP_SECURE") === "true" || port === 465,
       user: this.cfg("SMTP_USER") ?? null,
       hasPassword: Boolean(this.cfg("SMTP_PASSWORD") ?? this.cfg("SMTP_PASS")),
-      from: this.resolveFrom(),
       tlsInsecure: this.cfg("SMTP_TLS_INSECURE") !== "false",
     };
+  }
+
+  /** Envoi via l'API HTTP transactionnelle Brevo (contourne le blocage SMTP sortant). */
+  private async sendViaBrevo(params: { to: string; subject: string; html: string; text?: string }): Promise<MailSendResult> {
+    const key = this.brevoKey()!;
+    const email = this.senderEmail();
+    if (!email) {
+      return { sent: false, reason: "Brevo : expéditeur manquant (définir SMTP_FROM_EMAIL ou BREVO_SENDER_EMAIL)" };
+    }
+    const name = this.cfg("SMTP_FROM_NAME") ?? "SCHOLARIS";
+    const to = params.to.split(",").map((e) => ({ email: e.trim() })).filter((r) => r.email);
+    try {
+      await axios.post(
+        "https://api.brevo.com/v3/smtp/email",
+        { sender: { name, email }, to, subject: params.subject, htmlContent: params.html, textContent: params.text },
+        { headers: { "api-key": key, "content-type": "application/json", accept: "application/json" }, timeout: 15_000 },
+      );
+      this.logger.log(`Email (Brevo) envoyé à ${params.to} : ${params.subject}`);
+      return { sent: true };
+    } catch (error) {
+      const data = (error as any)?.response?.data;
+      const reason = `Brevo : ${data?.message ?? data?.code ?? (error as Error).message}`;
+      this.logger.error(`Échec envoi Brevo à ${params.to} : ${reason}`);
+      return { sent: false, reason };
+    }
   }
 
   private buildTransport(): nodemailer.Transporter | null {
@@ -99,6 +144,20 @@ export class SmtpMailService {
    * du port sortant côté hébergeur).
    */
   async verifyConnection(override?: { port?: number; secure?: boolean }): Promise<MailSendResult> {
+    // Brevo prioritaire : on valide la clé via GET /v3/account (port 443).
+    if (this.provider() === "brevo") {
+      try {
+        const res = await axios.get("https://api.brevo.com/v3/account", {
+          headers: { "api-key": this.brevoKey()!, accept: "application/json" },
+          timeout: 12_000,
+        });
+        return { sent: true, reason: `Brevo OK (${res.data?.email ?? "clé valide"})` };
+      } catch (error) {
+        const data = (error as any)?.response?.data;
+        return { sent: false, reason: `Brevo : ${data?.message ?? (error as Error).message}` };
+      }
+    }
+
     const host = this.cfg("SMTP_HOST");
     const user = this.cfg("SMTP_USER");
     const pass = this.cfg("SMTP_PASSWORD") ?? this.cfg("SMTP_PASS");
@@ -128,6 +187,10 @@ export class SmtpMailService {
 
   /** Envoi avec détail : { sent, reason } — reason renseigné en cas d'échec. */
   async sendDetailed(params: { to: string; subject: string; html: string; text?: string }): Promise<MailSendResult> {
+    // Brevo (API HTTP) prioritaire : fonctionne même quand l'hébergeur bloque le SMTP.
+    if (this.provider() === "brevo") {
+      return this.sendViaBrevo(params);
+    }
     const transport = this.buildTransport();
     if (!transport) {
       const reason = "SMTP non configuré (SMTP_HOST / SMTP_USER / SMTP_PASSWORD manquants)";
