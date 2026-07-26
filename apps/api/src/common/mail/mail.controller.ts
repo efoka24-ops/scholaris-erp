@@ -22,9 +22,11 @@ export class MailController {
 
   @Post("verify")
   @RequirePermissions("tenants:create")
-  @ApiOperation({ summary: "Teste la connexion SMTP (nodemailer verify) et renvoie l'erreur exacte" })
-  verify() {
-    return this.mail.verifyConnection();
+  @ApiOperation({ summary: "Teste la connexion SMTP (option: port/secure pour sonder 465 vs 587)" })
+  verify(@Body() body?: { port?: number; secure?: boolean }) {
+    return this.mail.verifyConnection(
+      body?.port ? { port: Number(body.port), secure: body.secure } : undefined,
+    );
   }
 
   @Post("test")

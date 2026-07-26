@@ -92,17 +92,37 @@ export class SmtpMailService {
     return fromName ? `${fromName} <${fromEmail}>` : fromEmail;
   }
 
-  /** Teste la connexion SMTP (nodemailer verify). Renvoie l'erreur exacte si échec. */
-  async verifyConnection(): Promise<MailSendResult> {
-    const transport = this.buildTransport();
-    if (!transport) {
+  /**
+   * Teste la connexion SMTP (nodemailer verify). Renvoie l'erreur exacte si échec.
+   * `override` permet de sonder un autre port/secure sans modifier la config
+   * (diagnostic : trancher entre 587/STARTTLS et 465/SSL, ou détecter un blocage
+   * du port sortant côté hébergeur).
+   */
+  async verifyConnection(override?: { port?: number; secure?: boolean }): Promise<MailSendResult> {
+    const host = this.cfg("SMTP_HOST");
+    const user = this.cfg("SMTP_USER");
+    const pass = this.cfg("SMTP_PASSWORD") ?? this.cfg("SMTP_PASS");
+    if (!host || !user || !pass) {
       return { sent: false, reason: "SMTP non configuré (SMTP_HOST / SMTP_USER / SMTP_PASSWORD manquants)" };
     }
+    const port = override?.port ?? Number(this.cfg("SMTP_PORT") ?? "587");
+    const secure = override?.secure ?? (this.cfg("SMTP_SECURE") === "true" || port === 465);
+    const rejectUnauthorized = this.cfg("SMTP_TLS_INSECURE") === "false";
+    const transport = nodemailer.createTransport({
+      host,
+      port,
+      secure,
+      auth: { user, pass },
+      tls: { rejectUnauthorized },
+      connectionTimeout: 12_000,
+      greetingTimeout: 12_000,
+      socketTimeout: 15_000,
+    });
     try {
       await transport.verify();
-      return { sent: true };
+      return { sent: true, reason: `Connexion OK (port ${port}, secure=${secure})` };
     } catch (error) {
-      return { sent: false, reason: (error as Error).message };
+      return { sent: false, reason: `port ${port} secure=${secure} → ${(error as Error).message}` };
     }
   }
 
