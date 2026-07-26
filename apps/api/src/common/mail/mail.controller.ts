@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post } from "@nestjs/common";
+import { Body, Controller, Get, Post, Query } from "@nestjs/common";
 import { ApiBearerAuth, ApiOperation, ApiTags } from "@nestjs/swagger";
 import { RequirePermissions } from "../decorators/require-permissions.decorator";
 import { SmtpMailService } from "./smtp-mail.service";
@@ -30,6 +30,13 @@ export class MailController {
         ? { port: body!.port ? Number(body!.port) : undefined, secure: body!.secure, host: body!.host, user: body!.user, pass: body!.pass }
         : undefined,
     );
+  }
+
+  @Get("events")
+  @RequirePermissions("tenants:create")
+  @ApiOperation({ summary: "Journal d'événements Brevo pour une adresse (delivered/blocked/spam…)" })
+  events(@Query("email") email: string) {
+    return this.mail.brevoEvents(email);
   }
 
   @Post("test")

@@ -76,6 +76,26 @@ export class SmtpMailService {
     };
   }
 
+  /**
+   * Journal d'événements Brevo pour une adresse (delivered, blocked, spam,
+   * softBounce, hardBounce…) — permet de savoir ce qu'est devenu un email.
+   */
+  async brevoEvents(email: string): Promise<unknown> {
+    const key = this.brevoKey();
+    if (!key) return { error: "Brevo non configuré (BREVO_API_KEY absent)" };
+    try {
+      const res = await axios.get("https://api.brevo.com/v3/smtp/statistics/events", {
+        headers: { "api-key": key, accept: "application/json" },
+        params: { email, limit: 50, days: 7 },
+        timeout: 12_000,
+      });
+      return res.data;
+    } catch (error) {
+      const data = (error as any)?.response?.data;
+      return { error: data?.message ?? (error as Error).message };
+    }
+  }
+
   /** Envoi via l'API HTTP transactionnelle Brevo (contourne le blocage SMTP sortant). */
   private async sendViaBrevo(params: { to: string; subject: string; html: string; text?: string }): Promise<MailSendResult> {
     const key = this.brevoKey()!;
