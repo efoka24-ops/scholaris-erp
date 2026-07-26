@@ -22,10 +22,13 @@ export class MailController {
 
   @Post("verify")
   @RequirePermissions("tenants:create")
-  @ApiOperation({ summary: "Teste la connexion SMTP (option: port/secure pour sonder 465 vs 587)" })
-  verify(@Body() body?: { port?: number; secure?: boolean }) {
+  @ApiOperation({ summary: "Teste la connexion (Brevo ou SMTP ; override host/user/pass/port/secure possible)" })
+  verify(@Body() body?: { port?: number; secure?: boolean; host?: string; user?: string; pass?: string }) {
+    const hasOverride = body && (body.port || body.host || body.user || body.pass);
     return this.mail.verifyConnection(
-      body?.port ? { port: Number(body.port), secure: body.secure } : undefined,
+      hasOverride
+        ? { port: body!.port ? Number(body!.port) : undefined, secure: body!.secure, host: body!.host, user: body!.user, pass: body!.pass }
+        : undefined,
     );
   }
 

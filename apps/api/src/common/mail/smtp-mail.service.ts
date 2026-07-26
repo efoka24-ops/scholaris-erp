@@ -143,9 +143,16 @@ export class SmtpMailService {
    * (diagnostic : trancher entre 587/STARTTLS et 465/SSL, ou détecter un blocage
    * du port sortant côté hébergeur).
    */
-  async verifyConnection(override?: { port?: number; secure?: boolean }): Promise<MailSendResult> {
-    // Brevo prioritaire : on valide la clé via GET /v3/account (port 443).
-    if (this.provider() === "brevo") {
+  async verifyConnection(override?: {
+    port?: number;
+    secure?: boolean;
+    host?: string;
+    user?: string;
+    pass?: string;
+  }): Promise<MailSendResult> {
+    const forcedSmtp = Boolean(override?.host || override?.user || override?.pass);
+    // Brevo prioritaire (sauf si on force un test SMTP avec des identifiants fournis).
+    if (this.provider() === "brevo" && !forcedSmtp) {
       try {
         const res = await axios.get("https://api.brevo.com/v3/account", {
           headers: { "api-key": this.brevoKey()!, accept: "application/json" },
@@ -158,9 +165,9 @@ export class SmtpMailService {
       }
     }
 
-    const host = this.cfg("SMTP_HOST");
-    const user = this.cfg("SMTP_USER");
-    const pass = this.cfg("SMTP_PASSWORD") ?? this.cfg("SMTP_PASS");
+    const host = override?.host?.trim() ?? this.cfg("SMTP_HOST");
+    const user = override?.user?.trim() ?? this.cfg("SMTP_USER");
+    const pass = override?.pass ?? this.cfg("SMTP_PASSWORD") ?? this.cfg("SMTP_PASS");
     if (!host || !user || !pass) {
       return { sent: false, reason: "SMTP non configuré (SMTP_HOST / SMTP_USER / SMTP_PASSWORD manquants)" };
     }
