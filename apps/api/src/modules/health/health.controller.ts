@@ -16,10 +16,25 @@ export class HealthController {
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
   ) {
-    const redisUrl = this.config.get<string>("REDIS_URL");
-    this.redis = redisUrl
-      ? new Redis(redisUrl, { lazyConnect: true, maxRetriesPerRequest: 1 })
-      : (null as unknown as Redis);
+    const redisUrl = this.config.get<string>("REDIS_URL")?.trim();
+    if (redisUrl) {
+      this.redis = new Redis(redisUrl, {
+        lazyConnect: true,
+        maxRetriesPerRequest: 1,
+        enableOfflineQueue: false,
+        // Ne pas boucler indéfiniment sur un Redis injoignable (ex: hôte "redis"
+        // absent sur Railway) : on abandonne au lieu de spammer des reconnexions.
+        retryStrategy: () => null,
+        reconnectOnError: () => false,
+      });
+      // IMPÉRATIF : sans ce handler, un événement 'error' ioredis non géré
+      // (ex: getaddrinfo ENOTFOUND redis) fait CRASHER le process Node → boucle
+      // de redémarrage. On l'absorbe silencieusement ; l'état réel est reporté
+      // par checkRedis().
+      this.redis.on("error", () => undefined);
+    } else {
+      this.redis = null as unknown as Redis;
+    }
   }
 
   @Public()
