@@ -101,6 +101,57 @@ export function isOptionalVisible(href: string, enabledModules: string[] | null 
   return enabledModules.includes(key);
 }
 
+/**
+ * Permission (lecture) requise pour VOIR un menu. Un href absent → visible sans
+ * permission particulière (dashboard, profil…). Combiné au type d'établissement
+ * et aux modules optionnels, ceci masque les menus qu'un rôle ne peut pas utiliser.
+ */
+export const MENU_PERMISSIONS: Record<string, string> = {
+  "/academics/structure": "structure:read",
+  "/academics/classrooms": "classrooms:read",
+  "/academics/rooms": "rooms:read",
+  "/academics/subjects": "subjects:read",
+  "/academics/teaching-units": "teaching-units:read",
+  "/academics/assignments": "subject-assignments:read",
+  "/settings/academic-years": "academic-years:read",
+  "/students": "students:read",
+  "/admissions": "admissions:read",
+  "/enrollments": "enrollments:read",
+  "/grades/entry": "grades:read",
+  "/grades/calculations": "grades:read",
+  "/bulletins": "bulletins:read",
+  "/finance/dashboard": "finance-dashboard:read",
+  "/finance/fee-structures": "fee-structures:read",
+  "/finance/invoices": "invoices:read",
+  "/finance/payments": "payments:read",
+  "/exams": "exams:read",
+  "/reports/level": "reports:read",
+  "/timetables": "timetables:read",
+  "/attendance": "attendance:read",
+  "/discipline": "discipline:read",
+  "/school-life/clubs": "school-life:read",
+  "/library": "library:read",
+  "/transport": "transport:read",
+  "/catering": "catering:read",
+  "/assets": "assets:read",
+  "/hr": "hr:read",
+  "/communications": "communications:read",
+  "/communications/templates": "communication-templates:read",
+  "/settings/users": "users:read",
+  "/settings/roles": "roles:read",
+  "/settings/calculation-engine": "tenants:read",
+  "/settings/bulletin-groups": "tenants:read",
+  "/settings/modules": "tenants:read",
+  "/settings/establishment": "tenants:read",
+  "/settings/audit-logs": "audit-logs:read",
+};
+
+/** Le rôle courant a-t-il la permission de voir ce menu ? (non listé → oui) */
+export function hasMenuPermission(href: string, hasPermission: (p: string) => boolean): boolean {
+  const perm = MENU_PERMISSIONS[href];
+  return perm ? hasPermission(perm) : true;
+}
+
 /** Déduit la catégorie à 6 valeurs depuis le type Prisma (+ override éventuel en config). */
 export function resolveCategory(type?: string | null, configCategory?: string | null): EstablishmentCategory {
   if (configCategory && (ALL_CATEGORIES as string[]).includes(configCategory)) {

@@ -43,6 +43,7 @@ import { resourceClient } from "@/lib/api-client";
 import {
   adaptLabel,
   adaptSectionLabel,
+  hasMenuPermission,
   isMenuVisible,
   isOptionalVisible,
   resolveCategory,
@@ -196,11 +197,11 @@ export function Sidebar() {
         .filter(
           (item) =>
             isMenuVisible(item.href, cat, isSuperAdmin) &&
-            (isSuperAdmin || isOptionalVisible(item.href, enabledModules)),
+            (isSuperAdmin || (isOptionalVisible(item.href, enabledModules) && hasMenuPermission(item.href, hasPermission))),
         )
         .map((item) => ({ ...item, label: adaptLabel(item.href, item.label, cat) })),
     })).filter((section) => section.items.length > 0);
-  }, [category, enabledModules, isSuperAdmin]);
+  }, [category, enabledModules, isSuperAdmin, hasPermission]);
 
   const [expandedSections, setExpandedSections] = useState<string[]>([
     "Principal",
