@@ -40,7 +40,12 @@ import { cn } from "@scholaris/ui";
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { resourceClient } from "@/lib/api-client";
-import { isMenuVisible, resolveCategory, type EstablishmentCategory } from "@/lib/establishment-features";
+import {
+  isMenuVisible,
+  isOptionalVisible,
+  resolveCategory,
+  type EstablishmentCategory,
+} from "@/lib/establishment-features";
 
 type NavItem = {
   href: string;
@@ -141,6 +146,7 @@ const NAV_SECTIONS: NavSection[] = [
       { href: "/settings/roles", label: "Rôles & Permissions", icon: Users },
       { href: "/settings/calculation-engine", label: "Moteur de calcul", icon: Calculator },
       { href: "/settings/bulletin-groups", label: "Groupes de matières", icon: Layers },
+      { href: "/settings/modules", label: "Modules & fonctionnalités", icon: Settings },
       { href: "/settings/audit-logs", label: "Journal d'audit", icon: ScrollText },
     ],
   },
@@ -150,9 +156,10 @@ export function Sidebar() {
   const pathname = usePathname();
   const { user, hasPermission } = useAuth();
   const [category, setCategory] = useState<EstablishmentCategory | null>(null);
+  const [enabledModules, setEnabledModules] = useState<string[] | null>(null);
   const isSuperAdmin = hasPermission("tenants:create");
 
-  // Récupère le type de l'établissement courant pour filtrer les menus.
+  // Récupère le type + les modules activés de l'établissement pour filtrer les menus.
   useEffect(() => {
     if (!user?.tenantId) return;
     let cancelled = false;
@@ -164,21 +171,31 @@ export function Sidebar() {
       .catch(() => {
         if (!cancelled) setCategory(null);
       });
+    resourceClient
+      .get<string[]>(`/tenants/${user.tenantId}/modules`)
+      .then((r) => {
+        if (!cancelled) setEnabledModules(Array.isArray(r.data) ? r.data : []);
+      })
+      .catch(() => {
+        if (!cancelled) setEnabledModules([]);
+      });
     return () => {
       cancelled = true;
     };
   }, [user?.tenantId]);
 
-  // Sections filtrées selon le type d'établissement (super admin voit tout).
+  // Sections filtrées selon le type d'établissement + modules optionnels activés.
   const sections = useMemo(() => {
-    // Tant que la catégorie n'est pas connue, on n'affiche que les menus universels
-    // (évite un flash de menus non pertinents) — sauf super admin qui voit tout.
     const cat = category ?? "COLLEGE";
     return NAV_SECTIONS.map((section) => ({
       ...section,
-      items: section.items.filter((item) => isMenuVisible(item.href, cat, isSuperAdmin)),
+      items: section.items.filter(
+        (item) =>
+          isMenuVisible(item.href, cat, isSuperAdmin) &&
+          (isSuperAdmin || isOptionalVisible(item.href, enabledModules)),
+      ),
     })).filter((section) => section.items.length > 0);
-  }, [category, isSuperAdmin]);
+  }, [category, enabledModules, isSuperAdmin]);
 
   const [expandedSections, setExpandedSections] = useState<string[]>([
     "Principal",

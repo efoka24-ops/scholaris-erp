@@ -50,6 +50,36 @@ export const SUPER_ADMIN_ONLY_HREFS = new Set<string>([
   "/settings/establishment-requests",
 ]);
 
+/**
+ * Modules OPTIONNELS (⚙️) que l'Admin active/désactive dans Paramètres → Modules.
+ * Modèle : tant qu'aucune config n'existe (liste vide), tout est visible
+ * (comportement actuel préservé) ; dès que l'Admin enregistre une sélection,
+ * seuls les modules cochés restent affichés.
+ */
+export interface OptionalModule {
+  key: string;
+  href: string;
+  label: string;
+}
+export const OPTIONAL_MODULES: OptionalModule[] = [
+  { key: "health", href: "/health", label: "Santé scolaire" },
+  { key: "discipline", href: "/discipline", label: "Discipline" },
+  { key: "clubs", href: "/school-life/clubs", label: "Clubs & Activités" },
+  { key: "library", href: "/library", label: "Bibliothèque" },
+  { key: "transport", href: "/transport", label: "Transport" },
+  { key: "catering", href: "/catering", label: "Cantine & Internat" },
+  { key: "assets", href: "/assets", label: "Patrimoine" },
+];
+const OPTIONAL_HREF_TO_KEY = new Map<string, string>(OPTIONAL_MODULES.map((m) => [m.href, m.key]));
+
+/** Un menu optionnel est-il visible ? (non optionnel → toujours ; sinon selon la config) */
+export function isOptionalVisible(href: string, enabledModules: string[] | null | undefined): boolean {
+  const key = OPTIONAL_HREF_TO_KEY.get(href);
+  if (!key) return true; // pas un module optionnel
+  if (!enabledModules || enabledModules.length === 0) return true; // aucune config → tout visible
+  return enabledModules.includes(key);
+}
+
 /** Déduit la catégorie à 6 valeurs depuis le type Prisma (+ override éventuel en config). */
 export function resolveCategory(type?: string | null, configCategory?: string | null): EstablishmentCategory {
   if (configCategory && (ALL_CATEGORIES as string[]).includes(configCategory)) {
