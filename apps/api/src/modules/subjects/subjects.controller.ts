@@ -19,20 +19,24 @@ export class SubjectsController {
     private readonly subjectsImportService: SubjectsImportService,
   ) {}
 
-  // Lecture ouverte à tout utilisateur authentifié (enseignants, secrétariat…) :
-  // pas de @RequirePermissions, le JwtAuthGuard global suffit.
+  // Lecture des matières protégée par subjects:read (cohérence RBAC : create/
+  // update/delete étaient déjà protégés). Les rôles ayant besoin du contexte
+  // matières (enseignant, direction, secrétariat) possèdent subjects:read.
   @Get()
+  @RequirePermissions("subjects:read")
   findAll(@Query() query: FindSubjectsQueryDto) {
     return this.subjectsService.findAll(query);
   }
 
   // Déclaré avant ":id" pour que "by-classroom" ne soit pas capté comme un id.
   @Get("by-classroom/:classId")
+  @RequirePermissions("subjects:read")
   findByClassroom(@Param("classId") classId: string) {
     return this.subjectsService.findByClassroom(classId);
   }
 
   @Get(":id")
+  @RequirePermissions("subjects:read")
   findOne(@Param("id") id: string) {
     return this.subjectsService.findOne(id);
   }

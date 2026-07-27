@@ -360,6 +360,7 @@ export const BUSINESS_ROLES: Array<{ name: string; description: string; permissi
       "admissions:create", "admissions:read",
       "cycles:read", "departments:read", "programs:read", "levels:read",
       "classrooms:read", "rooms:read", "structure:read", "academic-years:read",
+      "subjects:read",
       "communications:create", "communications:read", "communication-templates:read",
       "bulletins:generate", "bulletins:read", "bulletins:send",
       "library:read", "library:create",
