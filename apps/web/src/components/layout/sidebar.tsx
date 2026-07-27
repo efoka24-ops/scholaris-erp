@@ -64,7 +64,10 @@ type NavSection = {
 const NAV_SECTIONS: NavSection[] = [
   {
     label: "Principal",
-    items: [{ href: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard }],
+    items: [
+      { href: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
+      { href: "/guide", label: "Guide d'utilisation", icon: BookOpen },
+    ],
   },
   {
     label: "Académique",
