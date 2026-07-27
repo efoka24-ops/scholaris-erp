@@ -36,6 +36,20 @@ export default function EstablishmentRequestsPage() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  // Identifiants révélés après validation/renvoi (mot de passe temporaire à copier).
+  const [credentials, setCredentials] = useState<Record<string, { email: string; password: string }>>({});
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  async function copy(id: string, email: string, password: string) {
+    const text = `Établissement SCHOLARIS\nConnexion : ${window.location.origin}/login\nEmail : ${email}\nMot de passe : ${password}`;
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedId(id);
+      setTimeout(() => setCopiedId((c) => (c === id ? null : c)), 2000);
+    } catch {
+      /* clipboard indisponible : l'utilisateur peut sélectionner le texte affiché */
+    }
+  }
 
   const load = useCallback(() => {
     setIsLoading(true);
@@ -62,11 +76,13 @@ export default function EstablishmentRequestsPage() {
         emailError?: string;
         temporaryPassword?: string;
       }>(`/establishment-requests/${id}/approve`, {});
+      if (!data.emailSent && data.temporaryPassword) {
+        setCredentials((c) => ({ ...c, [id]: { email: data.directorEmail, password: data.temporaryPassword! } }));
+      }
       setMessage(
         data.emailSent
           ? `Établissement créé. Identifiants envoyés à ${data.directorEmail}.`
-          : `Établissement créé, mais l'email n'est pas parti (${data.emailError ?? "SMTP"}). ` +
-              `Mot de passe temporaire à communiquer à ${data.directorEmail} : ${data.temporaryPassword ?? "—"}`,
+          : `Établissement créé. L'email n'est pas parti — le mot de passe à partager s'affiche ci-dessous (bouton Copier).`,
       );
       load();
     } catch (e: any) {
@@ -87,10 +103,13 @@ export default function EstablishmentRequestsPage() {
         emailError?: string;
         temporaryPassword?: string;
       }>(`/establishment-requests/${id}/resend-credentials`, {});
+      if (data.temporaryPassword) {
+        setCredentials((c) => ({ ...c, [id]: { email: data.directorEmail, password: data.temporaryPassword! } }));
+      }
       setMessage(
         data.emailSent
           ? `Nouveaux identifiants envoyés à ${data.directorEmail}.`
-          : `Email non parti (${data.emailError ?? "SMTP"}). Mot de passe temporaire pour ${data.directorEmail} : ${data.temporaryPassword ?? "—"}`,
+          : `Nouveau mot de passe généré pour ${data.directorEmail} — affiché ci-dessous (bouton Copier).`,
       );
       load();
     } catch (e: any) {
@@ -194,25 +213,56 @@ export default function EstablishmentRequestsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {processed.map((r) => (
-                    <tr key={r.id} className="border-b border-border/50">
-                      <td className="py-2 pr-4">
-                        {r.name} <span className="font-mono text-xs text-muted-foreground">({r.code})</span>
-                      </td>
-                      <td className="py-2 pr-4 text-muted-foreground">{r.directorEmail}</td>
-                      <td className="py-2 pr-4">
-                        {STATUS_LABELS[r.requestStatus]}
-                        {r.rejectionReason ? ` — ${r.rejectionReason}` : ""}
-                      </td>
-                      <td className="py-2 pr-4">
-                        {r.requestStatus === "APPROVED" ? (
-                          <Button size="sm" variant="outline" disabled={busyId === r.id} onClick={() => resend(r.id)}>
-                            {busyId === r.id ? "Envoi…" : "Renvoyer les identifiants"}
-                          </Button>
-                        ) : null}
-                      </td>
-                    </tr>
-                  ))}
+                  {processed.map((r) => {
+                    const cred = credentials[r.id];
+                    return (
+                      <tr key={r.id} className="border-b border-border/50 align-top">
+                        <td className="py-2 pr-4">
+                          {r.name} <span className="font-mono text-xs text-muted-foreground">({r.code})</span>
+                        </td>
+                        <td className="py-2 pr-4 text-muted-foreground">
+                          {r.directorLastName} {r.directorFirstName}
+                          <br />
+                          <span className="text-xs">{r.directorEmail}</span>
+                        </td>
+                        <td className="py-2 pr-4">
+                          {STATUS_LABELS[r.requestStatus]}
+                          {r.rejectionReason ? ` — ${r.rejectionReason}` : ""}
+                          {cred ? (
+                            <div className="mt-2 rounded-md border border-primary/40 bg-primary/5 p-2 text-xs">
+                              <div>
+                                <span className="text-muted-foreground">Email :</span>{" "}
+                                <span className="font-mono">{cred.email}</span>
+                              </div>
+                              <div>
+                                <span className="text-muted-foreground">Mot de passe :</span>{" "}
+                                <span className="font-mono font-semibold">{cred.password}</span>
+                              </div>
+                            </div>
+                          ) : null}
+                        </td>
+                        <td className="py-2 pr-4">
+                          {r.requestStatus === "APPROVED" ? (
+                            <div className="flex flex-col gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={busyId === r.id}
+                                onClick={() => resend(r.id)}
+                              >
+                                {busyId === r.id ? "…" : cred ? "Régénérer le mot de passe" : "Afficher le mot de passe"}
+                              </Button>
+                              {cred ? (
+                                <Button size="sm" onClick={() => copy(r.id, cred.email, cred.password)}>
+                                  {copiedId === r.id ? "✓ Copié" : "Copier les identifiants"}
+                                </Button>
+                              ) : null}
+                            </div>
+                          ) : null}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
