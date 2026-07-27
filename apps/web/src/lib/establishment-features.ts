@@ -129,6 +129,7 @@ export const MENU_PERMISSIONS: Record<string, string> = {
   "/timetables": "timetables:read",
   "/attendance": "attendance:read",
   "/discipline": "discipline:read",
+  "/health": "health:read",
   "/school-life/clubs": "school-life:read",
   "/library": "library:read",
   "/transport": "transport:read",

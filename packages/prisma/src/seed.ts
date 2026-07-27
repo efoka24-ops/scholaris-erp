@@ -29,6 +29,8 @@ const BASE_PERMISSIONS: Array<{ resource: string; action: string; description: s
   { resource: "exams", action: "register", description: "Inscrire/valider des candidats aux examens" },
   { resource: "exams", action: "results", description: "Saisir/importer les résultats d'examen" },
   { resource: "reports", action: "read", description: "Consulter les rapports par niveau et tableaux de bord" },
+  { resource: "health", action: "read", description: "Consulter les dossiers médicaux (santé scolaire)" },
+  { resource: "health", action: "create", description: "Créer/mettre à jour un dossier médical" },
   // Module 2 — Structure pédagogique
   { resource: "cycles", action: "read", description: "Consulter les cycles" },
   { resource: "cycles", action: "create", description: "Créer un cycle" },
@@ -373,10 +375,9 @@ export const BUSINESS_ROLES: Array<{ name: string; description: string; permissi
   },
   {
     name: "Infirmier(ère)",
-    description: "Santé scolaire — socle minimal en attendant un module santé dédié (cf. écarts documentés)",
+    description: "Santé scolaire — dossiers médicaux, allergies, vaccinations, suivi sanitaire",
     permissions: [
-      // Aucune permission health:* n'existe : aucun controller n'expose HealthRecord.
-      // Socle minimal accordé pour rester opérationnel (identifier un élève, communiquer).
+      "health:read", "health:create",
       "students:read",
       "internal-messages:read", "internal-messages:create",
     ],
