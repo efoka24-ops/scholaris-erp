@@ -42,6 +42,11 @@ export default function StructureTreePage() {
   const [cycleForm, setCycleForm] = useState({ code: "", name: "" });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Création de niveau : cycle ciblé + formulaire.
+  const [levelCycleId, setLevelCycleId] = useState<string | null>(null);
+  const [levelForm, setLevelForm] = useState({ code: "", name: "" });
+  const [levelSaving, setLevelSaving] = useState(false);
+  const [levelError, setLevelError] = useState<string | null>(null);
 
   const loadTree = useCallback(async () => {
     setIsLoading(true);
@@ -72,6 +77,37 @@ export default function StructureTreePage() {
     } finally {
       setSaving(false);
     }
+  }
+
+  async function createLevel(e: React.FormEvent, cycle: CycleNode) {
+    e.preventDefault();
+    setLevelError(null);
+    if (!levelForm.code.trim() || !levelForm.name.trim()) {
+      setLevelError("Le code et le nom du niveau sont requis.");
+      return;
+    }
+    setLevelSaving(true);
+    try {
+      await resourceClient.post("/levels", {
+        code: levelForm.code.trim(),
+        name: levelForm.name.trim(),
+        cycleId: cycle.id,
+        order: cycle.levels.length + 1,
+      });
+      setLevelForm({ code: "", name: "" });
+      setLevelCycleId(null);
+      await loadTree();
+    } catch (err: any) {
+      setLevelError(err.response?.data?.message ?? "Impossible de créer le niveau.");
+    } finally {
+      setLevelSaving(false);
+    }
+  }
+
+  function openLevelForm(cycleId: string) {
+    setLevelCycleId((c) => (c === cycleId ? null : cycleId));
+    setLevelForm({ code: "", name: "" });
+    setLevelError(null);
   }
 
   useEffect(() => {
@@ -158,12 +194,21 @@ export default function StructureTreePage() {
         <div className="flex flex-col gap-4">
           {tree.map((cycle) => (
             <Card key={cycle.id}>
-              <CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0">
                 <CardTitle>
                   {cycle.name} <span className="text-sm font-normal text-muted-foreground">({cycle.code})</span>
                 </CardTitle>
+                <Button variant="outline" size="sm" onClick={() => openLevelForm(cycle.id)}>
+                  <Plus className="mr-1 h-3.5 w-3.5" />
+                  Niveau
+                </Button>
               </CardHeader>
               <CardContent className="flex flex-col gap-3">
+                {cycle.levels.length === 0 && cycle.programs.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    Aucun niveau. Cliquez « Niveau » pour en ajouter (ex. 6ème, 5ème…).
+                  </p>
+                ) : null}
                 {cycle.levels.map((level) => (
                   <LevelRow key={level.id} level={level} onMove={moveLevel} />
                 ))}
@@ -177,6 +222,36 @@ export default function StructureTreePage() {
                     ))}
                   </div>
                 ))}
+
+                {levelCycleId === cycle.id ? (
+                  <form className="mt-1 flex flex-wrap items-end gap-3 rounded-md border border-border p-3" onSubmit={(e) => createLevel(e, cycle)}>
+                    <div className="flex flex-col gap-1.5">
+                      <Label htmlFor={`lvl-code-${cycle.id}`}>Code niveau *</Label>
+                      <Input
+                        id={`lvl-code-${cycle.id}`}
+                        value={levelForm.code}
+                        onChange={(e) => setLevelForm((f) => ({ ...f, code: e.target.value }))}
+                        placeholder="6EME"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <Label htmlFor={`lvl-name-${cycle.id}`}>Nom niveau *</Label>
+                      <Input
+                        id={`lvl-name-${cycle.id}`}
+                        value={levelForm.name}
+                        onChange={(e) => setLevelForm((f) => ({ ...f, name: e.target.value }))}
+                        placeholder="6ème"
+                      />
+                    </div>
+                    <Button type="submit" size="sm" disabled={levelSaving}>
+                      {levelSaving ? "Création…" : "Ajouter"}
+                    </Button>
+                    <Button type="button" variant="ghost" size="sm" onClick={() => setLevelCycleId(null)}>
+                      Annuler
+                    </Button>
+                    {levelError ? <p className="w-full text-sm font-medium text-destructive">{levelError}</p> : null}
+                  </form>
+                ) : null}
               </CardContent>
             </Card>
           ))}
