@@ -37,7 +37,10 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { cn } from "@scholaris/ui";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useAuth } from "@/hooks/use-auth";
+import { resourceClient } from "@/lib/api-client";
+import { isMenuVisible, resolveCategory, type EstablishmentCategory } from "@/lib/establishment-features";
 
 type NavItem = {
   href: string;
@@ -145,6 +148,38 @@ const NAV_SECTIONS: NavSection[] = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { user, hasPermission } = useAuth();
+  const [category, setCategory] = useState<EstablishmentCategory | null>(null);
+  const isSuperAdmin = hasPermission("tenants:create");
+
+  // Récupère le type de l'établissement courant pour filtrer les menus.
+  useEffect(() => {
+    if (!user?.tenantId) return;
+    let cancelled = false;
+    resourceClient
+      .get<{ type?: string; configJson?: { establishmentCategory?: string } }>(`/tenants/${user.tenantId}`)
+      .then((r) => {
+        if (!cancelled) setCategory(resolveCategory(r.data.type, r.data.configJson?.establishmentCategory));
+      })
+      .catch(() => {
+        if (!cancelled) setCategory(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.tenantId]);
+
+  // Sections filtrées selon le type d'établissement (super admin voit tout).
+  const sections = useMemo(() => {
+    // Tant que la catégorie n'est pas connue, on n'affiche que les menus universels
+    // (évite un flash de menus non pertinents) — sauf super admin qui voit tout.
+    const cat = category ?? "COLLEGE";
+    return NAV_SECTIONS.map((section) => ({
+      ...section,
+      items: section.items.filter((item) => isMenuVisible(item.href, cat, isSuperAdmin)),
+    })).filter((section) => section.items.length > 0);
+  }, [category, isSuperAdmin]);
+
   const [expandedSections, setExpandedSections] = useState<string[]>([
     "Principal",
     "Académique",
@@ -163,7 +198,7 @@ export function Sidebar() {
         <span className="text-lg font-semibold text-primary">SCHOLARIS</span>
       </div>
       <nav className="flex flex-1 flex-col gap-2 overflow-y-auto p-3">
-        {NAV_SECTIONS.map((section) => {
+        {sections.map((section) => {
           const isExpanded = expandedSections.includes(section.label);
           return (
             <div key={section.label}>
