@@ -8,22 +8,91 @@ import { AuditService } from "../audit/audit.service";
 import { SmtpMailService } from "../../common/mail/smtp-mail.service";
 import { CreateEstablishmentRequestDto } from "./dto/create-establishment-request.dto";
 
-// Config par défaut du moteur de calcul (secondaire général camerounais).
+// Mentions communes (secondaire camerounais, avec bande Médiocre 08-10).
+const STANDARD_MENTIONS = [
+  { code: "EXCELLENT", label: "Excellent", minAverage: 18 },
+  { code: "TRES_BIEN", label: "Très Bien", minAverage: 16 },
+  { code: "BIEN", label: "Bien", minAverage: 14 },
+  { code: "ASSEZ_BIEN", label: "Assez Bien", minAverage: 12 },
+  { code: "PASSABLE", label: "Passable", minAverage: 10 },
+  { code: "MEDIOCRE", label: "Médiocre", minAverage: 8 },
+  { code: "INSUFFISANT", label: "Insuffisant", minAverage: 0 },
+];
+
+// Échelle GPA LMD camerounaise (note /100 → points /4).
+const LMD_GPA_SCALE = [
+  { grade: "A", minScore: 80, points: 4.0 },
+  { grade: "A-", minScore: 75, points: 3.7 },
+  { grade: "B+", minScore: 70, points: 3.3 },
+  { grade: "B", minScore: 65, points: 3.0 },
+  { grade: "B-", minScore: 60, points: 2.7 },
+  { grade: "C+", minScore: 55, points: 2.3 },
+  { grade: "C", minScore: 50, points: 2.0 },
+  { grade: "C-", minScore: 45, points: 1.7 },
+  { grade: "D+", minScore: 40, points: 1.3 },
+  { grade: "D", minScore: 35, points: 1.0 },
+  { grade: "F", minScore: 0, points: 0.0 },
+];
+
+// Config par défaut (secondaire général camerounais).
 const DEFAULT_CONFIG = {
   evaluationType: "SEQUENTIAL",
   sequenceWeights: [1, 1],
   trimesterWeights: [1, 1, 1],
   roundingRule: "HUNDREDTH",
   absenceRule: "ZERO",
-  mentionThresholds: [
-    { code: "EXCELLENT", label: "Excellent", minAverage: 18 },
-    { code: "TRES_BIEN", label: "Très Bien", minAverage: 16 },
-    { code: "BIEN", label: "Bien", minAverage: 14 },
-    { code: "ASSEZ_BIEN", label: "Assez Bien", minAverage: 12 },
-    { code: "PASSABLE", label: "Passable", minAverage: 10 },
-    { code: "INSUFFISANT", label: "Insuffisant", minAverage: 0 },
-  ],
+  mentionThresholds: STANDARD_MENTIONS,
 };
+
+/**
+ * Pré-configuration automatique du moteur de calcul selon le TYPE d'établissement
+ * (« activation automatique à la création » de la matrice).
+ */
+function configForType(type: string): Record<string, unknown> {
+  switch (type) {
+    case "SUPERIEUR":
+      // LMD : UE/EC, crédits, compensation, GPA.
+      return {
+        evaluationType: "LMD",
+        roundingRule: "HUNDREDTH",
+        absenceRule: "ZERO",
+        lmdCompensation: true,
+        gpaScale: LMD_GPA_SCALE,
+        mentionThresholds: STANDARD_MENTIONS,
+      };
+    case "FORMATION_PRO":
+      // Centre de formation : semestriel, pondération CC/Examen gérée plus tard.
+      return {
+        evaluationType: "SEMESTER",
+        roundingRule: "HUNDREDTH",
+        absenceRule: "ZERO",
+        mentionThresholds: STANDARD_MENTIONS,
+      };
+    case "PRIMAIRE":
+    case "SECONDAIRE":
+    case "TECHNIQUE":
+    default:
+      // Séquentiel camerounais (6 séquences agrégées par trimestre).
+      return DEFAULT_CONFIG;
+  }
+}
+
+// Catégorie fine (6 valeurs) dérivée du type grossier, stockée en config.
+function categoryForType(type: string): string {
+  switch (type) {
+    case "PRIMAIRE":
+      return "PRIMAIRE";
+    case "SUPERIEUR":
+      return "SUPERIEUR";
+    case "TECHNIQUE":
+      return "LYCEE_TECHNIQUE";
+    case "FORMATION_PRO":
+      return "CENTRE_FORMATION";
+    case "SECONDAIRE":
+    default:
+      return "COLLEGE";
+  }
+}
 
 function generatePassword(): string {
   // 10 caractères base64url + un suffixe garantissant maj/min/chiffre/spécial.
@@ -192,7 +261,10 @@ export class EstablishmentRequestsService {
           address: req.address,
           phone: req.phone,
           email: req.email,
-          configJson: DEFAULT_CONFIG as unknown as Prisma.InputJsonValue,
+          configJson: {
+            ...configForType(req.type),
+            establishmentCategory: categoryForType(req.type),
+          } as unknown as Prisma.InputJsonValue,
         },
       });
 

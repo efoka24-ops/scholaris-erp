@@ -7,12 +7,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
-const TYPES = [
-  { value: "PRIMAIRE", label: "Primaire" },
-  { value: "SECONDAIRE", label: "Secondaire général" },
-  { value: "SUPERIEUR", label: "Supérieur" },
-  { value: "TECHNIQUE", label: "Technique" },
-  { value: "FORMATION_PRO", label: "Formation professionnelle" },
+// 6 catégories (matrice « Fonctionnalités par type »). Chacune est envoyée au
+// backend via le type Prisma correspondant (`type`) ; le moteur de calcul est
+// alors pré-configuré automatiquement (séquentiel, semestriel ou LMD).
+const CATEGORIES = [
+  { value: "PRIMAIRE", label: "Primaire (SIL → CM2)", type: "PRIMAIRE", hint: "Séquentiel, notes /10-/20, APC, examen CEP" },
+  { value: "COLLEGE", label: "Collège (6ème → 3ème)", type: "SECONDAIRE", hint: "Séquentiel, coefficients MINESEC, examen BEPC" },
+  { value: "LYCEE_GENERAL", label: "Lycée général (2nde → Tle)", type: "SECONDAIRE", hint: "Séquentiel, séries, Probatoire + Baccalauréat" },
+  { value: "LYCEE_TECHNIQUE", label: "Lycée technique", type: "TECHNIQUE", hint: "Séquentiel/semestriel, CAP/BEP, Bac technique" },
+  { value: "CENTRE_FORMATION", label: "Centre de formation", type: "FORMATION_PRO", hint: "Semestriel, modules, BTS/DUT (configurable)" },
+  { value: "SUPERIEUR", label: "Institut supérieur / Université", type: "SUPERIEUR", hint: "LMD : UE/EC, crédits ECTS, GPA, semestres" },
 ];
 const STATUSES = [
   { value: "PUBLIC", label: "Public" },
@@ -24,7 +28,7 @@ export default function CreateEstablishmentRequestPage() {
   const [form, setForm] = useState({
     name: "",
     code: "",
-    type: "SECONDAIRE",
+    category: "COLLEGE",
     status: "PUBLIC",
     address: "",
     phone: "",
@@ -47,10 +51,11 @@ export default function CreateEstablishmentRequestPage() {
     setError(null);
     setIsSubmitting(true);
     try {
+      const mappedType = CATEGORIES.find((c) => c.value === form.category)?.type ?? "SECONDAIRE";
       const { data } = await apiClient.post("/public/establishment-requests", {
         name: form.name,
         code: form.code,
-        type: form.type,
+        type: mappedType,
         status: form.status,
         address: form.address || undefined,
         phone: form.phone || undefined,
@@ -124,12 +129,18 @@ export default function CreateEstablishmentRequestPage() {
             <Input value={form.code} onChange={(e) => set("code", e.target.value)} placeholder="EN/EXN/LBM" />
           </div>
           <div className="flex flex-col gap-1.5">
-            <Label>Type *</Label>
-            <select className={fieldClass} value={form.type} onChange={(e) => set("type", e.target.value)}>
-              {TYPES.map((t) => (
-                <option key={t.value} value={t.value}>{t.label}</option>
+            <Label>Type d&apos;établissement *</Label>
+            <select className={fieldClass} value={form.category} onChange={(e) => set("category", e.target.value)}>
+              {CATEGORIES.map((c) => (
+                <option key={c.value} value={c.value}>{c.label}</option>
               ))}
             </select>
+            <p className="text-xs text-muted-foreground">
+              {CATEGORIES.find((c) => c.value === form.category)?.hint}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Le moteur de calcul et les menus seront pré-configurés automatiquement selon ce choix.
+            </p>
           </div>
           <div className="flex flex-col gap-1.5">
             <Label>Statut *</Label>
