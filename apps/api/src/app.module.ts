@@ -6,6 +6,7 @@ import { RequestContextModule } from "./common/context/request-context.module";
 import { RequestContextMiddleware } from "./common/middleware/request-context.middleware";
 import { JwtAuthGuard } from "./common/guards/jwt-auth.guard";
 import { PermissionsGuard } from "./common/guards/permissions.guard";
+import { EstablishmentCategoryGuard } from "./common/guards/establishment-category.guard";
 import { PrismaModule } from "./prisma/prisma.module";
 import { AuthModule } from "./modules/auth/auth.module";
 import { HealthModule } from "./modules/health/health.module";
@@ -90,6 +91,7 @@ import { PaymentsGatewayModule } from "./modules/payments-gateway/payments-gatew
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: PermissionsGuard },
+    { provide: APP_GUARD, useClass: EstablishmentCategoryGuard },
   ],
 })
 export class AppModule implements NestModule {

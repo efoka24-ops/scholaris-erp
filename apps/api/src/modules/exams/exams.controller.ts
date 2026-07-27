@@ -2,6 +2,8 @@ import { Body, Controller, Get, Param, Post, Put, Res } from "@nestjs/common";
 import { Response } from "express";
 import { ApiBearerAuth, ApiOperation, ApiTags } from "@nestjs/swagger";
 import { RequirePermissions } from "../../common/decorators/require-permissions.decorator";
+import { RequiresCategory } from "../../common/decorators/requires-category.decorator";
+import { CATEGORY_GROUPS } from "../../common/establishment/establishment-features";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import type { AuthenticatedUser } from "../auth/jwt-payload.interface";
 import { ExamsService } from "./exams.service";
@@ -13,6 +15,7 @@ import { SubmitResultsDto } from "./dto/submit-results.dto";
 @ApiTags("exams")
 @ApiBearerAuth()
 @Controller("exams")
+@RequiresCategory(...CATEGORY_GROUPS.EXAMS)
 export class ExamsController {
   constructor(
     private readonly exams: ExamsService,

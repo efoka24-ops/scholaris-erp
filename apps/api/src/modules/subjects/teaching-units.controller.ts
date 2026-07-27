@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Param, Post, Query } from "@nestjs/common";
 import { ApiBearerAuth, ApiQuery, ApiTags } from "@nestjs/swagger";
 import { RequirePermissions } from "../../common/decorators/require-permissions.decorator";
+import { RequiresCategory } from "../../common/decorators/requires-category.decorator";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import type { AuthenticatedUser } from "../auth/jwt-payload.interface";
 import { TeachingUnitsService } from "./teaching-units.service";
@@ -9,6 +10,7 @@ import { CreateTeachingUnitDto } from "./dto/create-teaching-unit.dto";
 @ApiTags("teaching-units")
 @ApiBearerAuth()
 @Controller("teaching-units")
+@RequiresCategory("SUPERIEUR")
 export class TeachingUnitsController {
   constructor(private readonly teachingUnitsService: TeachingUnitsService) {}
 
