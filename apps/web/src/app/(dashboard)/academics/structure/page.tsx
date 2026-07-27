@@ -42,11 +42,16 @@ export default function StructureTreePage() {
   const [cycleForm, setCycleForm] = useState({ code: "", name: "" });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // Création de niveau : cycle ciblé + formulaire.
-  const [levelCycleId, setLevelCycleId] = useState<string | null>(null);
+  // Création de niveau : cible (cycle + éventuellement filière) + formulaire.
+  const [levelTarget, setLevelTarget] = useState<{ cycleId: string; programId?: string; key: string } | null>(null);
   const [levelForm, setLevelForm] = useState({ code: "", name: "" });
   const [levelSaving, setLevelSaving] = useState(false);
   const [levelError, setLevelError] = useState<string | null>(null);
+  // Création de filière (programme) : cycle ciblé + formulaire.
+  const [programCycleId, setProgramCycleId] = useState<string | null>(null);
+  const [programForm, setProgramForm] = useState({ code: "", name: "" });
+  const [programSaving, setProgramSaving] = useState(false);
+  const [programError, setProgramError] = useState<string | null>(null);
 
   const loadTree = useCallback(async () => {
     setIsLoading(true);
@@ -79,7 +84,7 @@ export default function StructureTreePage() {
     }
   }
 
-  async function createLevel(e: React.FormEvent, cycle: CycleNode) {
+  async function createLevel(e: React.FormEvent, cycle: CycleNode, programId: string | undefined, currentCount: number) {
     e.preventDefault();
     setLevelError(null);
     if (!levelForm.code.trim() || !levelForm.name.trim()) {
@@ -92,10 +97,11 @@ export default function StructureTreePage() {
         code: levelForm.code.trim(),
         name: levelForm.name.trim(),
         cycleId: cycle.id,
-        order: cycle.levels.length + 1,
+        ...(programId ? { programId } : {}),
+        order: currentCount + 1,
       });
       setLevelForm({ code: "", name: "" });
-      setLevelCycleId(null);
+      setLevelTarget(null);
       await loadTree();
     } catch (err: any) {
       setLevelError(err.response?.data?.message ?? "Impossible de créer le niveau.");
@@ -104,11 +110,66 @@ export default function StructureTreePage() {
     }
   }
 
-  function openLevelForm(cycleId: string) {
-    setLevelCycleId((c) => (c === cycleId ? null : cycleId));
+  function openLevelForm(cycleId: string, programId?: string) {
+    const key = programId ? `${cycleId}:${programId}` : cycleId;
+    setLevelTarget((t) => (t?.key === key ? null : { cycleId, programId, key }));
     setLevelForm({ code: "", name: "" });
     setLevelError(null);
   }
+
+  async function createProgram(e: React.FormEvent, cycle: CycleNode) {
+    e.preventDefault();
+    setProgramError(null);
+    if (!programForm.code.trim() || !programForm.name.trim()) {
+      setProgramError("Le code et le nom de la filière sont requis.");
+      return;
+    }
+    setProgramSaving(true);
+    try {
+      await resourceClient.post("/programs", {
+        code: programForm.code.trim(),
+        name: programForm.name.trim(),
+        cycleId: cycle.id,
+      });
+      setProgramForm({ code: "", name: "" });
+      setProgramCycleId(null);
+      await loadTree();
+    } catch (err: any) {
+      setProgramError(err.response?.data?.message ?? "Impossible de créer la filière.");
+    } finally {
+      setProgramSaving(false);
+    }
+  }
+
+  function openProgramForm(cycleId: string) {
+    setProgramCycleId((c) => (c === cycleId ? null : cycleId));
+    setProgramForm({ code: "", name: "" });
+    setProgramError(null);
+  }
+
+  // Formulaire de niveau réutilisable (au niveau cycle ou filière).
+  const levelFormBlock = (cycle: CycleNode, programId: string | undefined, count: number) => (
+    <form
+      className="mt-1 flex flex-wrap items-end gap-3 rounded-md border border-border p-3"
+      onSubmit={(e) => createLevel(e, cycle, programId, count)}
+    >
+      <div className="flex flex-col gap-1.5">
+        <Label>Code niveau *</Label>
+        <Input value={levelForm.code} onChange={(e) => setLevelForm((f) => ({ ...f, code: e.target.value }))} placeholder="6EME" />
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <Label>Nom niveau *</Label>
+        <Input value={levelForm.name} onChange={(e) => setLevelForm((f) => ({ ...f, name: e.target.value }))} placeholder="6ème" />
+      </div>
+      <Button type="submit" size="sm" disabled={levelSaving}>
+        {levelSaving ? "Création…" : "Ajouter"}
+      </Button>
+      <Button type="button" variant="ghost" size="sm" onClick={() => setLevelTarget(null)}>
+        Annuler
+      </Button>
+      {levelError ? <p className="w-full text-sm font-medium text-destructive">{levelError}</p> : null}
+    </form>
+  );
 
   useEffect(() => {
     loadTree();
@@ -198,60 +259,69 @@ export default function StructureTreePage() {
                 <CardTitle>
                   {cycle.name} <span className="text-sm font-normal text-muted-foreground">({cycle.code})</span>
                 </CardTitle>
-                <Button variant="outline" size="sm" onClick={() => openLevelForm(cycle.id)}>
-                  <Plus className="mr-1 h-3.5 w-3.5" />
-                  Niveau
-                </Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => openLevelForm(cycle.id)}>
+                    <Plus className="mr-1 h-3.5 w-3.5" />
+                    Niveau
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => openProgramForm(cycle.id)}>
+                    <Plus className="mr-1 h-3.5 w-3.5" />
+                    Filière
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent className="flex flex-col gap-3">
                 {cycle.levels.length === 0 && cycle.programs.length === 0 ? (
                   <p className="text-sm text-muted-foreground">
-                    Aucun niveau. Cliquez « Niveau » pour en ajouter (ex. 6ème, 5ème…).
+                    Aucun niveau ni filière. Ajoutez un « Niveau » (ex. 6ème) ou une « Filière » (ex. Génie Logiciel)
+                    puis ses niveaux.
                   </p>
                 ) : null}
                 {cycle.levels.map((level) => (
                   <LevelRow key={level.id} level={level} onMove={moveLevel} />
                 ))}
+
+                {levelTarget?.key === cycle.id ? levelFormBlock(cycle, undefined, cycle.levels.length) : null}
+
+                {programCycleId === cycle.id ? (
+                  <form className="flex flex-wrap items-end gap-3 rounded-md border border-border p-3" onSubmit={(e) => createProgram(e, cycle)}>
+                    <div className="flex flex-col gap-1.5">
+                      <Label>Code filière *</Label>
+                      <Input value={programForm.code} onChange={(e) => setProgramForm((f) => ({ ...f, code: e.target.value }))} placeholder="GL" />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <Label>Nom filière *</Label>
+                      <Input value={programForm.name} onChange={(e) => setProgramForm((f) => ({ ...f, name: e.target.value }))} placeholder="Génie Logiciel" />
+                    </div>
+                    <Button type="submit" size="sm" disabled={programSaving}>
+                      {programSaving ? "Création…" : "Ajouter"}
+                    </Button>
+                    <Button type="button" variant="ghost" size="sm" onClick={() => setProgramCycleId(null)}>
+                      Annuler
+                    </Button>
+                    {programError ? <p className="w-full text-sm font-medium text-destructive">{programError}</p> : null}
+                  </form>
+                ) : null}
+
                 {cycle.programs.map((program) => (
                   <div key={program.id} className="ml-3 flex flex-col gap-2 border-l border-border pl-3">
-                    <span className="text-sm font-medium">
-                      {program.name} <span className="text-muted-foreground">({program.code})</span>
-                    </span>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">
+                        {program.name} <span className="text-muted-foreground">({program.code})</span>
+                      </span>
+                      <Button variant="ghost" size="sm" onClick={() => openLevelForm(cycle.id, program.id)}>
+                        <Plus className="mr-1 h-3.5 w-3.5" />
+                        Niveau
+                      </Button>
+                    </div>
                     {program.levels.map((level) => (
                       <LevelRow key={level.id} level={level} onMove={moveLevel} />
                     ))}
+                    {levelTarget?.key === `${cycle.id}:${program.id}`
+                      ? levelFormBlock(cycle, program.id, program.levels.length)
+                      : null}
                   </div>
                 ))}
-
-                {levelCycleId === cycle.id ? (
-                  <form className="mt-1 flex flex-wrap items-end gap-3 rounded-md border border-border p-3" onSubmit={(e) => createLevel(e, cycle)}>
-                    <div className="flex flex-col gap-1.5">
-                      <Label htmlFor={`lvl-code-${cycle.id}`}>Code niveau *</Label>
-                      <Input
-                        id={`lvl-code-${cycle.id}`}
-                        value={levelForm.code}
-                        onChange={(e) => setLevelForm((f) => ({ ...f, code: e.target.value }))}
-                        placeholder="6EME"
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                      <Label htmlFor={`lvl-name-${cycle.id}`}>Nom niveau *</Label>
-                      <Input
-                        id={`lvl-name-${cycle.id}`}
-                        value={levelForm.name}
-                        onChange={(e) => setLevelForm((f) => ({ ...f, name: e.target.value }))}
-                        placeholder="6ème"
-                      />
-                    </div>
-                    <Button type="submit" size="sm" disabled={levelSaving}>
-                      {levelSaving ? "Création…" : "Ajouter"}
-                    </Button>
-                    <Button type="button" variant="ghost" size="sm" onClick={() => setLevelCycleId(null)}>
-                      Annuler
-                    </Button>
-                    {levelError ? <p className="w-full text-sm font-medium text-destructive">{levelError}</p> : null}
-                  </form>
-                ) : null}
               </CardContent>
             </Card>
           ))}
