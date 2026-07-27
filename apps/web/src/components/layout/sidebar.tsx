@@ -41,6 +41,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { resourceClient } from "@/lib/api-client";
 import {
+  adaptLabel,
+  adaptSectionLabel,
   isMenuVisible,
   isOptionalVisible,
   resolveCategory,
@@ -189,11 +191,14 @@ export function Sidebar() {
     const cat = category ?? "COLLEGE";
     return NAV_SECTIONS.map((section) => ({
       ...section,
-      items: section.items.filter(
-        (item) =>
-          isMenuVisible(item.href, cat, isSuperAdmin) &&
-          (isSuperAdmin || isOptionalVisible(item.href, enabledModules)),
-      ),
+      label: adaptSectionLabel(section.label, cat),
+      items: section.items
+        .filter(
+          (item) =>
+            isMenuVisible(item.href, cat, isSuperAdmin) &&
+            (isSuperAdmin || isOptionalVisible(item.href, enabledModules)),
+        )
+        .map((item) => ({ ...item, label: adaptLabel(item.href, item.label, cat) })),
     })).filter((section) => section.items.length > 0);
   }, [category, enabledModules, isSuperAdmin]);
 

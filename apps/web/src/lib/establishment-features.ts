@@ -72,6 +72,27 @@ export const OPTIONAL_MODULES: OptionalModule[] = [
 ];
 const OPTIONAL_HREF_TO_KEY = new Map<string, string>(OPTIONAL_MODULES.map((m) => [m.href, m.key]));
 
+/** Terme utilisé pour « Élèves » selon la catégorie (matrice §6). */
+export function learnerTerm(category: EstablishmentCategory): string {
+  if (category === "SUPERIEUR") return "Étudiants";
+  if (category === "CENTRE_FORMATION") return "Apprenants";
+  return "Élèves";
+}
+
+/** Adapte le libellé d'un menu selon la catégorie (🔄 de la matrice). */
+export function adaptLabel(href: string, defaultLabel: string, category: EstablishmentCategory): string {
+  if (href === "/students") return learnerTerm(category);
+  // Centre de formation : « Matières » → « Modules »
+  if (href === "/academics/subjects" && category === "CENTRE_FORMATION") return "Modules";
+  return defaultLabel;
+}
+
+/** Adapte le libellé d'une section de menu selon la catégorie. */
+export function adaptSectionLabel(label: string, category: EstablishmentCategory): string {
+  if (label === "Élèves") return learnerTerm(category);
+  return label;
+}
+
 /** Un menu optionnel est-il visible ? (non optionnel → toujours ; sinon selon la config) */
 export function isOptionalVisible(href: string, enabledModules: string[] | null | undefined): boolean {
   const key = OPTIONAL_HREF_TO_KEY.get(href);
