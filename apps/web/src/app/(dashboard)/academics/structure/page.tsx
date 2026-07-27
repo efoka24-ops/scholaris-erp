@@ -5,6 +5,8 @@ import { ArrowDown, ArrowUp, Plus } from "lucide-react";
 import { resourceClient } from "@/lib/api-client";
 import type { CycleNode, LevelNode } from "@/types/structure";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LoadingSpinner } from "@/components/shared/loading-spinner";
 
@@ -36,6 +38,10 @@ function LevelRow({ level, onMove }: { level: LevelNode; onMove: (levelId: strin
 export default function StructureTreePage() {
   const [tree, setTree] = useState<CycleNode[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [showCycleForm, setShowCycleForm] = useState(false);
+  const [cycleForm, setCycleForm] = useState({ code: "", name: "" });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const loadTree = useCallback(async () => {
     setIsLoading(true);
@@ -43,6 +49,30 @@ export default function StructureTreePage() {
     setTree(data);
     setIsLoading(false);
   }, []);
+
+  async function createCycle(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    if (!cycleForm.code.trim() || !cycleForm.name.trim()) {
+      setError("Le code et le nom du cycle sont requis.");
+      return;
+    }
+    setSaving(true);
+    try {
+      await resourceClient.post("/cycles", {
+        code: cycleForm.code.trim(),
+        name: cycleForm.name.trim(),
+        order: tree.length + 1,
+      });
+      setCycleForm({ code: "", name: "" });
+      setShowCycleForm(false);
+      await loadTree();
+    } catch (err: any) {
+      setError(err.response?.data?.message ?? "Impossible de créer le cycle.");
+    } finally {
+      setSaving(false);
+    }
+  }
 
   useEffect(() => {
     loadTree();
@@ -79,11 +109,48 @@ export default function StructureTreePage() {
           <h1 className="text-2xl font-semibold">Structure pédagogique</h1>
           <p className="text-sm text-muted-foreground">Cycles → filières/programmes → niveaux → classes</p>
         </div>
-        <Button size="sm">
+        <Button size="sm" onClick={() => { setShowCycleForm((v) => !v); setError(null); }}>
           <Plus className="mr-2 h-4 w-4" />
           Nouveau cycle
         </Button>
       </div>
+
+      {showCycleForm ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Nouveau cycle</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form className="flex flex-wrap items-end gap-3" onSubmit={createCycle}>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="cyc-code">Code *</Label>
+                <Input
+                  id="cyc-code"
+                  value={cycleForm.code}
+                  onChange={(e) => setCycleForm((f) => ({ ...f, code: e.target.value }))}
+                  placeholder="SEC"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="cyc-name">Nom *</Label>
+                <Input
+                  id="cyc-name"
+                  value={cycleForm.name}
+                  onChange={(e) => setCycleForm((f) => ({ ...f, name: e.target.value }))}
+                  placeholder="Secondaire premier cycle"
+                />
+              </div>
+              <Button type="submit" disabled={saving}>
+                {saving ? "Création…" : "Créer"}
+              </Button>
+              <Button type="button" variant="ghost" onClick={() => setShowCycleForm(false)}>
+                Annuler
+              </Button>
+            </form>
+            {error ? <p className="mt-2 text-sm font-medium text-destructive">{error}</p> : null}
+          </CardContent>
+        </Card>
+      ) : null}
 
       {tree.length === 0 ? (
         <p className="text-sm text-muted-foreground">Aucun cycle configuré pour cet établissement.</p>
