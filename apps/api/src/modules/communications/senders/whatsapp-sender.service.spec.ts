@@ -12,7 +12,11 @@ describe("WhatsappSenderService", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     config = {
-      get: jest.fn((_key: string, fallback?: unknown) => fallback),
+      get: jest.fn((key: string, fallback?: unknown) => {
+        if (key === "WHATSAPP_CLOUD_API_TOKEN") return "wa-token";
+        if (key === "WHATSAPP_PHONE_NUMBER_ID") return "123456";
+        return fallback;
+      }),
       getOrThrow: jest.fn((key: string) => (key === "WHATSAPP_PHONE_NUMBER_ID" ? "123456" : "wa-token")),
     };
     service = new WhatsappSenderService(config as unknown as ConfigService);

@@ -12,7 +12,11 @@ describe("SmsSenderService", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     config = {
-      get: jest.fn((_key: string, fallback?: unknown) => fallback),
+      get: jest.fn((key: string, fallback?: unknown) => {
+        if (key === "AFRICASTALKING_API_KEY") return "at-api-key";
+        if (key === "AFRICASTALKING_USERNAME") return "sandbox";
+        return fallback;
+      }),
       getOrThrow: jest.fn((key: string) => (key === "AFRICASTALKING_USERNAME" ? "sandbox" : "at-api-key")),
     };
     service = new SmsSenderService(config as unknown as ConfigService);

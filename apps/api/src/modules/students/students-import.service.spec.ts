@@ -3,6 +3,8 @@ import { Gender } from "@scholaris/prisma";
 import * as ExcelJS from "exceljs";
 import { StudentsService } from "./students.service";
 import { StudentsImportService } from "./students-import.service";
+import { EnrollmentsService } from "../enrollments/enrollments.service";
+import { PrismaService } from "../../prisma/prisma.service";
 
 async function workbookBase64(rows: Array<Array<string | Date>>): Promise<string> {
   const workbook = new ExcelJS.Workbook();
@@ -16,10 +18,30 @@ async function workbookBase64(rows: Array<Array<string | Date>>): Promise<string
 describe("StudentsImportService", () => {
   let service: StudentsImportService;
   let studentsService: { create: jest.Mock };
+  let enrollmentsService: { enroll: jest.Mock };
+  let prisma: {
+    classRoom: { findMany: jest.Mock; findFirst: jest.Mock; create: jest.Mock };
+    academicYear: { findFirst: jest.Mock };
+    cycle: { findFirst: jest.Mock; create: jest.Mock };
+    level: { findFirst: jest.Mock; count: jest.Mock; create: jest.Mock };
+  };
 
   beforeEach(() => {
     studentsService = { create: jest.fn().mockResolvedValue({ id: "student-1" }) };
-    service = new StudentsImportService(studentsService as unknown as StudentsService);
+    enrollmentsService = { enroll: jest.fn().mockResolvedValue({ id: "enr-1" }) };
+    // Les classeurs de test n'ont pas de colonne « Classe » → aucune inscription
+    // ni création de classe déclenchée ; ces mocks couvrent les lectures initiales.
+    prisma = {
+      classRoom: { findMany: jest.fn().mockResolvedValue([]), findFirst: jest.fn().mockResolvedValue(null), create: jest.fn() },
+      academicYear: { findFirst: jest.fn().mockResolvedValue(null) },
+      cycle: { findFirst: jest.fn().mockResolvedValue(null), create: jest.fn() },
+      level: { findFirst: jest.fn().mockResolvedValue(null), count: jest.fn().mockResolvedValue(0), create: jest.fn() },
+    };
+    service = new StudentsImportService(
+      studentsService as unknown as StudentsService,
+      enrollmentsService as unknown as EnrollmentsService,
+      prisma as unknown as PrismaService,
+    );
   });
 
   it("crée un élève par ligne valide et rapporte {created, duplicates, errors}", async () => {
@@ -30,7 +52,7 @@ describe("StudentsImportService", () => {
 
     const report = await service.import({ contentBase64 }, "tenant-1");
 
-    expect(report).toEqual({ created: 2, duplicates: 0, errors: [] });
+    expect(report).toEqual({ created: 2, duplicates: 0, enrolled: 0, classesCreated: [], errors: [] });
     expect(studentsService.create).toHaveBeenCalledTimes(2);
     expect(studentsService.create).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -55,7 +77,7 @@ describe("StudentsImportService", () => {
 
     const report = await service.import({ contentBase64 }, "tenant-1");
 
-    expect(report).toEqual({ created: 1, duplicates: 1, errors: [] });
+    expect(report).toEqual({ created: 1, duplicates: 1, enrolled: 0, classesCreated: [], errors: [] });
   });
 
   it("compte en doublon une ligne répétée dans le fichier lui-même (sans rappeler create)", async () => {
@@ -66,7 +88,7 @@ describe("StudentsImportService", () => {
 
     const report = await service.import({ contentBase64 }, "tenant-1");
 
-    expect(report).toEqual({ created: 1, duplicates: 1, errors: [] });
+    expect(report).toEqual({ created: 1, duplicates: 1, enrolled: 0, classesCreated: [], errors: [] });
     expect(studentsService.create).toHaveBeenCalledTimes(1);
   });
 

@@ -12,7 +12,7 @@ describe("EmailSenderService", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     config = {
-      get: jest.fn((_key: string, fallback?: unknown) => fallback),
+      get: jest.fn((key: string, fallback?: unknown) => (key === "BREVO_API_KEY" ? "brevo-api-key" : fallback)),
       getOrThrow: jest.fn(() => "brevo-api-key"),
     };
     service = new EmailSenderService(config as unknown as ConfigService);
