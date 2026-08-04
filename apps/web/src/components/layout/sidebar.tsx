@@ -185,8 +185,15 @@ export function Sidebar() {
       .catch(() => {
         if (!cancelled) setEnabledModules([]);
       });
+
+    const onModulesUpdated = (e: Event) => {
+      const detail = (e as CustomEvent<string[]>).detail;
+      if (Array.isArray(detail)) setEnabledModules(detail);
+    };
+    window.addEventListener("modules-updated", onModulesUpdated);
     return () => {
       cancelled = true;
+      window.removeEventListener("modules-updated", onModulesUpdated);
     };
   }, [user?.tenantId]);
 

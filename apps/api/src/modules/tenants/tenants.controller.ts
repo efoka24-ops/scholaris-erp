@@ -1,10 +1,9 @@
-import { Body, Controller, ForbiddenException, Get, Param, Post, Put } from "@nestjs/common";
+import { Body, Controller, ForbiddenException, Get, Param, Put } from "@nestjs/common";
 import { ApiBearerAuth, ApiOperation, ApiTags } from "@nestjs/swagger";
 import { RequirePermissions } from "../../common/decorators/require-permissions.decorator";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import type { AuthenticatedUser } from "../auth/jwt-payload.interface";
 import { TenantsService } from "./tenants.service";
-import { CreateTenantDto } from "./dto/create-tenant.dto";
 import { UpdateTenantDto } from "./dto/update-tenant.dto";
 import { UpdateEnabledModulesDto } from "./dto/update-enabled-modules.dto";
 
@@ -13,22 +12,6 @@ import { UpdateEnabledModulesDto } from "./dto/update-enabled-modules.dto";
 @Controller("tenants")
 export class TenantsController {
   constructor(private readonly tenantsService: TenantsService) {}
-
-  // Gestion multi-établissements (Super Admin) : création/liste transverses,
-  // gardées par tenants:create (permission détenue uniquement par le Super Admin).
-  @Post()
-  @RequirePermissions("tenants:create")
-  @ApiOperation({ summary: "Créer un nouvel établissement (Super Admin)" })
-  create(@Body() dto: CreateTenantDto) {
-    return this.tenantsService.create(dto);
-  }
-
-  @Get()
-  @RequirePermissions("tenants:create")
-  @ApiOperation({ summary: "Lister tous les établissements (Super Admin)" })
-  findAll() {
-    return this.tenantsService.findAll();
-  }
 
   @Get(":id")
   @RequirePermissions("tenants:read")
@@ -59,26 +42,6 @@ export class TenantsController {
   updateConfig(@Param("id") id: string, @Body() config: unknown, @CurrentUser() user: AuthenticatedUser) {
     this.assertOwnTenant(id, user);
     return this.tenantsService.updateConfig(id, config);
-  }
-
-  @Get(":id/bulletin-groups")
-  @RequirePermissions("tenants:read")
-  @ApiOperation({ summary: "Configuration des groupes de matières du bulletin" })
-  getBulletinGroups(@Param("id") id: string, @CurrentUser() user: AuthenticatedUser) {
-    this.assertOwnTenant(id, user);
-    return this.tenantsService.getBulletinGroups(id);
-  }
-
-  @Put(":id/bulletin-groups")
-  @RequirePermissions("tenants:update")
-  @ApiOperation({ summary: "Définit les groupes de matières et l'affectation des matières" })
-  updateBulletinGroups(
-    @Param("id") id: string,
-    @Body() config: any,
-    @CurrentUser() user: AuthenticatedUser,
-  ) {
-    this.assertOwnTenant(id, user);
-    return this.tenantsService.updateBulletinGroups(id, config);
   }
 
   @Get(":id/modules")
