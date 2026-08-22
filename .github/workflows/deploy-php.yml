@@ -1,0 +1,62 @@
+name: Deploiement PHP (Camoo)
+
+# Deploie l'application Laravel de php/ vers l'hebergement mutualise Camoo par FTP.
+# Les identifiants ne sont jamais dans le depot : ils viennent des secrets du
+# repository (Settings > Secrets and variables > Actions).
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'php/**'
+      - '.github/workflows/deploy-php.yml'
+  workflow_dispatch:
+
+concurrency:
+  # Deux deploiements FTP simultanes laisseraient le serveur dans un etat mixte.
+  group: deploy-camoo
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Installer PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          # Doit rester aligne sur la version PHP choisie dans cPanel (MultiPHP Manager).
+          php-version: '8.2'
+          extensions: mbstring, pdo_mysql, bcmath, zip, intl, gd
+          coverage: none
+
+      - name: Installer les dependances de production
+        working-directory: php
+        run: composer install --no-dev --optimize-autoloader --no-interaction --no-progress
+
+      - name: Verifier que la configuration se compile
+        working-directory: php
+        run: php artisan config:clear
+
+      - name: Envoyer les fichiers par FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.CAMOO_FTP_SERVER }}
+          username: ${{ secrets.CAMOO_FTP_USERNAME }}
+          password: ${{ secrets.CAMOO_FTP_PASSWORD }}
+          protocol: ftp
+          port: 21
+          local-dir: ./php/
+          server-dir: /public_html/scholaris-erp/
+          # Fichiers qui appartiennent au serveur et ne doivent jamais etre
+          # ecrases par le depot : configuration, donnees, caches, logs.
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/node_modules/**
+            **/tests/**
+            .env
+            storage/**
+            bootstrap/cache/**
+            database/database.sqlite
