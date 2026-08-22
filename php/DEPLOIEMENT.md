@@ -95,7 +95,27 @@ compris.
 
 ## 5. Premiere mise en service
 
-Si cPanel offre un `Terminal` ou un acces SSH, depuis `~/scholaris-erp` :
+> **Etat constate sur ce compte (aout 2026)** : le compte `ssh_trugro9159`
+> s'authentifie, mais le serveur refuse le canal `exec`, le shell interactif et
+> le sous-systeme `sftp`. L'acces SSH n'est donc pas actif sur ce plan. Tant
+> qu'il ne l'est pas, la mise en service passe par le gestionnaire de fichiers
+> et les taches cron de cPanel. L'activer (cPanel > `SSH Access`, ou une demande
+> au support Camoo) permet de tout automatiser.
+
+### Premier deploiement par archive
+
+Envoyer 6 000 fichiers un par un en FTP prend des heures ; une archive unique
+prend une dizaine de secondes. Le script `scripts/build-deploy-archive.ps1`
+produit `scholaris.zip` (application + `vendor/` + `.env` de production).
+
+1. Deposer `scholaris.zip` par FTP dans `/home/trugro9159/scholaris-erp`.
+2. cPanel > `Gestionnaire de fichiers` > ce dossier > clic droit sur
+   `scholaris.zip` > `Extract`.
+3. Supprimer `scholaris.zip` une fois l'extraction terminee.
+
+### Commandes de mise en service
+
+Avec un `Terminal` ou SSH, depuis `~/scholaris-erp` :
 
 ```bash
 php artisan key:generate --force
