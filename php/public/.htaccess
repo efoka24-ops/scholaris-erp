@@ -1,7 +1,9 @@
 <IfModule mod_rewrite.c>
-    <IfModule mod_negotiation.c>
-        Options -MultiViews -Indexes
-    </IfModule>
+    # La directive "Options -MultiViews -Indexes" livree par Laravel a ete
+    # retiree : ce mutualise n'accorde pas AllowOverride Options, et Apache
+    # repond alors 500 sur tout le site, fichiers statiques compris.
+    # MultiViews n'est pas actif ici, et le listage de repertoire est deja
+    # empeche par la presence de index.php.
 
     RewriteEngine On
 

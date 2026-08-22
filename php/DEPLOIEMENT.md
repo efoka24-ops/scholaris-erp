@@ -46,8 +46,27 @@ cPanel > `MultiPHP Manager` > selectionner **PHP 8.2** (minimum) pour
 `scholaris-erp.trugroup.cm`. Extensions requises : `mbstring`, `pdo_mysql`,
 `bcmath`, `zip`, `intl`, `gd`, `openssl`, `fileinfo`.
 
-Si Camoo ne propose pas 8.2, le projet ne demarrera pas : signalez-le, il faudra
-retrograder les dependances.
+> **PHP 8.2 est une exigence dure, pas une preference.** Le serveur livrait
+> PHP 8.1.34 au premier deploiement, et l'application refusait de demarrer.
+> Il n'existe pas de repli : Laravel 12 exige 8.2, et les branches 10 et 11,
+> seules compatibles 8.1, sont refusees par Composer car toutes leurs versions
+> portent des avis de securite ouverts. Sans PHP 8.2, il n'y a pas de version
+> de Laravel a la fois maintenue et installable.
+
+### Le piege du `platform` Composer
+
+`composer.json` epingle `config.platform.php` sur `8.2.0`. Cette ligne n'est pas
+cosmetique : sans elle, Composer resout les dependances pour la version PHP de
+la machine qui lance `composer install`. Un poste en PHP 8.4 produit alors un
+`vendor/` exigeant PHP >= 8.4, et la production tombe avec :
+
+```
+Composer detected issues in your platform:
+Your Composer dependencies require a PHP version ">= 8.4.1". You are running 8.1.34.
+```
+
+L'erreur ne se voit qu'une fois deploye. Si la version PHP de l'hebergement
+change, mettre a jour cette valeur **et** rejouer `composer update`.
 
 ## 3. Base de donnees
 
