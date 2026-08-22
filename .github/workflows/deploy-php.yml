@@ -48,7 +48,9 @@ jobs:
           protocol: ftp
           port: 21
           local-dir: ./php/
-          server-dir: /public_html/scholaris-erp/
+          # Racine du sous-domaine scholaris-erp.trugroup.cm. Elle est en dehors
+          # de public_html : la racine FTP du compte est /home/trugro9159.
+          server-dir: /scholaris-erp/
           # Fichiers qui appartiennent au serveur et ne doivent jamais etre
           # ecrases par le depot : configuration, donnees, caches, logs.
           exclude: |

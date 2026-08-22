@@ -1,7 +1,7 @@
 # Deploiement sur Camoo (cPanel mutualise)
 
 Cible : `https://scholaris-erp.trugroup.cm`, servi depuis
-`/home/trugro9159/public_html/scholaris-erp`.
+`/home/trugro9159/scholaris-erp`.
 
 ## 0. Prealable de securite
 
@@ -30,11 +30,15 @@ telechargeable.
 Dans cPanel > `Domaines` > `scholaris-erp.trugroup.cm` > modifier la racine :
 
 ```
-public_html/scholaris-erp/public
+/home/trugro9159/scholaris-erp/public
 ```
 
-C'est le seul reglage manuel indispensable. Sans lui, le site renvoie une page
-blanche ou expose les sources.
+Un `.htaccess` a la racine du projet sert de filet : si la racine du
+sous-domaine reste sur `/home/trugro9159/scholaris-erp`, il redirige vers
+`public/` et refuse l'acces a `app/`, `config/`, `database/`, `storage/`,
+`vendor/` et `.env`. Le site fonctionne donc dans les deux cas, mais **pointer
+la racine sur `public/` reste la configuration a privilegier** : elle place le
+code hors d'atteinte du serveur web au lieu de compter sur des regles de refus.
 
 ## 2. Version de PHP
 
@@ -47,16 +51,19 @@ retrograder les dependances.
 
 ## 3. Base de donnees
 
-cPanel > `Bases de donnees MySQL` :
+cPanel > `Bases de donnees MySQL` (MySQL 8.0 sur cet hebergement) :
 
-1. Creer la base, par exemple `trugro9159_scholaris`.
+1. Creer la base, par exemple `trugro9159_scholariserp`.
 2. Creer un utilisateur et lui donner **tous les privileges** sur cette base.
 3. Noter le nom complet (prefixe compris) et le mot de passe.
+
+Le schema vise MySQL 8 : les tableaux PostgreSQL du schema d'origine sont
+devenus des colonnes JSON, et les enums restent des enums MySQL.
 
 ## 4. Fichier `.env` sur le serveur
 
 Le `.env` n'est pas deploye par le pipeline : il est cree une fois a la main,
-par FTP, dans `public_html/scholaris-erp/.env`.
+par FTP, dans `/home/trugro9159/scholaris-erp/.env`.
 
 ```dotenv
 APP_NAME=SCHOLARIS
@@ -70,10 +77,10 @@ APP_FALLBACK_LOCALE=fr
 APP_TIMEZONE=Africa/Douala
 
 DB_CONNECTION=mysql
-DB_HOST=127.0.0.1
+DB_HOST=localhost
 DB_PORT=3306
-DB_DATABASE=trugro9159_scholaris
-DB_USERNAME=trugro9159_scholaris
+DB_DATABASE=trugro9159_scholariserp
+DB_USERNAME=trugro9159_norep
 DB_PASSWORD=le-mot-de-passe-mysql
 
 SESSION_DRIVER=database
@@ -88,8 +95,7 @@ compris.
 
 ## 5. Premiere mise en service
 
-Si cPanel offre un `Terminal` ou un acces SSH, depuis
-`~/public_html/scholaris-erp` :
+Si cPanel offre un `Terminal` ou un acces SSH, depuis `~/scholaris-erp` :
 
 ```bash
 php artisan key:generate --force
@@ -104,7 +110,7 @@ Sans terminal, passer par une tache cron cPanel executee une seule fois
 (`Taches Cron` > commande ponctuelle, puis supprimer la tache) :
 
 ```
-cd /home/trugro9159/public_html/scholaris-erp && /usr/local/bin/php artisan migrate --force && /usr/local/bin/php artisan db:seed --force
+cd /home/trugro9159/scholaris-erp && /usr/local/bin/php artisan migrate --force && /usr/local/bin/php artisan db:seed --force
 ```
 
 Le seed cree le Super Admin (`admin@scholaris.dev` / `ChangeMe123!`) et
@@ -142,5 +148,5 @@ Pour les rappels et les envois differes, ajouter une tache cron cPanel toutes
 les minutes :
 
 ```
-cd /home/trugro9159/public_html/scholaris-erp && /usr/local/bin/php artisan schedule:run >> /dev/null 2>&1
+cd /home/trugro9159/scholaris-erp && /usr/local/bin/php artisan schedule:run >> /dev/null 2>&1
 ```

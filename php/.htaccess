@@ -1,0 +1,43 @@
+# Filet de securite pour l'hebergement mutualise.
+#
+# Laravel ne doit exposer que son dossier public/. La configuration recommandee
+# est de pointer la racine du sous-domaine sur .../scholaris-erp/public
+# (cPanel > Domaines > modifier la racine). Ce fichier sert au cas ou la racine
+# reste sur .../scholaris-erp : il redirige les requetes vers public/ et bloque
+# l'acces direct au code et a la configuration.
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Refus net sur les dossiers qui ne doivent jamais sortir sur le web.
+    # Cette regle passe avant la redirection : elle ne doit pas etre contournable.
+    RewriteRule ^(app|bootstrap|config|database|resources|routes|storage|tests|vendor)/ - [F,L]
+
+    # Tout le reste est servi depuis public/.
+    RewriteCond %{REQUEST_URI} !^/public/
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
+
+# .env contient les identifiants de base de donnees et la cle applicative.
+<FilesMatch "^\.env">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# Ni les fichiers Composer, ni les logs, ni la base SQLite de developpement.
+<FilesMatch "(composer\.(json|lock)|\.sqlite|\.log)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+Options -Indexes
