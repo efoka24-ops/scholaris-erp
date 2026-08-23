@@ -997,3 +997,40 @@ h2 { font-size: 1.1rem; font-weight: 700; margin: 0 0 1rem; }
     .foot__cols { grid-template-columns: 1fr; }
     .public { padding: 5rem 1.1rem 3rem; }
 }
+
+/* --- Bandeau de saisie hors-ligne -----------------------------------------
+ * Ancre en bas de l'ecran : sur un telephone tenu a une main, c'est la zone
+ * lue en dernier et jamais recouverte par le clavier virtuel. La couleur dit
+ * l'etat sans qu'on ait a lire — ambre en attente, volt confirme, rouge quand
+ * une action de l'utilisateur est requise. */
+.offline-banner {
+    position: fixed;
+    left: 50%;
+    bottom: 1rem;
+    transform: translateX(-50%);
+    z-index: 90;
+    max-width: min(34rem, calc(100vw - 2rem));
+    padding: 0.7rem 1.1rem;
+    border-radius: 999px;
+    font-size: 0.875rem;
+    line-height: 1.35;
+    text-align: center;
+    color: #09080f;
+    background: #c8ff00;
+    box-shadow: 0 0.75rem 2rem rgba(0, 0, 0, 0.45);
+}
+
+.offline-banner[hidden] {
+    display: none;
+}
+
+.offline-banner[data-tone="offline"],
+.offline-banner[data-tone="pending"] {
+    color: #09080f;
+    background: #ffb020;
+}
+
+.offline-banner[data-tone="error"] {
+    color: #fff;
+    background: #c0392b;
+}

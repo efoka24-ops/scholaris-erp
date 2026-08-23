@@ -56,6 +56,12 @@ $router->guest('POST', '/demande-etablissement', [PublicController::class, 'subm
 
 $router->guest('GET', '/bulletins/verification', [BulletinController::class, 'verify']);
 
+// Page de repli du mode hors-ligne. Mise en cache des l'installation du service
+// worker : elle doit rester affichable precisement quand plus rien ne l'est.
+$router->guest('GET', '/hors-ligne', static function (Request $request, Application $app): Response {
+    return Response::html($app->view()->render('public.offline', []));
+});
+
 // Callback pawaPay : appele par la passerelle, donc sans session. La signature
 // RFC-9421 y remplace l'authentification, verifiee dans le controleur, qui
 // refuse tout callback non signe ou mal signe.

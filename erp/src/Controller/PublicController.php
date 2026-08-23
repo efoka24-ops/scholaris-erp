@@ -24,7 +24,23 @@ use Scholaris\Support\Validator;
  */
 final class PublicController extends Controller
 {
-    private const TENANT_TYPES = ['PRIMAIRE', 'SECONDAIRE', 'SUPERIEUR', 'TECHNIQUE', 'FORMATION_PRO'];
+    /**
+     * Types proposes au depot d'une demande.
+     *
+     * Ce sont ceux de la matrice des fonctionnalites : c'est le type choisi
+     * ici qui determine les modules ouverts et la structure posee a la
+     * validation. Un choix approximatif — « secondaire » pour un college —
+     * donnerait a l'etablissement des niveaux et des examens qui ne sont pas
+     * les siens.
+     */
+    private const TENANT_TYPES = [
+        'PRIMAIRE',
+        'COLLEGE',
+        'LYCEE_GENERAL',
+        'LYCEE_TECHNIQUE',
+        'CENTRE_FORMATION',
+        'SUPERIEUR',
+    ];
 
     private const TENANT_STATUSES = ['PUBLIC', 'PRIVE'];
 

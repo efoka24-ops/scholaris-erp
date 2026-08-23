@@ -66,6 +66,36 @@ final class SchoolFactory
         ],
     ];
 
+    /**
+     * Structure pedagogique par defaut pour un type d'etablissement.
+     *
+     * Publique car l'approbation d'une demande publique doit poser exactement
+     * la meme structure que la creation en ligne de commande : deux chemins
+     * menant au meme resultat, une seule definition.
+     *
+     * Les codes historiques (SECONDAIRE, TECHNIQUE, FORMATION_PRO) sont
+     * ramenes a leur equivalent courant par la matrice.
+     *
+     * @return list<array{0: string, 1: string, 2: list<array{0: string, 1: string}>}>
+     */
+    public static function structureFor(string $type): array
+    {
+        $type = strtoupper($type);
+
+        if (! isset(self::STRUCTURES[$type])) {
+            $aliases = [
+                'SECONDAIRE' => 'COLLEGE',
+                'TECHNIQUE' => 'LYCEE_TECHNIQUE',
+                'FORMATION_PRO' => 'CENTRE_FORMATION',
+                'LYCEE' => 'LYCEE_GENERAL',
+            ];
+
+            $type = $aliases[$type] ?? 'COLLEGE';
+        }
+
+        return self::STRUCTURES[$type];
+    }
+
     private Connection $db;
 
     private TenantContext $tenant;
@@ -234,7 +264,7 @@ final class SchoolFactory
     {
         $levels = 0;
 
-        foreach (self::STRUCTURES[$type] as $cycleOrder => [$code, $name, $cycleLevels]) {
+        foreach (self::structureFor($type) as $cycleOrder => [$code, $name, $cycleLevels]) {
             $cycleId = Table::uuid();
 
             $this->db->execute(

@@ -13,11 +13,12 @@ $this->extends('layouts.guest');
 $title = 'Demande de creation d etablissement';
 $value = static fn (string $k): string => (string) ($old[$k] ?? '');
 $labels = [
-    'PRIMAIRE' => 'Ecole primaire',
-    'SECONDAIRE' => 'Etablissement secondaire',
+    'PRIMAIRE' => 'Ecole primaire (SIL a CM2)',
+    'COLLEGE' => 'College (6eme a 3eme)',
+    'LYCEE_GENERAL' => 'Lycee d enseignement general (6eme a Terminale)',
+    'LYCEE_TECHNIQUE' => 'Lycee d enseignement technique',
+    'CENTRE_FORMATION' => 'Centre de formation professionnelle',
     'SUPERIEUR' => 'Enseignement superieur',
-    'TECHNIQUE' => 'Enseignement technique',
-    'FORMATION_PRO' => 'Centre de formation professionnelle',
 ];
 ?>
 <div class="card" style="max-width:640px;width:100%">

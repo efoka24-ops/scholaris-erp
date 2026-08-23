@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="SCHOLARIS">
+  <rect width="512" height="512" rx="112" fill="#09080f"/>
+  <!-- Toque universitaire, reduite a sa silhouette : lisible a 48 px comme a
+       512 px, ce qui est la seule contrainte reelle d'une icone d'application. -->
+  <path d="M256 128 96 200l160 72 160-72z" fill="#c8ff00"/>
+  <path d="M144 232v72c0 35 50 64 112 64s112-29 112-64v-72l-112 50z" fill="#5b21f5"/>
+  <path d="M400 208v104" stroke="#c8ff00" stroke-width="16" stroke-linecap="round"/>
+</svg>

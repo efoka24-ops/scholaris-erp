@@ -109,7 +109,7 @@ final class PublicFlowTest extends TestCase
         $response = $this->request('POST', '/demande-etablissement', [
             'name' => 'Lycee Bilingue de Garoua',
             'code' => 'lbg',
-            'type' => 'SECONDAIRE',
+            'type' => 'LYCEE_GENERAL',
             'status' => 'PUBLIC',
             'director_first_name' => 'Amadou',
             'director_last_name' => 'BOUBA',
@@ -132,7 +132,7 @@ final class PublicFlowTest extends TestCase
         $this->request('POST', '/demande-etablissement', [
             'name' => 'Autre ecole',
             'code' => 'AAA',
-            'type' => 'SECONDAIRE',
+            'type' => 'LYCEE_GENERAL',
             'status' => 'PRIVE',
             'director_first_name' => 'Test',
             'director_last_name' => 'TEST',
@@ -266,7 +266,30 @@ final class PublicFlowTest extends TestCase
         return $id;
     }
 
-    private function createRequest(string $code, string $name, string $email): string
+    public function testUneDemandeDEcolePrimaireNOuvrePasSurLaTerminale(): void
+    {
+        // Le type demande commande la structure posee. Une ecole primaire
+        // validee avec des classes de lycee serait inexploitable, et son
+        // directeur y verrait des niveaux qu'il n'ouvrira jamais.
+        $demandId = $this->createRequest('EPT', 'Ecole primaire de Test', 'directeur@ept.cm', 'PRIMAIRE');
+
+        $superAdmin = $this->createUser($this->tenantA, 'super@a.cm');
+        $this->giveRole($superAdmin, 'SUPER_ADMIN', []);
+        $this->actingAs($superAdmin);
+
+        $this->request('POST', '/admin/etablissements/'.$demandId.'/approuver');
+
+        $tenantId = $this->db->scalar('SELECT id FROM tenants WHERE code = :code', ['code' => 'EPT']);
+
+        $codes = array_column($this->db->select(
+            'SELECT code FROM levels WHERE tenant_id = :tenant ORDER BY sort_order',
+            ['tenant' => $tenantId]
+        ), 'code');
+
+        $this->assertSame(['SIL', 'CP', 'CE1', 'CE2', 'CM1', 'CM2'], $codes, 'Le primaire va de la SIL au CM2');
+    }
+
+    private function createRequest(string $code, string $name, string $email, string $type = 'LYCEE_GENERAL'): string
     {
         $id = Table::uuid();
 
@@ -279,7 +302,7 @@ final class PublicFlowTest extends TestCase
                 'id' => $id,
                 'name' => $name,
                 'code' => $code,
-                'type' => 'SECONDAIRE',
+                'type' => $type,
                 'status' => 'PUBLIC',
                 'first' => 'Chef',
                 'last' => 'ETABLISSEMENT',

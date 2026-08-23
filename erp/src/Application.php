@@ -13,6 +13,7 @@ use Scholaris\Http\Exception\HttpException;
 use Scholaris\Http\Request;
 use Scholaris\Http\Response;
 use Scholaris\Http\Router;
+use Scholaris\Offline\OperationLog;
 use Scholaris\Security\Csrf;
 use Scholaris\Security\Session;
 use Scholaris\Support\Env;
@@ -246,12 +247,60 @@ final class Application
 
             $this->shareViewData();
 
-            return $this->dispatch($route['handler'], $request);
+            return $this->dispatchOnce($route['handler'], $request);
         } catch (HttpException $e) {
             return $this->renderError($e->statusCode(), $e->getMessage());
         } catch (Throwable $e) {
             return $this->renderUnexpected($e);
         }
+    }
+
+    /**
+     * Execute l'action, une fois et une seule.
+     *
+     * Une ecriture rejouee depuis la file hors-ligne porte le jeton "_op". Si
+     * ce jeton a deja ete applique, l'action n'est pas rejouee : le client
+     * recoit la meme destination qu'a la premiere tentative. C'est ce qui
+     * evite qu'un appel fait sans reseau, puis renvoye deux fois au retour de
+     * la connexion, ne cree deux enregistrements.
+     *
+     * @param  callable|array{0: class-string, 1: string}  $handler
+     */
+    private function dispatchOnce($handler, Request $request): Response
+    {
+        $token = (string) $request->input('_op', '');
+
+        if ($request->method() === 'GET' || $token === '' || ! OperationLog::isWellFormed($token)) {
+            return $this->dispatch($handler, $request);
+        }
+
+        $log = new OperationLog($this->db);
+        $replay = $log->replayOf($token);
+
+        if ($replay !== null) {
+            $this->session->flash('success', 'Enregistrement deja pris en compte.');
+
+            return Response::redirect($replay);
+        }
+
+        $response = $this->dispatch($handler, $request);
+
+        // Seules les operations qui ont abouti sont journalisees : un echec
+        // doit rester rejouable, sans quoi une saisie perdue le serait
+        // definitivement.
+        if ($response->status() >= 200 && $response->status() < 400) {
+            $user = $this->auth->user();
+
+            $log->record(
+                $token,
+                $this->tenant->isGlobal() ? null : $this->tenant->id(),
+                $user['id'] ?? null,
+                $request->path(),
+                $response->header('Location')
+            );
+        }
+
+        return $response;
     }
 
     /**

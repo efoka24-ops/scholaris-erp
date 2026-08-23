@@ -60,6 +60,13 @@ $currentPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?= $this->e($title ?? 'SCHOLARIS') ?></title>
     <link rel="stylesheet" href="/assets/app.css">
+    <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="icon" href="/assets/icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/assets/icon.svg">
+    <meta name="theme-color" content="#09080f">
+    <!-- Saisie hors-ligne : differe l'envoi quand le reseau manque, sans
+         jamais dupliquer au retour de la connexion. -->
+    <script src="/assets/offline.js" defer></script>
 </head>
 <body>
 <header class="topbar">

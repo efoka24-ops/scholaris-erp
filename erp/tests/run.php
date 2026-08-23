@@ -43,6 +43,7 @@ $suites = [
     Scholaris\Tests\FeatureMatrixTest::class,
     Scholaris\Tests\DashboardTest::class,
     Scholaris\Tests\SchoolFactoryTest::class,
+    Scholaris\Tests\OfflineSyncTest::class,
 ];
 
 $totalTests = 0;

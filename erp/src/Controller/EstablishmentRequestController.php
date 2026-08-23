@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Scholaris\Controller;
 
 use Scholaris\Auth\Auth;
+use Scholaris\Database\SchoolFactory;
 use Scholaris\Database\Table;
 use Scholaris\Http\Exception\HttpException;
 use Scholaris\Http\Request;
@@ -19,16 +20,6 @@ use Scholaris\Http\Response;
  */
 final class EstablishmentRequestController extends Controller
 {
-    /** Structure pedagogique posee a la creation d'un etablissement secondaire. */
-    private const DEFAULT_STRUCTURE = [
-        ['COLLEGE', 'Secondaire 1er cycle', [
-            ['6EME', '6eme'], ['5EME', '5eme'], ['4EME', '4eme'], ['3EME', '3eme'],
-        ]],
-        ['LYCEE', 'Secondaire 2nd cycle', [
-            ['2NDE', '2nde'], ['1ERE', '1ere'], ['TLE', 'Terminale'],
-        ]],
-    ];
-
     public function index(Request $request): Response
     {
         $this->assertSuperAdmin();
@@ -116,7 +107,7 @@ final class EstablishmentRequestController extends Controller
                 );
             }
 
-            $this->seedStructure($tenantId, $now);
+            $this->seedStructure($tenantId, (string) $demand['type'], $now);
 
             $this->app->db()->execute(
                 'UPDATE establishment_requests
@@ -205,9 +196,18 @@ final class EstablishmentRequestController extends Controller
         }
     }
 
-    private function seedStructure(string $tenantId, string $now): void
+    /**
+     * Pose les cycles et niveaux correspondant au type demande.
+     *
+     * Une ecole primaire recoit la SIL au CM2, un lycee les deux cycles du
+     * secondaire. Appliquer partout la meme structure obligerait chaque
+     * nouvel etablissement a supprimer des niveaux etrangers au sien — et un
+     * directeur d'ecole primaire ouvrirait sa plateforme sur une classe de
+     * terminale.
+     */
+    private function seedStructure(string $tenantId, string $type, string $now): void
     {
-        foreach (self::DEFAULT_STRUCTURE as $cycleOrder => [$code, $name, $levels]) {
+        foreach (SchoolFactory::structureFor($type) as $cycleOrder => [$code, $name, $levels]) {
             $cycleId = Table::uuid();
 
             $this->app->db()->execute(
