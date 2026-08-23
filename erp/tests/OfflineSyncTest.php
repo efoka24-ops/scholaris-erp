@@ -122,6 +122,21 @@ final class OfflineSyncTest extends TestCase
         );
     }
 
+    public function testLaSaisiePasseMemeSansLeJournal(): void
+    {
+        // Les fichiers peuvent etre deployes avant que la migration soit
+        // jouee. Dans cette fenetre, refuser un appel parce qu'on ne sait pas
+        // le dedoublonner serait un remede pire que le mal : le dedoublonnage
+        // protege la saisie, il ne la conditionne pas.
+        $this->registerCountingRoute();
+        $this->db->execute('DROP TABLE sync_operations');
+
+        $response = $this->request('POST', '/essai-hors-ligne', ['_op' => '11111111-2222-4333-8444-555555555555']);
+
+        $this->assertSame(1, $this->executions, 'La saisie doit aboutir malgre l absence du journal');
+        $this->assertSame(302, $response->status(), 'Et l utilisateur ne doit voir aucune erreur');
+    }
+
     public function testUnJetonMalFormeEstIgnore(): void
     {
         // Sans controle de forme, n'importe qui pourrait remplir la table en

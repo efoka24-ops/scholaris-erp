@@ -275,7 +275,17 @@ final class Application
         }
 
         $log = new OperationLog($this->db);
-        $replay = $log->replayOf($token);
+
+        // Le journal est une protection, pas une condition. Si la table
+        // manque — deploiement des fichiers fait avant la migration — la
+        // saisie doit passer quand meme : refuser l'enregistrement d'un appel
+        // parce qu'on ne sait pas le dedoublonner serait un remede pire que
+        // le mal.
+        try {
+            $replay = $log->replayOf($token);
+        } catch (PDOException $e) {
+            return $this->dispatch($handler, $request);
+        }
 
         if ($replay !== null) {
             $this->session->flash('success', 'Enregistrement deja pris en compte.');
@@ -291,13 +301,19 @@ final class Application
         if ($response->status() >= 200 && $response->status() < 400) {
             $user = $this->auth->user();
 
-            $log->record(
-                $token,
-                $this->tenant->isGlobal() ? null : $this->tenant->id(),
-                $user['id'] ?? null,
-                $request->path(),
-                $response->header('Location')
-            );
+            try {
+                $log->record(
+                    $token,
+                    $this->tenant->isGlobal() ? null : $this->tenant->id(),
+                    $user['id'] ?? null,
+                    $request->path(),
+                    $response->header('Location')
+                );
+            } catch (PDOException $e) {
+                // Deux appareils qui rejouent le meme jeton en meme temps :
+                // l'un des deux perd la course a l'insertion. L'operation a
+                // bien eu lieu, il n'y a rien a signaler a l'utilisateur.
+            }
         }
 
         return $response;
