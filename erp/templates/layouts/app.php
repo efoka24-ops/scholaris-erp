@@ -28,9 +28,22 @@ $navigation = $onlyPlatform
         ['/students', 'Eleves', 'students:read'],
         ['/enrollments', 'Inscriptions', 'enrollments:read'],
         ['/classrooms', 'Classes', 'classrooms:read'],
+        ['/timetable', 'Emplois du temps', 'timetables:read'],
+        ['/attendance', 'Presences', 'attendance:read'],
         ['/grades', 'Notes', 'grades:read'],
+        ['/bulletins', 'Bulletins', 'bulletins:read'],
+        ['/discipline', 'Discipline', 'discipline:read'],
+        ['/exams', 'Examens officiels', 'exams:read'],
         ['/finance', 'Finance', 'finance-dashboard:read'],
         ['/finance/invoices', 'Factures', 'invoices:read'],
+        ['/health', 'Sante', 'health:read'],
+        ['/library', 'Bibliotheque', 'library:read'],
+        ['/transport', 'Transport', 'transport:read'],
+        ['/catering', 'Cantine', 'catering:read'],
+        ['/patrimoine', 'Patrimoine', 'assets:read'],
+        ['/hr', 'Personnel', 'hr:read'],
+        ['/communication', 'Communication', 'communications:read'],
+        ['/messages', 'Messagerie', 'internal-messages:read'],
     ];
 
 $currentPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
@@ -46,8 +59,15 @@ $currentPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
 <body>
 <header class="topbar">
     <div class="topbar__left">
-        <a class="topbar__brand" href="/dashboard">SCHOLARIS</a>
-        <span class="topbar__tenant"><?= $this->e($tenantName) ?></span>
+        <a class="brand" href="/dashboard">
+            <span class="brand__mark">S</span>
+            <span class="brand__name">SCHOLARIS<span>.</span></span>
+        </a>
+        <?php if ($tenantName !== null) : ?>
+            <span class="topbar__tenant"><?= $this->e($tenantName) ?></span>
+        <?php else : ?>
+            <span class="section-tag" style="color:#c8ff00">PLATEFORME</span>
+        <?php endif; ?>
     </div>
     <div class="topbar__right">
         <span class="topbar__user">

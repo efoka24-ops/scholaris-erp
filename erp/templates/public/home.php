@@ -16,14 +16,18 @@
 $this->extends('layouts.public');
 $title = 'Accueil';
 
+// Bandeau defilant : ce que l'application fait et sur quoi elle tourne
+// reellement. La maquette annoncait la pile d'origine (Prisma, NestJS, Redis,
+// Turborepo), abandonnee faute de PHP 8.2 sur l'hebergement.
 $marquee = [
-    'Bulletins PDF', 'Orange Money', 'MTN MoMo', 'WhatsApp Business', 'SYSCOHADA',
-    'LMD / ECTS', 'Multi-tenancy', 'QR Code Auth', "Africa's Talking", 'Playwright E2E',
-    'BullMQ', 'Redis', 'Prisma ORM', 'NestJS', 'Next.js 14', 'TypeScript Strict',
-    'PostgreSQL 16', 'Turborepo', 'Jest', 'Supertest',
+    'Bulletins PDF', 'Orange Money', 'MTN MoMo', 'pawaPay', 'Mobile Money',
+    'Multi-etablissements', 'Isolation des donnees', 'RBAC 122 permissions',
+    'Moteur de calcul', 'Classements ex aequo', 'Recus numerotes', 'SYSCOHADA',
+    'LMD / ECTS', 'Sections FR / EN', 'PHP 8.1', 'MySQL 8', 'Zero dependance',
+    'Callbacks signes RFC-9421', 'Anti-IDOR', 'Journal d audit',
 ];
 
-$heroStats = [['25', 'modules'], ['200+', 'endpoints'], ['~100', 'ecrans'], ['3 types', 'de tests']];
+$heroStats = [['25', 'modules'], ['63', 'tables'], ['12', 'roles'], ['131', 'assertions']];
 
 $mockKpis = [
     ['Eleves', '1 247', '#5b21f5'],
@@ -43,11 +47,11 @@ $mockRows = [
 
 $figures = [
     ['25', '', 'Modules integres'],
-    ['200', '+', 'Endpoints API REST'],
-    ['~100', '', 'Ecrans frontend'],
-    ['99.9', '%', 'Disponibilite'],
-    ['60', '', 'Bulletins/min'],
-    ['3', '', 'Types de tests'],
+    ['63', '', 'Tables du schema'],
+    ['122', '', 'Permissions RBAC'],
+    ['12', '', 'Roles metier'],
+    ['61', '', 'Tests automatises'],
+    ['0', '', 'Dependance externe'],
 ];
 
 $features = [
@@ -104,7 +108,7 @@ $features = [
                 </p>
 
                 <div class="hero__actions">
-                    <a class="btn-volt" href="#guide">Voir le guide complet →</a>
+                    <a class="btn-volt" href="#apercu">Voir l application →</a>
                     <a class="btn-ghost" href="/demande-etablissement">Creer mon etablissement</a>
                 </div>
 
@@ -275,7 +279,20 @@ $features = [
     </div>
 </section>
 
-<!-- ── GUIDE ───────────────────────────────────────────────────────────── -->
+<?php /*
+ ── GUIDE ────────────────────────────────────────────────────────────────────
+ Section masquee volontairement.
+
+ Le guide de la maquette decrit la pile d'origine : pnpm, docker-compose,
+ Prisma, Redis, NestJS, "turbo run build". Cette application est en PHP 8.1
+ sans aucune dependance : ces instructions seraient fausses pour quiconque les
+ suivrait, et donneraient une image inexacte du produit.
+
+ Le balisage est conserve tel quel pour pouvoir etre reactive une fois le
+ contenu reecrit sur la pile reelle. Le contenu lui-meme reste disponible dans
+ database/landing-content.php.
+*/ ?>
+<?php if (false) : ?>
 <section class="section section--dark" id="guide">
     <div class="section__inner">
         <div class="section__head">
@@ -373,6 +390,8 @@ $features = [
         </div>
     </div>
 </section>
+
+<?php endif; ?>
 
 <!-- ── TEMOIGNAGES ─────────────────────────────────────────────────────── -->
 <section class="section section--fade-up" id="temoignages">

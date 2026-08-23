@@ -21,7 +21,15 @@ use Scholaris\Controller\EstablishmentRequestController;
 use Scholaris\Controller\FinanceController;
 use Scholaris\Controller\GradeController;
 use Scholaris\Controller\MobileMoneyController;
+use Scholaris\Controller\BulletinController;
+use Scholaris\Controller\CommunicationController;
+use Scholaris\Controller\ExamController;
+use Scholaris\Controller\HealthController;
+use Scholaris\Controller\HrController;
+use Scholaris\Controller\LibraryController;
+use Scholaris\Controller\LogisticsController;
 use Scholaris\Controller\PlatformController;
+use Scholaris\Controller\SchoolLifeController;
 use Scholaris\Controller\PublicController;
 use Scholaris\Controller\StudentController;
 use Scholaris\Http\Request;
@@ -44,6 +52,8 @@ $router->guest('POST', '/pre-inscription', [PublicController::class, 'submitPreE
 // Demande de creation d'etablissement, instruite ensuite par le Super Admin.
 $router->guest('GET', '/demande-etablissement', [PublicController::class, 'establishmentRequestForm']);
 $router->guest('POST', '/demande-etablissement', [PublicController::class, 'submitEstablishmentRequest']);
+
+$router->guest('GET', '/bulletins/verification', [BulletinController::class, 'verify']);
 
 // Callback pawaPay : appele par la passerelle, donc sans session. La signature
 // RFC-9421 y remplace l'authentification, verifiee dans le controleur, qui
@@ -112,6 +122,66 @@ $router->post('/finance/transactions/{id}/refresh', [MobileMoneyController::clas
 
 $router->get('/finance/fee-structures', [FinanceController::class, 'feeStructures'], 'fee-structures:read');
 $router->post('/finance/fee-structures', [FinanceController::class, 'storeFeeStructure'], 'fee-structures:create');
+
+// Module 6 : bulletins
+$router->get('/bulletins', [BulletinController::class, 'index'], 'bulletins:read');
+$router->get('/bulletins/{id}', [BulletinController::class, 'show'], 'bulletins:read');
+$router->post('/bulletins/generate/{classroom}/{period}', [BulletinController::class, 'generate'], 'bulletins:generate');
+$router->post('/bulletins/publish/{classroom}/{period}', [BulletinController::class, 'publish'], 'bulletins:send');
+
+// Module 9 : emplois du temps
+$router->get('/timetable', [SchoolLifeController::class, 'timetable'], 'timetables:read');
+$router->post('/timetable/{classroom}', [SchoolLifeController::class, 'storeSlot'], 'timetables:create');
+$router->post('/timetable/{id}/delete', [SchoolLifeController::class, 'deleteSlot'], 'timetables:delete');
+
+// Module 10 : presences
+$router->get('/attendance', [SchoolLifeController::class, 'attendance'], 'attendance:read');
+$router->post('/attendance/{classroom}', [SchoolLifeController::class, 'storeAttendance'], 'attendance:create');
+
+// Module 11 : discipline
+$router->get('/discipline', [SchoolLifeController::class, 'discipline'], 'discipline:read');
+$router->post('/discipline', [SchoolLifeController::class, 'storeIncident'], 'discipline:create');
+
+// Module 12 : sante scolaire
+$router->get('/health', [HealthController::class, 'index'], 'health:read');
+$router->get('/health/{id}', [HealthController::class, 'show'], 'health:read');
+$router->post('/health/{id}', [HealthController::class, 'save'], 'health:create');
+
+// Module 14 : bibliotheque
+$router->get('/library', [LibraryController::class, 'index'], 'library:read');
+$router->post('/library/books', [LibraryController::class, 'storeBook'], 'library:create');
+$router->post('/library/books/{id}/borrow', [LibraryController::class, 'borrow'], 'library:update');
+$router->post('/library/borrows/{id}/return', [LibraryController::class, 'returnBook'], 'library:update');
+
+// Modules 15 a 17 : transport, cantine, patrimoine
+$router->get('/transport', [LogisticsController::class, 'transport'], 'transport:read');
+$router->post('/transport/vehicles', [LogisticsController::class, 'storeVehicle'], 'transport:create');
+$router->post('/transport/routes', [LogisticsController::class, 'storeRoute'], 'transport:create');
+$router->post('/transport/routes/{id}/subscribe', [LogisticsController::class, 'subscribe'], 'transport:create');
+$router->get('/catering', [LogisticsController::class, 'catering'], 'catering:read');
+$router->post('/catering', [LogisticsController::class, 'storeMenu'], 'catering:create');
+$router->get('/patrimoine', [LogisticsController::class, 'assets'], 'assets:read');
+$router->post('/patrimoine', [LogisticsController::class, 'storeAsset'], 'assets:create');
+$router->post('/patrimoine/{id}/maintenance', [LogisticsController::class, 'storeMaintenance'], 'assets:update');
+
+// Module 18 : ressources humaines
+$router->get('/hr', [HrController::class, 'index'], 'hr:read');
+$router->post('/hr/employees', [HrController::class, 'storeEmployee'], 'hr:create');
+$router->post('/hr/leaves', [HrController::class, 'storeLeave'], 'hr:create');
+$router->post('/hr/leaves/{id}', [HrController::class, 'decideLeave'], 'hr:update');
+
+// Module 8 : communication
+$router->get('/communication', [CommunicationController::class, 'index'], 'communications:read');
+$router->post('/communication/send', [CommunicationController::class, 'send'], 'communications:create');
+$router->post('/communication/templates', [CommunicationController::class, 'storeTemplate'], 'communication-templates:create');
+$router->get('/messages', [CommunicationController::class, 'inbox'], 'internal-messages:read');
+
+// Examens officiels
+$router->get('/exams', [ExamController::class, 'index'], 'exams:read');
+$router->post('/exams', [ExamController::class, 'store'], 'exams:create');
+$router->get('/exams/{id}', [ExamController::class, 'show'], 'exams:read');
+$router->post('/exams/{id}/register', [ExamController::class, 'register'], 'exams:register');
+$router->post('/exams/registrations/{id}', [ExamController::class, 'updateRegistration'], 'exams:register');
 
 // --- Administration de la plateforme --------------------------------------
 // Reserve au Super Admin, qui n'appartient a aucun etablissement. A ne pas

@@ -31,7 +31,6 @@
         <div class="nav__links">
             <a class="section-tag" href="/#modules">modules</a>
             <a class="section-tag" href="/#apercu">apercu</a>
-            <a class="section-tag" href="/#guide">guide</a>
             <a class="section-tag" href="/#temoignages">temoignages</a>
         </div>
 
@@ -55,7 +54,6 @@
                 <p class="foot__about">
                     ERP de gestion scolaire concu pour le Cameroun par TRU GROUP SARL.
                 </p>
-                <div class="foot__motto">&laquo; Ad augusta per angusta &raquo;</div>
             </div>
 
             <?php
