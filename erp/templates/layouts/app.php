@@ -19,7 +19,9 @@ $navigation = [
     ['/enrollments', 'Inscriptions', 'enrollments:read'],
     ['/classrooms', 'Classes', 'classrooms:read'],
     ['/grades', 'Notes', 'grades:read'],
-    ['/invoices', 'Finance', 'invoices:read'],
+    ['/finance', 'Finance', 'finance-dashboard:read'],
+    ['/finance/invoices', 'Factures', 'invoices:read'],
+    ['/admin/etablissements', 'Etablissements', 'tenants:read'],
 ];
 
 $currentPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';

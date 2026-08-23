@@ -251,6 +251,23 @@ abstract class TestCase
         $this->assertSame($expected, count($actual), $message);
     }
 
+    /**
+     * Compare deux montants numeriquement, a un centime pres.
+     *
+     * Indispensable pour les colonnes DECIMAL : SQLite renvoie "75000" la ou
+     * MySQL renvoie "75000.00". Comparer les chaines rendrait les tests
+     * dependants du moteur, et ferait echouer en local ce qui passe en
+     * production, ou l'inverse.
+     */
+    protected function assertMoney(float $expected, mixed $actual, string $message): void
+    {
+        $this->assertions++;
+
+        if (abs($expected - (float) $actual) > 0.005) {
+            $this->failures[] = sprintf('%s (attendu %s, obtenu %s)', $message, $expected, var_export($actual, true));
+        }
+    }
+
     protected function assertStringContains(string $needle, string $haystack, string $message): void
     {
         $this->assertions++;

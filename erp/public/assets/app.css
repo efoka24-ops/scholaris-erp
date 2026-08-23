@@ -261,3 +261,117 @@ input:focus, select:focus, textarea:focus {
     .content { padding: 1rem 1.1rem 2.5rem; }
     .details { grid-template-columns: 1fr; }
 }
+
+/* ---- Pages publiques ---- */
+
+.public {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 2.5rem 1.5rem 3rem;
+}
+
+.hero {
+    text-align: center;
+    padding: 1rem 0 2.5rem;
+}
+
+.hero__title {
+    font-size: 2.4rem;
+    letter-spacing: 0.04em;
+    margin: 0 0 0.75rem;
+}
+
+.hero__lead {
+    color: var(--muted);
+    font-size: 1.05rem;
+    max-width: 620px;
+    margin: 0 auto 1.75rem;
+}
+
+.hero__actions {
+    display: flex;
+    gap: 0.7rem;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 1.5rem;
+}
+
+.hero__note {
+    color: var(--muted);
+    font-size: 0.92rem;
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 0.85rem 1rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+}
+
+.section { margin-top: 2.75rem; }
+
+.section__title {
+    font-size: 1.25rem;
+    margin: 0 0 1.1rem;
+}
+
+.cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+}
+
+.cards__item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.1rem 1.25rem;
+}
+
+.cards__title { font-size: 1rem; margin: 0 0 0.35rem; }
+.cards__text { color: var(--muted); font-size: 0.92rem; margin: 0 0 0.5rem; }
+
+.steps {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+}
+
+.steps__item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.8rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.85rem 1.1rem;
+}
+
+.steps__number {
+    flex-shrink: 0;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: var(--brand);
+    color: #fff;
+    font-weight: 700;
+    font-size: 0.85rem;
+    display: grid;
+    place-items: center;
+}
+
+.footer {
+    border-top: 1px solid var(--border);
+    padding: 1.5rem;
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.88rem;
+}
+
+@media (max-width: 720px) {
+    .hero__title { font-size: 1.8rem; }
+    .topbar { flex-wrap: wrap; gap: 0.6rem; }
+    .topbar__right { flex-wrap: wrap; }
+}
