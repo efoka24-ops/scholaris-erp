@@ -123,6 +123,31 @@ final class SchoolFactoryTest extends TestCase
         $this->assertTrue($tenantId === null, 'Le Super Admin n appartient a aucun etablissement');
     }
 
+    public function testUnSuperAdminRattacheAUneEcoleEnEstDetache(): void
+    {
+        // Une installation ancienne a pu rattacher le compte de plateforme a
+        // une ecole. Il en affiche alors le nom partout, et surtout se retrouve
+        // soumis au filtrage par etablissement : il cesse de voir les demandes
+        // des autres, ce qui est pourtant son seul travail. Rejouer le seed
+        // doit reparer cela.
+        $seeder = new Seeder($this->db, new TenantContext(), $this->basePath());
+        $seeder->run('admin@scholaris.test', 'MotDePasseTest1!');
+
+        $this->db->execute(
+            'UPDATE users SET tenant_id = :tenant WHERE email = :email',
+            ['tenant' => $this->tenantA, 'email' => 'admin@scholaris.test']
+        );
+
+        $seeder->run('admin@scholaris.test', 'MotDePasseTest1!');
+
+        $tenantId = $this->db->scalar(
+            'SELECT tenant_id FROM users WHERE email = :email',
+            ['email' => 'admin@scholaris.test']
+        );
+
+        $this->assertTrue($tenantId === null, 'Le Super Admin est detache de toute ecole');
+    }
+
     public function testLeSeedNInstallePasDEtablissementDeDemonstration(): void
     {
         $this->factory();

@@ -9,8 +9,23 @@
  * @var array<string, mixed> $demand
  * @var string $password
  */
+
+use Scholaris\Database\SchoolFactory;
+
 $this->extends('layouts.app');
 $title = 'Etablissement cree';
+
+// Annoncer la structure reellement posee, et non une formule generique : le
+// Super Admin doit pouvoir verifier d un coup d oeil que l etablissement part
+// sur les bons niveaux.
+$structure = SchoolFactory::structureFor((string) $demand['type']);
+$levelNames = [];
+
+foreach ($structure as [, , $levels]) {
+    foreach ($levels as [, $levelName]) {
+        $levelNames[] = $levelName;
+    }
+}
 ?>
 <h1>Etablissement cree</h1>
 <p class="subtitle"><?= $this->e($demand['name']) ?> (<?= $this->e($demand['code']) ?>)</p>
@@ -29,8 +44,9 @@ $title = 'Etablissement cree';
     </dl>
 
     <div class="alert alert--success" style="margin-top:1rem">
-        La structure pedagogique par defaut (college et lycee) a ete creee.
-        Le responsable pourra l ajuster depuis son espace.
+        <?= count($levelNames) ?> niveaux ont ete crees :
+        <?= $this->e(implode(', ', $levelNames)) ?>.
+        Le responsable pourra les ajuster depuis son espace.
     </div>
 </div>
 

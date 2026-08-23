@@ -111,6 +111,21 @@ final class FeatureMatrixTest extends TestCase
         $this->assertSame('COLLEGE', $unknown->type(), 'Un type inconnu retombe sur le college');
     }
 
+    public function testChaqueFonctionnalitePorteUnLibelleLisible(): void
+    {
+        // L'ecran Parametres affiche ces intitules a un directeur d'ecole. Lui
+        // montrer « exams.cep » ou « bulletins.class_council » ne lui apprend
+        // rien : la cle technique est un detail d'implementation.
+        $matrix = require $this->basePath().'/database/feature-matrix.php';
+
+        $missing = array_values(array_diff(
+            array_keys($matrix['features']),
+            array_keys($matrix['names'])
+        ));
+
+        $this->assertSame([], $missing, 'Fonctionnalites sans libelle : '.implode(', ', $missing));
+    }
+
     public function testChaqueTypeExposeSesFonctionnalitesOptionnelles(): void
     {
         foreach (['PRIMAIRE', 'COLLEGE', 'LYCEE_GENERAL', 'LYCEE_TECHNIQUE', 'CENTRE_FORMATION'] as $type) {

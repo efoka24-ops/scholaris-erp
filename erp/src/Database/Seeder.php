@@ -210,8 +210,39 @@ final class Seeder
      */
     private function seedSuperAdmin(string $email, string $password): void
     {
+        $this->detachSuperAdminFromAnyTenant($email);
+
         $userId = $this->createUser(null, $email, $password, 'Super', 'Admin');
         $this->assignRole($userId, 'SUPER_ADMIN');
+    }
+
+    /**
+     * Repare une installation ou le Super Admin s'est retrouve rattache a une
+     * ecole.
+     *
+     * Un compte de plateforme rattache a un etablissement en affiche le nom
+     * partout, et surtout se retrouve soumis au filtrage par etablissement :
+     * il cesse alors de voir les demandes des autres, ce qui est precisement
+     * son travail. Le detacher est sans effet quand tout est deja en ordre.
+     */
+    private function detachSuperAdminFromAnyTenant(string $email): void
+    {
+        $attached = $this->db->scalar(
+            'SELECT u.id FROM users u
+             JOIN user_roles ur ON ur.user_id = u.id
+             JOIN roles r ON r.id = ur.role_id
+             WHERE u.email = :email AND r.name = :role AND u.tenant_id IS NOT NULL',
+            ['email' => $email, 'role' => 'SUPER_ADMIN']
+        );
+
+        if ($attached === null) {
+            return;
+        }
+
+        $this->db->execute(
+            'UPDATE users SET tenant_id = NULL, updated_at = :now WHERE id = :id',
+            ['now' => $this->now(), 'id' => $attached]
+        );
     }
 
     private function seedBusinessUsers(string $tenantId): int
