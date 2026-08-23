@@ -31,6 +31,7 @@ use Scholaris\Controller\LogisticsController;
 use Scholaris\Controller\PlatformController;
 use Scholaris\Controller\SchoolLifeController;
 use Scholaris\Controller\PublicController;
+use Scholaris\Controller\SettingsController;
 use Scholaris\Controller\StudentController;
 use Scholaris\Http\Request;
 use Scholaris\Http\Response;
@@ -130,45 +131,45 @@ $router->post('/bulletins/generate/{classroom}/{period}', [BulletinController::c
 $router->post('/bulletins/publish/{classroom}/{period}', [BulletinController::class, 'publish'], 'bulletins:send');
 
 // Module 9 : emplois du temps
-$router->get('/timetable', [SchoolLifeController::class, 'timetable'], 'timetables:read');
-$router->post('/timetable/{classroom}', [SchoolLifeController::class, 'storeSlot'], 'timetables:create');
-$router->post('/timetable/{id}/delete', [SchoolLifeController::class, 'deleteSlot'], 'timetables:delete');
+$router->get('/timetable', [SchoolLifeController::class, 'timetable'], 'timetables:read', 'life.timetable');
+$router->post('/timetable/{classroom}', [SchoolLifeController::class, 'storeSlot'], 'timetables:create', 'life.timetable');
+$router->post('/timetable/{id}/delete', [SchoolLifeController::class, 'deleteSlot'], 'timetables:delete', 'life.timetable');
 
 // Module 10 : presences
-$router->get('/attendance', [SchoolLifeController::class, 'attendance'], 'attendance:read');
-$router->post('/attendance/{classroom}', [SchoolLifeController::class, 'storeAttendance'], 'attendance:create');
+$router->get('/attendance', [SchoolLifeController::class, 'attendance'], 'attendance:read', 'life.attendance');
+$router->post('/attendance/{classroom}', [SchoolLifeController::class, 'storeAttendance'], 'attendance:create', 'life.attendance');
 
 // Module 11 : discipline
-$router->get('/discipline', [SchoolLifeController::class, 'discipline'], 'discipline:read');
-$router->post('/discipline', [SchoolLifeController::class, 'storeIncident'], 'discipline:create');
+$router->get('/discipline', [SchoolLifeController::class, 'discipline'], 'discipline:read', 'life.discipline');
+$router->post('/discipline', [SchoolLifeController::class, 'storeIncident'], 'discipline:create', 'life.discipline');
 
 // Module 12 : sante scolaire
-$router->get('/health', [HealthController::class, 'index'], 'health:read');
-$router->get('/health/{id}', [HealthController::class, 'show'], 'health:read');
-$router->post('/health/{id}', [HealthController::class, 'save'], 'health:create');
+$router->get('/health', [HealthController::class, 'index'], 'health:read', 'life.health');
+$router->get('/health/{id}', [HealthController::class, 'show'], 'health:read', 'life.health');
+$router->post('/health/{id}', [HealthController::class, 'save'], 'health:create', 'life.health');
 
 // Module 14 : bibliotheque
-$router->get('/library', [LibraryController::class, 'index'], 'library:read');
-$router->post('/library/books', [LibraryController::class, 'storeBook'], 'library:create');
-$router->post('/library/books/{id}/borrow', [LibraryController::class, 'borrow'], 'library:update');
-$router->post('/library/borrows/{id}/return', [LibraryController::class, 'returnBook'], 'library:update');
+$router->get('/library', [LibraryController::class, 'index'], 'library:read', 'life.library');
+$router->post('/library/books', [LibraryController::class, 'storeBook'], 'library:create', 'life.library');
+$router->post('/library/books/{id}/borrow', [LibraryController::class, 'borrow'], 'library:update', 'life.library');
+$router->post('/library/borrows/{id}/return', [LibraryController::class, 'returnBook'], 'library:update', 'life.library');
 
 // Modules 15 a 17 : transport, cantine, patrimoine
-$router->get('/transport', [LogisticsController::class, 'transport'], 'transport:read');
-$router->post('/transport/vehicles', [LogisticsController::class, 'storeVehicle'], 'transport:create');
-$router->post('/transport/routes', [LogisticsController::class, 'storeRoute'], 'transport:create');
-$router->post('/transport/routes/{id}/subscribe', [LogisticsController::class, 'subscribe'], 'transport:create');
-$router->get('/catering', [LogisticsController::class, 'catering'], 'catering:read');
-$router->post('/catering', [LogisticsController::class, 'storeMenu'], 'catering:create');
-$router->get('/patrimoine', [LogisticsController::class, 'assets'], 'assets:read');
-$router->post('/patrimoine', [LogisticsController::class, 'storeAsset'], 'assets:create');
-$router->post('/patrimoine/{id}/maintenance', [LogisticsController::class, 'storeMaintenance'], 'assets:update');
+$router->get('/transport', [LogisticsController::class, 'transport'], 'transport:read', 'life.transport');
+$router->post('/transport/vehicles', [LogisticsController::class, 'storeVehicle'], 'transport:create', 'life.transport');
+$router->post('/transport/routes', [LogisticsController::class, 'storeRoute'], 'transport:create', 'life.transport');
+$router->post('/transport/routes/{id}/subscribe', [LogisticsController::class, 'subscribe'], 'transport:create', 'life.transport');
+$router->get('/catering', [LogisticsController::class, 'catering'], 'catering:read', 'life.catering');
+$router->post('/catering', [LogisticsController::class, 'storeMenu'], 'catering:create', 'life.catering');
+$router->get('/patrimoine', [LogisticsController::class, 'assets'], 'assets:read', 'life.assets');
+$router->post('/patrimoine', [LogisticsController::class, 'storeAsset'], 'assets:create', 'life.assets');
+$router->post('/patrimoine/{id}/maintenance', [LogisticsController::class, 'storeMaintenance'], 'assets:update', 'life.assets');
 
 // Module 18 : ressources humaines
-$router->get('/hr', [HrController::class, 'index'], 'hr:read');
-$router->post('/hr/employees', [HrController::class, 'storeEmployee'], 'hr:create');
-$router->post('/hr/leaves', [HrController::class, 'storeLeave'], 'hr:create');
-$router->post('/hr/leaves/{id}', [HrController::class, 'decideLeave'], 'hr:update');
+$router->get('/hr', [HrController::class, 'index'], 'hr:read', 'hr.payroll');
+$router->post('/hr/employees', [HrController::class, 'storeEmployee'], 'hr:create', 'hr.payroll');
+$router->post('/hr/leaves', [HrController::class, 'storeLeave'], 'hr:create', 'hr.payroll');
+$router->post('/hr/leaves/{id}', [HrController::class, 'decideLeave'], 'hr:update', 'hr.leaves');
 
 // Module 8 : communication
 $router->get('/communication', [CommunicationController::class, 'index'], 'communications:read');
@@ -177,11 +178,15 @@ $router->post('/communication/templates', [CommunicationController::class, 'stor
 $router->get('/messages', [CommunicationController::class, 'inbox'], 'internal-messages:read');
 
 // Examens officiels
-$router->get('/exams', [ExamController::class, 'index'], 'exams:read');
-$router->post('/exams', [ExamController::class, 'store'], 'exams:create');
-$router->get('/exams/{id}', [ExamController::class, 'show'], 'exams:read');
-$router->post('/exams/{id}/register', [ExamController::class, 'register'], 'exams:register');
-$router->post('/exams/registrations/{id}', [ExamController::class, 'updateRegistration'], 'exams:register');
+$router->get('/exams', [ExamController::class, 'index'], 'exams:read', 'exams.official');
+$router->post('/exams', [ExamController::class, 'store'], 'exams:create', 'exams.official');
+$router->get('/exams/{id}', [ExamController::class, 'show'], 'exams:read', 'exams.official');
+$router->post('/exams/{id}/register', [ExamController::class, 'register'], 'exams:register', 'exams.official');
+$router->post('/exams/registrations/{id}', [ExamController::class, 'updateRegistration'], 'exams:register', 'exams.official');
+
+// Parametres de l etablissement : activation des fonctionnalites optionnelles.
+$router->get('/parametres', [SettingsController::class, 'index'], 'tenants:read');
+$router->post('/parametres', [SettingsController::class, 'save'], 'tenants:update');
 
 // --- Administration de la plateforme --------------------------------------
 // Reserve au Super Admin, qui n'appartient a aucun etablissement. A ne pas

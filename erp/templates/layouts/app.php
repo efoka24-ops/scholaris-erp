@@ -9,6 +9,7 @@
  * @var string|null $flashSuccess
  * @var string|null $flashError
  * @var string $csrfToken
+ * @var \Scholaris\Tenant\Features $features
  */
 
 // Les entrees de menu sont filtrees par permission : un utilisateur ne voit que
@@ -20,30 +21,34 @@ $onlyPlatform = ($isPlatformAccount ?? false) && $tenantName === null;
 
 $navigation = $onlyPlatform
     ? [
-        ['/admin', 'Plateforme', 'tenants:read'],
-        ['/admin/etablissements', 'Demandes d ouverture', 'tenants:read'],
+        ['/admin', 'Plateforme', 'tenants:read', null],
+        ['/admin/etablissements', 'Demandes d ouverture', 'tenants:read', null],
     ]
+    // Chaque entree porte sa permission et, le cas echeant, la fonctionnalite
+    // dont elle depend. Une ecole primaire ne verra donc jamais « Examens
+    // officiels » si ce module ne la concerne pas.
     : [
-        ['/dashboard', 'Tableau de bord', null],
-        ['/students', 'Eleves', 'students:read'],
-        ['/enrollments', 'Inscriptions', 'enrollments:read'],
-        ['/classrooms', 'Classes', 'classrooms:read'],
-        ['/timetable', 'Emplois du temps', 'timetables:read'],
-        ['/attendance', 'Presences', 'attendance:read'],
-        ['/grades', 'Notes', 'grades:read'],
-        ['/bulletins', 'Bulletins', 'bulletins:read'],
-        ['/discipline', 'Discipline', 'discipline:read'],
-        ['/exams', 'Examens officiels', 'exams:read'],
-        ['/finance', 'Finance', 'finance-dashboard:read'],
-        ['/finance/invoices', 'Factures', 'invoices:read'],
-        ['/health', 'Sante', 'health:read'],
-        ['/library', 'Bibliotheque', 'library:read'],
-        ['/transport', 'Transport', 'transport:read'],
-        ['/catering', 'Cantine', 'catering:read'],
-        ['/patrimoine', 'Patrimoine', 'assets:read'],
-        ['/hr', 'Personnel', 'hr:read'],
-        ['/communication', 'Communication', 'communications:read'],
-        ['/messages', 'Messagerie', 'internal-messages:read'],
+        ['/dashboard', 'Tableau de bord', null, null],
+        ['/students', $features->label('students', 'Eleves'), 'students:read', null],
+        ['/enrollments', 'Inscriptions', 'enrollments:read', null],
+        ['/classrooms', $features->label('classrooms', 'Classes'), 'classrooms:read', 'structure.classrooms'],
+        ['/timetable', 'Emplois du temps', 'timetables:read', 'life.timetable'],
+        ['/attendance', 'Presences', 'attendance:read', 'life.attendance'],
+        ['/grades', 'Notes', 'grades:read', null],
+        ['/bulletins', 'Bulletins', 'bulletins:read', null],
+        ['/discipline', 'Discipline', 'discipline:read', 'life.discipline'],
+        ['/exams', 'Examens officiels', 'exams:read', 'exams.official'],
+        ['/finance', 'Finance', 'finance-dashboard:read', 'finance.fees'],
+        ['/finance/invoices', 'Factures', 'invoices:read', 'finance.payments'],
+        ['/health', 'Sante', 'health:read', 'life.health'],
+        ['/library', 'Bibliotheque', 'library:read', 'life.library'],
+        ['/transport', 'Transport', 'transport:read', 'life.transport'],
+        ['/catering', 'Cantine', 'catering:read', 'life.catering'],
+        ['/patrimoine', 'Patrimoine', 'assets:read', 'life.assets'],
+        ['/hr', 'Personnel', 'hr:read', 'hr.payroll'],
+        ['/communication', 'Communication', 'communications:read', null],
+        ['/messages', 'Messagerie', 'internal-messages:read', null],
+        ['/parametres', 'Parametres', 'tenants:update', null],
     ];
 
 $currentPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
@@ -82,8 +87,12 @@ $currentPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
 
 <div class="shell">
     <nav class="sidebar">
-        <?php foreach ($navigation as [$href, $label, $permission]) : ?>
-            <?php if ($permission === null || $rbac->allows($permission)) : ?>
+        <?php foreach ($navigation as [$href, $label, $permission, $feature]) : ?>
+            <?php
+            $allowed = $permission === null || $rbac->allows($permission);
+            $available = $feature === null || $features->enabled($feature);
+            ?>
+            <?php if ($allowed && $available) : ?>
                 <a href="<?= $this->e($href) ?>"
                    class="sidebar__link<?= str_starts_with($currentPath, $href) && $href !== '/dashboard' || $currentPath === $href ? ' sidebar__link--active' : '' ?>">
                     <?= $this->e($label) ?>

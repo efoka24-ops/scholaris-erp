@@ -38,12 +38,24 @@ final class RoutesSmokeTest extends TestCase
         '/finance/fee-structures',
         '/health',
         '/library',
-        '/transport',
-        '/catering',
-        '/patrimoine',
-        '/hr',
         '/communication',
         '/messages',
+        '/parametres',
+    ];
+
+    /**
+     * Pages dependant d'une fonctionnalite optionnelle.
+     *
+     * Pour un college, ces modules existent mais sont masques par defaut :
+     * ils repondent 404 tant que l'Admin ne les a pas actives.
+     *
+     * @var array<string, string>
+     */
+    private const OPTIONAL_PAGES = [
+        '/transport' => 'life.transport',
+        '/catering' => 'life.catering',
+        '/patrimoine' => 'life.assets',
+        '/hr' => 'hr.payroll',
     ];
 
     /** Pages accessibles sans compte. */
@@ -94,11 +106,68 @@ final class RoutesSmokeTest extends TestCase
         $this->giveRole($userId, 'AUCUN', []);
         $this->actingAs($userId);
 
-        foreach (['/students', '/finance', '/hr', '/health', '/exams', '/library'] as $path) {
+        foreach (['/students', '/finance', '/health', '/exams', '/library'] as $path) {
             $response = $this->request('GET', $path);
 
             $this->assertSame(403, $response->status(), "La page {$path} doit etre refusee sans droit");
         }
+    }
+
+    public function testUnModuleOptionnelEstIntrouvableTantQuIlNEstPasActive(): void
+    {
+        $userId = $this->createUser($this->tenantA, 'complet@a.cm');
+        $this->giveRole($userId, 'TOUS_DROITS', $this->everyPermission());
+        $this->prepareTenantData();
+        $this->actingAs($userId);
+
+        // Masque par defaut : la reponse est 404 et non 403. Le module
+        // n'existe pas encore ici, il ne s'agit pas d'un refus de droit —
+        // c'est ce qui evite de reveler des fonctions etrangeres a l'ecole.
+        foreach (self::OPTIONAL_PAGES as $path => $feature) {
+            $response = $this->request('GET', $path);
+
+            $this->assertSame(404, $response->status(), "La page {$path} doit etre introuvable tant que {$feature} est inactive");
+        }
+    }
+
+    public function testUnModuleOptionnelSOuvreUneFoisActive(): void
+    {
+        $userId = $this->createUser($this->tenantA, 'complet@a.cm');
+        $this->giveRole($userId, 'TOUS_DROITS', $this->everyPermission());
+        $this->prepareTenantData();
+
+        $this->enableFeatures(array_values(self::OPTIONAL_PAGES));
+        $this->actingAs($userId);
+
+        foreach (array_keys(self::OPTIONAL_PAGES) as $path) {
+            $response = $this->request('GET', $path);
+
+            $this->assertSame(200, $response->status(), "La page {$path} doit s ouvrir une fois la fonctionnalite activee");
+        }
+    }
+
+    /**
+     * Active des fonctionnalites optionnelles sur l'etablissement de test.
+     *
+     * @param  list<string>  $features
+     */
+    private function enableFeatures(array $features): void
+    {
+        $values = [];
+
+        foreach ($features as $feature) {
+            $values[$feature] = true;
+        }
+
+        $this->db->execute(
+            'UPDATE tenants SET config_json = :config WHERE id = :id',
+            [
+                'config' => json_encode(['features' => $values]),
+                'id' => $this->tenantA,
+            ]
+        );
+
+        $this->app->resetFeatures();
     }
 
     public function testAucuneRouteNEntreEnCollisionAvecUnFichierPublic(): void

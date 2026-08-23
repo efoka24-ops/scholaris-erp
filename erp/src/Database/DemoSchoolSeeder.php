@@ -254,7 +254,7 @@ final class DemoSchoolSeeder
                 'id' => $id,
                 'code' => self::TENANT_CODE,
                 'name' => self::TENANT_NAME,
-                'type' => 'SECONDAIRE',
+                'type' => 'LYCEE_GENERAL',
                 'status' => 'PUBLIC',
                 'address' => 'Quartier Poumpoumre, Garoua, Region du Nord',
                 'phone' => '+237 222 27 12 34',

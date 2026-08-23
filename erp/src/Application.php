@@ -16,6 +16,7 @@ use Scholaris\Http\Router;
 use Scholaris\Security\Csrf;
 use Scholaris\Security\Session;
 use Scholaris\Support\Env;
+use Scholaris\Tenant\Features;
 use Scholaris\Tenant\TenantContext;
 use Scholaris\View\View;
 use Throwable;
@@ -46,6 +47,8 @@ final class Application
     private View $view;
 
     private Router $router;
+
+    private ?Features $features = null;
 
     private string $basePath;
 
@@ -165,6 +168,36 @@ final class Application
         return $this->basePath;
     }
 
+    /**
+     * Fonctionnalites actives pour l'etablissement courant.
+     *
+     * Construites une fois par requete : la matrice et la configuration de
+     * l'etablissement ne changent pas en cours de traitement.
+     */
+    public function features(): Features
+    {
+        if ($this->features !== null) {
+            return $this->features;
+        }
+
+        $tenant = null;
+
+        if ($this->tenant->isSet()) {
+            $tenant = $this->tenant->global(fn () => $this->db->selectOne(
+                'SELECT type, config_json FROM tenants WHERE id = :id',
+                ['id' => $this->tenant->id()]
+            ));
+        }
+
+        return $this->features = Features::forTenant($this->basePath, $tenant);
+    }
+
+    /** Oublie les fonctionnalites en cache, apres un changement de contexte. */
+    public function resetFeatures(): void
+    {
+        $this->features = null;
+    }
+
     public function isProduction(): bool
     {
         return $this->env->get('APP_ENV', 'production') === 'production';
@@ -197,6 +230,14 @@ final class Application
             // connexion : il est renvoye vers son tableau de bord.
             if ($route['guest'] && $this->auth->check() && $request->path() === '/login') {
                 return Response::redirect('/dashboard');
+            }
+
+            // Une fonctionnalite absente du type d'etablissement donne 404 et
+            // non 403 : elle n'existe pas ici, il ne s'agit pas d'un refus de
+            // droit. Le controle passe avant celui des permissions, pour ne pas
+            // reveler l'existence d'un module etranger a l'etablissement.
+            if ($route['feature'] !== null && $this->features()->disabled($route['feature'])) {
+                throw new HttpException(404);
             }
 
             if ($route['permission'] !== null && $this->rbac->denies($route['permission'])) {
@@ -252,6 +293,7 @@ final class Application
 
         $this->view->share('tenantName', $tenantName);
         $this->view->share('isPlatformAccount', $this->auth->isPlatformAccount());
+        $this->view->share('features', $this->features());
     }
 
     private function renderError(int $status, string $message): Response
