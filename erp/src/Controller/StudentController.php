@@ -221,20 +221,21 @@ final class StudentController extends Controller
             $next = 1;
             $db->execute(
                 'INSERT INTO matricule_sequences (id, tenant_id, year, last_number, created_at, updated_at)
-                 VALUES (:id, :tenant, :year, :n, :now, :now)',
+                 VALUES (:id, :tenant, :year, :n, :created_at, :updated_at)',
                 [
                     'id' => Table::uuid(),
                     'tenant' => $tenantId,
                     'year' => $year,
                     'n' => $next,
-                    'now' => date('Y-m-d H:i:s'),
+                    'created_at' => date('Y-m-d H:i:s'),
+                    'updated_at' => date('Y-m-d H:i:s'),
                 ]
             );
         } else {
             $next = (int) $sequence['last_number'] + 1;
             $db->execute(
-                'UPDATE matricule_sequences SET last_number = :n, updated_at = :now WHERE id = :id',
-                ['n' => $next, 'now' => date('Y-m-d H:i:s'), 'id' => $sequence['id']]
+                'UPDATE matricule_sequences SET last_number = :n, updated_at = :updated_at WHERE id = :id',
+                ['n' => $next, 'updated_at' => date('Y-m-d H:i:s'), 'id' => $sequence['id']]
             );
         }
 

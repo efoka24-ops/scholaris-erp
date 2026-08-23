@@ -63,14 +63,15 @@ abstract class TestCase
 
         $this->db->execute(
             'INSERT INTO tenants (id, code, name, type, status, created_at, updated_at)
-             VALUES (:id, :code, :name, :type, :status, :now, :now)',
+             VALUES (:id, :code, :name, :type, :status, :created_at, :updated_at)',
             [
                 'id' => $id,
                 'code' => $code,
                 'name' => $name,
                 'type' => 'SECONDAIRE',
                 'status' => 'PRIVE',
-                'now' => date('Y-m-d H:i:s'),
+                'created_at' => date('Y-m-d H:i:s'),
+                'updated_at' => date('Y-m-d H:i:s'),
             ]
         );
 
@@ -83,7 +84,7 @@ abstract class TestCase
 
         $this->db->execute(
             'INSERT INTO users (id, tenant_id, email, password_hash, first_name, last_name, status, created_at, updated_at)
-             VALUES (:id, :tenant, :email, :hash, :first, :last, :status, :now, :now)',
+             VALUES (:id, :tenant, :email, :hash, :first, :last, :status, :created_at, :updated_at)',
             [
                 'id' => $id,
                 'tenant' => $tenantId,
@@ -92,7 +93,8 @@ abstract class TestCase
                 'first' => 'Test',
                 'last' => 'User',
                 'status' => 'ACTIVE',
-                'now' => date('Y-m-d H:i:s'),
+                'created_at' => date('Y-m-d H:i:s'),
+                'updated_at' => date('Y-m-d H:i:s'),
             ]
         );
 
@@ -105,7 +107,7 @@ abstract class TestCase
 
         $this->db->execute(
             'INSERT INTO students (id, tenant_id, matricule, first_name, last_name, date_of_birth, gender, nationality, status, created_at, updated_at)
-             VALUES (:id, :tenant, :matricule, :first, :last, :dob, :gender, :nat, :status, :now, :now)',
+             VALUES (:id, :tenant, :matricule, :first, :last, :dob, :gender, :nat, :status, :created_at, :updated_at)',
             [
                 'id' => $id,
                 'tenant' => $tenantId,
@@ -116,7 +118,8 @@ abstract class TestCase
                 'gender' => 'MALE',
                 'nat' => 'Camerounaise',
                 'status' => 'ACTIVE',
-                'now' => date('Y-m-d H:i:s'),
+                'created_at' => date('Y-m-d H:i:s'),
+                'updated_at' => date('Y-m-d H:i:s'),
             ]
         );
 

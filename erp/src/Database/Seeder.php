@@ -164,7 +164,7 @@ final class Seeder
 
         $this->db->execute(
             'INSERT INTO tenants (id, code, name, type, status, email, created_at, updated_at)
-             VALUES (:id, :code, :name, :type, :status, :email, :now, :now)',
+             VALUES (:id, :code, :name, :type, :status, :email, :created_at, :updated_at)',
             [
                 'id' => $id,
                 'code' => $code,
@@ -172,7 +172,8 @@ final class Seeder
                 'type' => 'SECONDAIRE',
                 'status' => 'PRIVE',
                 'email' => 'contact@demo.scholaris.cm',
-                'now' => $this->now(),
+                'created_at' => $this->now(),
+                'updated_at' => $this->now(),
             ]
         );
 
@@ -229,7 +230,7 @@ final class Seeder
 
         $this->db->execute(
             'INSERT INTO users (id, tenant_id, email, password_hash, first_name, last_name, status, created_at, updated_at)
-             VALUES (:id, :tenant, :email, :hash, :first, :last, :status, :now, :now)',
+             VALUES (:id, :tenant, :email, :hash, :first, :last, :status, :created_at, :updated_at)',
             [
                 'id' => $id,
                 'tenant' => $tenantId,
@@ -238,7 +239,8 @@ final class Seeder
                 'first' => $firstName,
                 'last' => $lastName,
                 'status' => 'ACTIVE',
-                'now' => $this->now(),
+                'created_at' => $this->now(),
+                'updated_at' => $this->now(),
             ]
         );
 
@@ -287,7 +289,7 @@ final class Seeder
 
         $this->db->execute(
             'INSERT INTO academic_years (id, tenant_id, label, start_date, end_date, status, created_at)
-             VALUES (:id, :tenant, :label, :start, :end, :status, :now)',
+             VALUES (:id, :tenant, :label, :start, :end, :status, :created_at)',
             [
                 'id' => $yearId,
                 'tenant' => $tenantId,
@@ -295,7 +297,7 @@ final class Seeder
                 'start' => $start->format('Y-m-d'),
                 'end' => $start->modify('+10 months')->format('Y-m-d'),
                 'status' => 'ACTIVE',
-                'now' => $this->now(),
+                'created_at' => $this->now(),
             ]
         );
 
@@ -347,14 +349,14 @@ final class Seeder
                 $cycleId = Table::uuid();
                 $this->db->execute(
                     'INSERT INTO cycles (id, tenant_id, code, name, sort_order, created_at)
-                     VALUES (:id, :tenant, :code, :name, :sort, :now)',
+                     VALUES (:id, :tenant, :code, :name, :sort, :created_at)',
                     [
                         'id' => $cycleId,
                         'tenant' => $tenantId,
                         'code' => $code,
                         'name' => $name,
                         'sort' => $cycleOrder + 1,
-                        'now' => $this->now(),
+                        'created_at' => $this->now(),
                     ]
                 );
             }
@@ -373,7 +375,7 @@ final class Seeder
 
                 $this->db->execute(
                     'INSERT INTO levels (id, tenant_id, code, name, sort_order, cycle_id, created_at)
-                     VALUES (:id, :tenant, :code, :name, :sort, :cycle, :now)',
+                     VALUES (:id, :tenant, :code, :name, :sort, :cycle, :created_at)',
                     [
                         'id' => Table::uuid(),
                         'tenant' => $tenantId,
@@ -381,7 +383,7 @@ final class Seeder
                         'name' => $levelName,
                         'sort' => $levelOrder + 1,
                         'cycle' => $cycleId,
-                        'now' => $this->now(),
+                        'created_at' => $this->now(),
                     ]
                 );
             }

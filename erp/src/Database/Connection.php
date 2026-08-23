@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Scholaris\Database;
 
+use InvalidArgumentException;
 use PDO;
 use PDOStatement;
 
@@ -83,6 +84,8 @@ final class Connection
     {
         $startedAt = microtime(true);
 
+        $this->assertPlaceholdersMatch($sql, $params);
+
         $statement = $this->pdo->prepare($sql);
         $statement->execute($params);
 
@@ -95,6 +98,51 @@ final class Connection
         }
 
         return $statement;
+    }
+
+    /**
+     * Verifie que les placeholders du SQL correspondent aux parametres fournis.
+     *
+     * MySQL en preparation native refuse qu'un placeholder nomme apparaisse
+     * deux fois ("SQLSTATE[HY093] Invalid parameter number"), la ou SQLite
+     * l'accepte. Sans ce controle, un tel defaut passerait les tests et ne se
+     * revelerait qu'en production, avec un message peu parlant. Il signale
+     * aussi les parametres manquants ou en trop.
+     *
+     * @param  array<string, mixed>  $params
+     */
+    private function assertPlaceholdersMatch(string $sql, array $params): void
+    {
+        // Retire les chaines litterales : un ":" y serait un faux positif.
+        $stripped = preg_replace("/'(?:[^'\\\\]|\\\\.)*'/", "''", $sql) ?? $sql;
+
+        preg_match_all('/(?<![:\w]):([a-z_][a-z0-9_]*)/i', $stripped, $matches);
+
+        $used = $matches[1];
+        $duplicates = array_keys(array_filter(array_count_values($used), static fn (int $n): bool => $n > 1));
+
+        if ($duplicates !== []) {
+            throw new InvalidArgumentException(sprintf(
+                'Placeholder repete dans une requete (refuse par MySQL) : :%s',
+                implode(', :', $duplicates)
+            ));
+        }
+
+        $missing = array_diff(array_unique($used), array_keys($params));
+
+        if ($missing !== []) {
+            throw new InvalidArgumentException(
+                'Parametre absent pour le placeholder : :'.implode(', :', $missing)
+            );
+        }
+
+        $extra = array_diff(array_keys($params), $used);
+
+        if ($extra !== []) {
+            throw new InvalidArgumentException(
+                'Parametre fourni sans placeholder correspondant : '.implode(', ', $extra)
+            );
+        }
     }
 
     /**

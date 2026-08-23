@@ -35,6 +35,7 @@ $suites = [
     Scholaris\Tests\TenantIsolationTest::class,
     Scholaris\Tests\SecurityTest::class,
     Scholaris\Tests\StudentTest::class,
+    Scholaris\Tests\SqlPortabilityTest::class,
 ];
 
 $totalTests = 0;
