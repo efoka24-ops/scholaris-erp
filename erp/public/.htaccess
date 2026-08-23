@@ -1,0 +1,17 @@
+# Reecriture vers le point d'entree unique.
+#
+# Uniquement des directives mod_rewrite : cet hebergement mutualise n'accorde
+# pas l'AllowOverride necessaire a Options, FilesMatch ou Require, et leur
+# presence provoque une erreur 500 sur tout le site, fichiers statiques compris.
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Les fichiers reellement presents (CSS, images) sont servis directement.
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # Tout le reste passe par index.php.
+    RewriteRule ^ index.php [L]
+</IfModule>

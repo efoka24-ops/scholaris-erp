@@ -1,0 +1,139 @@
+<?php
+
+declare(strict_types=1);
+
+/**
+ * Commandes en ligne de commande.
+ *
+ * Usage : artisan <commande>   (ou php artisan <commande>)
+ *   migrate   applique les migrations non encore jouees
+ *   seed      cree le referentiel RBAC et l'etablissement de demonstration
+ *   fresh     supprime toutes les tables, migre, puis seme (developpement)
+ *   status    etat de la base et des migrations
+ *
+ * Le shell CSHIELD de l'hebergement n'autorise pas les commandes interactives :
+ * chacune s'execute d'un trait, sans rien demander a l'utilisateur.
+ */
+
+use Scholaris\Autoloader;
+use Scholaris\Database\Connection;
+use Scholaris\Database\Migrator;
+use Scholaris\Database\Seeder;
+use Scholaris\Support\Env;
+use Scholaris\Tenant\TenantContext;
+
+if (PHP_SAPI !== 'cli') {
+    http_response_code(404);
+    exit;
+}
+
+$root = __DIR__;
+
+require $root.'/src/Autoloader.php';
+Autoloader::register($root.'/src');
+
+$env = Env::load($root.'/.env');
+
+$db = ($env->get('DB_CONNECTION', 'mysql') === 'sqlite')
+    ? Connection::sqlite($env->require('DB_DATABASE'))
+    : Connection::mysql(
+        $env->get('DB_HOST', 'localhost') ?? 'localhost',
+        $env->require('DB_DATABASE'),
+        $env->require('DB_USERNAME'),
+        $env->get('DB_PASSWORD', '') ?? '',
+        (int) ($env->get('DB_PORT', '3306') ?? '3306')
+    );
+
+$migrator = new Migrator($db, $root.'/database/migrations');
+$command = $argv[1] ?? 'status';
+
+function line(string $message): void
+{
+    echo $message, PHP_EOL;
+}
+
+try {
+    switch ($command) {
+        case 'migrate':
+            $ran = $migrator->migrate();
+
+            if ($ran === []) {
+                line('Aucune migration a appliquer, la base est a jour.');
+                break;
+            }
+
+            foreach ($ran as $file) {
+                line('  applique  '.$file);
+            }
+
+            line(count($ran).' migration(s) appliquee(s).');
+            break;
+
+        case 'seed':
+            $seeder = new Seeder($db, new TenantContext(), $root);
+            $report = $seeder->run(
+                $env->get('SEED_SUPER_ADMIN_EMAIL', 'admin@scholaris.dev') ?? 'admin@scholaris.dev',
+                $env->get('SEED_SUPER_ADMIN_PASSWORD', 'ChangeMe123!') ?? 'ChangeMe123!',
+                $env->get('SEED_TENANT_CODE', 'DEMO') ?? 'DEMO',
+                $env->get('SEED_TENANT_NAME', 'Etablissement Demo') ?? 'Etablissement Demo'
+            );
+
+            foreach ($report as $item) {
+                line('  '.$item);
+            }
+
+            line('Donnees initiales en place.');
+            break;
+
+        case 'fresh':
+            if ($env->get('APP_ENV') === 'production') {
+                line('Refus : "fresh" supprime toutes les tables et APP_ENV vaut production.');
+                exit(1);
+            }
+
+            $migrator->dropAll();
+            $migrator->migrate();
+
+            $seeder = new Seeder($db, new TenantContext(), $root);
+            $seeder->run(
+                $env->get('SEED_SUPER_ADMIN_EMAIL', 'admin@scholaris.dev') ?? 'admin@scholaris.dev',
+                $env->get('SEED_SUPER_ADMIN_PASSWORD', 'ChangeMe123!') ?? 'ChangeMe123!',
+                $env->get('SEED_TENANT_CODE', 'DEMO') ?? 'DEMO',
+                $env->get('SEED_TENANT_NAME', 'Etablissement Demo') ?? 'Etablissement Demo'
+            );
+
+            line('Base reinitialisee, migree et semee.');
+            break;
+
+        case 'status':
+            line('PHP        : '.PHP_VERSION);
+            line('Moteur     : '.$db->driver());
+            line('Base       : '.($env->get('DB_DATABASE') ?? '(non definie)'));
+
+            if ($migrator->tableExists('migrations')) {
+                $applied = $db->select('SELECT filename, applied_at FROM migrations ORDER BY filename');
+                line('Migrations : '.count($applied).' appliquee(s)');
+
+                foreach ($applied as $row) {
+                    line('  '.$row['filename'].'  '.$row['applied_at']);
+                }
+
+                if ($migrator->tableExists('users')) {
+                    line('Comptes    : '.$db->scalar('SELECT COUNT(*) FROM users'));
+                    line('Eleves     : '.$db->scalar('SELECT COUNT(*) FROM students'));
+                }
+            } else {
+                line('Migrations : aucune, lancer "artisan migrate"');
+            }
+
+            break;
+
+        default:
+            line('Commandes : migrate | seed | fresh | status');
+            exit(1);
+    }
+} catch (Throwable $e) {
+    line('ECHEC : '.$e->getMessage());
+    line('  '.$e->getFile().':'.$e->getLine());
+    exit(1);
+}
