@@ -32,10 +32,23 @@ final class Seeder
     }
 
     /**
+     * Referentiel de la plateforme : permissions, roles, Super Admin.
+     *
+     * Le Super Admin n'appartient a aucun etablissement — il administre la
+     * plateforme et arbitre les demandes de creation. Lui adjoindre une ecole
+     * de demonstration n'aurait pas de sens : il n'en dirige aucune. Le jeu de
+     * demonstration ne s'installe donc que sur demande explicite, via
+     * "artisan demo".
+     *
      * @return list<string> lignes de compte rendu
      */
-    public function run(string $superAdminEmail, string $superAdminPassword, string $tenantCode, string $tenantName): array
-    {
+    public function run(
+        string $superAdminEmail,
+        string $superAdminPassword,
+        string $tenantCode = 'DEMO',
+        string $tenantName = 'Etablissement Demo',
+        bool $withDemoTenant = false
+    ): array {
         $report = [];
 
         $permissionIds = $this->seedPermissions();
@@ -44,11 +57,17 @@ final class Seeder
         $roleCount = $this->seedRoles($permissionIds);
         $report[] = $roleCount.' roles';
 
+        $this->seedSuperAdmin($superAdminEmail, $superAdminPassword);
+        $report[] = 'super admin '.$superAdminEmail.' (hors etablissement)';
+
+        if (! $withDemoTenant) {
+            return $report;
+        }
+
         $tenantId = $this->seedTenant($tenantCode, $tenantName);
         $this->tenant->set($tenantId);
         $report[] = 'etablissement '.$tenantCode;
 
-        $this->seedSuperAdmin($superAdminEmail, $superAdminPassword);
         $accounts = $this->seedBusinessUsers($tenantId);
         $report[] = $accounts.' comptes de demonstration';
 
@@ -60,6 +79,7 @@ final class Seeder
 
         return $report;
     }
+
 
     /**
      * @return array<string, string> "resource:action" vers identifiant

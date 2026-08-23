@@ -7,7 +7,8 @@ declare(strict_types=1);
  *
  * Usage : artisan <commande>   (ou php artisan <commande>)
  *   migrate   applique les migrations non encore jouees
- *   seed      cree le referentiel RBAC et l'etablissement de demonstration
+ *   seed      cree le referentiel RBAC et le compte Super Admin (sans ecole)
+ *   ecole     cree un etablissement et le compte de son chef d'etablissement
  *   fresh     supprime toutes les tables, migre, puis seme (developpement)
  *   demo      etablissement de demonstration complet (Lycee Bilingue de Garoua)
  *   status    etat de la base et des migrations
@@ -100,7 +101,8 @@ try {
                 $env->get('SEED_SUPER_ADMIN_EMAIL', 'admin@scholaris.dev') ?? 'admin@scholaris.dev',
                 $env->get('SEED_SUPER_ADMIN_PASSWORD', 'ChangeMe123!') ?? 'ChangeMe123!',
                 $env->get('SEED_TENANT_CODE', 'DEMO') ?? 'DEMO',
-                $env->get('SEED_TENANT_NAME', 'Etablissement Demo') ?? 'Etablissement Demo'
+                $env->get('SEED_TENANT_NAME', 'Etablissement Demo') ?? 'Etablissement Demo',
+                true
             );
 
             line('Base reinitialisee, migree et semee.');
@@ -114,7 +116,8 @@ try {
                 $env->get('SEED_SUPER_ADMIN_EMAIL', 'admin@scholaris.dev') ?? 'admin@scholaris.dev',
                 $env->get('SEED_SUPER_ADMIN_PASSWORD', 'ChangeMe123!') ?? 'ChangeMe123!',
                 $env->get('SEED_TENANT_CODE', 'DEMO') ?? 'DEMO',
-                $env->get('SEED_TENANT_NAME', 'Etablissement Demo') ?? 'Etablissement Demo'
+                $env->get('SEED_TENANT_NAME', 'Etablissement Demo') ?? 'Etablissement Demo',
+                true
             );
 
             $school = new Scholaris\Database\DemoSchoolSeeder($db, new TenantContext(), $root);
@@ -124,6 +127,40 @@ try {
             }
 
             line('Lycee Bilingue de Garoua en place.');
+            break;
+
+        case 'ecole':
+            // artisan ecole CODE "Nom complet" TYPE email Prenom NOM
+            //
+            // Cree un etablissement et le compte de son chef d'etablissement.
+            // Le Super Admin passe normalement par l'ecran d'approbation des
+            // demandes ; cette commande sert a amorcer un etablissement sans
+            // attendre qu'une demande soit deposee.
+            $args = array_slice($argv, 2);
+
+            if (count($args) < 6) {
+                line('Usage : artisan ecole CODE "Nom de l etablissement" TYPE email.directeur@exemple.cm Prenom NOM');
+                line('Types : PRIMAIRE, COLLEGE, LYCEE_GENERAL, LYCEE_TECHNIQUE, CENTRE_FORMATION, SUPERIEUR');
+                exit(1);
+            }
+
+            [$code, $name, $type, $email, $firstName] = $args;
+            // Le nom de famille peut comporter plusieurs mots.
+            $lastName = implode(' ', array_slice($args, 5));
+
+            $factory = new Scholaris\Database\SchoolFactory($db, new TenantContext());
+            $result = $factory->create($code, $name, strtoupper($type), $email, $firstName, $lastName);
+
+            line('Etablissement cree.');
+            line('  Nom        : '.$name);
+            line('  Code       : '.strtoupper($code));
+            line('  Type       : '.strtoupper($type));
+            line('  Niveaux    : '.$result['levels']);
+            line('  Directeur  : '.$firstName.' '.$lastName.' <'.$email.'>');
+            line('  Mot de passe initial : '.$result['password']);
+            line('');
+            line('Ce mot de passe ne sera plus jamais affiche : transmettez-le');
+            line('au directeur et demandez-lui de le changer a la connexion.');
             break;
 
         case 'status':
@@ -150,7 +187,7 @@ try {
             break;
 
         default:
-            line('Commandes : migrate | seed | demo | fresh | status');
+            line('Commandes : migrate | seed | ecole | demo | fresh | status');
             exit(1);
     }
 } catch (Throwable $e) {

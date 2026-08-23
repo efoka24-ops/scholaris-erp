@@ -42,6 +42,7 @@ $suites = [
     Scholaris\Tests\RoutesSmokeTest::class,
     Scholaris\Tests\FeatureMatrixTest::class,
     Scholaris\Tests\DashboardTest::class,
+    Scholaris\Tests\SchoolFactoryTest::class,
 ];
 
 $totalTests = 0;
