@@ -40,8 +40,15 @@ final class PublicController extends Controller
             return $this->redirect('/dashboard');
         }
 
+        // Contenu de la maquette (25 modules, guide, temoignages), extrait
+        // automatiquement pour n'en omettre aucune entree.
+        $content = require $this->app->basePath().'/database/landing-content.php';
+
         return $this->view('public.home', [
             'tenants' => $this->openTenants(),
+            'modules' => $content['modules'],
+            'guide' => $content['guide'],
+            'testimonials' => $content['testimonials'],
         ]);
     }
 

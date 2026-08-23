@@ -160,6 +160,11 @@ final class Application
         return $this->env;
     }
 
+    public function basePath(): string
+    {
+        return $this->basePath;
+    }
+
     public function isProduction(): bool
     {
         return $this->env->get('APP_ENV', 'production') === 'production';
