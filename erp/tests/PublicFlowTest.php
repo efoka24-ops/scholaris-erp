@@ -289,6 +289,37 @@ final class PublicFlowTest extends TestCase
         $this->assertSame(['SIL', 'CP', 'CE1', 'CE2', 'CM1', 'CM2'], $codes, 'Le primaire va de la SIL au CM2');
     }
 
+    public function testUnEtablissementApprouveEstImmediatementUtilisable(): void
+    {
+        // Livrer une ecole sans annee academique ni periode ouverte, c'est
+        // livrer un espace ou son responsable ne peut rien saisir : ni appel,
+        // ni note, sans qu'aucun message ne lui dise pourquoi.
+        $demandId = $this->createRequest('UTI', 'Ecole utilisable', 'chef@uti.cm');
+
+        $superAdmin = $this->createUser($this->tenantA, 'super@a.cm');
+        $this->giveRole($superAdmin, 'SUPER_ADMIN', []);
+        $this->actingAs($superAdmin);
+
+        $this->request('POST', '/admin/etablissements/'.$demandId.'/approuver');
+
+        $tenantId = $this->db->scalar('SELECT id FROM tenants WHERE code = :code', ['code' => 'UTI']);
+
+        $year = $this->db->selectOne(
+            'SELECT id, status FROM academic_years WHERE tenant_id = :tenant',
+            ['tenant' => $tenantId]
+        );
+
+        $this->assertTrue($year !== null, 'Une annee academique est ouverte');
+        $this->assertSame('ACTIVE', (string) $year['status'], 'Et elle est active');
+
+        $open = (int) $this->db->scalar(
+            "SELECT COUNT(*) FROM periods WHERE academic_year_id = :year AND grading_status = 'OPEN'",
+            ['year' => $year['id']]
+        );
+
+        $this->assertSame(1, $open, 'Avec une periode de saisie ouverte');
+    }
+
     private function createRequest(string $code, string $name, string $email, string $type = 'LYCEE_GENERAL'): string
     {
         $id = Table::uuid();

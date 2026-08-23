@@ -109,6 +109,11 @@ final class EstablishmentRequestController extends Controller
 
             $this->seedStructure($tenantId, (string) $demand['type'], $now);
 
+            // Sans annee academique ni periode ouverte, le responsable ouvre
+            // son espace et ne peut rien y saisir — ni appel, ni note — sans
+            // comprendre pourquoi.
+            SchoolFactory::seedAcademicYear($this->app->db(), $tenantId, $now);
+
             $this->app->db()->execute(
                 'UPDATE establishment_requests
                  SET request_status = :status, created_tenant_id = :tenant, updated_at = :updated_at

@@ -222,10 +222,24 @@ final class SchoolFactory
 
     private function createAcademicYear(string $tenantId, string $now): string
     {
+        return self::seedAcademicYear($this->db, $tenantId, $now);
+    }
+
+    /**
+     * Annee academique en cours et ses six sequences.
+     *
+     * Un etablissement livre sans annee ni periode ouverte ne permet aucune
+     * saisie : ni appel, ni note. Son responsable ouvre l'application et ne
+     * peut rien y faire, sans comprendre pourquoi. Cette amorce est donc posee
+     * par les deux chemins de creation — commande et approbation d'une
+     * demande.
+     */
+    public static function seedAcademicYear(Connection $db, string $tenantId, string $now): string
+    {
         $start = new \DateTimeImmutable(date('Y').'-09-01');
         $id = Table::uuid();
 
-        $this->db->execute(
+        $db->execute(
             'INSERT INTO academic_years (id, tenant_id, label, start_date, end_date, status, created_at)
              VALUES (:id, :tenant, :label, :start, :end, :status, :created_at)',
             [
@@ -242,7 +256,7 @@ final class SchoolFactory
         // Six sequences, decoupage standard du systeme camerounais. La premiere
         // est ouverte : sans periode ouverte, aucune note ne peut etre saisie.
         for ($number = 1; $number <= 6; $number++) {
-            $this->db->execute(
+            $db->execute(
                 'INSERT INTO periods (id, academic_year_id, type, number, start_date, end_date, grading_status)
                  VALUES (:id, :year, :type, :number, :start, :end, :status)',
                 [
