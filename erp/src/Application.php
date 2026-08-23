@@ -237,7 +237,7 @@ final class Application
 
         $tenantName = null;
 
-        if ($user !== null) {
+        if ($user !== null && ($user['tenant_id'] ?? null) !== null) {
             $row = $this->tenant->global(fn () => $this->db->selectOne(
                 'SELECT name FROM tenants WHERE id = :id',
                 ['id' => $user['tenant_id']]
@@ -246,6 +246,7 @@ final class Application
         }
 
         $this->view->share('tenantName', $tenantName);
+        $this->view->share('isPlatformAccount', $this->auth->isPlatformAccount());
     }
 
     private function renderError(int $status, string $message): Response

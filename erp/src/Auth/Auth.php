@@ -142,7 +142,13 @@ final class Auth
         $this->session->set('user_id', $user['id']);
         $this->session->set('tenant_id', $user['tenant_id']);
 
-        $this->tenant->set((string) $user['tenant_id']);
+        // Un administrateur de plateforme n'appartient a aucun etablissement :
+        // le contexte reste vide, et toute lecture scopee echouera tant qu'il
+        // n'aura pas choisi un etablissement. Le defaut reste le refus.
+        if ($user['tenant_id'] !== null) {
+            $this->tenant->set((string) $user['tenant_id']);
+        }
+
         $this->user = $user;
 
         $this->db->execute(
@@ -186,7 +192,28 @@ final class Auth
         }
 
         $this->user = $user;
-        $this->tenant->set((string) $user['tenant_id']);
+
+        if ($user['tenant_id'] !== null) {
+            $this->tenant->set((string) $user['tenant_id']);
+
+            return;
+        }
+
+        // Compte de plateforme : le contexte reste vide, sauf s'il s'est
+        // explicitement place dans un etablissement pour le consulter.
+        $impersonated = $this->session->get('impersonated_tenant_id');
+
+        if (is_string($impersonated) && $impersonated !== '') {
+            $this->tenant->set($impersonated);
+        }
+    }
+
+    /**
+     * Vrai pour un compte de plateforme, qui n'appartient a aucune ecole.
+     */
+    public function isPlatformAccount(): bool
+    {
+        return $this->user !== null && ($this->user['tenant_id'] ?? null) === null;
     }
 
     public function check(): bool

@@ -180,7 +180,14 @@ abstract class TestCase
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['tenant_id'] = $user['tenant_id'];
 
-        $this->app->tenant()->set((string) $user['tenant_id']);
+        // Un compte de plateforme n'a pas d'etablissement : le contexte doit
+        // rester vide, sans quoi le test ne refleterait pas la realite.
+        $this->app->tenant()->clear();
+
+        if ($user['tenant_id'] !== null) {
+            $this->app->tenant()->set((string) $user['tenant_id']);
+        }
+
         $this->app->auth()->restore();
         $this->app->rbac()->reset();
     }

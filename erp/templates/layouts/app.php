@@ -13,16 +13,25 @@
 
 // Les entrees de menu sont filtrees par permission : un utilisateur ne voit que
 // ce qu'il peut reellement ouvrir, plutot que de decouvrir un refus en cliquant.
-$navigation = [
-    ['/dashboard', 'Tableau de bord', null],
-    ['/students', 'Eleves', 'students:read'],
-    ['/enrollments', 'Inscriptions', 'enrollments:read'],
-    ['/classrooms', 'Classes', 'classrooms:read'],
-    ['/grades', 'Notes', 'grades:read'],
-    ['/finance', 'Finance', 'finance-dashboard:read'],
-    ['/finance/invoices', 'Factures', 'invoices:read'],
-    ['/admin/etablissements', 'Etablissements', 'tenants:read'],
-];
+// Un administrateur de plateforme sans etablissement courant ne voit que
+// l'administration : les rubriques scolaires n'auraient aucune donnee a
+// afficher, faute d'ecole a laquelle il appartienne.
+$onlyPlatform = ($isPlatformAccount ?? false) && $tenantName === null;
+
+$navigation = $onlyPlatform
+    ? [
+        ['/admin', 'Plateforme', 'tenants:read'],
+        ['/admin/etablissements', 'Demandes d ouverture', 'tenants:read'],
+    ]
+    : [
+        ['/dashboard', 'Tableau de bord', null],
+        ['/students', 'Eleves', 'students:read'],
+        ['/enrollments', 'Inscriptions', 'enrollments:read'],
+        ['/classrooms', 'Classes', 'classrooms:read'],
+        ['/grades', 'Notes', 'grades:read'],
+        ['/finance', 'Finance', 'finance-dashboard:read'],
+        ['/finance/invoices', 'Factures', 'invoices:read'],
+    ];
 
 $currentPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
 ?>
@@ -64,6 +73,19 @@ $currentPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
     </nav>
 
     <main class="content">
+        <?php if (($isPlatformAccount ?? false) && $tenantName !== null) : ?>
+            <div class="impersonation">
+                <span>
+                    Vous consultez <strong><?= $this->e($tenantName) ?></strong> en tant
+                    qu administrateur de la plateforme. Cet acces est journalise.
+                </span>
+                <form method="post" action="/admin/quitter" class="inline-form">
+                    <input type="hidden" name="_token" value="<?= $this->e($csrfToken) ?>">
+                    <button type="submit" class="button button--secondary">Quitter cet etablissement</button>
+                </form>
+            </div>
+        <?php endif; ?>
+
         <?php if ($flashSuccess !== null) : ?>
             <div class="alert alert--success" role="status"><?= $this->e($flashSuccess) ?></div>
         <?php endif; ?>

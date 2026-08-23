@@ -21,6 +21,7 @@ use Scholaris\Controller\EstablishmentRequestController;
 use Scholaris\Controller\FinanceController;
 use Scholaris\Controller\GradeController;
 use Scholaris\Controller\MobileMoneyController;
+use Scholaris\Controller\PlatformController;
 use Scholaris\Controller\PublicController;
 use Scholaris\Controller\StudentController;
 use Scholaris\Http\Request;
@@ -112,7 +113,15 @@ $router->post('/finance/transactions/{id}/refresh', [MobileMoneyController::clas
 $router->get('/finance/fee-structures', [FinanceController::class, 'feeStructures'], 'fee-structures:read');
 $router->post('/finance/fee-structures', [FinanceController::class, 'storeFeeStructure'], 'fee-structures:create');
 
-// Administration de la plateforme : demandes de creation d'etablissement.
+// --- Administration de la plateforme --------------------------------------
+// Reserve au Super Admin, qui n'appartient a aucun etablissement. A ne pas
+// confondre avec l'administrateur d'une ecole, souvent le directeur, dont les
+// droits s'arretent a son propre etablissement.
+$router->get('/admin', [PlatformController::class, 'dashboard'], 'tenants:read');
+$router->post('/admin/etablissements/{id}/consulter', [PlatformController::class, 'enter'], 'tenants:read');
+$router->post('/admin/quitter', [PlatformController::class, 'leave'], 'tenants:read');
+
+// Demandes de creation d'etablissement.
 // Le controleur verifie lui-meme le role Super Admin, ces demandes n'etant
 // rattachees a aucun etablissement.
 $router->get('/admin/etablissements', [EstablishmentRequestController::class, 'index'], 'tenants:read');

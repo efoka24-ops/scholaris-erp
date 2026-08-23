@@ -26,7 +26,9 @@ CREATE UNIQUE INDEX tenants_code_unique ON tenants (code);
 
 CREATE TABLE users (
     id CHAR(36) NOT NULL PRIMARY KEY,
-    tenant_id CHAR(36) NOT NULL,
+    -- Nullable : un administrateur de la plateforme n appartient a aucun
+    -- etablissement. Ne pas confondre avec l administrateur d une ecole.
+    tenant_id CHAR(36) NULL,
     email VARCHAR(255) NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     first_name VARCHAR(255) NOT NULL,

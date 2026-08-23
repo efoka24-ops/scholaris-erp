@@ -23,6 +23,12 @@ final class TenantContext
 
     public function set(string $tenantId): void
     {
+        // Une chaine vide passerait pour un etablissement valide et ferait
+        // remonter zero ligne partout, sans erreur visible. Mieux vaut refuser.
+        if ($tenantId === '') {
+            throw new RuntimeException('Identifiant d etablissement vide.');
+        }
+
         $this->tenantId = $tenantId;
     }
 

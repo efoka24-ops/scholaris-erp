@@ -106,15 +106,29 @@ final class Migrator
     /**
      * Decoupe un fichier en instructions et applique les options MySQL.
      *
+     * Une instruction peut etre reservee a un moteur en la precedant de
+     * "-- @mysql" ou "-- @sqlite". Cela sert aux rares cas ou les deux moteurs
+     * divergent vraiment : SQLite ne sait pas modifier une colonne existante,
+     * la ou MySQL le fait par ALTER TABLE.
+     *
      * @return list<string>
      */
     private function statements(string $sql): array
     {
+        $driver = $this->db->driver();
+        $isMysql = $driver === 'mysql';
+
+        // Les instructions marquees pour un autre moteur sont retirees avant
+        // tout decoupage, avec le contenu qui les suit jusqu'au point-virgule.
+        $sql = preg_replace_callback(
+            '/^\s*--\s*@(mysql|sqlite)\s*$(.*?);/ms',
+            static fn (array $m): string => strtolower($m[1]) === $driver ? $m[2].';' : '',
+            $sql
+        ) ?? $sql;
+
         // Retire les commentaires en ligne avant le decoupage : ils peuvent
         // contenir des points-virgules.
         $sql = preg_replace('/^\s*--.*$/m', '', $sql) ?? $sql;
-
-        $isMysql = $this->db->driver() === 'mysql';
         $statements = [];
 
         foreach (explode(';', $sql) as $statement) {

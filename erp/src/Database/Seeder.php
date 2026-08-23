@@ -48,7 +48,7 @@ final class Seeder
         $this->tenant->set($tenantId);
         $report[] = 'etablissement '.$tenantCode;
 
-        $this->seedSuperAdmin($tenantId, $superAdminEmail, $superAdminPassword);
+        $this->seedSuperAdmin($superAdminEmail, $superAdminPassword);
         $accounts = $this->seedBusinessUsers($tenantId);
         $report[] = $accounts.' comptes de demonstration';
 
@@ -180,9 +180,17 @@ final class Seeder
         return $id;
     }
 
-    private function seedSuperAdmin(string $tenantId, string $email, string $password): void
+    /**
+     * Administrateur de la plateforme.
+     *
+     * Volontairement rattache a aucun etablissement (tenant_id nul) : il
+     * administre la plateforme entiere. A ne pas confondre avec
+     * l'administrateur d'une ecole, souvent le directeur, qui lui appartient a
+     * son etablissement et n'en voit aucun autre.
+     */
+    private function seedSuperAdmin(string $email, string $password): void
     {
-        $userId = $this->createUser($tenantId, $email, $password, 'Super', 'Admin');
+        $userId = $this->createUser(null, $email, $password, 'Super', 'Admin');
         $this->assignRole($userId, 'SUPER_ADMIN');
     }
 
@@ -210,17 +218,27 @@ final class Seeder
         return count($accounts);
     }
 
+    /**
+     * @param  string|null  $tenantId  null pour un compte de plateforme
+     */
     private function createUser(
-        string $tenantId,
+        ?string $tenantId,
         string $email,
         string $password,
         string $firstName,
         string $lastName
     ): string {
-        $existing = $this->db->scalar(
-            'SELECT id FROM users WHERE tenant_id = :tenant AND email = :email',
-            ['tenant' => $tenantId, 'email' => $email]
-        );
+        // "tenant_id = NULL" ne correspond a rien en SQL : la recherche d'un
+        // compte de plateforme doit passer par IS NULL.
+        $existing = $tenantId === null
+            ? $this->db->scalar(
+                'SELECT id FROM users WHERE tenant_id IS NULL AND email = :email',
+                ['email' => $email]
+            )
+            : $this->db->scalar(
+                'SELECT id FROM users WHERE tenant_id = :tenant AND email = :email',
+                ['tenant' => $tenantId, 'email' => $email]
+            );
 
         if ($existing !== null) {
             return (string) $existing;

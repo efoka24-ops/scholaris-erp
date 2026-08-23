@@ -17,6 +17,13 @@ final class DashboardController extends Controller
 {
     public function index(Request $request): Response
     {
+        // Un administrateur de plateforme n'a pas de tableau de bord scolaire :
+        // il n'appartient a aucune ecole. Il est renvoye vers son espace, sauf
+        // s'il s'est place dans un etablissement pour le consulter.
+        if ($this->app->auth()->isPlatformAccount() && ! $this->app->tenant()->isSet()) {
+            return $this->redirect('/admin');
+        }
+
         $academicYearId = $this->currentAcademicYearId();
 
         return $this->view('dashboard.index', [
