@@ -32,6 +32,7 @@ use Scholaris\Controller\PlatformController;
 use Scholaris\Controller\SchoolLifeController;
 use Scholaris\Controller\PublicController;
 use Scholaris\Controller\AcademicYearController;
+use Scholaris\Controller\MaintenanceController;
 use Scholaris\Controller\SettingsController;
 use Scholaris\Controller\TenantAdminController;
 use Scholaris\Controller\StudentController;
@@ -233,6 +234,12 @@ $router->post('/admin/parc/{id}/supprimer', [TenantAdminController::class, 'dest
 // promettre a un directeur des identifiants qu'il n'a jamais recus.
 $router->get('/admin/courriers', [TenantAdminController::class, 'notifications'], 'tenants:read');
 $router->post('/admin/courriers/{id}/reprendre', [TenantAdminController::class, 'retryNotification'], 'tenants:update');
+
+// Maintenance du schema. L'hebergement mutualise n'offre pas de shell
+// utilisable : sans cet ecran, une migration se remet a plus tard et le
+// schema reste en retard sur le code.
+$router->get('/admin/maintenance', [MaintenanceController::class, 'index'], 'tenants:update');
+$router->post('/admin/maintenance/migrer', [MaintenanceController::class, 'migrate'], 'tenants:update');
 
 // Demandes de creation d'etablissement.
 // Le controleur verifie lui-meme le role Super Admin, ces demandes n'etant

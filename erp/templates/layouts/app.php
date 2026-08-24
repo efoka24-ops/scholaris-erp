@@ -25,6 +25,7 @@ $navigation = $onlyPlatform
         ['/admin/etablissements', 'Demandes d ouverture', 'tenants:read', null],
         ['/admin/parc', 'Parc d etablissements', 'tenants:read', null],
         ['/admin/courriers', 'Courriers envoyes', 'tenants:read', null],
+        ['/admin/maintenance', 'Maintenance', 'tenants:update', null],
     ]
     // Chaque entree porte sa permission et, le cas echeant, la fonctionnalite
     // dont elle depend. Une ecole primaire ne verra donc jamais « Examens

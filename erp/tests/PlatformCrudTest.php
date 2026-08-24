@@ -302,7 +302,7 @@ final class PlatformCrudTest extends TestCase
         $this->giveRole($userId, 'ADMIN_ETAB', ['tenants:read', 'tenants:update', 'tenants:create']);
         $this->actingAs($userId);
 
-        foreach (['/admin/parc', '/admin/parc/creer', '/admin/courriers'] as $path) {
+        foreach (['/admin/parc', '/admin/parc/creer', '/admin/courriers', '/admin/maintenance'] as $path) {
             $this->assertSame(403, $this->request('GET', $path)->status(), $path.' doit rester ferme');
         }
 
@@ -311,6 +311,24 @@ final class PlatformCrudTest extends TestCase
             $this->request('POST', '/admin/parc/'.$this->tenantB.'/suspendre', ['reason' => 'x'])->status(),
             'Et il ne doit surtout pas pouvoir suspendre un autre etablissement'
         );
+    }
+
+    public function testLaMaintenanceNAppliqueQueLesMigrationsLivrees(): void
+    {
+        // Cet ecran ne joue que les fichiers livres avec l application. Rien
+        // de ce qui est saisi n est execute : il n y a rien a y injecter.
+        $this->actAsSuperAdmin();
+
+        $content = $this->request('GET', '/admin/maintenance')->content();
+
+        $this->assertStringContains('013_platform.sql', $content, 'Les migrations livrees sont listees');
+        $this->assertStringContains('Le schema est a jour', $content, 'Et leur etat est affiche');
+
+        $before = (int) $this->db->scalar('SELECT COUNT(*) FROM migrations');
+        $this->request('POST', '/admin/maintenance/migrer');
+        $after = (int) $this->db->scalar('SELECT COUNT(*) FROM migrations');
+
+        $this->assertSame($before, $after, 'Rejouer une migration deja appliquee ne fait rien');
     }
 
     // --- Tableau de bord -----------------------------------------------------
