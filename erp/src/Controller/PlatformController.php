@@ -7,6 +7,7 @@ namespace Scholaris\Controller;
 use Scholaris\Http\Exception\HttpException;
 use Scholaris\Http\Request;
 use Scholaris\Http\Response;
+use Scholaris\Platform\PlatformStats;
 
 /**
  * Espace de l'administrateur de la plateforme.
@@ -25,9 +26,13 @@ final class PlatformController extends Controller
     {
         $this->assertSuperAdmin();
 
+        $stats = new PlatformStats($this->app->db());
+
         // Toutes ces lectures traversent les etablissements : elles doivent
         // donc etre explicitement hors scope.
         $data = $this->app->tenant()->global(fn (): array => [
+            'stats' => $stats->overview(),
+            'map' => $stats->byRegion(),
             'tenants' => $this->app->db()->select(
                 'SELECT t.*,
                         (SELECT COUNT(*) FROM users u WHERE u.tenant_id = t.id AND u.deleted_at IS NULL) AS users_count,

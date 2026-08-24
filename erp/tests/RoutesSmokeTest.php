@@ -65,6 +65,7 @@ final class RoutesSmokeTest extends TestCase
         '/login',
         '/pre-inscription',
         '/demande-etablissement',
+        '/demande-etablissement/suivi',
         '/bulletins/verification',
         '/hors-ligne',
         '/up',

@@ -21,8 +21,10 @@ $onlyPlatform = ($isPlatformAccount ?? false) && $tenantName === null;
 
 $navigation = $onlyPlatform
     ? [
-        ['/admin', 'Plateforme', 'tenants:read', null],
+        ['/admin', 'Tableau de bord', 'tenants:read', null],
         ['/admin/etablissements', 'Demandes d ouverture', 'tenants:read', null],
+        ['/admin/parc', 'Parc d etablissements', 'tenants:read', null],
+        ['/admin/courriers', 'Courriers envoyes', 'tenants:read', null],
     ]
     // Chaque entree porte sa permission et, le cas echeant, la fonctionnalite
     // dont elle depend. Une ecole primaire ne verra donc jamais « Examens

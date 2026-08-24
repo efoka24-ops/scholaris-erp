@@ -8,6 +8,7 @@ use Scholaris\Database\Table;
 use Scholaris\Http\Exception\HttpException;
 use Scholaris\Http\Request;
 use Scholaris\Http\Response;
+use Scholaris\Support\Cameroon;
 use Scholaris\Support\Validator;
 
 /**
@@ -171,6 +172,7 @@ final class PublicController extends Controller
         return $this->view('public.establishment-request', [
             'types' => self::TENANT_TYPES,
             'statuses' => self::TENANT_STATUSES,
+            'regions' => Cameroon::regionChoices(),
             'old' => $this->app->session()->pullOldInput(),
             'error' => $this->app->session()->pullFlash('public_error'),
         ]);
@@ -189,7 +191,12 @@ final class PublicController extends Controller
             ->optional('director_phone')
             ->optional('address')
             ->optional('phone')
-            ->optional('email');
+            ->optional('email')
+            ->optional('city')
+            // La region situe l'etablissement sur la carte du parc. Elle reste
+            // facultative : refuser un dossier pour une case non cochee serait
+            // disproportionne.
+            ->optional('region');
 
         if ($validator->fails()) {
             return $this->backToPublic($request, '/demande-etablissement', $validator->errors());
@@ -213,15 +220,24 @@ final class PublicController extends Controller
             ]);
         }
 
+        $demandId = Table::uuid();
+        $reference = $this->generateReference();
+        $region = is_string($data['region'] ?? null) && Cameroon::isRegion((string) $data['region'])
+            ? (string) $data['region']
+            : null;
+
         $this->app->db()->execute(
             'INSERT INTO establishment_requests
-                (id, name, code, type, status, address, phone, email,
+                (id, name, code, type, status, address, phone, email, region, city, reference,
                  director_first_name, director_last_name, director_email, director_phone,
                  request_status, created_at, updated_at)
-             VALUES (:id, :name, :code, :type, :status, :address, :phone, :email,
+             VALUES (:id, :name, :code, :type, :status, :address, :phone, :email, :region, :city, :reference,
                  :dfirst, :dlast, :demail, :dphone, :rstatus, :created_at, :updated_at)',
             [
-                'id' => Table::uuid(),
+                'id' => $demandId,
+                'region' => $region,
+                'city' => $data['city'],
+                'reference' => $reference,
                 'name' => $data['name'],
                 'code' => $code,
                 'type' => $data['type'],
@@ -239,11 +255,96 @@ final class PublicController extends Controller
             ]
         );
 
+        // Accuse de reception. Jusqu'ici le demandeur deposait son dossier et
+        // n'entendait plus parler de rien : il ne lui restait que le telephone.
+        $demand = $this->app->db()->selectOne(
+            'SELECT * FROM establishment_requests WHERE id = :id',
+            ['id' => $demandId]
+        );
+
+        if ($demand !== null) {
+            $this->app->establishmentMails()->acknowledge($demand);
+        }
+
         return $this->view('public.establishment-request-done', [
             'name' => $data['name'],
             'code' => $code,
             'email' => $data['director_email'],
+            'reference' => $reference,
         ]);
+    }
+
+    /**
+     * Suivi d'un dossier par sa reference.
+     *
+     * Le demandeur n'a pas de compte : la reference et son adresse email
+     * tiennent lieu de justificatif. Exiger les deux evite qu'une reference
+     * devinee ne donne acces aux coordonnees d'un tiers.
+     */
+    public function trackEstablishmentRequest(Request $request): Response
+    {
+        $reference = strtoupper(trim($request->string('reference')));
+        $email = strtolower(trim($request->string('email')));
+
+        if ($reference === '' || $email === '') {
+            return $this->view('public.establishment-request-track', [
+                'demand' => null,
+                'searched' => false,
+                'error' => null,
+                'reference' => $reference,
+                'email' => $email,
+            ]);
+        }
+
+        $demand = $this->app->db()->selectOne(
+            'SELECT * FROM establishment_requests
+             WHERE reference = :reference AND LOWER(director_email) = :email',
+            ['reference' => $reference, 'email' => $email]
+        );
+
+        return $this->view('public.establishment-request-track', [
+            'demand' => $demand,
+            'searched' => true,
+            'error' => $demand === null
+                ? 'Aucun dossier ne correspond a cette reference et a cette adresse.'
+                : null,
+            'reference' => $reference,
+            'email' => $email,
+        ]);
+    }
+
+    /**
+     * Reference courte, lisible au telephone.
+     *
+     * Sans caracteres ambigus, et verifiee unique : deux dossiers portant la
+     * meme reference renverraient le demandeur vers celui d'un autre.
+     */
+    private function generateReference(): string
+    {
+        $alphabet = 'ACDEFGHJKLMNPQRTUVWXY3479';
+
+        for ($attempt = 0; $attempt < 20; $attempt++) {
+            $suffix = '';
+
+            for ($i = 0; $i < 6; $i++) {
+                $suffix .= $alphabet[random_int(0, strlen($alphabet) - 1)];
+            }
+
+            $reference = 'ET-'.$suffix;
+
+            $taken = $this->app->db()->scalar(
+                'SELECT id FROM establishment_requests WHERE reference = :reference',
+                ['reference' => $reference]
+            );
+
+            if ($taken === null) {
+                return $reference;
+            }
+        }
+
+        // Retombee improbable, mais une reference vide priverait le demandeur
+        // de tout suivi.
+        return 'ET-'.strtoupper(substr(bin2hex(random_bytes(4)), 0, 6));
     }
 
     /**

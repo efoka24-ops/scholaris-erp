@@ -65,9 +65,42 @@ final class Auth
             return ['ok' => false, 'error' => 'Ce compte est desactive. Contactez votre administration.'];
         }
 
+        // Un etablissement suspendu ne laisse plus entrer personne. Sans ce
+        // controle, la suspension ne serait qu'un libelle dans une liste.
+        if ($this->tenantIsSuspended($user)) {
+            return [
+                'ok' => false,
+                'error' => 'L acces de votre etablissement est suspendu. Contactez l administration de la plateforme.',
+            ];
+        }
+
         $this->completeLogin($user, $ip);
 
         return ['ok' => true];
+    }
+
+    /**
+     * L'etablissement du compte est-il suspendu ?
+     *
+     * Le Super Admin n'appartient a aucun etablissement : il n'est jamais
+     * concerne, ce qui est heureux puisque c'est lui qui leve les suspensions.
+     *
+     * @param  array<string, mixed>  $user
+     */
+    private function tenantIsSuspended(array $user): bool
+    {
+        $tenantId = $user['tenant_id'] ?? null;
+
+        if (! is_string($tenantId) || $tenantId === '') {
+            return false;
+        }
+
+        $status = $this->db->scalar(
+            'SELECT platform_status FROM tenants WHERE id = :id',
+            ['id' => $tenantId]
+        );
+
+        return is_string($status) && $status === 'SUSPENDED';
     }
 
     /**

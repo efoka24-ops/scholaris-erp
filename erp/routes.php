@@ -33,6 +33,7 @@ use Scholaris\Controller\SchoolLifeController;
 use Scholaris\Controller\PublicController;
 use Scholaris\Controller\AcademicYearController;
 use Scholaris\Controller\SettingsController;
+use Scholaris\Controller\TenantAdminController;
 use Scholaris\Controller\StudentController;
 use Scholaris\Http\Request;
 use Scholaris\Http\Response;
@@ -54,6 +55,11 @@ $router->guest('POST', '/pre-inscription', [PublicController::class, 'submitPreE
 // Demande de creation d'etablissement, instruite ensuite par le Super Admin.
 $router->guest('GET', '/demande-etablissement', [PublicController::class, 'establishmentRequestForm']);
 $router->guest('POST', '/demande-etablissement', [PublicController::class, 'submitEstablishmentRequest']);
+
+// Suivi d'un dossier par sa reference : le demandeur n'a pas de compte, et
+// sans cette page il n'avait aucun moyen de savoir ou en etait sa demande.
+$router->guest('GET', '/demande-etablissement/suivi', [PublicController::class, 'trackEstablishmentRequest']);
+$router->guest('POST', '/demande-etablissement/suivi', [PublicController::class, 'trackEstablishmentRequest']);
 
 $router->guest('GET', '/bulletins/verification', [BulletinController::class, 'verify']);
 
@@ -210,6 +216,23 @@ $router->post('/parametres', [SettingsController::class, 'save'], 'tenants:updat
 $router->get('/admin', [PlatformController::class, 'dashboard'], 'tenants:read');
 $router->post('/admin/etablissements/{id}/consulter', [PlatformController::class, 'enter'], 'tenants:read');
 $router->post('/admin/quitter', [PlatformController::class, 'leave'], 'tenants:read');
+
+// Parc d'etablissements : creation directe, fiche, suspension, retrait.
+// Les controleurs verifient eux-memes le role Super Admin, ces ecrans ne
+// portant sur aucun etablissement en particulier.
+$router->get('/admin/parc', [TenantAdminController::class, 'index'], 'tenants:read');
+$router->get('/admin/parc/creer', [TenantAdminController::class, 'createForm'], 'tenants:create');
+$router->post('/admin/parc', [TenantAdminController::class, 'store'], 'tenants:create');
+$router->get('/admin/parc/{id}/modifier', [TenantAdminController::class, 'editForm'], 'tenants:update');
+$router->post('/admin/parc/{id}', [TenantAdminController::class, 'update'], 'tenants:update');
+$router->post('/admin/parc/{id}/suspendre', [TenantAdminController::class, 'suspend'], 'tenants:update');
+$router->post('/admin/parc/{id}/reactiver', [TenantAdminController::class, 'restore'], 'tenants:update');
+$router->post('/admin/parc/{id}/supprimer', [TenantAdminController::class, 'destroy'], 'tenants:delete');
+
+// Journal des courriers : savoir ce qui est reellement parti evite de
+// promettre a un directeur des identifiants qu'il n'a jamais recus.
+$router->get('/admin/courriers', [TenantAdminController::class, 'notifications'], 'tenants:read');
+$router->post('/admin/courriers/{id}/reprendre', [TenantAdminController::class, 'retryNotification'], 'tenants:update');
 
 // Demandes de creation d'etablissement.
 // Le controleur verifie lui-meme le role Super Admin, ces demandes n'etant

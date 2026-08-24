@@ -1034,3 +1034,207 @@ h2 { font-size: 1.1rem; font-weight: 700; margin: 0 0 1rem; }
     color: #fff;
     background: #c0392b;
 }
+
+/* --- Statistiques enrichies ------------------------------------------------
+ * Une valeur seule ne dit rien : « 2 847 eleves » n informe pas, « 2 847,
+ * +24 ce mois » situe le parc. Chaque carte porte donc sa variation. */
+.stats--rich {
+    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+}
+
+.stat__foot {
+    margin-top: 0.45rem;
+    font-size: 0.8125rem;
+    color: rgba(255, 255, 255, 0.55);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.stat__value--muted {
+    color: rgba(255, 255, 255, 0.3);
+}
+
+.stat__trend {
+    font-weight: 600;
+    padding: 0.1rem 0.4rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+}
+
+.stat__trend--up {
+    color: #c8ff00;
+    background: rgba(200, 255, 0, 0.12);
+}
+
+.stat__trend--down {
+    color: #ff8f6b;
+    background: rgba(255, 143, 107, 0.12);
+}
+
+.stat__trend--flat {
+    color: rgba(255, 255, 255, 0.5);
+    background: rgba(255, 255, 255, 0.06);
+}
+
+/* --- Carte du parc ---------------------------------------------------------
+ * Le dessin et son panneau de detail cohabitent : sur un ecran large ils se
+ * font face, sur un telephone le detail passe sous la carte. */
+.map {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 1.5rem;
+    align-items: start;
+    margin-top: 1.25rem;
+}
+
+@media (max-width: 60rem) {
+    .map {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+.map__svg {
+    width: 100%;
+    height: auto;
+    max-height: 34rem;
+    display: block;
+}
+
+.map__country {
+    fill: rgba(91, 33, 245, 0.16);
+    stroke: rgba(200, 255, 0, 0.45);
+    stroke-width: 2;
+    stroke-linejoin: round;
+}
+
+.map__region {
+    cursor: default;
+}
+
+.map__region.is-active {
+    cursor: pointer;
+}
+
+.map__dot {
+    fill: rgba(255, 255, 255, 0.16);
+    stroke: rgba(255, 255, 255, 0.3);
+    stroke-width: 1.5;
+    transition: fill 0.15s ease, stroke 0.15s ease;
+}
+
+.map__region.is-active .map__dot {
+    fill: #5b21f5;
+    stroke: #c8ff00;
+}
+
+.map__region.is-hovered .map__dot {
+    fill: #c8ff00;
+    stroke: #fff;
+}
+
+/* Un halo signale les regions ou des dossiers attendent une decision : c est
+ * la seule chose qui reclame une action du Super Admin. */
+.map__halo {
+    fill: rgba(255, 176, 32, 0.18);
+    stroke: rgba(255, 176, 32, 0.5);
+    stroke-width: 1.5;
+}
+
+.map__count {
+    fill: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    text-anchor: middle;
+    pointer-events: none;
+}
+
+.map__region.is-hovered .map__count {
+    fill: #09080f;
+}
+
+.map__name {
+    fill: rgba(255, 255, 255, 0.55);
+    font-size: 12px;
+    text-anchor: middle;
+    pointer-events: none;
+}
+
+.map__region.is-hovered .map__name {
+    fill: #fff;
+}
+
+.map__detail {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 1rem;
+    padding: 1.25rem;
+    min-height: 12rem;
+}
+
+.map__detail h3 {
+    margin: 0 0 0.25rem;
+}
+
+.map__detail h4 {
+    margin: 1.25rem 0 0.5rem;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: rgba(255, 255, 255, 0.55);
+}
+
+.map__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.75rem;
+}
+
+.map__list li {
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.map__list li:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.map__legend {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    font-size: 0.8125rem;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.map__legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.map__key {
+    width: 0.7rem;
+    height: 0.7rem;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.map__key--active {
+    background: #5b21f5;
+    box-shadow: 0 0 0 1.5px #c8ff00;
+}
+
+.map__key--pending {
+    background: rgba(255, 176, 32, 0.35);
+    box-shadow: 0 0 0 1.5px rgba(255, 176, 32, 0.8);
+}
+
+.badge--warning {
+    color: #09080f;
+    background: #ffb020;
+}

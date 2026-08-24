@@ -45,6 +45,8 @@ $suites = [
     Scholaris\Tests\SchoolFactoryTest::class,
     Scholaris\Tests\OfflineSyncTest::class,
     Scholaris\Tests\AcademicYearTest::class,
+    Scholaris\Tests\EstablishmentNotificationTest::class,
+    Scholaris\Tests\PlatformCrudTest::class,
 ];
 
 $totalTests = 0;

@@ -12,6 +12,10 @@ return [
         ['tenants', 'create', 'Créer un établissement (Super Admin)'],
         ['tenants', 'read', 'Consulter l\'établissement'],
         ['tenants', 'update', 'Modifier la configuration de l\'établissement'],
+        // Retirer un établissement du parc engage des dossiers scolaires : ce
+        // droit n'appartient qu'au Super Admin, jamais à l'administrateur
+        // d'une école, qui pourrait sinon supprimer la sienne.
+        ['tenants', 'delete', 'Retirer un établissement du parc (Super Admin)'],
         ['roles', 'create', 'Créer un rôle personnalisé'],
         ['roles', 'read', 'Consulter les rôles et leurs permissions'],
         ['roles', 'update', 'Modifier un rôle (nom, permissions)'],

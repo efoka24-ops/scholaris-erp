@@ -60,8 +60,8 @@ final class EstablishmentRequestController extends Controller
             $now = date('Y-m-d H:i:s');
 
             $this->app->db()->execute(
-                'INSERT INTO tenants (id, code, name, type, status, address, phone, email, created_at, updated_at)
-                 VALUES (:id, :code, :name, :type, :status, :address, :phone, :email, :created_at, :updated_at)',
+                'INSERT INTO tenants (id, code, name, type, status, address, phone, email, region, city, created_at, updated_at)
+                 VALUES (:id, :code, :name, :type, :status, :address, :phone, :email, :region, :city, :created_at, :updated_at)',
                 [
                     'id' => $tenantId,
                     'code' => $demand['code'],
@@ -71,6 +71,10 @@ final class EstablishmentRequestController extends Controller
                     'address' => $demand['address'],
                     'phone' => $demand['phone'],
                     'email' => $demand['email'],
+                    // La region suit le dossier jusqu'a l'etablissement : c'est
+                    // elle qui le situe sur la carte du parc.
+                    'region' => $demand['region'],
+                    'city' => $demand['city'],
                     'created_at' => $now,
                     'updated_at' => $now,
                 ]
@@ -131,6 +135,11 @@ final class EstablishmentRequestController extends Controller
 
         $this->audit('establishment.approve', (string) $demand['id'], $request->ip());
 
+        // Les identifiants partent par courrier. L'ecran les affiche aussi,
+        // une seule fois : si la remise echoue, le Super Admin les a encore
+        // sous les yeux et peut les dicter.
+        $this->app->establishmentMails()->approved($demand, $password, $tenantId);
+
         // Le mot de passe genere n'est affiche qu'ici, une seule fois : il n'est
         // stocke nulle part en clair.
         return $this->view('admin.establishment-approved', [
@@ -170,7 +179,11 @@ final class EstablishmentRequestController extends Controller
 
         $this->audit('establishment.reject', (string) $demand['id'], $request->ip());
 
-        return $this->redirectWithSuccess('/admin/etablissements', 'Demande refusee.');
+        // Un refus sans reponse laisse le demandeur sans rien a corriger : il
+        // redeposera le meme dossier. Le motif lui est donc transmis.
+        $this->app->establishmentMails()->rejected($demand, $reason);
+
+        return $this->redirectWithSuccess('/admin/etablissements', 'Demande refusee, le motif a ete transmis au demandeur.');
     }
 
     /**

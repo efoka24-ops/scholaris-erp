@@ -13,6 +13,9 @@ use Scholaris\Http\Exception\HttpException;
 use Scholaris\Http\Request;
 use Scholaris\Http\Response;
 use Scholaris\Http\Router;
+use Scholaris\Notification\EstablishmentMails;
+use Scholaris\Notification\Mailer;
+use Scholaris\Notification\SmtpTransport;
 use Scholaris\Offline\OperationLog;
 use Scholaris\Security\Csrf;
 use Scholaris\Security\Session;
@@ -50,6 +53,8 @@ final class Application
     private Router $router;
 
     private ?Features $features = null;
+
+    private ?Mailer $mailer = null;
 
     private string $basePath;
 
@@ -191,6 +196,47 @@ final class Application
         }
 
         return $this->features = Features::forTenant($this->basePath, $tenant);
+    }
+
+    /**
+     * Courriers sortants de la plateforme.
+     *
+     * La remise est desactivee tant que MAIL_FROM n'est pas renseigne : les
+     * courriers sont alors journalises sans quitter la machine, ce qui evite
+     * qu'un environnement de test n'ecrive a de vraies personnes.
+     */
+    public function mailer(): Mailer
+    {
+        if ($this->mailer !== null) {
+            return $this->mailer;
+        }
+
+        $host = $this->env->get('MAIL_HOST', '') ?? '';
+
+        $smtp = $host === '' ? null : new SmtpTransport(
+            $host,
+            (int) ($this->env->get('MAIL_PORT', '465') ?? '465'),
+            $this->env->get('MAIL_USERNAME', '') ?? '',
+            $this->env->get('MAIL_PASSWORD', '') ?? '',
+            $this->env->get('MAIL_ENCRYPTION', 'ssl') ?? 'ssl'
+        );
+
+        return $this->mailer = new Mailer(
+            $this->db,
+            $this->env->get('MAIL_FROM', '') ?? '',
+            $this->env->get('MAIL_FROM_NAME', 'SCHOLARIS') ?? 'SCHOLARIS',
+            $this->env->bool('MAIL_ENABLED', true),
+            $smtp
+        );
+    }
+
+    public function establishmentMails(): EstablishmentMails
+    {
+        return new EstablishmentMails(
+            $this->mailer(),
+            $this->env->get('APP_NAME', 'SCHOLARIS') ?? 'SCHOLARIS',
+            $this->env->get('APP_URL', '') ?? ''
+        );
     }
 
     /** Oublie les fonctionnalites en cache, apres un changement de contexte. */
