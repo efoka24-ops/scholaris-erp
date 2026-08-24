@@ -267,6 +267,133 @@ final class PlatformStats
     }
 
     /**
+     * Repartition des comptes par profil.
+     *
+     * Un compte cree n'est pas un compte utilise : la difference entre les
+     * deux est precisement ce qu'un administrateur national doit surveiller.
+     * Un directeur qui n'a jamais ouvert son espace n'a pas recu ses
+     * identifiants, ou ne s'en sert pas — dans les deux cas il faut l'appeler.
+     *
+     * Le profil est deduit du role porte par le compte. Un compte sans role
+     * n'est rattache a rien : il figure a part plutot que d'etre range de
+     * force dans une categorie.
+     *
+     * @return array<string, mixed>
+     */
+    public function accountsByProfile(): array
+    {
+        $groups = [
+            'DIRECTION' => ['label' => 'Direction', 'roles' => ['Admin Établissement', 'Directeur', 'Censeur']],
+            'PERSONNEL' => ['label' => 'Personnel', 'roles' => [
+                'Enseignant', 'Chef de département', 'Intendant', 'Secrétaire',
+                'Infirmier(ère)', 'Bibliothécaire', 'Surveillant général',
+            ]],
+            'ELEVE' => ['label' => 'Eleves', 'roles' => ['Élève']],
+            'PARENT' => ['label' => 'Parents et tuteurs', 'roles' => ['Parent']],
+            'PLATEFORME' => ['label' => 'Administration plateforme', 'roles' => ['SUPER_ADMIN']],
+        ];
+
+        $rows = $this->db->select(
+            "SELECT r.name AS role_name,
+                    COUNT(*) AS created,
+                    SUM(CASE WHEN u.last_login IS NOT NULL THEN 1 ELSE 0 END) AS activated,
+                    SUM(CASE WHEN u.status <> 'ACTIVE' THEN 1 ELSE 0 END) AS suspended,
+                    SUM(CASE WHEN u.created_at >= :since THEN 1 ELSE 0 END) AS recent,
+                    SUM(CASE WHEN u.last_login IS NULL OR u.last_login < :stale THEN 1 ELSE 0 END) AS dormant
+             FROM users u
+             JOIN user_roles ur ON ur.user_id = u.id
+             JOIN roles r ON r.id = ur.role_id
+             WHERE u.deleted_at IS NULL
+             GROUP BY r.name",
+            [
+                'since' => date('Y-m-d H:i:s', strtotime('-30 days')),
+                'stale' => date('Y-m-d H:i:s', strtotime('-30 days')),
+            ]
+        );
+
+        $byRole = [];
+
+        foreach ($rows as $row) {
+            $byRole[(string) $row['role_name']] = $row;
+        }
+
+        $profiles = [];
+        $accountedRoles = [];
+
+        foreach ($groups as $code => $group) {
+            $totals = ['created' => 0, 'activated' => 0, 'suspended' => 0, 'recent' => 0, 'dormant' => 0];
+
+            foreach ($group['roles'] as $roleName) {
+                $accountedRoles[] = $roleName;
+
+                if (! isset($byRole[$roleName])) {
+                    continue;
+                }
+
+                foreach (array_keys($totals) as $key) {
+                    $totals[$key] += (int) $byRole[$roleName][$key];
+                }
+            }
+
+            $profiles[$code] = $totals + [
+                'code' => $code,
+                'label' => $group['label'],
+                'activation_rate' => $totals['created'] > 0
+                    ? round($totals['activated'] / $totals['created'] * 100, 1)
+                    : null,
+            ];
+        }
+
+        // Les roles hors nomenclature ne doivent pas disparaitre du compte :
+        // un total qui ne tombe pas juste fait douter de tout le tableau.
+        $others = ['created' => 0, 'activated' => 0, 'suspended' => 0, 'recent' => 0, 'dormant' => 0];
+
+        foreach ($byRole as $roleName => $row) {
+            if (in_array($roleName, $accountedRoles, true)) {
+                continue;
+            }
+
+            foreach (array_keys($others) as $key) {
+                $others[$key] += (int) $row[$key];
+            }
+        }
+
+        if ($others['created'] > 0) {
+            $profiles['AUTRES'] = $others + [
+                'code' => 'AUTRES',
+                'label' => 'Autres roles',
+                'activation_rate' => round($others['activated'] / $others['created'] * 100, 1),
+            ];
+        }
+
+        $withoutRole = (int) $this->db->scalar(
+            'SELECT COUNT(*) FROM users u
+             WHERE u.deleted_at IS NULL
+               AND NOT EXISTS (SELECT 1 FROM user_roles ur WHERE ur.user_id = u.id)'
+        );
+
+        $total = array_sum(array_column($profiles, 'created')) + $withoutRole;
+        $activated = array_sum(array_column($profiles, 'activated'));
+
+        return [
+            'profiles' => $profiles,
+            'withoutRole' => $withoutRole,
+            'total' => $total,
+            'activated' => $activated,
+            'activationRate' => $total > 0 ? round($activated / $total * 100, 1) : null,
+            'topTenants' => $this->db->select(
+                'SELECT t.name, t.code, COUNT(u.id) AS accounts
+                 FROM tenants t
+                 JOIN users u ON u.tenant_id = t.id AND u.deleted_at IS NULL
+                 WHERE t.deleted_at IS NULL
+                 GROUP BY t.id, t.name, t.code
+                 ORDER BY accounts DESC
+                 LIMIT 5'
+            ),
+        ];
+    }
+
+    /**
      * Variation en pourcentage entre deux periodes.
      *
      * Partir de zero n'a pas de variation calculable : mieux vaut ne rien

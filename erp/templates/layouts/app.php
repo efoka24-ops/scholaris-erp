@@ -24,6 +24,10 @@ $navigation = $onlyPlatform
         ['/admin', 'Tableau de bord', 'tenants:read', null],
         ['/admin/etablissements', 'Demandes d ouverture', 'tenants:read', null],
         ['/admin/parc', 'Parc d etablissements', 'tenants:read', null],
+        ['/admin/comptes', 'Comptes', 'tenants:read', null],
+        ['/admin/rapports', 'Rapports', 'tenants:read', null],
+        ['/admin/journal', 'Journal d audit', 'tenants:read', null],
+        ['/admin/habilitations', 'Habilitations', 'tenants:read', null],
         ['/admin/courriers', 'Courriers envoyes', 'tenants:read', null],
         ['/admin/maintenance', 'Maintenance', 'tenants:update', null],
     ]

@@ -29,6 +29,8 @@ use Scholaris\Controller\HrController;
 use Scholaris\Controller\LibraryController;
 use Scholaris\Controller\LogisticsController;
 use Scholaris\Controller\PlatformController;
+use Scholaris\Controller\PlatformReportController;
+use Scholaris\Controller\PlatformUserController;
 use Scholaris\Controller\SchoolLifeController;
 use Scholaris\Controller\PublicController;
 use Scholaris\Controller\AcademicYearController;
@@ -234,6 +236,23 @@ $router->post('/admin/parc/{id}/supprimer', [TenantAdminController::class, 'dest
 // promettre a un directeur des identifiants qu'il n'a jamais recus.
 $router->get('/admin/courriers', [TenantAdminController::class, 'notifications'], 'tenants:read');
 $router->post('/admin/courriers/{id}/reprendre', [TenantAdminController::class, 'retryNotification'], 'tenants:update');
+
+// Comptes, a l'echelle de la plateforme. Un directeur qui perd son mot de
+// passe, un depart a acter, un second administrateur a nommer : ce sont les
+// demandes les plus frequentes, et aucune n'etait possible sans ouvrir la base.
+$router->get('/admin/comptes', [PlatformUserController::class, 'index'], 'tenants:read');
+$router->get('/admin/comptes/creer', [PlatformUserController::class, 'createForm'], 'tenants:create');
+$router->post('/admin/comptes', [PlatformUserController::class, 'store'], 'tenants:create');
+$router->post('/admin/comptes/{id}/mot-de-passe', [PlatformUserController::class, 'resetPassword'], 'tenants:update');
+$router->post('/admin/comptes/{id}/desactiver', [PlatformUserController::class, 'deactivate'], 'tenants:update');
+$router->post('/admin/comptes/{id}/activer', [PlatformUserController::class, 'activate'], 'tenants:update');
+$router->post('/admin/comptes/{id}/deverrouiller', [PlatformUserController::class, 'unlock'], 'tenants:update');
+
+// Lecture du parc : comparatif, journal d'audit, habilitations.
+$router->get('/admin/rapports', [PlatformReportController::class, 'comparison'], 'tenants:read');
+$router->get('/admin/rapports/export', [PlatformReportController::class, 'comparisonCsv'], 'tenants:read');
+$router->get('/admin/journal', [PlatformReportController::class, 'auditLog'], 'tenants:read');
+$router->get('/admin/habilitations', [PlatformReportController::class, 'roles'], 'tenants:read');
 
 // Maintenance du schema. L'hebergement mutualise n'offre pas de shell
 // utilisable : sans cet ecran, une migration se remet a plus tard et le
