@@ -31,6 +31,7 @@ use Scholaris\Controller\LogisticsController;
 use Scholaris\Controller\PlatformController;
 use Scholaris\Controller\SchoolLifeController;
 use Scholaris\Controller\PublicController;
+use Scholaris\Controller\AcademicYearController;
 use Scholaris\Controller\SettingsController;
 use Scholaris\Controller\StudentController;
 use Scholaris\Http\Request;
@@ -191,6 +192,14 @@ $router->post('/exams/{id}/register', [ExamController::class, 'register'], 'exam
 $router->post('/exams/registrations/{id}', [ExamController::class, 'updateRegistration'], 'exams:register', 'exams.official');
 
 // Parametres de l etablissement : activation des fonctionnalites optionnelles.
+// Annee scolaire et periodes de saisie. Tout en depend : sans annee active
+// aucune inscription, sans periode ouverte ni note ni appel.
+$router->get('/annees-scolaires', [AcademicYearController::class, 'index'], 'academic-years:read');
+$router->post('/annees-scolaires', [AcademicYearController::class, 'store'], 'academic-years:create');
+$router->post('/annees-scolaires/{id}/activer', [AcademicYearController::class, 'activate'], 'academic-years:update');
+$router->post('/periodes/{id}/ouvrir', [AcademicYearController::class, 'openPeriod'], 'academic-years:update');
+$router->post('/periodes/{id}/fermer', [AcademicYearController::class, 'closePeriod'], 'academic-years:update');
+
 $router->get('/parametres', [SettingsController::class, 'index'], 'tenants:read');
 $router->post('/parametres', [SettingsController::class, 'save'], 'tenants:update');
 

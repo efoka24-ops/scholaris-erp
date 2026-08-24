@@ -48,6 +48,7 @@ $navigation = $onlyPlatform
         ['/hr', 'Personnel', 'hr:read', 'hr.payroll'],
         ['/communication', 'Communication', 'communications:read', null],
         ['/messages', 'Messagerie', 'internal-messages:read', null],
+        ['/annees-scolaires', 'Annee scolaire', 'academic-years:read', null],
         ['/parametres', 'Parametres', 'tenants:update', null],
     ];
 

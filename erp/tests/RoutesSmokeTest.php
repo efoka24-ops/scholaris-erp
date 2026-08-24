@@ -40,6 +40,7 @@ final class RoutesSmokeTest extends TestCase
         '/library',
         '/communication',
         '/messages',
+        '/annees-scolaires',
         '/parametres',
     ];
 
