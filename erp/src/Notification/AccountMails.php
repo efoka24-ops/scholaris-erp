@@ -191,4 +191,29 @@ final class AccountMails
 
         $this->mailer->send($directorEmail, $subject, $body, 'tenant', null, $tenantId);
     }
+
+    /** Reactivation d'un etablissement suspendu, adressee au(x) directeur(s). */
+    public function establishmentReactivated(string $directorEmail, string $directorName, string $establishmentName, string $tenantId): void
+    {
+        [$subject, $body] = $this->templates->render(
+            'tenant.reactivated',
+            [
+                'directorName' => $directorName,
+                'establishmentName' => $establishmentName,
+                'appName' => $this->appName,
+            ],
+            'Etablissement reactive - '.$establishmentName,
+            implode("\n", [
+                'Bonjour '.$directorName.',',
+                '',
+                $establishmentName.' est de nouveau actif sur '.$this->appName.'.',
+                '',
+                'Les comptes de l etablissement peuvent de nouveau se connecter.',
+                '',
+                $this->appName,
+            ])
+        );
+
+        $this->mailer->send($directorEmail, $subject, $body, 'tenant', null, $tenantId);
+    }
 }
