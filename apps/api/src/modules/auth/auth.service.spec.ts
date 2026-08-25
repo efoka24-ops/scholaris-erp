@@ -19,7 +19,7 @@ describe("AuthService", () => {
   let service: AuthService;
   let prisma: {
     user: { findFirst: jest.Mock; update: jest.Mock };
-    userRole: { findMany: jest.Mock };
+    userRole: { findMany: jest.Mock; count: jest.Mock };
   };
   let jwt: { signAsync: jest.Mock; verifyAsync: jest.Mock };
   let config: { get: jest.Mock; getOrThrow: jest.Mock };
@@ -30,12 +30,16 @@ describe("AuthService", () => {
     tenantId: "tenant-1",
     email: "admin@scholaris.dev",
     status: "ACTIVE",
+    failedLoginAttempts: 0,
+    lockedUntil: null,
+    mustChangePassword: false,
+    tenant: { id: "tenant-1", active: true },
   };
 
   beforeEach(() => {
     prisma = {
       user: { findFirst: jest.fn(), update: jest.fn() },
-      userRole: { findMany: jest.fn().mockResolvedValue([]) },
+      userRole: { findMany: jest.fn().mockResolvedValue([]), count: jest.fn().mockResolvedValue(0) },
     };
     jwt = {
       signAsync: jest.fn().mockResolvedValue("signed.jwt.token"),
@@ -61,7 +65,7 @@ describe("AuthService", () => {
       prisma.user.findFirst.mockResolvedValue({ ...baseUser, passwordHash });
       prisma.user.update.mockResolvedValue({});
 
-      const result = await service.login("admin@scholaris.dev", "ChangeMe123!");
+      const result = (await service.login("admin@scholaris.dev", "ChangeMe123!")) as import("./auth.service").TokenPair;
 
       expect(result.accessToken).toBe("signed.jwt.token");
       expect(result.refreshToken).toBe("signed.jwt.token");

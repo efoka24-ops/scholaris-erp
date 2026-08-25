@@ -7,6 +7,7 @@ import { PrismaService } from "../../prisma/prisma.service";
 import { AuditService } from "../audit/audit.service";
 import { SmtpMailService } from "../../common/mail/smtp-mail.service";
 import { CreateEstablishmentRequestDto } from "./dto/create-establishment-request.dto";
+import { createActivationToken } from "../../common/utils/activation-token.util";
 
 // Mentions communes (secondaire camerounais, avec bande Médiocre 08-10).
 const STANDARD_MENTIONS = [
@@ -112,9 +113,10 @@ function buildCredentialsEmail(params: {
   email: string;
   password: string;
   loginUrl: string;
+  activationUrl: string;
   supportEmail: string;
 }): { subject: string; html: string; text: string } {
-  const { firstName, lastName, name, code, email, password, loginUrl, supportEmail } = params;
+  const { firstName, lastName, name, code, email, password, loginUrl, activationUrl, supportEmail } = params;
   const subject = `SCHOLARIS — Accès à votre tableau de bord « ${name} »`;
   const html = `
     <p>Bonjour ${firstName} ${lastName},</p>
@@ -125,11 +127,12 @@ function buildCredentialsEmail(params: {
       <li><strong>Email</strong> : ${email}</li>
       <li><strong>Mot de passe temporaire</strong> : ${password}</li>
     </ul>
-    <p><strong>À la première connexion, changez immédiatement ce mot de passe</strong>
-    (menu Paramètres → Mon profil → Changer le mot de passe).</p>
+    <p><strong>Activez votre compte et choisissez votre mot de passe définitif</strong> via ce lien
+    (valable 72h) : <a href="${activationUrl}">${activationUrl}</a>. Le mot de passe temporaire
+    ci-dessus ne fonctionnera qu'après cette activation.</p>
     <h3>Guide de démarrage rapide</h3>
     <ol>
-      <li>Connectez-vous et changez votre mot de passe.</li>
+      <li>Activez votre compte et choisissez votre mot de passe.</li>
       <li>Configurez votre établissement : moteur de calcul, années académiques et périodes.</li>
       <li>Créez la structure pédagogique : cycles, niveaux, classes et matières (avec coefficients).</li>
       <li>Ajoutez vos enseignants et le personnel, puis attribuez les rôles.</li>
@@ -144,8 +147,8 @@ function buildCredentialsEmail(params: {
     `Bonjour ${firstName} ${lastName},\n\n` +
     `Votre établissement "${name}" (${code}) est activé sur SCHOLARIS.\n` +
     `Connexion : ${loginUrl}\nEmail : ${email}\nMot de passe temporaire : ${password}\n\n` +
-    `Changez ce mot de passe dès la première connexion (Paramètres → Mon profil).\n\n` +
-    `Guide rapide : 1) changez le mot de passe 2) configurez l'établissement (moteur de calcul, années, périodes) ` +
+    `Activez votre compte et choisissez votre mot de passe définitif (lien valable 72h) : ${activationUrl}\n\n` +
+    `Guide rapide : 1) activez votre compte et changez le mot de passe 2) configurez l'établissement (moteur de calcul, années, périodes) ` +
     `3) créez cycles/niveaux/classes/matières 4) ajoutez le personnel et les rôles 5) importez les élèves ` +
     `6) saisissez les notes, générez les bulletins, gérez les paiements.\n\n` +
     `En cas de difficulté, écrivez au Super Admin à ${supportEmail} en joignant une capture d'écran.\n— SCHOLARIS`;
@@ -162,9 +165,11 @@ export class EstablishmentRequestsService {
   ) {}
 
   /** Adresse de connexion + email de support pour les emails d'identifiants. */
-  private mailContext(): { loginUrl: string; supportEmail: string } {
+  private mailContext(): { loginUrl: string; publicUrl: string; supportEmail: string } {
+    const publicUrl = this.config.get<string>("APP_PUBLIC_URL") ?? "https://scholaris.cm";
     return {
-      loginUrl: `${this.config.get<string>("APP_PUBLIC_URL") ?? "https://scholaris.cm"}/login`,
+      loginUrl: `${publicUrl}/login`,
+      publicUrl,
       supportEmail:
         this.config.get<string>("SUPPORT_EMAIL") ??
         this.config.get<string>("SMTP_FROM_EMAIL") ??
@@ -251,7 +256,7 @@ export class EstablishmentRequestsService {
     const passwordHash = await bcrypt.hash(password, 10);
     const currentYear = new Date().getFullYear();
 
-    const tenantId = await this.prisma.$transaction(async (tx) => {
+    const created = await this.prisma.$transaction(async (tx) => {
       const tenant = await tx.tenant.create({
         data: {
           name: req.name,
@@ -286,6 +291,8 @@ export class EstablishmentRequestsService {
           lastName: req.directorLastName,
           phone: req.directorPhone,
           status: "ACTIVE",
+          // Chantier 1 : force le changement du mot de passe temporaire à l'activation.
+          mustChangePassword: true,
         },
       });
       await tx.userRole.create({ data: { userId: director.id, roleId: role.id } });
@@ -305,17 +312,19 @@ export class EstablishmentRequestsService {
         data: { requestStatus: "APPROVED", createdTenantId: tenant.id },
       });
 
-      return tenant.id;
+      return { tenantId: tenant.id, directorId: director.id };
     });
 
     await this.audit.log({
       action: "approve",
       resource: "establishment-requests",
       resourceId: req.id,
-      newValue: { tenantId, code: req.code },
+      newValue: { tenantId: created.tenantId, code: req.code },
     });
 
-    const { loginUrl, supportEmail } = this.mailContext();
+    const { loginUrl, publicUrl, supportEmail } = this.mailContext();
+    const activationToken = await createActivationToken(this.prisma, created.directorId);
+    const activationUrl = `${publicUrl}/activate?token=${activationToken}`;
     const emailResult = await this.mail.sendDetailed({
       to: req.directorEmail,
       ...buildCredentialsEmail({
@@ -326,6 +335,7 @@ export class EstablishmentRequestsService {
         email: req.directorEmail,
         password,
         loginUrl,
+        activationUrl,
         supportEmail,
       }),
     });
@@ -333,7 +343,7 @@ export class EstablishmentRequestsService {
     // Si l'email n'a pas pu partir, on renvoie le mot de passe temporaire pour que
     // le Super Admin puisse le communiquer manuellement au directeur, + la raison.
     return {
-      tenantId,
+      tenantId: created.tenantId,
       directorEmail: req.directorEmail,
       emailSent: emailResult.sent,
       ...(emailResult.sent ? {} : { emailError: emailResult.reason, temporaryPassword: password }),
@@ -359,11 +369,14 @@ export class EstablishmentRequestsService {
     const password = generatePassword();
     const passwordHash = await bcrypt.hash(password, 10);
     const affected = await this.prisma.$executeRaw`
-      UPDATE users SET password_hash = ${passwordHash}, updated_at = NOW()
+      UPDATE users SET password_hash = ${passwordHash}, must_change_password = true, updated_at = NOW()
       WHERE tenant_id = ${req.createdTenantId} AND email = ${req.directorEmail} AND deleted_at IS NULL`;
     if (affected === 0) {
       throw new NotFoundException("Compte directeur introuvable pour cet établissement");
     }
+    const director = await this.prisma.user.findFirst({
+      where: { tenantId: req.createdTenantId, email: req.directorEmail, deletedAt: null },
+    });
 
     await this.audit.log({
       action: "resend-credentials",
@@ -372,7 +385,9 @@ export class EstablishmentRequestsService {
       newValue: { tenantId: req.createdTenantId, directorEmail: req.directorEmail },
     });
 
-    const { loginUrl, supportEmail } = this.mailContext();
+    const { loginUrl, publicUrl, supportEmail } = this.mailContext();
+    const activationToken = director ? await createActivationToken(this.prisma, director.id) : null;
+    const activationUrl = `${publicUrl}/activate?token=${activationToken ?? ""}`;
     const emailResult = await this.mail.sendDetailed({
       to: req.directorEmail,
       ...buildCredentialsEmail({
@@ -383,6 +398,7 @@ export class EstablishmentRequestsService {
         email: req.directorEmail,
         password,
         loginUrl,
+        activationUrl,
         supportEmail,
       }),
     });

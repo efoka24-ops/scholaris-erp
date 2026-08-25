@@ -37,8 +37,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(
     async (email: string, password: string, mfaCode?: string) => {
-      await apiClient.post("/auth/login", { email, password, ...(mfaCode ? { mfaCode } : {}) });
+      const { data } = await apiClient.post("/auth/login", { email, password, ...(mfaCode ? { mfaCode } : {}) });
+
+      // Chantier 1 : mot de passe temporaire — redirection obligatoire, aucun /auth/me
+      // (le token restreint n'a aucune permission).
+      if (data?.requiresPasswordChange) {
+        router.push("/change-password-required");
+        return;
+      }
+
       await fetchMe();
+
+      // Chantier 3 : MFA non activé sur un rôle à privilèges → enrôlement forcé avant le dashboard.
+      if (data?.mfaSetupRequired) {
+        router.push("/mfa-setup");
+        return;
+      }
+
       router.push("/dashboard");
     },
     [fetchMe, router],

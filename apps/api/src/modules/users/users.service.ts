@@ -11,6 +11,7 @@ import { FindUsersQueryDto } from "./dto/find-users-query.dto";
 import * as bcrypt from "bcrypt";
 import * as crypto from "crypto";
 import { UserStatus } from "@scholaris/prisma";
+import { createActivationToken } from "../../common/utils/activation-token.util";
 
 @Injectable()
 export class UsersService {
@@ -196,6 +197,8 @@ export class UsersService {
             avatarUrl: dto.avatarUrl,
             status: dto.status || "ACTIVE",
             mfaEnabled: dto.mfaEnabled || false,
+            // Chantier 1 : compte créé avec mot de passe temporaire → changement forcé.
+            mustChangePassword: true,
           },
           select: {
             id: true,
@@ -391,7 +394,7 @@ export class UsersService {
    * forgot-password). Le mot de passe en clair est retourné une seule fois dans la
    * réponse pour être communiqué à l'utilisateur par l'administrateur.
    */
-  async resetPassword(id: string, tenantId: string): Promise<{ temporaryPassword: string }> {
+  async resetPassword(id: string, tenantId: string): Promise<{ temporaryPassword: string; activationToken: string }> {
     const user = await this.prisma.user.findFirst({ where: { id, tenantId, deletedAt: null } });
     if (!user) {
       throw new NotFoundException(`User ${id} not found`);
@@ -406,10 +409,15 @@ export class UsersService {
         passwordHash,
         failedLoginAttempts: 0,
         lockedUntil: null,
+        // Chantier 1 : réinitialisation admin → changement forcé au prochain login.
+        mustChangePassword: true,
       },
     });
 
-    return { temporaryPassword };
+    // Chantier 1 : lien d'activation à durée limitée à communiquer avec le mot de passe temporaire.
+    const activationToken = await createActivationToken(this.prisma, user.id);
+
+    return { temporaryPassword, activationToken };
   }
 
   async assignRoles(userId: string, roleIds: string[], tenantId: string) {

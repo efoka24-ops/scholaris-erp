@@ -7,6 +7,7 @@ import { LoginDto } from "./dto/login.dto";
 import { MfaVerifyDto } from "./dto/mfa-verify.dto";
 import { RefreshTokenDto } from "./dto/refresh-token.dto";
 import { ChangePasswordDto } from "./dto/change-password.dto";
+import { ActivateAccountDto } from "./dto/activate-account.dto";
 import { AuthenticatedUser } from "./jwt-payload.interface";
 
 @ApiTags("auth")
@@ -43,6 +44,14 @@ export class AuthController {
   @ApiOperation({ summary: "Change le mot de passe de l'utilisateur connecté (tous rôles)" })
   changePassword(@Body() dto: ChangePasswordDto, @CurrentUser() user: AuthenticatedUser) {
     return this.authService.changePassword(user.userId, dto.currentPassword, dto.newPassword);
+  }
+
+  @Public()
+  @Post("activate")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: "Consomme un lien d'activation (token) et retourne un token restreint pour changer le mot de passe" })
+  activate(@Body() dto: ActivateAccountDto) {
+    return this.authService.activateAccount(dto.token);
   }
 
   @Post("mfa/enable")
