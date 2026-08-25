@@ -44,6 +44,7 @@ $navigation = $onlyPlatform
         ['/grades', 'Notes', 'grades:read', null],
         ['/bulletins', 'Bulletins', 'bulletins:read', null],
         ['/discipline', 'Discipline', 'discipline:read', 'life.discipline'],
+        ['/course-log', 'Cahier de textes', 'course-log:read', 'life.textbook'],
         ['/exams', 'Examens officiels', 'exams:read', 'exams.official'],
         ['/finance', 'Finance', 'finance-dashboard:read', 'finance.fees'],
         ['/finance/invoices', 'Factures', 'invoices:read', 'finance.payments'],

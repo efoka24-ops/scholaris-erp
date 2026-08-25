@@ -32,6 +32,7 @@ use Scholaris\Controller\PlatformController;
 use Scholaris\Controller\PlatformReportController;
 use Scholaris\Controller\PlatformUserController;
 use Scholaris\Controller\SchoolLifeController;
+use Scholaris\Controller\CourseLogController;
 use Scholaris\Controller\PublicController;
 use Scholaris\Controller\AcademicYearController;
 use Scholaris\Controller\MaintenanceController;
@@ -172,6 +173,11 @@ $router->post('/attendance/{classroom}', [SchoolLifeController::class, 'storeAtt
 // Module 11 : discipline
 $router->get('/discipline', [SchoolLifeController::class, 'discipline'], 'discipline:read', 'life.discipline');
 $router->post('/discipline', [SchoolLifeController::class, 'storeIncident'], 'discipline:create', 'life.discipline');
+
+// Module 8bis : cahier de textes numerique
+$router->get('/course-log', [CourseLogController::class, 'index'], 'course-log:read', 'life.textbook');
+$router->post('/course-log', [CourseLogController::class, 'store'], 'course-log:create', 'life.textbook');
+$router->post('/course-log/{id}', [CourseLogController::class, 'update'], 'course-log:update', 'life.textbook');
 
 // Module 12 : sante scolaire
 $router->get('/health', [HealthController::class, 'index'], 'health:read', 'life.health');
