@@ -60,6 +60,9 @@ final class Seeder
         $this->seedSuperAdmin($superAdminEmail, $superAdminPassword);
         $report[] = 'super admin '.$superAdminEmail.' (hors etablissement)';
 
+        $templateCount = $this->seedSystemTemplates();
+        $report[] = $templateCount.' modeles de communication systeme';
+
         if (! $withDemoTenant) {
             return $report;
         }
@@ -170,6 +173,103 @@ final class Seeder
                 ['role' => $roleId, 'permission' => $permissionId]
             );
         }
+    }
+
+    /**
+     * Modeles systeme (tenant_id NULL), repli commun a tous les
+     * etablissements. Charges une seule fois : un Super Admin peut ensuite
+     * les personnaliser depuis /communication sans qu'un re-seed les ecrase.
+     */
+    private function seedSystemTemplates(): int
+    {
+        $templates = [
+            [
+                'code' => 'account.created',
+                'name' => 'Compte cree',
+                'channel' => 'EMAIL',
+                'subject_fr' => 'Votre acces {{appName}}',
+                'body_fr' => "Bonjour {{name}},\n\nUn acces vous a ete ouvert sur {{appName}}.\n\n".
+                    "Adresse : {{loginUrl}}\nIdentifiant : {{email}}\nMot de passe provisoire : {{password}}\n\n".
+                    "Changez ce mot de passe des votre premiere connexion.\n\n{{appName}}",
+            ],
+            [
+                'code' => 'billing.overdue',
+                'name' => 'Relance impaye',
+                'channel' => 'EMAIL',
+                'subject_fr' => 'Facture en retard - {{studentName}}',
+                'body_fr' => "Bonjour {{parentName}},\n\nLa scolarite de {{studentName}} presente un solde impaye ".
+                    "depuis le {{dueDate}}, pour un montant de {{amountDue}}.\n\n".
+                    "Merci de regulariser aupres de l etablissement des que possible.\n\n{{appName}}",
+            ],
+            [
+                'code' => 'attendance.absence',
+                'name' => 'Absence signalee',
+                'channel' => 'EMAIL',
+                'subject_fr' => 'Absence signalee - {{studentName}}',
+                'body_fr' => "Bonjour {{parentName}},\n\n{{studentName}} a ete signale(e) \"{{status}}\" le {{date}}.\n\n".
+                    "Contactez l etablissement si cette absence n est pas justifiee.\n\n{{appName}}",
+            ],
+            [
+                'code' => 'discipline.incident',
+                'name' => 'Incident disciplinaire',
+                'channel' => 'EMAIL',
+                'subject_fr' => 'Incident disciplinaire - {{studentName}}',
+                'body_fr' => "Bonjour {{parentName}},\n\nUn incident disciplinaire concernant {{studentName}} a ete ".
+                    "enregistre le {{date}} ({{type}}).\n\nL etablissement reste a votre disposition pour en discuter.\n\n{{appName}}",
+            ],
+            [
+                'code' => 'tenant.suspended',
+                'name' => 'Suspension etablissement',
+                'channel' => 'EMAIL',
+                'subject_fr' => 'Etablissement suspendu - {{establishmentName}}',
+                'body_fr' => "Bonjour {{directorName}},\n\n{{establishmentName}} a ete suspendu sur {{appName}}.\n\n".
+                    "Motif : {{reason}}\n\nAucun compte de l etablissement ne peut plus se connecter tant que la ".
+                    "suspension n est pas levee. Contactez l administration de la plateforme pour la regulariser.\n\n{{appName}}",
+            ],
+            [
+                'code' => 'tenant.reactivated',
+                'name' => 'Reactivation etablissement',
+                'channel' => 'EMAIL',
+                'subject_fr' => 'Etablissement reactive - {{establishmentName}}',
+                'body_fr' => "Bonjour {{directorName}},\n\n{{establishmentName}} est de nouveau actif sur {{appName}}.\n\n".
+                    "Les comptes de l etablissement peuvent de nouveau se connecter.\n\n{{appName}}",
+            ],
+        ];
+
+        $count = 0;
+
+        foreach ($templates as $template) {
+            $exists = $this->db->scalar(
+                'SELECT id FROM communication_templates WHERE tenant_id IS NULL AND code = :code',
+                ['code' => $template['code']]
+            );
+
+            if ($exists !== null) {
+                continue;
+            }
+
+            $now = $this->now();
+
+            $this->db->execute(
+                'INSERT INTO communication_templates
+                    (id, tenant_id, code, name, channel, subject_fr, body_fr, created_at, updated_at)
+                 VALUES (:id, NULL, :code, :name, :channel, :subject_fr, :body_fr, :created_at, :updated_at)',
+                [
+                    'id' => Table::uuid(),
+                    'code' => $template['code'],
+                    'name' => $template['name'],
+                    'channel' => $template['channel'],
+                    'subject_fr' => $template['subject_fr'],
+                    'body_fr' => $template['body_fr'],
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ]
+            );
+
+            $count++;
+        }
+
+        return $count;
     }
 
     private function seedTenant(string $code, string $name): string

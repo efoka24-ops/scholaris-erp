@@ -211,6 +211,7 @@ $router->post('/hr/leaves/{id}', [HrController::class, 'decideLeave'], 'hr:updat
 $router->get('/communication', [CommunicationController::class, 'index'], 'communications:read');
 $router->post('/communication/send', [CommunicationController::class, 'send'], 'communications:create');
 $router->post('/communication/templates', [CommunicationController::class, 'storeTemplate'], 'communication-templates:create');
+$router->post('/communication/system-templates', [CommunicationController::class, 'storeSystemTemplate'], 'communication-templates:create');
 $router->get('/messages', [CommunicationController::class, 'inbox'], 'internal-messages:read');
 
 // Examens officiels

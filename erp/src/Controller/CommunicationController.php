@@ -35,8 +35,19 @@ final class CommunicationController extends Controller
             ['tenant' => $this->app->tenant()->requireId()]
         );
 
+        $isSuperAdmin = $this->app->rbac()->isSuperAdmin();
+
         return $this->view('communication.index', [
             'templates' => $this->table('communication_templates')->orderBy('name')->get(),
+            // Les modeles systeme (tenant_id NULL) servent de repli a tous les
+            // etablissements : seul le Super Admin doit pouvoir les consulter
+            // et les modifier ici, jamais un administrateur d'ecole.
+            'systemTemplates' => $isSuperAdmin
+                ? $this->app->db()->select(
+                    'SELECT * FROM communication_templates WHERE tenant_id IS NULL ORDER BY name'
+                )
+                : [],
+            'isSuperAdmin' => $isSuperAdmin,
             'messages' => $messages,
             'pending' => count(array_filter($messages, static fn (array $m): bool => $m['status'] === 'PENDING')),
             'channels' => self::CHANNELS,
@@ -79,6 +90,82 @@ final class CommunicationController extends Controller
         $this->table('communication_templates')->insert($data);
 
         return $this->redirectWithSuccess('/communication', 'Modele enregistre.');
+    }
+
+    /**
+     * Cree ou met a jour un modele systeme (tenant_id NULL), reserve au Super
+     * Admin. C'est ce modele que SystemTemplates::render() sert de repli a
+     * tous les etablissements tant qu'aucun modele local ne le remplace.
+     */
+    public function storeSystemTemplate(Request $request): Response
+    {
+        if (! $this->app->rbac()->isSuperAdmin()) {
+            return $this->redirectWithError('/communication', 'Reserve au Super Admin.');
+        }
+
+        $validator = (new Validator($request))
+            ->required('code', 'code')
+            ->required('name', 'nom')
+            ->in('channel', 'canal', self::CHANNELS)
+            ->required('body_fr', 'message en francais')
+            ->optional('subject_fr')
+            ->optional('subject_en')
+            ->optional('body_en');
+
+        if ($validator->fails()) {
+            $this->app->session()->flashInput($request->all());
+
+            return $this->redirectWithError('/communication', implode(' ', $validator->errors()));
+        }
+
+        $data = $validator->only(['code', 'name', 'channel', 'body_fr', 'subject_fr', 'subject_en', 'body_en']);
+        $now = date('Y-m-d H:i:s');
+
+        $existing = $this->app->db()->selectOne(
+            'SELECT id FROM communication_templates WHERE tenant_id IS NULL AND code = :code',
+            ['code' => $data['code']]
+        );
+
+        if ($existing !== null) {
+            $this->app->db()->execute(
+                'UPDATE communication_templates
+                 SET name = :name, channel = :channel, subject_fr = :subject_fr, subject_en = :subject_en,
+                     body_fr = :body_fr, body_en = :body_en, updated_at = :updated_at
+                 WHERE id = :id',
+                [
+                    'name' => $data['name'],
+                    'channel' => $data['channel'],
+                    'subject_fr' => $data['subject_fr'],
+                    'subject_en' => $data['subject_en'],
+                    'body_fr' => $data['body_fr'],
+                    'body_en' => $data['body_en'],
+                    'updated_at' => $now,
+                    'id' => $existing['id'],
+                ]
+            );
+
+            return $this->redirectWithSuccess('/communication', 'Modele systeme mis a jour.');
+        }
+
+        $this->app->db()->execute(
+            'INSERT INTO communication_templates
+                (id, tenant_id, code, name, channel, subject_fr, subject_en, body_fr, body_en, created_at, updated_at)
+             VALUES (:id, NULL, :code, :name, :channel, :subject_fr, :subject_en, :body_fr, :body_en, :created_at, :updated_at)',
+            [
+                'id' => \Scholaris\Database\Table::uuid(),
+                'code' => $data['code'],
+                'name' => $data['name'],
+                'channel' => $data['channel'],
+                'subject_fr' => $data['subject_fr'],
+                'subject_en' => $data['subject_en'],
+                'body_fr' => $data['body_fr'],
+                'body_en' => $data['body_en'],
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]
+        );
+
+        return $this->redirectWithSuccess('/communication', 'Modele systeme cree.');
     }
 
     /**

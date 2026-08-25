@@ -4,6 +4,8 @@
  *
  * @var \Scholaris\View\View $this
  * @var array<int, array<string, mixed>> $templates
+ * @var array<int, array<string, mixed>> $systemTemplates
+ * @var bool $isSuperAdmin
  * @var array<int, array<string, mixed>> $messages
  * @var array<int, array<string, mixed>> $recipients
  * @var int $pending
@@ -170,4 +172,73 @@ $value = static fn (string $key): string => (string) ($old[$key] ?? '');
             </tbody>
         </table>
     </div>
+<?php endif; ?>
+
+<?php if ($isSuperAdmin) : ?>
+    <div class="alert">
+        Modeles systeme (Super Admin) : servent de repli a tous les
+        etablissements tant qu aucun modele local ne les remplace. Le code
+        doit correspondre a celui attendu par l application (account.created,
+        billing.overdue, attendance.absence, discipline.incident,
+        tenant.suspended, tenant.reactivated...).
+    </div>
+
+    <form method="post" action="/communication/system-templates" class="card">
+        <input type="hidden" name="_token" value="<?= $this->e($csrfToken) ?>">
+        <h2>Creer / mettre a jour un modele systeme</h2>
+
+        <div class="grid-2">
+            <div class="field">
+                <label for="sys_code">Code *</label>
+                <input id="sys_code" name="code" required placeholder="billing.overdue">
+            </div>
+            <div class="field">
+                <label for="sys_name">Nom *</label>
+                <input id="sys_name" name="name" required placeholder="Relance impaye">
+            </div>
+            <div class="field">
+                <label for="sys_channel">Canal *</label>
+                <select id="sys_channel" name="channel" required>
+                    <?php foreach ($channels as $channel) : ?>
+                        <option value="<?= $this->e($channel) ?>"><?= $this->e($channelLabels[$channel] ?? $channel) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="field">
+                <label for="sys_subject_fr">Objet (francais)</label>
+                <input id="sys_subject_fr" name="subject_fr">
+            </div>
+        </div>
+
+        <div class="field">
+            <label for="sys_body_fr">Message en francais *</label>
+            <textarea id="sys_body_fr" name="body_fr" rows="3" required></textarea>
+        </div>
+
+        <div class="field">
+            <label for="sys_body_en">Message en anglais</label>
+            <textarea id="sys_body_en" name="body_en" rows="3"></textarea>
+        </div>
+
+        <button type="submit" class="button">Enregistrer le modele systeme</button>
+    </form>
+
+    <?php if ($systemTemplates !== []) : ?>
+        <div class="card">
+            <h2>Modeles systeme existants</h2>
+            <table class="table">
+                <thead><tr><th>Code</th><th>Nom</th><th>Canal</th><th>Bilingue</th></tr></thead>
+                <tbody>
+                <?php foreach ($systemTemplates as $template) : ?>
+                    <tr>
+                        <td class="font-mono"><?= $this->e($template['code']) ?></td>
+                        <td><?= $this->e($template['name']) ?></td>
+                        <td><span class="badge"><?= $this->e($channelLabels[$template['channel']] ?? $template['channel']) ?></span></td>
+                        <td><?= $template['body_en'] ? 'oui' : 'francais seulement' ?></td>
+                    </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+    <?php endif; ?>
 <?php endif; ?>
