@@ -83,6 +83,44 @@ final class StudentController extends Controller
         ]);
     }
 
+    /**
+     * Certificat de scolarite imprimable : la demande la plus frequente du
+     * secretariat, jusqu'ici absente de l'application.
+     */
+    public function certificate(Request $request): Response
+    {
+        $student = $this->findOrFail('students', (string) $request->attribute('id'));
+
+        $enrollment = $this->app->db()->selectOne(
+            'SELECT e.*, c.name AS classroom_name, y.label AS year_label
+             FROM enrollments e
+             INNER JOIN classrooms c ON c.id = e.classroom_id
+             INNER JOIN academic_years y ON y.id = e.academic_year_id
+             WHERE e.student_id = :student AND e.tenant_id = :tenant AND e.status = :status AND e.deleted_at IS NULL
+             ORDER BY e.enrollment_date DESC LIMIT 1',
+            ['student' => $student['id'], 'tenant' => $this->app->tenant()->requireId(), 'status' => 'ACTIVE']
+        );
+
+        if ($enrollment === null) {
+            return $this->redirectWithError(
+                '/students/'.$student['id'],
+                'Aucune inscription active : impossible de generer un certificat de scolarite.'
+            );
+        }
+
+        $tenantRow = $this->app->db()->selectOne(
+            'SELECT name FROM tenants WHERE id = :id',
+            ['id' => $this->app->tenant()->requireId()]
+        );
+
+        return $this->view('students.certificate', [
+            'student' => $student,
+            'enrollment' => $enrollment,
+            'tenantName' => $tenantRow['name'] ?? '',
+            'issuedAt' => date('Y-m-d'),
+        ]);
+    }
+
     public function create(Request $request): Response
     {
         return $this->view('students.form', [

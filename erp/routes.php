@@ -114,6 +114,7 @@ $router->get('/students', [StudentController::class, 'index'], 'students:read');
 $router->get('/students/create', [StudentController::class, 'create'], 'students:create');
 $router->post('/students', [StudentController::class, 'store'], 'students:create');
 $router->get('/students/{id}', [StudentController::class, 'show'], 'students:read');
+$router->get('/students/{id}/certificate', [StudentController::class, 'certificate'], 'students:read');
 $router->get('/students/{id}/edit', [StudentController::class, 'edit'], 'students:update');
 $router->post('/students/{id}', [StudentController::class, 'update'], 'students:update');
 $router->post('/students/{id}/delete', [StudentController::class, 'destroy'], 'students:update');
