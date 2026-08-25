@@ -10,6 +10,7 @@
  * @var string|null $error
  * @var array<string, mixed> $old
  * @var string $csrfToken
+ * @var string|null $flashSuccess
  */
 $title = 'Connexion';
 
@@ -115,6 +116,10 @@ $demoAccounts = [
                 <p class="login__sub">Accedez a votre espace SCHOLARIS ERP.</p>
             </div>
 
+            <?php if (($flashSuccess ?? null) !== null) : ?>
+                <div class="alert alert--success" role="status"><?= $this->e($flashSuccess) ?></div>
+            <?php endif; ?>
+
             <?php if ($error !== null) : ?>
                 <div class="alert alert--error" role="alert"><?= $this->e($error) ?></div>
             <?php endif; ?>
@@ -134,6 +139,14 @@ $demoAccounts = [
                     <input class="inp" id="password" name="password" type="password" required
                            autocomplete="current-password" placeholder="••••••••••••">
                 </div>
+
+                <?php if (($mfaRequired ?? false) === true) : ?>
+                    <div class="field">
+                        <label for="totp_code">Code de double authentification</label>
+                        <input class="inp" id="totp_code" name="totp_code" type="text" inputmode="numeric"
+                               autocomplete="one-time-code" placeholder="123456" maxlength="6">
+                    </div>
+                <?php endif; ?>
 
                 <div class="field">
                     <label for="tenant_code">Code etablissement (si demande)</label>

@@ -51,6 +51,11 @@ $router->guest('GET', '/', [PublicController::class, 'home']);
 $router->guest('GET', '/login', [AuthController::class, 'showLogin']);
 $router->guest('POST', '/login', [AuthController::class, 'login']);
 
+// Activation d'un compte cree par un tiers (etablissement, plateforme) : le
+// titulaire choisit lui-meme son mot de passe via un lien a duree limitee.
+$router->guest('GET', '/activation/{token}', [AuthController::class, 'showActivate']);
+$router->guest('POST', '/activation/{token}', [AuthController::class, 'activate']);
+
 // Pre-inscription en ligne : un parent depose un dossier sans avoir de compte.
 $router->guest('GET', '/pre-inscription', [PublicController::class, 'preEnrollmentForm']);
 $router->guest('POST', '/pre-inscription', [PublicController::class, 'submitPreEnrollment']);
@@ -91,6 +96,10 @@ $router->guest('GET', '/up', static function (Request $request, Application $app
 // --- Espace authentifie ---------------------------------------------------
 
 $router->post('/logout', [AuthController::class, 'logout']);
+
+// Changement de mot de passe obligatoire apres un mot de passe provisoire.
+$router->get('/mot-de-passe/changer', [AuthController::class, 'showChangePassword']);
+$router->post('/mot-de-passe/changer', [AuthController::class, 'changePassword']);
 
 $router->get('/dashboard', [DashboardController::class, 'index']);
 

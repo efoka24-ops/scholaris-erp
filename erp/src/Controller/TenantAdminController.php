@@ -175,6 +175,8 @@ final class TenantAdminController extends Controller
 
         $this->audit('tenant.create', $result['tenant_id'], $request->ip());
 
+        $activationToken = $this->app->accountActivation()->issue($result['user_id']);
+
         $this->app->establishmentMails()->approved(
             [
                 'id' => $result['tenant_id'],
@@ -184,7 +186,8 @@ final class TenantAdminController extends Controller
                 'director_email' => $email,
             ],
             $result['password'],
-            $result['tenant_id']
+            $result['tenant_id'],
+            $activationToken
         );
 
         return $this->view('platform.tenant-created', [

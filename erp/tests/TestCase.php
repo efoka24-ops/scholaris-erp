@@ -171,6 +171,15 @@ abstract class TestCase
     /** Ouvre une session applicative pour l'utilisateur donne. */
     protected function actingAs(string $userId): void
     {
+        // Ce raccourci simule une session deja etablie, pas une premiere
+        // connexion : les tests qui veulent le parcours de premiere connexion
+        // passent par /login, pas par actingAs(). Le mot de passe provisoire
+        // ne doit donc pas bloquer les requetes qui suivent.
+        $this->db->execute(
+            'UPDATE users SET must_change_password = 0 WHERE id = :id',
+            ['id' => $userId]
+        );
+
         $user = $this->db->selectOne('SELECT * FROM users WHERE id = :id', ['id' => $userId]);
 
         if ($user === null) {
@@ -190,6 +199,12 @@ abstract class TestCase
 
         $this->app->auth()->restore();
         $this->app->rbac()->reset();
+
+        // Meme logique que pour must_change_password : ce raccourci simule
+        // une session en cours, pas l'instant de la connexion ou l'ecran
+        // d'enrolement MFA se propose. Les tests dedies a cet ecran l'atteignent
+        // explicitement via /mfa/enroler.
+        $_SESSION['mfa_enroll_dismissed'] = true;
     }
 
     /**

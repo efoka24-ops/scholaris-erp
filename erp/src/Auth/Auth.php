@@ -43,7 +43,7 @@ final class Auth
      *
      * @return array{ok: bool, error?: string}
      */
-    public function attempt(string $email, string $password, ?string $tenantCode, ?string $ip): array
+    public function attempt(string $email, string $password, ?string $tenantCode, ?string $ip, ?string $totpCode = null): array
     {
         $user = $this->findUser($email, $tenantCode);
 
@@ -74,9 +74,24 @@ final class Auth
             ];
         }
 
+        // Le mot de passe est correct, mais un compte a double authentification
+        // active doit encore prouver la possession de son appareil : le code
+        // est verifie avant que la session ne s'ouvre.
+        if ((bool) ($user['mfa_enabled'] ?? false)) {
+            if ($totpCode === null || $totpCode === '') {
+                return ['ok' => false, 'mfa_required' => true, 'error' => 'Saisissez le code de votre application d authentification.'];
+            }
+
+            if (! Totp::verify((string) $user['mfa_secret'], $totpCode)) {
+                $this->registerFailure($user);
+
+                return ['ok' => false, 'mfa_required' => true, 'error' => 'Code de double authentification incorrect.'];
+            }
+        }
+
         $this->completeLogin($user, $ip);
 
-        return ['ok' => true];
+        return ['ok' => true, 'mfa_enroll_required' => $this->isPrivilegedRole((string) $user['id']) && ! (bool) ($user['mfa_enabled'] ?? false)];
     }
 
     /**
@@ -249,6 +264,57 @@ final class Auth
         return $this->user !== null && ($this->user['tenant_id'] ?? null) === null;
     }
 
+    /**
+     * Le compte doit-il changer son mot de passe avant toute autre action ?
+     *
+     * Vrai pour un mot de passe provisoire jamais renouvele : la session
+     * s'ouvre normalement, mais reste cantonnee a l'ecran de changement tant
+     * que ce drapeau n'est pas leve.
+     */
+    public function mustChangePassword(): bool
+    {
+        return $this->user !== null && (bool) ($this->user['must_change_password'] ?? false);
+    }
+
+    /**
+     * Le compte a-t-il un role a privileges (Super Admin, Directeur) pour
+     * lequel la double authentification doit etre proposee, puis exigee ?
+     */
+    public function requiresMfa(): bool
+    {
+        return $this->user !== null && (bool) ($this->user['mfa_enabled'] ?? false);
+    }
+
+    /**
+     * Le compte connecte tient-il un role a privileges (Super Admin,
+     * Directeur) sans avoir encore active la double authentification ?
+     *
+     * La connexion n'est pas bloquee pour autant : l'ecran d'enrolement est
+     * propose, pas impose au premier abord, faute de quoi un directeur sans
+     * telephone sous la main resterait dehors.
+     */
+    public function needsMfaEnrollment(): bool
+    {
+        if ($this->user === null || (bool) ($this->user['mfa_enabled'] ?? false)) {
+            return false;
+        }
+
+        return $this->isPrivilegedRole((string) $this->user['id']);
+    }
+
+    /** Super Admin et Directeur : les deux roles dont la compromission engage tout un etablissement, ou plus. */
+    private function isPrivilegedRole(string $userId): bool
+    {
+        $count = $this->db->scalar(
+            "SELECT COUNT(*) FROM user_roles ur
+             INNER JOIN roles r ON r.id = ur.role_id
+             WHERE ur.user_id = :id AND r.name IN ('SUPER_ADMIN', 'Directeur')",
+            ['id' => $userId]
+        );
+
+        return (int) $count > 0;
+    }
+
     public function check(): bool
     {
         return $this->user !== null;
@@ -265,6 +331,26 @@ final class Auth
     public function id(): ?string
     {
         return isset($this->user['id']) ? (string) $this->user['id'] : null;
+    }
+
+    /**
+     * Recharge le compte connecte depuis la base.
+     *
+     * Appele apres une modification du compte lui-meme (changement de mot de
+     * passe, activation de la double authentification) : sans cela, la copie
+     * en memoire resterait perimee pour le reste de la requete.
+     */
+    public function refresh(): void
+    {
+        if ($this->user === null) {
+            return;
+        }
+
+        $user = $this->db->selectOne('SELECT * FROM users WHERE id = :id', ['id' => $this->user['id']]);
+
+        if ($user !== null) {
+            $this->user = $user;
+        }
     }
 
     public function logout(): void
