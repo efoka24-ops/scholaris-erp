@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Scholaris\Controller;
 
 use Scholaris\Auth\Auth;
+use Scholaris\Auth\Totp;
 use Scholaris\Http\Request;
 use Scholaris\Http\Response;
 
@@ -180,6 +181,82 @@ final class AuthController extends Controller
         $this->app->accountActivation()->consume((string) $row['id']);
 
         return $this->redirectWithSuccess('/login', 'Votre mot de passe est defini, vous pouvez vous connecter.');
+    }
+
+    /**
+     * Ecran d'enrolement TOTP : un secret est genere (ou repris de la session
+     * s'il en existe deja un en attente de confirmation, pour eviter d'en
+     * generer un nouveau a chaque rechargement de page) et affiche avec son
+     * URL otpauth://, mais rien n'est ecrit en base tant que le code n'a pas
+     * ete verifie.
+     */
+    public function showMfaEnroll(Request $request): Response
+    {
+        $user = $this->app->auth()->user();
+
+        if ($user === null) {
+            return $this->redirect('/login');
+        }
+
+        $secret = $this->app->session()->get('mfa_pending_secret');
+
+        if (! is_string($secret) || $secret === '') {
+            $secret = Totp::generateSecret();
+            $this->app->session()->set('mfa_pending_secret', $secret);
+        }
+
+        $uri = Totp::provisioningUri($secret, (string) $user['email'], $this->app->env()->get('APP_NAME', 'SCHOLARIS'));
+
+        return $this->view('auth.mfa-enroll', [
+            'secret' => $secret,
+            'provisioningUri' => $uri,
+            'error' => $this->app->session()->pullFlash('mfa_enroll_error'),
+        ]);
+    }
+
+    /**
+     * Confirme l'enrolement : le code saisi doit correspondre au secret
+     * genere a l'etape precedente pour prouver que l'application a bien ete
+     * configuree, avant que mfa_enabled ne passe a vrai.
+     */
+    public function enrollMfa(Request $request): Response
+    {
+        $user = $this->app->auth()->user();
+        $secret = $this->app->session()->get('mfa_pending_secret');
+
+        if ($user === null || ! is_string($secret) || $secret === '') {
+            return $this->redirect('/mfa/enroler');
+        }
+
+        $code = $request->string('totp_code');
+
+        if (! Totp::verify($secret, $code)) {
+            $this->app->session()->flash('mfa_enroll_error', 'Code incorrect. Reessayez avec le code affiche actuellement dans votre application.');
+
+            return $this->redirect('/mfa/enroler');
+        }
+
+        $this->app->db()->execute(
+            'UPDATE users SET mfa_enabled = 1, mfa_secret = :secret, updated_at = :updated_at WHERE id = :id',
+            ['secret' => $secret, 'updated_at' => date('Y-m-d H:i:s'), 'id' => $user['id']]
+        );
+
+        $this->app->session()->forget('mfa_pending_secret');
+        $this->app->auth()->refresh();
+
+        return $this->redirectWithSuccess('/dashboard', 'Double authentification activee.');
+    }
+
+    /**
+     * Reporte l'enrolement : l'utilisateur ne sera plus reoriente vers cet
+     * ecran pour le reste de sa session, mais y sera a nouveau invite a sa
+     * prochaine connexion.
+     */
+    public function dismissMfaEnroll(Request $request): Response
+    {
+        $this->app->session()->set('mfa_enroll_dismissed', true);
+
+        return $this->redirect('/dashboard');
     }
 
     private function emailIsAmbiguous(string $email): bool

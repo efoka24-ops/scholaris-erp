@@ -101,6 +101,11 @@ $router->post('/logout', [AuthController::class, 'logout']);
 $router->get('/mot-de-passe/changer', [AuthController::class, 'showChangePassword']);
 $router->post('/mot-de-passe/changer', [AuthController::class, 'changePassword']);
 
+// Double authentification (TOTP), proposee aux roles a privileges.
+$router->get('/mfa/enroler', [AuthController::class, 'showMfaEnroll']);
+$router->post('/mfa/enroler', [AuthController::class, 'enrollMfa']);
+$router->post('/mfa/enroler/plus-tard', [AuthController::class, 'dismissMfaEnroll']);
+
 $router->get('/dashboard', [DashboardController::class, 'index']);
 
 // Module 4 : eleves
