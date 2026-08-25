@@ -254,6 +254,8 @@ final class Seeder
             'chef-departement@demo.scholaris.cm' => ['Chef de département', 'Charles', 'Departement'],
             'enseignant@demo.scholaris.cm' => ['Enseignant', 'Estelle', 'Enseignant'],
             'intendant@demo.scholaris.cm' => ['Intendant', 'Ibrahim', 'Intendant'],
+            'comptable@demo.scholaris.cm' => ['Comptable', 'Colette', 'Comptable'],
+            'surveillant-general@demo.scholaris.cm' => ['Surveillant général', 'Serge', 'Surveillant'],
             'secretaire@demo.scholaris.cm' => ['Secrétaire', 'Sandrine', 'Secretaire'],
             'infirmier@demo.scholaris.cm' => ['Infirmier(ère)', 'Ines', 'Infirmier'],
             'bibliothecaire@demo.scholaris.cm' => ['Bibliothécaire', 'Bertrand', 'Bibliothecaire'],
