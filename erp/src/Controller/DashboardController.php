@@ -104,7 +104,137 @@ final class DashboardController extends Controller
                 ->notDeleted()
                 ->where('status', 'PENDING')
                 ->count(),
+            'enrolmentTrend' => $this->enrolmentTrend(),
+            'mentionSpread' => $this->mentionSpread(),
+            'attendanceToday' => $this->attendanceToday(),
+            'pendingGradeEntries' => $this->pendingGradeEntries(),
         ]);
+    }
+
+    /**
+     * Effectif inscrit mois par mois depuis la rentree.
+     *
+     * Le cumul, et non les entrees du mois : c'est la courbe de l'effectif
+     * present qui interesse un chef d'etablissement, pas celle des arrivees.
+     *
+     * @return list<array{label: string, value: int}>
+     */
+    private function enrolmentTrend(): array
+    {
+        $months = ['Jan', 'Fev', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Aout', 'Sep', 'Oct', 'Nov', 'Dec'];
+        $points = [];
+
+        // Douze mois glissants : une annee scolaire s'etend sur deux annees
+        // civiles, un decoupage par annee civile la couperait en deux.
+        for ($offset = 11; $offset >= 0; $offset--) {
+            $end = date('Y-m-01 00:00:00', strtotime('first day of -'.($offset - 1).' month'));
+
+            $count = (int) $this->app->db()->scalar(
+                'SELECT COUNT(*) FROM enrollments
+                 WHERE tenant_id = :tenant AND deleted_at IS NULL AND created_at < :end',
+                ['tenant' => $this->app->tenant()->requireId(), 'end' => $end]
+            );
+
+            $points[] = [
+                'label' => $months[(int) date('n', strtotime('-'.$offset.' month')) - 1],
+                'value' => $count,
+            ];
+        }
+
+        return $points;
+    }
+
+    /**
+     * Repartition des moyennes publiees par mention.
+     *
+     * @return list<array{label: string, value: int, color: string}>
+     */
+    private function mentionSpread(): array
+    {
+        $rows = $this->app->db()->select(
+            'SELECT general_average FROM period_results
+             WHERE tenant_id = :tenant AND is_published = 1 AND general_average IS NOT NULL',
+            ['tenant' => $this->app->tenant()->requireId()]
+        );
+
+        $buckets = [
+            ['label' => 'Excellent (>= 16)', 'value' => 0, 'color' => '#7c3aed'],
+            ['label' => 'Bien (14 - 16)', 'value' => 0, 'color' => '#10b981'],
+            ['label' => 'Assez bien (12 - 14)', 'value' => 0, 'color' => '#4f6ef7'],
+            ['label' => 'Passable (10 - 12)', 'value' => 0, 'color' => '#f59e0b'],
+            ['label' => 'Insuffisant (< 10)', 'value' => 0, 'color' => '#ef4444'],
+        ];
+
+        foreach ($rows as $row) {
+            $average = (float) $row['general_average'];
+
+            if ($average >= 16) {
+                $buckets[0]['value']++;
+            } elseif ($average >= 14) {
+                $buckets[1]['value']++;
+            } elseif ($average >= 12) {
+                $buckets[2]['value']++;
+            } elseif ($average >= 10) {
+                $buckets[3]['value']++;
+            } else {
+                $buckets[4]['value']++;
+            }
+        }
+
+        return $buckets;
+    }
+
+    /**
+     * Taux de presence du jour.
+     *
+     * Faute d'appel saisi, le taux est inconnu et non nul : afficher « 0 % »
+     * laisserait croire a une desertion generale.
+     *
+     * @return array{rate: float|null, recorded: int}
+     */
+    private function attendanceToday(): array
+    {
+        $today = date('Y-m-d');
+        $recorded = $this->table('attendances')->where('date', $today)->count();
+
+        if ($recorded === 0) {
+            return ['rate' => null, 'recorded' => 0];
+        }
+
+        $present = (int) $this->app->db()->scalar(
+            "SELECT COUNT(*) FROM attendances
+             WHERE tenant_id = :tenant AND date = :date AND status IN ('PRESENT', 'LATE')",
+            ['tenant' => $this->app->tenant()->requireId(), 'date' => $today]
+        );
+
+        return ['rate' => round($present / $recorded * 100, 1), 'recorded' => $recorded];
+    }
+
+    /**
+     * Classes dont la saisie de notes n'est pas achevee sur la periode ouverte.
+     *
+     * C'est le chiffre qui declenche une relance : une sequence se cloture, et
+     * une classe oubliee bloque tous les bulletins.
+     */
+    private function pendingGradeEntries(): int
+    {
+        $period = $this->openPeriod();
+
+        if ($period === null) {
+            return 0;
+        }
+
+        return (int) $this->app->db()->scalar(
+            'SELECT COUNT(*) FROM classrooms c
+             WHERE c.tenant_id = :tenant
+               AND NOT EXISTS (
+                   SELECT 1 FROM grades g
+                   JOIN students s ON s.id = g.student_id
+                   JOIN enrollments e ON e.student_id = s.id AND e.classroom_id = c.id
+                   WHERE g.period_id = :period AND g.deleted_at IS NULL
+               )',
+            ['tenant' => $this->app->tenant()->requireId(), 'period' => $period['id']]
+        );
     }
 
     // --- Intendance ----------------------------------------------------------

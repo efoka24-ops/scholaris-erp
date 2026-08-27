@@ -12,54 +12,21 @@
  * @var \Scholaris\Tenant\Features $features
  */
 
-// Les entrees de menu sont filtrees par permission : un utilisateur ne voit que
-// ce qu'il peut reellement ouvrir, plutot que de decouvrir un refus en cliquant.
-// Un administrateur de plateforme sans etablissement courant ne voit que
-// l'administration : les rubriques scolaires n'auraient aucune donnee a
-// afficher, faute d'ecole a laquelle il appartienne.
+use Scholaris\View\Navigation;
+
 $onlyPlatform = ($isPlatformAccount ?? false) && $tenantName === null;
 
-$navigation = $onlyPlatform
-    ? [
-        ['/admin', 'Tableau de bord', 'tenants:read', null],
-        ['/admin/etablissements', 'Demandes d ouverture', 'tenants:read', null],
-        ['/admin/parc', 'Parc d etablissements', 'tenants:read', null],
-        ['/admin/comptes', 'Comptes', 'tenants:read', null],
-        ['/admin/rapports', 'Rapports', 'tenants:read', null],
-        ['/admin/journal', 'Journal d audit', 'tenants:read', null],
-        ['/admin/habilitations', 'Habilitations', 'tenants:read', null],
-        ['/admin/courriers', 'Courriers envoyes', 'tenants:read', null],
-        ['/admin/maintenance', 'Maintenance', 'tenants:update', null],
-    ]
-    // Chaque entree porte sa permission et, le cas echeant, la fonctionnalite
-    // dont elle depend. Une ecole primaire ne verra donc jamais « Examens
-    // officiels » si ce module ne la concerne pas.
-    : [
-        ['/dashboard', 'Tableau de bord', null, null],
-        ['/students', $features->label('students', 'Eleves'), 'students:read', null],
-        ['/enrollments', 'Inscriptions', 'enrollments:read', null],
-        ['/classrooms', $features->label('classrooms', 'Classes'), 'classrooms:read', 'structure.classrooms'],
-        ['/timetable', 'Emplois du temps', 'timetables:read', 'life.timetable'],
-        ['/attendance', 'Presences', 'attendance:read', 'life.attendance'],
-        ['/grades', 'Notes', 'grades:read', null],
-        ['/bulletins', 'Bulletins', 'bulletins:read', null],
-        ['/discipline', 'Discipline', 'discipline:read', 'life.discipline'],
-        ['/exams', 'Examens officiels', 'exams:read', 'exams.official'],
-        ['/finance', 'Finance', 'finance-dashboard:read', 'finance.fees'],
-        ['/finance/invoices', 'Factures', 'invoices:read', 'finance.payments'],
-        ['/health', 'Sante', 'health:read', 'life.health'],
-        ['/library', 'Bibliotheque', 'library:read', 'life.library'],
-        ['/transport', 'Transport', 'transport:read', 'life.transport'],
-        ['/catering', 'Cantine', 'catering:read', 'life.catering'],
-        ['/patrimoine', 'Patrimoine', 'assets:read', 'life.assets'],
-        ['/hr', 'Personnel', 'hr:read', 'hr.payroll'],
-        ['/communication', 'Communication', 'communications:read', null],
-        ['/messages', 'Messagerie', 'internal-messages:read', null],
-        ['/annees-scolaires', 'Annee scolaire', 'academic-years:read', null],
-        ['/parametres', 'Parametres', 'tenants:update', null],
-    ];
+// Les rubriques sont regroupees : une liste de vingt entrees sans intertitre
+// oblige a la relire entierement pour trouver la bonne.
+$sections = $onlyPlatform
+    ? Navigation::platform()
+    : Navigation::school($features);
 
 $currentPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
+$currentLabel = Navigation::currentLabel($sections, $currentPath, $title ?? 'Accueil');
+
+$fullName = trim(($auth['first_name'] ?? '').' '.($auth['last_name'] ?? ''));
+$initials = Navigation::initials($fullName);
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -71,75 +38,138 @@ $currentPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
     <link rel="manifest" href="/manifest.webmanifest">
     <link rel="icon" href="/assets/icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="/assets/icon.svg">
-    <meta name="theme-color" content="#09080f">
+    <meta name="theme-color" content="#3c1e86">
     <!-- Saisie hors-ligne : differe l'envoi quand le reseau manque, sans
          jamais dupliquer au retour de la connexion. -->
     <script src="/assets/offline.js" defer></script>
 </head>
 <body>
-<header class="topbar">
-    <div class="topbar__left">
-        <a class="brand" href="/dashboard">
-            <span class="brand__mark">S</span>
-            <span class="brand__name">SCHOLARIS<span>.</span></span>
-        </a>
-        <?php if ($tenantName !== null) : ?>
-            <span class="topbar__tenant"><?= $this->e($tenantName) ?></span>
-        <?php else : ?>
-            <span class="section-tag" style="color:#c8ff00">PLATEFORME</span>
-        <?php endif; ?>
+<nav class="sidebar" id="sidebar">
+    <a class="brand" href="<?= $onlyPlatform ? '/admin' : '/dashboard' ?>">
+        <span class="brand__mark">S</span>
+        <span>
+            <span class="brand__name">SCHOLARIS</span>
+            <span class="brand__tag">ERP v2.0 &middot; TRU GROUP</span>
+        </span>
+    </a>
+
+    <div class="sidebar__nav">
+        <?php foreach ($sections as $section) : ?>
+            <?php
+            // Une rubrique dont toutes les entrees sont masquees ne doit pas
+            // laisser son intertitre orphelin.
+            $visible = [];
+
+            foreach ($section['items'] as $item) {
+                $allowed = $item['permission'] === null || $rbac->allows($item['permission']);
+                $available = $item['feature'] === null || $features->enabled($item['feature']);
+
+                if ($allowed && $available) {
+                    $visible[] = $item;
+                }
+            }
+            ?>
+            <?php if ($visible === []) { continue; } ?>
+
+            <?php if ($section['title'] !== null) : ?>
+                <div class="sidebar__section"><?= $this->e($section['title']) ?></div>
+            <?php endif; ?>
+
+            <?php foreach ($visible as $item) : ?>
+                <a href="<?= $this->e($item['href']) ?>"
+                   class="sidebar__link<?= Navigation::isActive($item['href'], $currentPath) ? ' sidebar__link--active' : '' ?>">
+                    <?= $this->raw(Navigation::icon($item['icon'])) ?>
+                    <span><?= $this->e($item['label']) ?></span>
+                    <?php if (($badges[$item['href']] ?? 0) > 0) : ?>
+                        <span class="sidebar__badge"><?= $this->number($badges[$item['href']]) ?></span>
+                    <?php endif; ?>
+                </a>
+            <?php endforeach; ?>
+        <?php endforeach; ?>
     </div>
-    <div class="topbar__right">
-        <span class="topbar__user">
-            <?= $this->e(trim(($auth['first_name'] ?? '').' '.($auth['last_name'] ?? ''))) ?>
+
+    <div class="sidebar__foot">
+        <span class="avatar avatar--<?= Navigation::colorIndex($fullName) ?>"><?= $this->e($initials) ?></span>
+        <span class="sidebar__identity">
+            <strong><?= $this->e($fullName !== '' ? $fullName : 'Utilisateur') ?></strong>
+            <span><?= $this->e($auth['email'] ?? '') ?></span>
         </span>
         <form method="post" action="/logout" class="inline-form">
             <input type="hidden" name="_token" value="<?= $this->e($csrfToken) ?>">
-            <button type="submit" class="link-button">Deconnexion</button>
+            <button type="submit" class="link-button" title="Se deconnecter" aria-label="Se deconnecter">
+                <?= $this->raw(Navigation::icon('logout')) ?>
+            </button>
         </form>
+    </div>
+</nav>
+
+<header class="topbar">
+    <div class="topbar__left">
+        <button type="button" class="nav-toggle" id="nav-toggle" aria-label="Afficher la navigation">
+            <?= $this->raw(Navigation::icon('menu')) ?>
+        </button>
+        <div class="topbar__crumb">
+            <span>SCHOLARIS</span>
+            <span aria-hidden="true">&rsaquo;</span>
+            <span class="topbar__crumb-current"><?= $this->e($currentLabel) ?></span>
+        </div>
+    </div>
+
+    <div class="topbar__right">
+        <?php if ($tenantName !== null) : ?>
+            <span class="topbar__tenant"><?= $this->e($tenantName) ?></span>
+        <?php else : ?>
+            <span class="section-tag">Plateforme</span>
+        <?php endif; ?>
+
+        <?php if (($currentPeriod ?? null) !== null) : ?>
+            <span class="topbar__period"><i></i><?= $this->e($currentPeriod) ?></span>
+        <?php endif; ?>
     </div>
 </header>
 
-<div class="shell">
-    <nav class="sidebar">
-        <?php foreach ($navigation as [$href, $label, $permission, $feature]) : ?>
-            <?php
-            $allowed = $permission === null || $rbac->allows($permission);
-            $available = $feature === null || $features->enabled($feature);
-            ?>
-            <?php if ($allowed && $available) : ?>
-                <a href="<?= $this->e($href) ?>"
-                   class="sidebar__link<?= str_starts_with($currentPath, $href) && $href !== '/dashboard' || $currentPath === $href ? ' sidebar__link--active' : '' ?>">
-                    <?= $this->e($label) ?>
-                </a>
-            <?php endif; ?>
-        <?php endforeach; ?>
-    </nav>
+<main class="content">
+    <?php if (($isPlatformAccount ?? false) && $tenantName !== null) : ?>
+        <div class="impersonation">
+            <span>
+                Vous consultez <strong><?= $this->e($tenantName) ?></strong> en tant
+                qu administrateur de la plateforme. Cet acces est journalise.
+            </span>
+            <form method="post" action="/admin/quitter" class="inline-form">
+                <input type="hidden" name="_token" value="<?= $this->e($csrfToken) ?>">
+                <button type="submit" class="button button--secondary">Quitter cet etablissement</button>
+            </form>
+        </div>
+    <?php endif; ?>
 
-    <main class="content">
-        <?php if (($isPlatformAccount ?? false) && $tenantName !== null) : ?>
-            <div class="impersonation">
-                <span>
-                    Vous consultez <strong><?= $this->e($tenantName) ?></strong> en tant
-                    qu administrateur de la plateforme. Cet acces est journalise.
-                </span>
-                <form method="post" action="/admin/quitter" class="inline-form">
-                    <input type="hidden" name="_token" value="<?= $this->e($csrfToken) ?>">
-                    <button type="submit" class="button button--secondary">Quitter cet etablissement</button>
-                </form>
-            </div>
-        <?php endif; ?>
+    <?php if ($flashSuccess !== null) : ?>
+        <div class="alert alert--success" role="status"><?= $this->e($flashSuccess) ?></div>
+    <?php endif; ?>
 
-        <?php if ($flashSuccess !== null) : ?>
-            <div class="alert alert--success" role="status"><?= $this->e($flashSuccess) ?></div>
-        <?php endif; ?>
+    <?php if ($flashError !== null) : ?>
+        <div class="alert alert--error" role="alert"><?= $this->e($flashError) ?></div>
+    <?php endif; ?>
 
-        <?php if ($flashError !== null) : ?>
-            <div class="alert alert--error" role="alert"><?= $this->e($flashError) ?></div>
-        <?php endif; ?>
+    <?= $this->raw($this->section('content')) ?>
+</main>
 
-        <?= $this->raw($this->section('content')) ?>
-    </main>
-</div>
+<script>
+// Navigation repliable sur telephone : dix-sept rem de menu ne laisseraient
+// rien au contenu.
+(function () {
+    var toggle = document.getElementById('nav-toggle');
+
+    if (!toggle) { return; }
+
+    toggle.addEventListener('click', function () {
+        document.body.classList.toggle('nav-open');
+    });
+
+    // Un clic dans le contenu referme le menu : sur mobile il recouvre la page.
+    document.querySelector('.content').addEventListener('click', function () {
+        document.body.classList.remove('nav-open');
+    });
+})();
+</script>
 </body>
 </html>
