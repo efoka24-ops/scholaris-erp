@@ -34,6 +34,8 @@ final class DemoSchoolSeeder
         ['proviseur@lbg.cm', 'Directeur', 'Amadou', 'BOUBA', 'Proviseur'],
         ['censeur@lbg.cm', 'Censeur', 'Fadimatou', 'ALIOUM', 'Censeur'],
         ['intendant@lbg.cm', 'Intendant', 'Oumarou', 'DJALLO', 'Intendant'],
+        ['comptable@lbg.cm', 'Comptable', 'Colette', 'ESSOMBA', 'Comptable'],
+        ['surveillant-general@lbg.cm', 'Surveillant général', 'Serge', 'MBALLA', 'Surveillant general'],
         ['secretaire@lbg.cm', 'Secrétaire', 'Habiba', 'MOUSSA', 'Secretaire principale'],
         ['admin@lbg.cm', 'Admin Établissement', 'Ibrahim', 'HAMADOU', 'Administrateur'],
         ['infirmiere@lbg.cm', 'Infirmier(ère)', 'Mariama', 'SALI', 'Infirmiere'],

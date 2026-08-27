@@ -32,6 +32,7 @@ use Scholaris\Controller\PlatformController;
 use Scholaris\Controller\PlatformReportController;
 use Scholaris\Controller\PlatformUserController;
 use Scholaris\Controller\SchoolLifeController;
+use Scholaris\Controller\CourseLogController;
 use Scholaris\Controller\PublicController;
 use Scholaris\Controller\AcademicYearController;
 use Scholaris\Controller\MaintenanceController;
@@ -50,6 +51,11 @@ $router->guest('GET', '/', [PublicController::class, 'home']);
 
 $router->guest('GET', '/login', [AuthController::class, 'showLogin']);
 $router->guest('POST', '/login', [AuthController::class, 'login']);
+
+// Activation d'un compte cree par un tiers (etablissement, plateforme) : le
+// titulaire choisit lui-meme son mot de passe via un lien a duree limitee.
+$router->guest('GET', '/activation/{token}', [AuthController::class, 'showActivate']);
+$router->guest('POST', '/activation/{token}', [AuthController::class, 'activate']);
 
 // Pre-inscription en ligne : un parent depose un dossier sans avoir de compte.
 $router->guest('GET', '/pre-inscription', [PublicController::class, 'preEnrollmentForm']);
@@ -92,6 +98,15 @@ $router->guest('GET', '/up', static function (Request $request, Application $app
 
 $router->post('/logout', [AuthController::class, 'logout']);
 
+// Changement de mot de passe obligatoire apres un mot de passe provisoire.
+$router->get('/mot-de-passe/changer', [AuthController::class, 'showChangePassword']);
+$router->post('/mot-de-passe/changer', [AuthController::class, 'changePassword']);
+
+// Double authentification (TOTP), proposee aux roles a privileges.
+$router->get('/mfa/enroler', [AuthController::class, 'showMfaEnroll']);
+$router->post('/mfa/enroler', [AuthController::class, 'enrollMfa']);
+$router->post('/mfa/enroler/plus-tard', [AuthController::class, 'dismissMfaEnroll']);
+
 $router->get('/dashboard', [DashboardController::class, 'index']);
 
 // Module 4 : eleves
@@ -99,6 +114,7 @@ $router->get('/students', [StudentController::class, 'index'], 'students:read');
 $router->get('/students/create', [StudentController::class, 'create'], 'students:create');
 $router->post('/students', [StudentController::class, 'store'], 'students:create');
 $router->get('/students/{id}', [StudentController::class, 'show'], 'students:read');
+$router->get('/students/{id}/certificate', [StudentController::class, 'certificate'], 'students:read');
 $router->get('/students/{id}/edit', [StudentController::class, 'edit'], 'students:update');
 $router->post('/students/{id}', [StudentController::class, 'update'], 'students:update');
 $router->post('/students/{id}/delete', [StudentController::class, 'destroy'], 'students:update');
@@ -159,6 +175,11 @@ $router->post('/attendance/{classroom}', [SchoolLifeController::class, 'storeAtt
 $router->get('/discipline', [SchoolLifeController::class, 'discipline'], 'discipline:read', 'life.discipline');
 $router->post('/discipline', [SchoolLifeController::class, 'storeIncident'], 'discipline:create', 'life.discipline');
 
+// Module 8bis : cahier de textes numerique
+$router->get('/course-log', [CourseLogController::class, 'index'], 'course-log:read', 'life.textbook');
+$router->post('/course-log', [CourseLogController::class, 'store'], 'course-log:create', 'life.textbook');
+$router->post('/course-log/{id}', [CourseLogController::class, 'update'], 'course-log:update', 'life.textbook');
+
 // Module 12 : sante scolaire
 $router->get('/health', [HealthController::class, 'index'], 'health:read', 'life.health');
 $router->get('/health/{id}', [HealthController::class, 'show'], 'health:read', 'life.health');
@@ -191,6 +212,7 @@ $router->post('/hr/leaves/{id}', [HrController::class, 'decideLeave'], 'hr:updat
 $router->get('/communication', [CommunicationController::class, 'index'], 'communications:read');
 $router->post('/communication/send', [CommunicationController::class, 'send'], 'communications:create');
 $router->post('/communication/templates', [CommunicationController::class, 'storeTemplate'], 'communication-templates:create');
+$router->post('/communication/system-templates', [CommunicationController::class, 'storeSystemTemplate'], 'communication-templates:create');
 $router->get('/messages', [CommunicationController::class, 'inbox'], 'internal-messages:read');
 
 // Examens officiels

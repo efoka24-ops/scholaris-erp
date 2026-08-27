@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Scholaris;
 
 use PDOException;
+use Scholaris\Auth\AccountActivation;
 use Scholaris\Auth\Auth;
 use Scholaris\Auth\Rbac;
 use Scholaris\Database\Connection;
@@ -235,8 +236,36 @@ final class Application
         return new EstablishmentMails(
             $this->mailer(),
             $this->env->get('APP_NAME', 'SCHOLARIS') ?? 'SCHOLARIS',
-            $this->env->get('APP_URL', '') ?? ''
+            $this->env->get('APP_URL', '') ?? '',
+            $this->systemTemplates()
         );
+    }
+
+    /** Jetons d'activation de compte (chantier "premiere connexion"). */
+    public function accountActivation(): AccountActivation
+    {
+        return new AccountActivation($this->db);
+    }
+
+    /** Courriers de compte (bienvenue, relance, incident, suspension). */
+    public function accountMails(): \Scholaris\Notification\AccountMails
+    {
+        return new \Scholaris\Notification\AccountMails(
+            $this->mailer(),
+            $this->env->get('APP_NAME', 'SCHOLARIS') ?? 'SCHOLARIS',
+            $this->env->get('APP_URL', '') ?? '',
+            $this->systemTemplates()
+        );
+    }
+
+    /**
+     * Modeles systeme (tenant_id NULL), avec repli sur le texte code en dur si
+     * aucun modele n'est enregistre : l'envoi ne doit jamais dependre de la
+     * presence d'une configuration en base.
+     */
+    public function systemTemplates(): \Scholaris\Notification\SystemTemplates
+    {
+        return new \Scholaris\Notification\SystemTemplates($this->db);
     }
 
     /** Oublie les fonctionnalites en cache, apres un changement de contexte. */
@@ -277,6 +306,26 @@ final class Application
             // connexion : il est renvoye vers son tableau de bord.
             if ($route['guest'] && $this->auth->check() && $request->path() === '/login') {
                 return Response::redirect('/dashboard');
+            }
+
+            // Mot de passe provisoire jamais renouvele : la session reste
+            // ouverte mais cantonnee a l'ecran de changement, sans quoi le mot
+            // de passe qui a circule par courrier resterait indefiniment en
+            // service.
+            if ($this->auth->check() && $this->auth->mustChangePassword()
+                && ! in_array($request->path(), ['/mot-de-passe/changer', '/logout'], true)) {
+                return Response::redirect('/mot-de-passe/changer');
+            }
+
+            // Role a privileges sans double authentification : la connexion
+            // n'est pas bloquee, mais l'ecran d'enrolement est propose a
+            // chaque requete tant qu'il n'a pas ete traite, sauf si
+            // l'utilisateur a explicitement choisi de le faire plus tard.
+            if ($this->auth->check() && $this->auth->needsMfaEnrollment()
+                && $this->session->get('mfa_enroll_dismissed') !== true
+                && ! str_starts_with($request->path(), '/mfa/')
+                && $request->path() !== '/logout') {
+                return Response::redirect('/mfa/enroler');
             }
 
             // Une fonctionnalite absente du type d'etablissement donne 404 et

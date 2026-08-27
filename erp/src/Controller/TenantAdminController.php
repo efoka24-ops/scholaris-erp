@@ -175,6 +175,8 @@ final class TenantAdminController extends Controller
 
         $this->audit('tenant.create', $result['tenant_id'], $request->ip());
 
+        $activationToken = $this->app->accountActivation()->issue($result['user_id']);
+
         $this->app->establishmentMails()->approved(
             [
                 'id' => $result['tenant_id'],
@@ -184,7 +186,8 @@ final class TenantAdminController extends Controller
                 'director_email' => $email,
             ],
             $result['password'],
-            $result['tenant_id']
+            $result['tenant_id'],
+            $activationToken
         );
 
         return $this->view('platform.tenant-created', [
@@ -283,6 +286,20 @@ final class TenantAdminController extends Controller
         $this->setPlatformStatus((string) $tenant['id'], 'SUSPENDED', $reason);
         $this->audit('tenant.suspend', (string) $tenant['id'], $request->ip());
 
+        foreach ($this->directorsOf((string) $tenant['id']) as $director) {
+            if (($director['email'] ?? '') === '') {
+                continue;
+            }
+
+            $this->app->accountMails()->establishmentSuspended(
+                (string) $director['email'],
+                trim($director['first_name'].' '.$director['last_name']),
+                (string) $tenant['name'],
+                $reason,
+                (string) $tenant['id']
+            );
+        }
+
         return $this->redirectWithSuccess('/admin/parc', $tenant['name'].' est suspendu.');
     }
 
@@ -295,7 +312,37 @@ final class TenantAdminController extends Controller
         $this->setPlatformStatus((string) $tenant['id'], 'ACTIVE', null);
         $this->audit('tenant.restore', (string) $tenant['id'], $request->ip());
 
+        foreach ($this->directorsOf((string) $tenant['id']) as $director) {
+            if (($director['email'] ?? '') === '') {
+                continue;
+            }
+
+            $this->app->accountMails()->establishmentReactivated(
+                (string) $director['email'],
+                trim($director['first_name'].' '.$director['last_name']),
+                (string) $tenant['name'],
+                (string) $tenant['id']
+            );
+        }
+
         return $this->redirectWithSuccess('/admin/parc', $tenant['name'].' est de nouveau actif.');
+    }
+
+    /**
+     * Comptes du role Directeur pour un etablissement, hors scope courant.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function directorsOf(string $tenantId): array
+    {
+        return $this->app->tenant()->global(fn (): array => $this->app->db()->select(
+            'SELECT u.email, u.first_name, u.last_name
+             FROM users u
+             INNER JOIN user_roles ur ON ur.user_id = u.id
+             INNER JOIN roles r ON r.id = ur.role_id
+             WHERE u.tenant_id = :tenant AND r.name = :role AND u.deleted_at IS NULL',
+            ['tenant' => $tenantId, 'role' => 'Directeur']
+        ));
     }
 
     /**

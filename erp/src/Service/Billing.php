@@ -255,6 +255,24 @@ final class Billing
     }
 
     /**
+     * Factures en retard de l'etablissement courant, avec l'eleve concerne —
+     * base de la relance d'impaye envoyee aux parents.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function overdueInvoices(): array
+    {
+        return $this->db->select(
+            'SELECT i.id, i.balance, i.due_date, s.id AS student_id, s.first_name, s.last_name
+             FROM invoices i
+             INNER JOIN students s ON s.id = i.student_id
+             WHERE i.tenant_id = :tenant AND i.status = :status AND i.deleted_at IS NULL
+             ORDER BY i.due_date',
+            ['tenant' => $this->tenant->requireId(), 'status' => 'OVERDUE']
+        );
+    }
+
+    /**
      * Numero de recu suivant, au format CODE/ANNEE/000001.
      */
     private function nextReceiptNumber(): string

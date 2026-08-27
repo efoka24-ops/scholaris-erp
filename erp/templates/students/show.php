@@ -19,6 +19,7 @@ $title = $student['last_name'].' '.$student['first_name'];
         </p>
     </div>
     <?php if ($rbac->allows('students:update')) : ?>
+        <a class="button--secondary" href="/students/<?= $this->e($student['id']) ?>/certificate">Certificat de scolarite</a>
         <a class="button" href="/students/<?= $this->e($student['id']) ?>/edit">Modifier</a>
     <?php endif; ?>
 </div>

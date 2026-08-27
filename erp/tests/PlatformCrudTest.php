@@ -204,18 +204,26 @@ final class PlatformCrudTest extends TestCase
     {
         // Sans ce controle, la suspension ne serait qu'un libelle dans une
         // liste.
-        $this->actAsSuperAdmin();
+        $superAdminId = $this->actAsSuperAdmin();
         $this->createTenantViaAdmin();
         $tenantId = (string) $this->db->scalar('SELECT id FROM tenants WHERE code = :code', ['code' => 'EPCK']);
 
-        // Mot de passe connu, pour pouvoir tenter la connexion.
+        // Mot de passe connu, pour pouvoir tenter la connexion. Le compte
+        // cree par l administration doit changer ce mot de passe a la
+        // premiere connexion : sans interet ici, ou seule la suspension est
+        // en jeu, ce drapeau est leve pour se concentrer sur elle.
         $this->db->execute(
-            'UPDATE users SET password_hash = :hash WHERE email = :email',
+            'UPDATE users SET password_hash = :hash, must_change_password = 0 WHERE email = :email',
             ['hash' => password_hash('MotDePasseTest1!', PASSWORD_BCRYPT), 'email' => 'palou@epck.cm']
         );
 
         $before = $this->app->auth()->attempt('palou@epck.cm', 'MotDePasseTest1!', 'EPCK', null);
         $this->assertTrue($before['ok'], 'La connexion fonctionne avant la suspension');
+
+        // L appel direct a attempt() ci-dessus a ouvert la session applicative
+        // sur ce compte, comme le ferait une vraie connexion : il faut revenir
+        // au Super Admin avant de solliciter l ecran de suspension.
+        $this->actingAs($superAdminId);
 
         $this->request('POST', '/admin/parc/'.$tenantId.'/suspendre', ['reason' => 'Impaye']);
 

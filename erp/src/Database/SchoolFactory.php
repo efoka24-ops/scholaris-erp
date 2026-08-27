@@ -107,7 +107,7 @@ final class SchoolFactory
     }
 
     /**
-     * @return array{tenant_id: string, password: string, levels: int}
+     * @return array{tenant_id: string, password: string, levels: int, user_id: string}
      */
     public function create(
         string $code,
@@ -165,8 +165,8 @@ final class SchoolFactory
             $userId = Table::uuid();
 
             $this->db->execute(
-                'INSERT INTO users (id, tenant_id, email, password_hash, first_name, last_name, status, created_at, updated_at)
-                 VALUES (:id, :tenant, :email, :hash, :first, :last, :status, :created_at, :updated_at)',
+                'INSERT INTO users (id, tenant_id, email, password_hash, first_name, last_name, status, must_change_password, created_at, updated_at)
+                 VALUES (:id, :tenant, :email, :hash, :first, :last, :status, 1, :created_at, :updated_at)',
                 [
                     'id' => $userId,
                     'tenant' => $tenantId,
@@ -216,7 +216,7 @@ final class SchoolFactory
             $academicYearId = $this->createAcademicYear($tenantId, $now);
             $levels = $this->createStructure($tenantId, $type, $now);
 
-            return ['tenant_id' => $tenantId, 'password' => $password, 'levels' => $levels];
+            return ['tenant_id' => $tenantId, 'password' => $password, 'levels' => $levels, 'user_id' => $userId];
         });
     }
 

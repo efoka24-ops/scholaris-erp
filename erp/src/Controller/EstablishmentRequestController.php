@@ -54,8 +54,9 @@ final class EstablishmentRequestController extends Controller
         }
 
         $password = $this->generatePassword();
+        $directorUserId = null;
 
-        $tenantId = $this->app->db()->transaction(function () use ($demand, $password): string {
+        $tenantId = $this->app->db()->transaction(function () use ($demand, $password, &$directorUserId): string {
             $tenantId = Table::uuid();
             $now = date('Y-m-d H:i:s');
 
@@ -81,10 +82,11 @@ final class EstablishmentRequestController extends Controller
             );
 
             $userId = Table::uuid();
+            $directorUserId = $userId;
 
             $this->app->db()->execute(
-                'INSERT INTO users (id, tenant_id, email, password_hash, first_name, last_name, phone, status, created_at, updated_at)
-                 VALUES (:id, :tenant, :email, :hash, :first, :last, :phone, :status, :created_at, :updated_at)',
+                'INSERT INTO users (id, tenant_id, email, password_hash, first_name, last_name, phone, status, must_change_password, created_at, updated_at)
+                 VALUES (:id, :tenant, :email, :hash, :first, :last, :phone, :status, 1, :created_at, :updated_at)',
                 [
                     'id' => $userId,
                     'tenant' => $tenantId,
@@ -137,8 +139,13 @@ final class EstablishmentRequestController extends Controller
 
         // Les identifiants partent par courrier. L'ecran les affiche aussi,
         // une seule fois : si la remise echoue, le Super Admin les a encore
-        // sous les yeux et peut les dicter.
-        $this->app->establishmentMails()->approved($demand, $password, $tenantId);
+        // sous les yeux et peut les dicter. Le lien d'activation offre une
+        // seconde voie, plus sure qu'un mot de passe dicte au telephone.
+        $activationToken = $directorUserId !== null
+            ? $this->app->accountActivation()->issue((string) $directorUserId)
+            : null;
+
+        $this->app->establishmentMails()->approved($demand, $password, $tenantId, $activationToken);
 
         // Le mot de passe genere n'est affiche qu'ici, une seule fois : il n'est
         // stocke nulle part en clair.

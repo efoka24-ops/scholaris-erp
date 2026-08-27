@@ -75,6 +75,7 @@ final class Navigation
             ['title' => 'Vie scolaire', 'items' => [
                 self::item('/timetable', 'Emplois du temps', 'timetables:read', 'life.timetable', 'calendar'),
                 self::item('/attendance', 'Presences', 'attendance:read', 'life.attendance', 'check'),
+                self::item('/course-log', 'Cahier de textes', 'course-log:read', 'life.textbook', 'book'),
                 self::item('/discipline', 'Discipline', 'discipline:read', 'life.discipline', 'alert'),
                 self::item('/health', 'Sante scolaire', 'health:read', 'life.health', 'heart'),
                 self::item('/library', 'Bibliotheque', 'library:read', 'life.library', 'book'),

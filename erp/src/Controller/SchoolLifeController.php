@@ -216,6 +216,8 @@ final class SchoolLifeController extends Controller
                     ->where('date', $date)
                     ->first();
 
+                $isNewNonPresence = $existing === null && $status !== 'PRESENT';
+
                 if ($existing !== null) {
                     $this->table('attendances')
                         ->where('id', (string) $existing['id'])
@@ -232,11 +234,59 @@ final class SchoolLifeController extends Controller
                     ]);
                 }
 
+                // Les parents ne sont avertis que sur une premiere saisie
+                // d'absence/retard, jamais sur une simple correction : un
+                // rappel a chaque modification serait plus gene qu'utile.
+                if ($isNewNonPresence) {
+                    $this->notifyParentsOfAttendance($studentId, $status, $date);
+                }
+
                 $saved++;
             }
         });
 
         return $this->redirectWithSuccess($back, $saved.' presence(s) enregistree(s).');
+    }
+
+    /** Avertit les parents d'un eleve d'une absence/retard fraichement saisi. */
+    private function notifyParentsOfAttendance(string $studentId, string $status, string $date): void
+    {
+        $statusLabels = [
+            'ABSENT' => 'absent(e)',
+            'LATE' => 'en retard',
+            'EXCUSED' => 'absent(e) (excuse)',
+        ];
+
+        foreach ($this->parentsOf($studentId) as $parent) {
+            if (($parent['email'] ?? '') === '') {
+                continue;
+            }
+
+            $this->app->accountMails()->absenceReported(
+                (string) $parent['email'],
+                trim($parent['first_name'].' '.$parent['last_name']),
+                trim($parent['student_first_name'].' '.$parent['student_last_name']),
+                $date,
+                $statusLabels[$status] ?? $status,
+                $this->app->tenant()->requireId()
+            );
+        }
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function parentsOf(string $studentId): array
+    {
+        return $this->app->db()->select(
+            'SELECT p.email, p.first_name, p.last_name,
+                    s.first_name AS student_first_name, s.last_name AS student_last_name
+             FROM student_parents sp
+             INNER JOIN parents p ON p.id = sp.parent_id
+             INNER JOIN students s ON s.id = sp.student_id
+             WHERE sp.student_id = :student AND p.deleted_at IS NULL',
+            ['student' => $studentId]
+        );
     }
 
     // --- Module 11 : discipline ----------------------------------------------
@@ -303,7 +353,36 @@ final class SchoolLifeController extends Controller
             'updated_at' => date('Y-m-d H:i:s'),
         ]);
 
+        foreach ($this->parentsOf((string) $data['student_id']) as $parent) {
+            if (($parent['email'] ?? '') === '') {
+                continue;
+            }
+
+            $this->app->accountMails()->disciplineIncident(
+                (string) $parent['email'],
+                trim($parent['first_name'].' '.$parent['last_name']),
+                trim($parent['student_first_name'].' '.$parent['student_last_name']),
+                (string) ($this->typeLabel((string) $data['type'])),
+                (string) $data['date'],
+                $this->app->tenant()->requireId()
+            );
+        }
+
         return $this->redirectWithSuccess('/discipline', 'Incident enregistre.');
+    }
+
+    private function typeLabel(string $type): string
+    {
+        $labels = [
+            'RETARD' => 'Retard',
+            'ABSENCE_INJUSTIFIEE' => 'Absence injustifiee',
+            'INSOLENCE' => 'Insolence',
+            'BAGARRE' => 'Bagarre',
+            'TRICHERIE' => 'Tricherie',
+            'AUTRE' => 'Autre',
+        ];
+
+        return $labels[$type] ?? $type;
     }
 
     // --- Outillage commun ----------------------------------------------------

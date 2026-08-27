@@ -124,7 +124,7 @@ final class PlatformUserController extends Controller
         $this->app->tenant()->global(function () use ($user, $password): void {
             $this->app->db()->execute(
                 'UPDATE users SET password_hash = :hash, failed_login_attempts = 0,
-                        locked_until = NULL, updated_at = :updated_at
+                        locked_until = NULL, must_change_password = 1, updated_at = :updated_at
                  WHERE id = :id',
                 [
                     'hash' => Auth::hash($password),
@@ -267,8 +267,8 @@ final class PlatformUserController extends Controller
             $now = date('Y-m-d H:i:s');
 
             $this->app->db()->execute(
-                'INSERT INTO users (id, tenant_id, email, password_hash, first_name, last_name, status, created_at, updated_at)
-                 VALUES (:id, NULL, :email, :hash, :first, :last, :status, :created_at, :updated_at)',
+                'INSERT INTO users (id, tenant_id, email, password_hash, first_name, last_name, status, must_change_password, created_at, updated_at)
+                 VALUES (:id, NULL, :email, :hash, :first, :last, :status, 1, :created_at, :updated_at)',
                 [
                     'id' => $userId,
                     'email' => $email,

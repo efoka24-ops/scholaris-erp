@@ -285,7 +285,7 @@ final class PlatformStats
         $groups = [
             'DIRECTION' => ['label' => 'Direction', 'roles' => ['Admin Établissement', 'Directeur', 'Censeur']],
             'PERSONNEL' => ['label' => 'Personnel', 'roles' => [
-                'Enseignant', 'Chef de département', 'Intendant', 'Secrétaire',
+                'Enseignant', 'Chef de département', 'Intendant', 'Comptable', 'Secrétaire',
                 'Infirmier(ère)', 'Bibliothécaire', 'Surveillant général',
             ]],
             'ELEVE' => ['label' => 'Eleves', 'roles' => ['Élève']],
