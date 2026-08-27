@@ -13,6 +13,7 @@
  */
 
 use Scholaris\Support\Cameroon;
+use Scholaris\View\Navigation;
 
 $this->extends('layouts.app');
 $title = 'Administration de la plateforme';
@@ -52,18 +53,32 @@ $money = static function (float $amount): string {
     return number_format($amount, 0, ',', ' ');
 };
 ?>
-<div class="page-header">
-    <div>
-        <h1>Bonjour <?= $this->e(trim(($auth['first_name'] ?? '').' '.($auth['last_name'] ?? ''))) ?></h1>
-        <p class="subtitle">
-            <?= $this->e($fullDate) ?> &middot; <span id="platform-clock"><?= date('H:i', $now) ?></span>
-            &middot; Administration de la plateforme
-        </p>
-        <p class="muted" style="margin-top:0.25rem">
-            Vous n appartenez a aucun etablissement : pour consulter les donnees
-            de l un d eux, placez-vous dedans.
-        </p>
+<div class="hero">
+    <div class="hero__eyebrow">Tableau de bord</div>
+    <h1>Bonjour <?= $this->e(trim(($auth['first_name'] ?? '').' '.($auth['last_name'] ?? ''))) ?></h1>
+    <p class="hero__meta">
+        <?= $this->e($fullDate) ?> &middot; <span id="platform-clock"><?= date('H:i', $now) ?></span>
+        &middot; administration de la plateforme
+    </p>
+
+    <div class="hero__chips">
+        <span class="hero__chip">
+            Etablissements <strong><?= $this->number($stats['tenants']['total']) ?></strong>
+        </span>
+        <span class="hero__chip">
+            Comptes <strong><?= $this->number($stats['users']['total']) ?></strong>
+        </span>
+        <span class="hero__chip">
+            En attente <strong><?= $this->number($stats['requests']['pending']) ?></strong>
+        </span>
     </div>
+</div>
+
+<div class="page-header">
+    <p class="muted" style="margin:0">
+        Vous n appartenez a aucun etablissement : pour consulter les donnees de
+        l un d eux, placez-vous dedans.
+    </p>
     <a class="button<?= $stats['requests']['pending'] > 0 ? '' : ' button--secondary' ?>"
        href="/admin/etablissements">
         Demandes d ouverture
@@ -87,7 +102,8 @@ $money = static function (float $amount): string {
 <?php endif; ?>
 
 <div class="stats stats--rich">
-    <div class="stat">
+    <div class="stat stat--tinted stat--blue">
+        <div class="stat__icon"><?= $this->raw(Navigation::icon("users")) ?></div>
         <div class="stat__label">Eleves inscrits</div>
         <div class="stat__value"><?= $this->number($stats['students']['total']) ?></div>
         <div class="stat__foot">
@@ -96,7 +112,8 @@ $money = static function (float $amount): string {
         </div>
     </div>
 
-    <div class="stat">
+    <div class="stat stat--tinted stat--green">
+        <div class="stat__icon"><?= $this->raw(Navigation::icon("check")) ?></div>
         <div class="stat__label">Taux de presence</div>
         <?php if ($stats['attendance']['rate'] === null) : ?>
             <div class="stat__value stat__value--muted">&mdash;</div>
@@ -110,7 +127,8 @@ $money = static function (float $amount): string {
         <?php endif; ?>
     </div>
 
-    <div class="stat">
+    <div class="stat stat--tinted stat--amber">
+        <div class="stat__icon"><?= $this->raw(Navigation::icon("inbox")) ?></div>
         <div class="stat__label">Demandes d etablissement</div>
         <div class="stat__value"><?= $this->number($stats['requests']['pending']) ?></div>
         <div class="stat__foot">
@@ -119,7 +137,8 @@ $money = static function (float $amount): string {
         </div>
     </div>
 
-    <div class="stat">
+    <div class="stat stat--tinted stat--pink">
+        <div class="stat__icon"><?= $this->raw(Navigation::icon("wallet")) ?></div>
         <div class="stat__label">Recouvrement du mois</div>
         <div class="stat__value"><?= $this->e($money((float) $stats['collection']['thisMonth'])) ?></div>
         <div class="stat__foot">
@@ -128,7 +147,8 @@ $money = static function (float $amount): string {
         </div>
     </div>
 
-    <div class="stat">
+    <div class="stat stat--tinted stat--violet">
+        <div class="stat__icon"><?= $this->raw(Navigation::icon("building")) ?></div>
         <div class="stat__label">Etablissements</div>
         <div class="stat__value"><?= $this->number($stats['tenants']['total']) ?></div>
         <div class="stat__foot">
