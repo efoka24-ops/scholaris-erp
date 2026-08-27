@@ -18,6 +18,107 @@ namespace Scholaris\Tests;
  */
 final class SqlPortabilityTest extends TestCase
 {
+    /**
+     * Un meme nom d'index ne doit pas etre cree par deux migrations.
+     *
+     * Le defaut fondateur ici : une migration reconstruisait une table pour
+     * SQLite, puis recreait son index sans marqueur de dialecte. Sur SQLite
+     * l'index avait disparu avec la table et devait bien etre recree ; sur
+     * MySQL, ou la table n'est pas reconstruite, il existait toujours et la
+     * migration echouait sur « Duplicate key name ». Les tests, qui tournent
+     * sur SQLite, ne passaient jamais par la branche fautive.
+     */
+    public function testUnNomDIndexNEstPasCreeDeuxFoisPourLeMemeMoteur(): void
+    {
+        $files = glob($this->basePath().'/database/migrations/*.sql');
+        sort($files);
+
+        $seen = [];
+        $cleared = [];
+        $problems = [];
+
+        foreach ($files === false ? [] : $files as $file) {
+            $name = basename($file);
+            $dialect = null;
+
+            foreach (explode("\n", (string) file_get_contents($file)) as $line) {
+                $trimmed = trim($line);
+
+                if ($trimmed === '-- @mysql') {
+                    $dialect = 'mysql';
+
+                    continue;
+                }
+
+                if ($trimmed === '-- @sqlite') {
+                    $dialect = 'sqlite';
+
+                    continue;
+                }
+
+                // Un marqueur ne vaut que pour l'instruction qui le suit ;
+                // une ligne vide le referme.
+                if ($trimmed === '') {
+                    $dialect = null;
+
+                    continue;
+                }
+
+                // Une suppression prealable rend la recreation legitime :
+                // c'est le cas d'une table reconstruite pour SQLite, dont
+                // l'index disparait avec elle.
+                if (preg_match('/DROP\s+INDEX\s+(?:IF\s+EXISTS\s+)?([a-z0-9_]+)/i', $trimmed, $dropped) === 1) {
+                    $droppedIndex = strtolower($dropped[1]);
+                    $dropScope = $dialect ?? 'tous';
+
+                    $seen[$droppedIndex] = array_values(array_filter(
+                        $seen[$droppedIndex] ?? [],
+                        static fn (array $entry): bool => $dropScope !== 'tous' && $entry[1] !== $dropScope
+                            && $entry[1] !== 'tous'
+                    ));
+
+                    // Le moteur vise n'a plus cet index : une creation le
+                    // concernant redevient admissible.
+                    $cleared[$droppedIndex][] = $dropScope;
+
+                    continue;
+                }
+
+                if (preg_match('/CREATE\s+(?:UNIQUE\s+)?INDEX\s+([a-z0-9_]+)/i', $trimmed, $match) !== 1) {
+                    continue;
+                }
+
+                $index = strtolower($match[1]);
+                $scope = $dialect ?? 'tous';
+
+                // La creation ne pose probleme que pour les moteurs ou l'index
+                // existe encore.
+                $clearedScopes = $cleared[$index] ?? [];
+                $coveredByDrop = in_array('tous', $clearedScopes, true)
+                    || ($scope !== 'tous' && in_array($scope, $clearedScopes, true));
+
+                if (! $coveredByDrop) {
+                    foreach ($seen[$index] ?? [] as [$previousFile, $previousScope]) {
+                        // Deux creations ne cohabitent que si elles visent des
+                        // moteurs differents.
+                        if ($scope === 'tous' || $previousScope === 'tous' || $scope === $previousScope) {
+                            $problems[] = $index.' cree par '.$previousFile.' ('.$previousScope
+                                .') puis par '.$name.' ('.$scope.')';
+                        }
+                    }
+                }
+
+                $seen[$index][] = [$name, $scope];
+            }
+        }
+
+        $this->assertSame(
+            [],
+            $problems,
+            'Index recree, ce qui echoue en MySQL : '.implode(' | ', $problems)
+        );
+    }
+
     public function testAucunPlaceholderNommeNEstReutiliseDansUneRequete(): void
     {
         $problems = [];

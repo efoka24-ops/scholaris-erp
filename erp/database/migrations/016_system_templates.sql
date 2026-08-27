@@ -34,4 +34,9 @@ DROP TABLE communication_templates;
 -- @sqlite
 ALTER TABLE communication_templates_new RENAME TO communication_templates;
 
+-- @sqlite
+-- Uniquement pour SQLite : la table vient d'y etre reconstruite, l'index a
+-- disparu avec elle. Sur MySQL, le MODIFY laisse l'index en place et le
+-- recreer echouerait sur un doublon de nom — ce que SQLite ne signalait pas,
+-- puisqu'il ne passait jamais par cette branche.
 CREATE UNIQUE INDEX comm_templates_tenant_code_unique ON communication_templates (tenant_id, code);
