@@ -70,8 +70,8 @@ final class Chart
             .' aria-label="Courbe d evolution">';
 
         $svg .= '<defs><linearGradient id="chartFill" x1="0" y1="0" x2="0" y2="1">'
-            .'<stop offset="0%" stop-color="#5b21f5" stop-opacity="0.22"/>'
-            .'<stop offset="100%" stop-color="#5b21f5" stop-opacity="0"/>'
+            .'<stop offset="0%" stop-color="#6c21c8" stop-opacity="0.22"/>'
+            .'<stop offset="100%" stop-color="#6c21c8" stop-opacity="0"/>'
             .'</linearGradient></defs>';
 
         // Lignes de reperage horizontales et graduations.

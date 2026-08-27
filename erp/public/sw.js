@@ -30,6 +30,7 @@ const NETWORK_TIMEOUT_MS = 4000;
 
 const PRECACHE = [
     '/assets/app.css',
+    '/assets/site.css',
     '/assets/offline.js',
     '/assets/icon.svg',
     '/hors-ligne',

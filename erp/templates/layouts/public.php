@@ -18,7 +18,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?= $this->e($title ?? 'Accueil') ?> — SCHOLARIS</title>
     <meta name="description" content="ERP de gestion scolaire concu pour le Cameroun : 25 modules, des inscriptions aux bulletins, de la paie CNPS aux paiements Orange Money et MTN MoMo.">
-    <link rel="stylesheet" href="/assets/app.css">
+    <link rel="stylesheet" href="/assets/site.css">
 </head>
 <body>
 <nav class="nav" id="nav">

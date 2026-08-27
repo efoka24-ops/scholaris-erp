@@ -37,7 +37,7 @@ $demoAccounts = [
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Connexion — SCHOLARIS</title>
-    <link rel="stylesheet" href="/assets/app.css">
+    <link rel="stylesheet" href="/assets/site.css">
 </head>
 <body>
 <div class="login noise">

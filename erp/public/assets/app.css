@@ -13,36 +13,50 @@
  * connexion camerounaise, chaque requete evitee se voit.
  */
 
+/*
+ * Les valeurs ci-dessous sont relevees sur la maquette, non approchees a
+ * l'oeil : une teinte voisine se remarque des qu'on met les deux ecrans cote
+ * a cote.
+ */
 :root {
     /* Fonds */
-    --bg: #f5f6fb;
+    --bg: #f7f7fb;
     --surface: #ffffff;
-    --surface-muted: #fafbfe;
-    --border: #e8eaf3;
-    --border-strong: #d8dcec;
+    --surface-muted: #fafafd;
+    --border: #ececf0;
+    --border-strong: #dcdce4;
 
     /* Texte */
     --text: #16162e;
-    --text-soft: #4b4f6b;
-    --text-muted: #838aa6;
+    --text-soft: #4b4a60;
+    --text-muted: #7b7a8e;
 
     /* Couleurs de marque */
-    --violet: #5b21f5;
-    --violet-dark: #4415c4;
-    --violet-soft: #efeaff;
-    --sidebar-from: #3c1e86;
-    --sidebar-to: #1d0d47;
+    --violet: #6c21c8;
+    --violet-dark: #4c1280;
+    --violet-soft: #ede9fe;
+    --violet-light: #a78bfa;
+    --indigo: #4f46e5;
+    --indigo-light: #6366f1;
+    --indigo-soft: #e0e7ff;
+    --sidebar-from: #3b0e6e;
+    --sidebar-mid: #2d0a55;
+    --sidebar-to: #230844;
 
     /* Etats */
     --green: #10b981;
-    --green-soft: #e6f9f2;
+    --green-dark: #059669;
+    --green-soft: #d1fae5;
     --amber: #f59e0b;
-    --amber-soft: #fef3e2;
+    --amber-dark: #d97706;
+    --amber-soft: #fef3c7;
     --red: #ef4444;
-    --red-soft: #fdeaea;
-    --blue: #4f6ef7;
-    --blue-soft: #eaeefe;
+    --red-soft: #fee2e2;
+    --blue: #0ea5e9;
+    --blue-soft: #e0f2fe;
     --pink: #ec4899;
+    --pink-dark: #be185d;
+    --pink-soft: #fce7f3;
 
     --radius: 1rem;
     --radius-sm: 0.625rem;
@@ -124,7 +138,7 @@ code {
     justify-content: space-between;
     gap: 1rem;
     padding: 0 1.75rem;
-    background: rgba(245, 246, 251, 0.9);
+    background: rgba(247, 247, 251, 0.92);
     backdrop-filter: blur(8px);
     border-bottom: 1px solid var(--border);
 }
@@ -250,7 +264,7 @@ code {
     z-index: 40;
     display: flex;
     flex-direction: column;
-    background: linear-gradient(180deg, var(--sidebar-from) 0%, var(--sidebar-to) 100%);
+    background: linear-gradient(170deg, var(--sidebar-from) 0%, var(--sidebar-mid) 60%, var(--sidebar-to) 100%);
     color: #fff;
     overflow-y: auto;
 }
@@ -272,7 +286,7 @@ code {
     width: 2.6rem;
     height: 2.6rem;
     border-radius: 0.85rem;
-    background: linear-gradient(135deg, #7c3aed, #a855f7);
+    background: linear-gradient(135deg, #a78bfa, #6c21c8);
     display: grid;
     place-items: center;
     font-weight: 800;
@@ -431,7 +445,7 @@ code {
     border-radius: 1.25rem;
     padding: 1.9rem 2rem;
     margin-bottom: 1.5rem;
-    background: linear-gradient(120deg, #5b21f5 0%, #7c3aed 45%, #9333ea 100%);
+    background: linear-gradient(135deg, #4c1280 0%, #6c21c8 45%, #4f46e5 100%);
     color: #fff;
     box-shadow: var(--shadow-lift);
 }
@@ -617,11 +631,11 @@ code {
     background: rgba(255, 255, 255, 0.22);
 }
 
-.stat--blue { background: linear-gradient(135deg, #4f6ef7, #6366f1); }
-.stat--green { background: linear-gradient(135deg, #10b981, #059669); }
-.stat--amber { background: linear-gradient(135deg, #f59e0b, #ea8004); }
-.stat--pink { background: linear-gradient(135deg, #ec4899, #db2777); }
-.stat--violet { background: linear-gradient(135deg, #7c3aed, #6d28d9); }
+.stat--blue { background: linear-gradient(135deg, #6c21c8, #6366f1); }
+.stat--green { background: linear-gradient(135deg, #059669, #10b981); }
+.stat--amber { background: linear-gradient(135deg, #d97706, #f59e0b); }
+.stat--pink { background: linear-gradient(135deg, #be185d, #ec4899); }
+.stat--violet { background: linear-gradient(135deg, #a78bfa, #6c21c8); }
 
 .stat__icon {
     position: absolute;
@@ -898,8 +912,8 @@ input[type="checkbox"], input[type="radio"] {
     flex: none;
 }
 
-.avatar--0 { background: #4f6ef7; }
-.avatar--1 { background: #7c3aed; }
+.avatar--0 { background: #4f46e5; }
+.avatar--1 { background: #6c21c8; }
 .avatar--2 { background: #ef4444; }
 .avatar--3 { background: #10b981; }
 .avatar--4 { background: #f59e0b; }
