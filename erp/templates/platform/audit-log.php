@@ -36,7 +36,40 @@ $labels = [
     'user.create_platform_admin' => 'Administrateur nomme',
     'schema.migrate' => 'Migration appliquee',
     'http.not_found' => 'Page introuvable',
+    'grade.create' => 'Note saisie',
+    'grade.update' => 'Note modifiee',
 ];
+
+/**
+ * Rend une modification lisible : « valeur : 12 vers 14 ».
+ *
+ * Le JSON brut est illisible pour qui instruit une contestation, et c'est
+ * pourtant a lui qu'on demande de trancher.
+ */
+$diff = static function (?string $old, ?string $new): string {
+    $escape = static fn (string $v): string => htmlspecialchars($v, ENT_QUOTES, 'UTF-8');
+
+    $before = $old === null ? [] : (json_decode($old, true) ?: []);
+    $after = $new === null ? [] : (json_decode($new, true) ?: []);
+
+    if (! is_array($before) || ! is_array($after)) {
+        return '';
+    }
+
+    $lines = [];
+
+    foreach (array_keys($after + $before) as $key) {
+        $from = $before[$key] ?? null;
+        $to = $after[$key] ?? null;
+
+        $lines[] = $escape((string) $key).' : '
+            .'<strong>'.$escape($from === null ? 'vide' : (string) $from).'</strong>'
+            .' &rarr; '
+            .'<strong>'.$escape($to === null ? 'vide' : (string) $to).'</strong>';
+    }
+
+    return implode('<br>', $lines);
+};
 ?>
 <div class="page-header">
     <div>
@@ -76,7 +109,7 @@ $labels = [
             <thead>
             <tr>
                 <th>Date</th><th>Evenement</th><th>Auteur</th>
-                <th>Perimetre</th><th>Cible</th><th>Adresse IP</th>
+                <th>Perimetre</th><th>Cible</th><th>Modification</th><th>Adresse IP</th>
             </tr>
             </thead>
             <tbody>
@@ -105,6 +138,14 @@ $labels = [
                             <code><?= $this->e($entry['resource_id']) ?></code>
                         <?php else : ?>
                             <?= $this->e($entry['resource']) ?>
+                        <?php endif; ?>
+                    </td>
+                    <td class="muted">
+                        <?php $change = $diff($entry['old_value'] ?? null, $entry['new_value'] ?? null); ?>
+                        <?php if ($change === '') : ?>
+                            &mdash;
+                        <?php else : ?>
+                            <?= $this->raw($change) ?>
                         <?php endif; ?>
                     </td>
                     <td class="muted"><?= $this->e($entry['ip_address'] ?: '-') ?></td>

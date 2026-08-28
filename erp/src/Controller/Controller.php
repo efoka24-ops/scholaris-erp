@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Scholaris\Controller;
 
 use Scholaris\Application;
+use Scholaris\Audit\AuditTrail;
 use Scholaris\Database\Table;
 use Scholaris\Http\Exception\HttpException;
 use Scholaris\Http\Response;
@@ -98,5 +99,15 @@ abstract class Controller
             ->first();
 
         return isset($row['id']) ? (string) $row['id'] : null;
+    }
+    /**
+     * Journal des actes, avec valeur avant et valeur apres.
+     *
+     * Dans une administration publique, savoir qu'une donnee a change ne suffit
+     * pas : il faut pouvoir dire ce qu'elle valait.
+     */
+    protected function trail(): AuditTrail
+    {
+        return new AuditTrail($this->app);
     }
 }

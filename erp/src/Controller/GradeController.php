@@ -238,7 +238,7 @@ final class GradeController extends Controller
         string $now
     ): void {
         $existing = $this->app->db()->selectOne(
-            'SELECT id, is_locked FROM grades
+            'SELECT id, is_locked, value, is_absent FROM grades
              WHERE tenant_id = :tenant AND student_id = :student AND subject_id = :subject
                AND period_id = :period AND type = :type AND deleted_at IS NULL',
             [
@@ -266,10 +266,21 @@ final class GradeController extends Controller
                 ]
             );
 
+            // Une note qui change doit pouvoir se contester : savoir qu'elle a
+            // ete modifiee ne sert a rien si l'on ignore ce qu'elle valait.
+            $this->trail()->changed(
+                'grade.update',
+                'grades',
+                (string) $existing['id'],
+                ['value' => $existing['value'], 'is_absent' => (int) $existing['is_absent']],
+                ['value' => $value, 'is_absent' => $isAbsent ? 1 : 0],
+                ['value', 'is_absent']
+            );
+
             return;
         }
 
-        $this->table('grades')->insert([
+        $id = $this->table('grades')->insert([
             'student_id' => $studentId,
             'subject_id' => $subjectId,
             'period_id' => $periodId,
@@ -282,6 +293,14 @@ final class GradeController extends Controller
             'is_absent' => $isAbsent ? 1 : 0,
             'created_at' => $now,
             'updated_at' => $now,
+        ]);
+
+        $this->trail()->created('grade.create', 'grades', $id, [
+            'student_id' => $studentId,
+            'subject_id' => $subjectId,
+            'type' => $type,
+            'value' => $value,
+            'is_absent' => $isAbsent ? 1 : 0,
         ]);
     }
 
