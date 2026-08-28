@@ -65,19 +65,34 @@ final class View
     /**
      * @param  array<string, mixed>  $data
      */
-    private function evaluate(string $template, array $data): string
+    /**
+     * Execute un gabarit avec ses variables.
+     *
+     * Les variables internes portent un prefixe « __ » pour une raison
+     * precise : extract() en mode EXTR_SKIP refuse d'ecraser une variable
+     * existante. Une donnee nommee comme un local du moteur — « path »,
+     * « template », « data » — etait donc silencieusement ignoree, et le
+     * gabarit affichait la valeur interne a la place. Le defaut ne se voit
+     * pas : la page s'affiche, avec le mauvais contenu. C'est arrive avec
+     * « path », qui montrait le chemin du fichier de gabarit au lieu de
+     * l'adresse demandee.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function evaluate(string $__template, array $__data): string
     {
-        $path = $this->directory.DIRECTORY_SEPARATOR.str_replace('.', DIRECTORY_SEPARATOR, $template).'.php';
+        $__path = $this->directory.DIRECTORY_SEPARATOR
+            .str_replace('.', DIRECTORY_SEPARATOR, $__template).'.php';
 
-        if (! is_file($path)) {
-            throw new RuntimeException("Gabarit introuvable : {$template}");
+        if (! is_file($__path)) {
+            throw new RuntimeException("Gabarit introuvable : {$__template}");
         }
 
-        extract($data, EXTR_SKIP);
+        extract($__data, EXTR_SKIP);
         ob_start();
 
         try {
-            require $path;
+            require $__path;
         } catch (\Throwable $e) {
             ob_end_clean();
 

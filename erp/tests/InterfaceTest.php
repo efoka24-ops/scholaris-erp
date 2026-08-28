@@ -254,6 +254,35 @@ final class InterfaceTest extends TestCase
         $this->assertStringContains('/dashboard', $content, 'Une sortie est proposee');
     }
 
+    public function testUneVariableDeGabaritNEstJamaisEcraseeParLeMoteur(): void
+    {
+        // extract() en mode EXTR_SKIP refuse d'ecraser une variable existante.
+        // Une donnee portant le nom d'un local du moteur etait donc ignoree
+        // sans bruit, et le gabarit affichait la valeur interne. Le defaut ne
+        // se voit pas : la page s'affiche, avec le mauvais contenu.
+        $view = new \Scholaris\View\View($this->basePath().'/tests/fixtures/views');
+
+        @mkdir($this->basePath().'/tests/fixtures/views', 0777, true);
+        file_put_contents(
+            $this->basePath().'/tests/fixtures/views/collision.php',
+            '<?= $path ?>|<?= $template ?>|<?= $data ?>'
+        );
+
+        $rendered = $view->render('collision', [
+            'path' => '/attendu',
+            'template' => 'attendu-template',
+            'data' => 'attendu-data',
+        ]);
+
+        unlink($this->basePath().'/tests/fixtures/views/collision.php');
+
+        $this->assertSame(
+            '/attendu|attendu-template|attendu-data',
+            $rendered,
+            'Les variables du gabarit priment sur les locales du moteur'
+        );
+    }
+
     public function testUnePageIntrouvableEstJournalisee(): void
     {
         // Sans trace, un utilisateur signale « une page introuvable » sans
