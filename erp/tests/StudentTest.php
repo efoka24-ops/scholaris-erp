@@ -132,4 +132,56 @@ final class StudentTest extends TestCase
         $this->assertSame(200, $response->status(), 'La fiche doit etre accessible');
         $this->assertStringContains('A/400', $response->content(), 'Le matricule doit etre affiche');
     }
+    public function testLaListeAfficheLesCompteursParStatut(): void
+    {
+        // Un directeur ouvre cet ecran pour savoir combien d'eleves il a et
+        // combien de dossiers attendent. Le faire filtrer quatre fois pour
+        // l'apprendre serait absurde.
+        $userId = $this->createUser($this->tenantA, 'admin@a.cm');
+        $this->giveRole($userId, 'ADMIN', ['students:read', 'students:create', 'students:update']);
+        $this->actingAs($userId);
+
+        $this->createStudent($this->tenantA, 'A/001', 'ACTIF');
+        $suspended = $this->createStudent($this->tenantA, 'A/002', 'SUSPENDU');
+        $this->db->execute(
+            "UPDATE students SET status = 'SUSPENDED' WHERE id = :id",
+            ['id' => $suspended]
+        );
+
+        $content = $this->request('GET', '/students')->content();
+
+        $this->assertStringContains('Suspendus', $content, 'Le bandeau distingue les statuts');
+        $this->assertStringContains('Pre-inscriptions en attente', $content, 'Et les dossiers a instruire');
+    }
+
+    public function testUneMoyenneAbsenteNEstPasAfficheeCommeUnZero(): void
+    {
+        // Afficher « 0,00 » pour un eleve sans resultat publie le ferait passer
+        // pour le dernier de sa classe.
+        $userId = $this->createUser($this->tenantA, 'admin@a.cm');
+        $this->giveRole($userId, 'ADMIN', ['students:read']);
+        $this->actingAs($userId);
+
+        $this->createStudent($this->tenantA, 'A/003', 'SANSNOTE');
+
+        $content = $this->request('GET', '/students')->content();
+
+        $this->assertStringContains('score--none', $content, 'L absence de note a son propre traitement');
+        $this->assertStringContains('ce n est pas une note nulle', $content, 'Et la lecture en est expliquee');
+    }
+
+    public function testLaRechercheEtLeStatutFiltrentLaListe(): void
+    {
+        $userId = $this->createUser($this->tenantA, 'admin@a.cm');
+        $this->giveRole($userId, 'ADMIN', ['students:read']);
+        $this->actingAs($userId);
+
+        $this->createStudent($this->tenantA, 'A/010', 'CHERCHE');
+        $this->createStudent($this->tenantA, 'A/011', 'AUTRE');
+
+        $content = $this->request('GET', '/students', ['q' => 'CHERCHE'])->content();
+
+        $this->assertStringContains('CHERCHE', $content, 'L eleve recherche apparait');
+        $this->assertTrue(! str_contains($content, 'A/011'), 'Les autres sont ecartes');
+    }
 }

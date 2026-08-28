@@ -36,6 +36,14 @@ final class StudentController extends Controller
             $query->where('status', $status);
         }
 
+        // Filtre par classe : passe par l'inscription active, un eleve n'ayant
+        // pas de classe en propre — il change de classe chaque annee.
+        $classroom = $request->string('classe');
+
+        if ($classroom !== '') {
+            $query->whereIn('id', $this->studentIdsInClassroom($classroom));
+        }
+
         // Le comptage doit porter les memes filtres que la liste : on compte
         // avant d'appliquer la pagination, sur une requete clonee.
         $total = (clone $query)->count();
@@ -47,7 +55,7 @@ final class StudentController extends Controller
             ->get();
 
         return $this->view('students.index', [
-            'students' => $students,
+            'students' => $this->decorate($students),
             'total' => $total,
             'page' => $page,
             'perPage' => self::PER_PAGE,
@@ -55,6 +63,9 @@ final class StudentController extends Controller
             'search' => $search,
             'status' => $status,
             'statuses' => self::STATUSES,
+            'counts' => $this->countsByStatus(),
+            'classrooms' => $this->table('classrooms')->orderBy('name')->get(),
+            'classroom' => $request->string('classe'),
         ]);
     }
 
@@ -280,5 +291,128 @@ final class StudentController extends Controller
         $tenant = $db->selectOne('SELECT code FROM tenants WHERE id = :id', ['id' => $tenantId]);
 
         return sprintf('%s/%s/%04d', $tenant['code'] ?? 'ETS', $year, $next);
+    }
+    /**
+     * Compteurs par statut, affiches en bandeau au-dessus de la liste.
+     *
+     * Un directeur ouvre cet ecran pour savoir combien d'eleves il a, et
+     * combien de dossiers restent en attente. Le faire filtrer quatre fois
+     * pour l'apprendre serait absurde.
+     *
+     * @return array<string, int>
+     */
+    private function countsByStatus(): array
+    {
+        $rows = $this->app->db()->select(
+            'SELECT status, COUNT(*) AS total FROM students
+             WHERE tenant_id = :tenant AND deleted_at IS NULL
+             GROUP BY status',
+            ['tenant' => $this->app->tenant()->requireId()]
+        );
+
+        $counts = ['TOTAL' => 0];
+
+        foreach (self::STATUSES as $status) {
+            $counts[$status] = 0;
+        }
+
+        foreach ($rows as $row) {
+            $status = (string) $row['status'];
+            $counts[$status] = (int) $row['total'];
+            $counts['TOTAL'] += (int) $row['total'];
+        }
+
+        // Les dossiers de pre-inscription ne sont pas encore des eleves : ils
+        // sont comptes a part, sans entrer dans le total.
+        $counts['PENDING'] = $this->table('admission_applications')
+            ->notDeleted()
+            ->where('status', 'PENDING')
+            ->count();
+
+        return $counts;
+    }
+
+    /**
+     * Ajoute a chaque eleve sa classe et sa derniere moyenne publiee.
+     *
+     * Les deux sont ce qu'on cherche dans une liste d'eleves, et les obtenir
+     * exigeait jusqu'ici d'ouvrir chaque fiche. Une requete par eleve serait
+     * ruineuse sur deux mille dossiers : les deux jeux sont donc charges en
+     * bloc puis rapproches en memoire.
+     *
+     * @param  list<array<string, mixed>>  $students
+     * @return list<array<string, mixed>>
+     */
+    private function decorate(array $students): array
+    {
+        if ($students === []) {
+            return [];
+        }
+
+        $ids = array_map(static fn (array $s): string => (string) $s['id'], $students);
+        $placeholders = [];
+        $params = ['tenant' => $this->app->tenant()->requireId()];
+
+        foreach ($ids as $index => $id) {
+            $placeholders[] = ':s'.$index;
+            $params['s'.$index] = $id;
+        }
+
+        $list = implode(', ', $placeholders);
+
+        $classrooms = [];
+
+        foreach ($this->app->db()->select(
+            'SELECT e.student_id, c.name FROM enrollments e
+             JOIN classrooms c ON c.id = e.classroom_id
+             WHERE e.tenant_id = :tenant AND e.deleted_at IS NULL
+               AND e.status = \'ACTIVE\' AND e.student_id IN ('.$list.')',
+            $params
+        ) as $row) {
+            $classrooms[(string) $row['student_id']] = (string) $row['name'];
+        }
+
+        $averages = [];
+
+        foreach ($this->app->db()->select(
+            'SELECT student_id, general_average FROM period_results
+             WHERE tenant_id = :tenant AND is_published = 1
+               AND general_average IS NOT NULL AND student_id IN ('.$list.')
+             ORDER BY created_at',
+            $params
+        ) as $row) {
+            // La derniere publiee ecrase les precedentes : c'est celle qui
+            // renseigne sur la situation actuelle.
+            $averages[(string) $row['student_id']] = (float) $row['general_average'];
+        }
+
+        foreach ($students as $index => $student) {
+            $id = (string) $student['id'];
+            $students[$index]['classroom_name'] = $classrooms[$id] ?? null;
+            $students[$index]['average'] = $averages[$id] ?? null;
+        }
+
+        return $students;
+    }
+
+    /**
+     * Identifiants des eleves inscrits dans une classe.
+     *
+     * @return list<string>
+     */
+    private function studentIdsInClassroom(string $classroomId): array
+    {
+        return array_map(
+            static fn (array $row): string => (string) $row['student_id'],
+            $this->app->db()->select(
+                'SELECT student_id FROM enrollments
+                 WHERE tenant_id = :tenant AND classroom_id = :classroom
+                   AND deleted_at IS NULL AND status = \'ACTIVE\'',
+                [
+                    'tenant' => $this->app->tenant()->requireId(),
+                    'classroom' => $classroomId,
+                ]
+            )
+        );
     }
 }
