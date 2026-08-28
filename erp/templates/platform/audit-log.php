@@ -35,6 +35,7 @@ $labels = [
     'user.unlock' => 'Compte deverrouille',
     'user.create_platform_admin' => 'Administrateur nomme',
     'schema.migrate' => 'Migration appliquee',
+    'http.not_found' => 'Page introuvable',
 ];
 ?>
 <div class="page-header">
@@ -97,7 +98,15 @@ $labels = [
                             <?= $this->e($entry['tenant_name']) ?>
                         <?php endif; ?>
                     </td>
-                    <td class="muted"><?= $this->e($entry['resource']) ?></td>
+                    <td class="muted">
+                        <?php if (($entry['resource_id'] ?? null) !== null && $entry['resource_id'] !== '') : ?>
+                            <?php // L'identifiant est ce qui permet de retrouver l'acte : pour une
+                                  // page introuvable, c'est l'adresse demandee. ?>
+                            <code><?= $this->e($entry['resource_id']) ?></code>
+                        <?php else : ?>
+                            <?= $this->e($entry['resource']) ?>
+                        <?php endif; ?>
+                    </td>
                     <td class="muted"><?= $this->e($entry['ip_address'] ?: '-') ?></td>
                 </tr>
             <?php endforeach; ?>

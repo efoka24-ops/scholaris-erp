@@ -236,6 +236,43 @@ final class InterfaceTest extends TestCase
         $this->assertStringContains('topbar__crumb', $content, 'Le fil d Ariane situe la page');
     }
 
+    public function testUnePageIntrouvableExpliqueEtLaisseUneSortie(): void
+    {
+        // Un « 404 » sec ne dit rien : l'adresse est-elle fausse, le module
+        // absent de l'etablissement, ou l'application cassee ? L'utilisateur
+        // ne peut pas les distinguer, et n'a rien a faire.
+        $userId = $this->createUser($this->tenantA, 'quelquun@a.cm');
+        $this->giveRole($userId, 'AUCUN', []);
+        $this->actingAs($userId);
+
+        $response = $this->request('GET', '/patrimoine');
+        $content = $response->content();
+
+        $this->assertSame(404, $response->status(), 'Un module non active reste introuvable');
+        $this->assertStringContains('Page introuvable', $content, 'La situation est nommee');
+        $this->assertStringContains('n est pas active', $content, 'Et la cause probable expliquee');
+        $this->assertStringContains('/dashboard', $content, 'Une sortie est proposee');
+    }
+
+    public function testUnePageIntrouvableEstJournalisee(): void
+    {
+        // Sans trace, un utilisateur signale « une page introuvable » sans
+        // pouvoir dire laquelle, et rien ne permet de savoir ou il a clique.
+        $userId = $this->createUser($this->tenantA, 'quelquun@a.cm');
+        $this->giveRole($userId, 'AUCUN', []);
+        $this->actingAs($userId);
+
+        $this->request('GET', '/patrimoine');
+
+        $entry = $this->db->selectOne(
+            "SELECT * FROM audit_logs WHERE action = 'http.not_found'"
+        );
+
+        $this->assertTrue($entry !== null, 'L adresse introuvable est journalisee');
+        $this->assertSame('/patrimoine', (string) $entry['resource_id'], 'Avec le chemin demande');
+        $this->assertSame($userId, (string) $entry['user_id'], 'Et qui l a demande');
+    }
+
     public function testUneRubriqueEntierementMasqueeNeLaissePasSonTitre(): void
     {
         // Un intertitre « Gestion » suivi de rien ferait croire a un ecran

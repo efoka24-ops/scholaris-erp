@@ -57,6 +57,9 @@ final class Application
 
     private ?Mailer $mailer = null;
 
+    /** Chemin de la requete en cours, pour les journaux et la page d erreur. */
+    private ?string $currentPath = null;
+
     private string $basePath;
 
     public function __construct(string $basePath, Env $env, Connection $db)
@@ -286,6 +289,10 @@ final class Application
 
     public function handle(Request $request): Response
     {
+        // Retenu avant tout traitement : la page d'erreur et le journal en ont
+        // besoin, y compris quand l'echec survient avant le routage.
+        $this->currentPath = $request->path();
+
         try {
             $this->session->start($this->env->bool('SESSION_SECURE', false));
             $this->auth->restore();
@@ -456,12 +463,78 @@ final class Application
         $this->view->share('features', $this->features());
     }
 
+    /**
+     * Page d'erreur.
+     *
+     * Un « 404 » sec ne dit rien a qui le recoit : l'adresse est-elle fausse,
+     * le module absent de son etablissement, ou l'application cassee ? Chacune
+     * de ces trois situations appelle une action differente, et l'utilisateur
+     * ne peut pas les distinguer. La page les nomme donc.
+     *
+     * Les 404 sont par ailleurs journalisees : sans cela, un utilisateur
+     * signale « une page introuvable » sans pouvoir dire laquelle, et il n'y a
+     * aucun moyen de savoir ou il a clique.
+     */
     private function renderError(int $status, string $message): Response
     {
+        if ($status === 404) {
+            $this->recordNotFound();
+        }
+
         return Response::html(
-            $this->view->render('errors.error', ['status' => $status, 'message' => $message]),
+            $this->view->render('errors.error', [
+                'status' => $status,
+                'message' => $message,
+                'path' => $this->currentPath(),
+                'isLogged' => $this->auth->check(),
+                'home' => $this->auth->isPlatformAccount() && ! $this->tenant->isSet()
+                    ? '/admin'
+                    : '/dashboard',
+            ]),
             $status
         );
+    }
+
+    /**
+     * Chemin de la requete en cours.
+     *
+     * Retenu au debut du traitement plutot que relu dans $_SERVER : la
+     * requete porte deja le chemin normalise, et le serveur de test n'alimente
+     * pas ces variables globales.
+     */
+    private function currentPath(): string
+    {
+        return $this->currentPath ?? '/';
+    }
+
+    /**
+     * Garde trace d'une adresse introuvable.
+     *
+     * L'ecriture ne doit jamais faire echouer l'affichage de la page d'erreur :
+     * une base injoignable produit deja assez de degats sans qu'on y ajoute une
+     * page blanche a la place du message.
+     */
+    private function recordNotFound(): void
+    {
+        try {
+            $this->tenant->global(function (): void {
+                $this->db->execute(
+                    'INSERT INTO audit_logs (id, user_id, action, resource, resource_id, ip_address, timestamp)
+                     VALUES (:id, :user, :action, :resource, :resource_id, :ip, :timestamp)',
+                    [
+                        'id' => Table::uuid(),
+                        'user' => $this->auth->id(),
+                        'action' => 'http.not_found',
+                        'resource' => 'route',
+                        'resource_id' => substr($this->currentPath(), 0, 255),
+                        'ip' => $_SERVER['REMOTE_ADDR'] ?? null,
+                        'timestamp' => date('Y-m-d H:i:s'),
+                    ]
+                );
+            });
+        } catch (Throwable $e) {
+            // Sans consequence : la page d'erreur reste affichee.
+        }
     }
 
     private function renderUnexpected(Throwable $e): Response
