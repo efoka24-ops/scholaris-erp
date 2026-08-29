@@ -5,6 +5,8 @@
  * @var \Scholaris\View\View $this
  * @var array<string, mixed> $old
  * @var array<string, string> $regions
+ * @var list<string> $departments
+ * @var array<string, string> $ministries
  * @var string $csrfToken
  */
 $this->extends('layouts.app');
@@ -58,6 +60,9 @@ $value = static fn (string $k): string => (string) ($old[$k] ?? '');
                 <label for="scope_type">Etendue</label>
                 <select id="scope_type" name="scope_type">
                     <option value="PLATFORM">Tout le territoire — administrateur de la plateforme</option>
+                    <option value="MINISTRY" <?= $value('scope_type') === 'MINISTRY' ? 'selected' : '' ?>>
+                        Une tutelle — administrateur de ministere
+                    </option>
                     <option value="REGION" <?= $value('scope_type') === 'REGION' ? 'selected' : '' ?>>
                         Une region — delegue regional
                     </option>
@@ -67,13 +72,19 @@ $value = static fn (string $k): string => (string) ($old[$k] ?? '');
                 </select>
             </div>
             <div class="field">
-                <label for="scope_value">Region ou departement</label>
-                <input id="scope_value" name="scope_value" list="regions-list"
+                <label for="scope_value">Tutelle, region ou departement</label>
+                <input id="scope_value" name="scope_value" list="scope-values"
                        placeholder="Laisser vide pour le territoire entier"
                        value="<?= $this->e($value('scope_value')) ?>">
-                <datalist id="regions-list">
-                    <?php foreach ($regions as $code => $label) : ?>
+                <datalist id="scope-values">
+                    <?php foreach ($ministries as $code => $label) : ?>
                         <option value="<?= $this->e($code) ?>"><?= $this->e($label) ?></option>
+                    <?php endforeach; ?>
+                    <?php foreach ($regions as $code => $label) : ?>
+                        <option value="<?= $this->e($code) ?>">Region <?= $this->e($label) ?></option>
+                    <?php endforeach; ?>
+                    <?php foreach ($departments as $department) : ?>
+                        <option value="<?= $this->e($department) ?>">Departement <?= $this->e($department) ?></option>
                     <?php endforeach; ?>
                 </datalist>
             </div>

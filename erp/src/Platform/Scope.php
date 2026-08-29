@@ -26,6 +26,8 @@ final class Scope
 {
     public const PLATFORM = 'PLATFORM';
 
+    public const MINISTRY = 'MINISTRY';
+
     public const REGION = 'REGION';
 
     public const DEPARTMENT = 'DEPARTMENT';
@@ -46,6 +48,18 @@ final class Scope
     public static function platform(): self
     {
         return new self(self::PLATFORM, null);
+    }
+
+    /**
+     * Perimetre d'une tutelle.
+     *
+     * Il traverse toutes les regions mais ne concerne qu'une partie des
+     * etablissements de chacune : les deux decoupages se croisent sans se
+     * confondre, et aucun ne se deduit de l'autre.
+     */
+    public static function ministry(string $ministry): self
+    {
+        return new self(self::MINISTRY, $ministry);
     }
 
     public static function region(string $region): self
@@ -81,11 +95,18 @@ final class Scope
         $type = $user['scope_type'] ?? null;
         $value = $user['scope_value'] ?? null;
 
+        if ($type === self::MINISTRY && is_string($value) && Cameroon::isMinistry($value)) {
+            return self::ministry($value);
+        }
+
         if ($type === self::REGION && is_string($value) && Cameroon::isRegion($value)) {
             return self::region($value);
         }
 
-        if ($type === self::DEPARTMENT && is_string($value) && $value !== '') {
+        // Le departement est verifie contre le referentiel : une orthographe
+        // libre ne correspondrait a aucun etablissement, et le compte se
+        // retrouverait devant des ecrans vides sans comprendre pourquoi.
+        if ($type === self::DEPARTMENT && is_string($value) && Cameroon::isDepartment($value)) {
             return self::department($value);
         }
 
@@ -119,8 +140,9 @@ final class Scope
     public function label(): string
     {
         return match ($this->type) {
+            self::MINISTRY => Cameroon::ministryName($this->value),
             self::REGION => 'Region '.Cameroon::regionName($this->value),
-            self::DEPARTMENT => 'Departement '.($this->value ?? ''),
+            self::DEPARTMENT => 'Departement du '.($this->value ?? ''),
             self::TENANT => 'Un etablissement',
             default => 'Ensemble du territoire',
         };
@@ -137,6 +159,10 @@ final class Scope
     public function condition(string $alias = 't'): array
     {
         return match ($this->type) {
+            self::MINISTRY => [
+                'sql' => $alias.'.ministry = :scope_ministry',
+                'params' => ['scope_ministry' => (string) $this->value],
+            ],
             self::REGION => [
                 'sql' => $alias.'.region = :scope_region',
                 'params' => ['scope_region' => (string) $this->value],
@@ -186,6 +212,7 @@ final class Scope
     public function covers(array $tenant): bool
     {
         return match ($this->type) {
+            self::MINISTRY => ($tenant['ministry'] ?? null) === $this->value,
             self::REGION => ($tenant['region'] ?? null) === $this->value,
             self::DEPARTMENT => mb_strtolower((string) ($tenant['department'] ?? ''))
                 === mb_strtolower((string) $this->value),

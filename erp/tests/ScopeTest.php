@@ -6,6 +6,7 @@ namespace Scholaris\Tests;
 
 use Scholaris\Platform\PlatformStats;
 use Scholaris\Platform\Scope;
+use Scholaris\Support\Cameroon;
 
 /**
  * Perimetre d'un compte de pilotage.
@@ -114,7 +115,11 @@ final class ScopeTest extends TestCase
 
             // Fin de l'appel : une parenthese fermante en fin de ligne.
             if (preg_match('/\);\s*$/', $line) === 1 || preg_match('/\),\s*$/', $line) === 1) {
-                if (! str_contains($buffer, 'withScope')) {
+                // Deux formes admises, et deux seulement : withScope() pose
+                // les parametres du perimetre, prepare() rend la requete et
+                // ces memes parametres. Toute autre construction est refusee,
+                // pour que le controle ne devienne pas contournable.
+                if (! str_contains($buffer, 'withScope') && ! str_contains($buffer, '$this->prepare(')) {
                     $problems[] = 'ligne '.$open;
                 }
 
@@ -177,6 +182,77 @@ final class ScopeTest extends TestCase
         $this->assertTrue($nord->covers(['region' => 'NORD']), 'Une ecole du Nord est couverte');
         $this->assertTrue(! $nord->covers(['region' => 'OUEST']), 'Une ecole de l Ouest ne l est pas');
         $this->assertTrue(Scope::platform()->covers(['region' => 'OUEST']), 'Le national couvre tout');
+    }
+
+    // --- Tutelle ministerielle ------------------------------------------------
+
+    public function testUnePerimetreMinisterielTraverseLesRegions(): void
+    {
+        // Un ministere couvre une tutelle, qui traverse toutes les regions
+        // mais ne concerne qu'une partie des etablissements de chacune. Les
+        // deux decoupages se croisent sans se confondre.
+        $primaireNord = $this->createTenant('PN', 'Ecole du Nord');
+        $lyceeNord = $this->createTenant('LN', 'Lycee du Nord');
+        $primaireOuest = $this->createTenant('PO', 'Ecole de l Ouest');
+
+        $this->db->execute(
+            "UPDATE tenants SET region = 'NORD', ministry = 'MINEDUB' WHERE id = :id",
+            ['id' => $primaireNord]
+        );
+        $this->db->execute(
+            "UPDATE tenants SET region = 'NORD', ministry = 'MINESEC' WHERE id = :id",
+            ['id' => $lyceeNord]
+        );
+        $this->db->execute(
+            "UPDATE tenants SET region = 'OUEST', ministry = 'MINEDUB' WHERE id = :id",
+            ['id' => $primaireOuest]
+        );
+
+        $minedub = (new PlatformStats($this->db, Scope::ministry('MINEDUB')))->overview();
+
+        $this->assertSame(2, $minedub['tenants']['total'], 'Les deux ecoles primaires, dans deux regions');
+    }
+
+    public function testUnMinistereNeVoitPasLesEtablissementsDUneAutreTutelle(): void
+    {
+        $lycee = $this->createTenant('LYC', 'Lycee');
+        $this->db->execute("UPDATE tenants SET ministry = 'MINESEC' WHERE id = :id", ['id' => $lycee]);
+        $this->createStudent($lycee, 'L/001');
+
+        $minedub = (new PlatformStats($this->db, Scope::ministry('MINEDUB')))->overview();
+
+        $this->assertSame(0, $minedub['students']['total'], 'Aucun eleve du secondaire pour l education de base');
+    }
+
+    public function testLaTutelleSeDeduitDuTypeDEtablissement(): void
+    {
+        // Sert de proposition a la creation : un lycee technique releve du
+        // MINESEC, un centre de formation du MINEFOP.
+        $this->assertSame('MINEDUB', Cameroon::ministryForType('PRIMAIRE'), 'Le primaire releve du MINEDUB');
+        $this->assertSame('MINESEC', Cameroon::ministryForType('LYCEE_TECHNIQUE'), 'Le technique du MINESEC');
+        $this->assertSame('MINESUP', Cameroon::ministryForType('SUPERIEUR'), 'Le superieur du MINESUP');
+        $this->assertSame('MINEFOP', Cameroon::ministryForType('CENTRE_FORMATION'), 'La formation du MINEFOP');
+    }
+
+    public function testLeReferentielDesDepartementsEstComplet(): void
+    {
+        // Referentiel plutot que champ libre : « Mfoundi » saisi de trois
+        // facons dans trois etablissements donnerait trois departements, et
+        // aucun rapport departemental ne tomberait juste.
+        $this->assertSame(58, count(Cameroon::departments()), 'Le pays compte cinquante-huit departements');
+        $this->assertSame('CENTRE', Cameroon::regionOfDepartment('Mfoundi'), 'Le Mfoundi est au Centre');
+        $this->assertSame('LITTORAL', Cameroon::regionOfDepartment('Wouri'), 'Le Wouri au Littoral');
+        $this->assertTrue(! Cameroon::isDepartment('Atlantide'), 'Un departement invente est refuse');
+    }
+
+    public function testChaqueDepartementAppartientAUneRegionConnue(): void
+    {
+        foreach (Cameroon::departmentsByRegion() as $region => $departments) {
+            $this->assertTrue(
+                Cameroon::isRegion($region),
+                'Le departement de '.$departments[0].' est rattache a une region inconnue : '.$region
+            );
+        }
     }
 
     // --- Attribution ---------------------------------------------------------

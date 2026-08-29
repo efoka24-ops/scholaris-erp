@@ -6,6 +6,8 @@
  * @var array<string, mixed> $tenant
  * @var array<string, string> $types
  * @var array<string, string> $regions
+ * @var array<string, list<string>> $departments
+ * @var array<string, string> $ministries
  * @var string $csrfToken
  */
 $this->extends('layouts.app');
@@ -58,6 +60,38 @@ $title = 'Modifier '.$tenant['name'];
                 </select>
             </div>
             <div class="field">
+                <label for="department">Departement</label>
+                <select id="department" name="department">
+                    <option value="">Non renseigne</option>
+                    <?php foreach ($departments as $regionCode => $list) : ?>
+                        <optgroup label="<?= $this->e($regions[$regionCode] ?? $regionCode) ?>">
+                            <?php foreach ($list as $department) : ?>
+                                <option value="<?= $this->e($department) ?>"
+                                    <?= (string) ($tenant['department'] ?? '') === $department ? 'selected' : '' ?>>
+                                    <?= $this->e($department) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </optgroup>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="field">
+                <label for="district">Arrondissement</label>
+                <input id="district" name="district" value="<?= $this->e($tenant['district'] ?? '') ?>">
+            </div>
+            <div class="field">
+                <label for="ministry">Ministere de tutelle</label>
+                <select id="ministry" name="ministry">
+                    <option value="">Non renseigne</option>
+                    <?php foreach ($ministries as $code => $label) : ?>
+                        <option value="<?= $this->e($code) ?>"
+                            <?= (string) ($tenant['ministry'] ?? '') === $code ? 'selected' : '' ?>>
+                            <?= $this->e($label) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="field">
                 <label for="city">Ville</label>
                 <input id="city" name="city" value="<?= $this->e($tenant['city'] ?? '') ?>">
             </div>
@@ -74,6 +108,11 @@ $title = 'Modifier '.$tenant['name'];
             <label for="address">Adresse</label>
             <input id="address" name="address" value="<?= $this->e($tenant['address'] ?? '') ?>">
         </div>
+
+        <p class="muted">
+            La region se deduit du departement : les saisir separement
+            permettrait de declarer un etablissement dans deux regions a la fois.
+        </p>
 
         <p class="muted">
             Changer le type change les modules ouverts et le vocabulaire, mais

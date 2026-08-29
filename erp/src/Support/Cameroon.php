@@ -86,11 +86,150 @@ final class Cameroon
     ];
 
     /**
+     * Les cinquante-huit departements, par region.
+     *
+     * Referentiel plutot que champ libre : « Mfoundi », « MFOUNDI » et
+     * « Mfoundi (Yaounde) » saisis a la main dans trois etablissements
+     * donneraient trois departements distincts, et aucun rapport
+     * departemental ne tomberait juste.
+     *
+     * @var array<string, list<string>>
+     */
+    private const DEPARTMENTS = [
+        'ADAMAOUA' => ['Djerem', 'Faro-et-Deo', 'Mayo-Banyo', 'Mbere', 'Vina'],
+        'CENTRE' => [
+            'Haute-Sanaga', 'Lekie', 'Mbam-et-Inoubou', 'Mbam-et-Kim',
+            'Mefou-et-Afamba', 'Mefou-et-Akono', 'Mfoundi', 'Nyong-et-Kelle',
+            'Nyong-et-Mfoumou', 'Nyong-et-So o',
+        ],
+        'EST' => ['Boumba-et-Ngoko', 'Haut-Nyong', 'Kadey', 'Lom-et-Djerem'],
+        'EXTREME_NORD' => [
+            'Diamare', 'Logone-et-Chari', 'Mayo-Danay', 'Mayo-Kani',
+            'Mayo-Sava', 'Mayo-Tsanaga',
+        ],
+        'LITTORAL' => ['Moungo', 'Nkam', 'Sanaga-Maritime', 'Wouri'],
+        'NORD' => ['Benoue', 'Faro', 'Mayo-Louti', 'Mayo-Rey'],
+        'NORD_OUEST' => ['Boyo', 'Bui', 'Donga-Mantung', 'Menchum', 'Mezam', 'Momo', 'Ngo-Ketunjia'],
+        'OUEST' => [
+            'Bamboutos', 'Haut-Nkam', 'Hauts-Plateaux', 'Koung-Khi',
+            'Menoua', 'Mifi', 'Nde', 'Noun',
+        ],
+        'SUD' => ['Dja-et-Lobo', 'Mvila', 'Ocean', 'Vallee-du-Ntem'],
+        'SUD_OUEST' => ['Fako', 'Koupe-Manengouba', 'Lebialem', 'Manyu', 'Meme', 'Ndian'],
+    ];
+
+    /**
+     * Ministeres de tutelle.
+     *
+     * Un etablissement en releve d'un seul, et c'est ce rattachement qui
+     * determine a quel rapport ministeriel il contribue.
+     *
+     * @var array<string, string>
+     */
+    private const MINISTRIES = [
+        'MINEDUB' => 'MINEDUB — Education de base',
+        'MINESEC' => 'MINESEC — Enseignements secondaires',
+        'MINESUP' => 'MINESUP — Enseignement superieur',
+        'MINEFOP' => 'MINEFOP — Emploi et formation professionnelle',
+    ];
+
+    /**
      * @return array<string, array{name: string, capital: string, lon: float, lat: float}>
      */
     public static function regions(): array
     {
         return self::REGIONS;
+    }
+
+    /**
+     * Departements d'une region, ou tous si aucune n'est precisee.
+     *
+     * @return list<string>
+     */
+    public static function departments(?string $region = null): array
+    {
+        if ($region !== null) {
+            return self::DEPARTMENTS[$region] ?? [];
+        }
+
+        $all = [];
+
+        foreach (self::DEPARTMENTS as $departments) {
+            foreach ($departments as $department) {
+                $all[] = $department;
+            }
+        }
+
+        sort($all);
+
+        return $all;
+    }
+
+    /** @return array<string, list<string>> */
+    public static function departmentsByRegion(): array
+    {
+        return self::DEPARTMENTS;
+    }
+
+    /**
+     * La region a laquelle appartient un departement.
+     *
+     * Permet de deduire la region plutot que de la redemander, et d'eviter
+     * qu'un etablissement soit declare dans le Mfoundi et dans le Nord.
+     */
+    public static function regionOfDepartment(string $department): ?string
+    {
+        foreach (self::DEPARTMENTS as $region => $departments) {
+            foreach ($departments as $candidate) {
+                if (mb_strtolower($candidate) === mb_strtolower($department)) {
+                    return $region;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    public static function isDepartment(string $department): bool
+    {
+        return self::regionOfDepartment($department) !== null;
+    }
+
+    /** @return array<string, string> */
+    public static function ministries(): array
+    {
+        return self::MINISTRIES;
+    }
+
+    public static function isMinistry(string $code): bool
+    {
+        return isset(self::MINISTRIES[$code]);
+    }
+
+    public static function ministryName(?string $code): string
+    {
+        if ($code === null || ! isset(self::MINISTRIES[$code])) {
+            return 'Tutelle non renseignee';
+        }
+
+        return self::MINISTRIES[$code];
+    }
+
+    /**
+     * Ministere qui a naturellement la tutelle d'un type d'etablissement.
+     *
+     * Sert de proposition a la creation : le rattachement reste modifiable,
+     * un etablissement pouvant relever d'une tutelle particuliere.
+     */
+    public static function ministryForType(string $type): ?string
+    {
+        return match ($type) {
+            'PRIMAIRE' => 'MINEDUB',
+            'COLLEGE', 'LYCEE_GENERAL', 'LYCEE_TECHNIQUE' => 'MINESEC',
+            'SUPERIEUR' => 'MINESUP',
+            'CENTRE_FORMATION' => 'MINEFOP',
+            default => null,
+        };
     }
 
     /** @return array<string, string> code vers libelle, pour un menu deroulant */

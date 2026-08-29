@@ -340,6 +340,8 @@ final class PlatformUserController extends Controller
         return $this->view('platform.user-create', [
             'old' => $this->app->session()->pullOldInput(),
             'regions' => Cameroon::regionChoices(),
+            'departments' => Cameroon::departments(),
+            'ministries' => Cameroon::ministries(),
         ]);
     }
 
@@ -377,6 +379,19 @@ final class PlatformUserController extends Controller
             return $this->redirectWithSuccess('/admin/comptes', $user['email'].' couvre desormais tout le territoire.');
         }
 
+        if ($type === Scope::MINISTRY) {
+            if (! Cameroon::isMinistry($value)) {
+                return $this->redirectWithError('/admin/comptes', 'Ministere inconnu.');
+            }
+
+            $this->setScope((string) $user['id'], Scope::MINISTRY, $value);
+
+            return $this->redirectWithSuccess(
+                '/admin/comptes',
+                $user['email'].' couvre la tutelle '.$value.'.'
+            );
+        }
+
         if ($type === Scope::REGION) {
             if (! Cameroon::isRegion($value)) {
                 return $this->redirectWithError('/admin/comptes', 'Region inconnue.');
@@ -391,8 +406,14 @@ final class PlatformUserController extends Controller
         }
 
         if ($type === Scope::DEPARTMENT) {
-            if ($value === '') {
-                return $this->redirectWithError('/admin/comptes', 'Indiquez le departement.');
+            // Verifie contre le referentiel : une orthographe libre ne
+            // correspondrait a aucun etablissement, et le compte se
+            // retrouverait devant des ecrans vides sans comprendre pourquoi.
+            if (! Cameroon::isDepartment($value)) {
+                return $this->redirectWithError(
+                    '/admin/comptes',
+                    'Departement inconnu. Choisissez-en un parmi les cinquante-huit du pays.'
+                );
             }
 
             $this->setScope((string) $user['id'], Scope::DEPARTMENT, $value);
@@ -469,9 +490,11 @@ final class PlatformUserController extends Controller
         $scopeType = $request->string('scope_type');
         $scopeValue = trim($request->string('scope_value'));
 
-        if ($scopeType === Scope::REGION && Cameroon::isRegion($scopeValue)) {
+        if ($scopeType === Scope::MINISTRY && Cameroon::isMinistry($scopeValue)) {
+            $scope = [Scope::MINISTRY, $scopeValue];
+        } elseif ($scopeType === Scope::REGION && Cameroon::isRegion($scopeValue)) {
             $scope = [Scope::REGION, $scopeValue];
-        } elseif ($scopeType === Scope::DEPARTMENT && $scopeValue !== '') {
+        } elseif ($scopeType === Scope::DEPARTMENT && Cameroon::isDepartment($scopeValue)) {
             $scope = [Scope::DEPARTMENT, $scopeValue];
         } else {
             $scope = [null, null];
@@ -480,7 +503,14 @@ final class PlatformUserController extends Controller
         // Un delegue n'administre pas la plateforme : il la consulte sur son
         // territoire. Lui donner SUPER_ADMIN lui ouvrirait la creation
         // d'etablissements et la gestion des comptes.
-        $roleName = $scope[0] === null ? 'SUPER_ADMIN' : 'Délégué';
+        // Une tutelle ministerielle ouvre la creation d'etablissements sur son
+        // perimetre ; une delegation territoriale, non — elle constate, elle
+        // n'ouvre pas d'ecole.
+        $roleName = match ($scope[0]) {
+            null => 'SUPER_ADMIN',
+            Scope::MINISTRY => 'Admin Ministère',
+            default => 'Délégué',
+        };
 
         $this->app->tenant()->global(function () use ($userId, $email, $firstName, $lastName, $password, $scope, $roleName): void {
             $now = date('Y-m-d H:i:s');

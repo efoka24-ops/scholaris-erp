@@ -113,6 +113,7 @@ return [
         ['attendance', 'update', 'Modifier une présence saisie'],
         ['discipline', 'read', 'Consulter les incidents disciplinaires'],
         ['discipline', 'create', 'Déclarer un incident disciplinaire'],
+        ['discipline', 'update', 'Modifier ou cloturer un incident disciplinaire'],
         ['course-log', 'read', 'Consulter le cahier de textes'],
         ['course-log', 'create', 'Créer une séance de cahier de textes'],
         ['course-log', 'update', 'Modifier une séance de cahier de textes'],
@@ -124,8 +125,10 @@ return [
         ['library', 'update', 'Modifier/retourner un emprunt'],
         ['transport', 'read', 'Consulter les circuits et abonnements transport'],
         ['transport', 'create', 'Créer un circuit ou un abonnement transport'],
+        ['transport', 'update', 'Modifier un circuit ou un abonnement transport'],
         ['catering', 'read', 'Consulter les menus et abonnements cantine'],
         ['catering', 'create', 'Créer un menu ou un abonnement cantine'],
+        ['catering', 'update', 'Modifier un menu ou un abonnement cantine'],
         ['assets', 'read', 'Consulter le patrimoine (biens, équipements)'],
         ['assets', 'create', 'Enregistrer un bien au patrimoine'],
         ['assets', 'update', 'Modifier un bien du patrimoine'],
@@ -174,6 +177,113 @@ return [
                 'finance-dashboard:read',
                 'invoices:read',
                 'audit-logs:read',
+            ],
+        ],
+        [
+            // Administrateur d'une tutelle ministérielle. Son périmètre
+            // traverse toutes les régions mais ne couvre qu'une partie des
+            // établissements de chacune : il ne se déduit pas de la géographie.
+            'name' => 'Admin Ministère',
+            'description' => 'Pilotage des établissements relevant de sa tutelle',
+            'permissions' => [
+                'tenants:read',
+                'tenants:create',
+                'tenants:update',
+                'students:read',
+                'grades:read',
+                'bulletins:read',
+                'attendance:read',
+                'exams:read',
+                'finance-dashboard:read',
+                'hr:read',
+                'audit-logs:read',
+            ],
+        ],
+        [
+            // Professeur principal : un enseignant qui voit toute sa classe.
+            // La différence n'est pas dans ce qu'il saisit — il saisit ses
+            // notes comme les autres — mais dans ce qu'il consulte, pour
+            // préparer le conseil de classe.
+            'name' => 'Professeur principal',
+            'description' => 'Enseignant responsable d\'une classe — suivi global et conseil de classe',
+            'permissions' => [
+                'students:read',
+                'grades:create',
+                'grades:read',
+                'attendance:create',
+                'attendance:read',
+                'discipline:read',
+                'bulletins:read',
+                'course-log:create',
+                'course-log:read',
+                'course-log:update',
+                'timetables:read',
+                'internal-messages:read',
+                'internal-messages:create',
+            ],
+        ],
+        [
+            'name' => 'Responsable RH',
+            'description' => 'Personnel, contrats, carrières, congés',
+            'permissions' => [
+                // Les congés relèvent des permissions RH : « hr:read »
+                // couvre déjà « dossiers employés et congés ». Un jeu de
+                // permissions séparé donnerait deux vérités sur le même droit.
+                'hr:read', 'hr:create', 'hr:update',
+                'internal-messages:read', 'internal-messages:create',
+            ],
+        ],
+        [
+            'name' => 'Responsable cantine',
+            'description' => 'Menus, abonnements et repas servis',
+            'permissions' => [
+                'catering:read', 'catering:create', 'catering:update',
+                'students:read',
+                'internal-messages:read', 'internal-messages:create',
+            ],
+        ],
+        [
+            'name' => 'Responsable transport',
+            'description' => 'Véhicules, itinéraires et élèves transportés',
+            'permissions' => [
+                'transport:read', 'transport:create', 'transport:update',
+                'students:read',
+                'internal-messages:read', 'internal-messages:create',
+            ],
+        ],
+        [
+            'name' => 'Responsable maintenance',
+            'description' => 'Patrimoine, équipements et interventions',
+            'permissions' => [
+                'assets:read', 'assets:create', 'assets:update',
+                'rooms:read',
+                'internal-messages:read', 'internal-messages:create',
+            ],
+        ],
+        [
+            'name' => 'Responsable discipline',
+            'description' => 'Incidents, sanctions et convocations',
+            'permissions' => [
+                'discipline:read', 'discipline:create', 'discipline:update',
+                'attendance:read',
+                'students:read',
+                'internal-messages:read', 'internal-messages:create',
+            ],
+        ],
+        [
+            // Responsable légal secondaire : il suit la scolarité mais
+            // n'engage pas les paiements. Le responsable financier, lui, voit
+            // la facture et la règle. Confondre les deux ferait recevoir les
+            // relances de scolarité à qui n'a pas à les payer.
+            'name' => 'Responsable secondaire',
+            'description' => 'Second responsable d\'un élève — suivi scolaire sans accès financier',
+            'permissions' => [
+                'students:read',
+                'grades:read',
+                'bulletins:read',
+                'attendance:read',
+                'internal-messages:read',
+                'internal-messages:create',
             ],
         ],
         [

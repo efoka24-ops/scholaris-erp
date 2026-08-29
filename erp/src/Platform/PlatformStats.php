@@ -58,11 +58,37 @@ final class PlatformStats
     private function scopeRequests(): string
     {
         return match ($this->scope->type()) {
+            // Le ministere de tutelle se deduit du type demande : une demande
+            // n'a pas encore de rattachement, mais un lycee technique relevera
+            // du MINESEC quoi qu'il arrive.
+            Scope::MINISTRY => " AND type IN ".$this->typesOfMinistry(),
             Scope::REGION => ' AND region = :scope_region',
             Scope::DEPARTMENT => ' AND LOWER(city) = :scope_department',
             Scope::TENANT => ' AND 1 = 0',
             default => '',
         };
+    }
+
+    /**
+     * Types d'etablissement relevant de la tutelle du perimetre.
+     *
+     * Rendu en clair plutot qu'en parametres lies : les valeurs viennent d'une
+     * table de constantes du code, jamais d'une saisie.
+     */
+    private function typesOfMinistry(): string
+    {
+        $ministry = (string) $this->scope->value();
+        $types = [];
+
+        foreach (['PRIMAIRE', 'COLLEGE', 'LYCEE_GENERAL', 'LYCEE_TECHNIQUE', 'CENTRE_FORMATION', 'SUPERIEUR'] as $type) {
+            if (Cameroon::ministryForType($type) === $ministry) {
+                $types[] = "'".$type."'";
+            }
+        }
+
+        // Aucune correspondance : la clause doit exclure, pas tout laisser
+        // passer.
+        return $types === [] ? "('')" : '('.implode(', ', $types).')';
     }
 
     /**
@@ -464,6 +490,80 @@ final class PlatformStats
                  LIMIT 5';
 
         return $this->db->select($sql, $this->withScope($sql, []));
+    }
+
+    /**
+     * Effectifs et charge du personnel, dans le perimetre.
+     *
+     * Ce sont les chiffres que reclame une tutelle : combien d'agents, ou, et
+     * dans quelle fonction. Le taux d'encadrement — eleves par membre du
+     * personnel — est le seul qui se compare d'un etablissement a l'autre : un
+     * effectif brut ne dit rien sans la taille de l'ecole.
+     *
+     * @return array<string, mixed>
+     */
+    public function humanResources(): array
+    {
+        $total = $this->count(
+            "SELECT COUNT(*) FROM employees WHERE status = 'ACTIVE'".$this->scopeVia('tenant_id')
+        );
+
+        $students = $this->count(
+            'SELECT COUNT(*) FROM students WHERE deleted_at IS NULL'.$this->scopeVia('tenant_id')
+        );
+
+        $byPosition = $this->db->select(
+            ...$this->prepare(
+                "SELECT position, COUNT(*) AS total FROM employees
+                 WHERE status = 'ACTIVE'".$this->scopeVia('tenant_id')."
+                 GROUP BY position
+                 ORDER BY total DESC"
+            )
+        );
+
+        $byRegion = $this->db->select(
+            ...$this->prepare(
+                "SELECT t.region, COUNT(e.id) AS total
+                 FROM tenants t
+                 LEFT JOIN employees e ON e.tenant_id = t.id AND e.status = 'ACTIVE'
+                 WHERE t.deleted_at IS NULL".$this->scopeTenants('t')."
+                 GROUP BY t.region
+                 ORDER BY total DESC"
+            )
+        );
+
+        return [
+            'total' => $total,
+            // Faute de personnel enregistre, le taux est inconnu et non nul :
+            // afficher « 0 eleve par agent » laisserait croire a un
+            // sureffectif.
+            'ratio' => $total > 0 ? round($students / $total, 1) : null,
+            'onLeave' => $this->count(
+                "SELECT COUNT(*) FROM leave_requests
+                 WHERE status = 'APPROVED' AND start_date <= :today AND end_date >= :today"
+                .$this->scopeVia('tenant_id'),
+                ['today' => date('Y-m-d')]
+            ),
+            'pendingLeave' => $this->count(
+                "SELECT COUNT(*) FROM leave_requests WHERE status = 'PENDING'".$this->scopeVia('tenant_id')
+            ),
+            'byPosition' => $byPosition,
+            'byRegion' => $byRegion,
+            'hiredThisYear' => $this->count(
+                'SELECT COUNT(*) FROM employees WHERE hire_date >= :since'.$this->scopeVia('tenant_id'),
+                ['since' => date('Y-01-01')]
+            ),
+        ];
+    }
+
+    /**
+     * Prepare une requete et ses parametres de perimetre.
+     *
+     * @return array{0: string, 1: array<string, mixed>}
+     */
+    private function prepare(string $sql): array
+    {
+        return [$sql, $this->withScope($sql, [])];
     }
 
     /**

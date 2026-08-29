@@ -126,6 +126,57 @@ final class FeatureMatrixTest extends TestCase
         $this->assertSame([], $missing, 'Fonctionnalites sans libelle : '.implode(', ', $missing));
     }
 
+    public function testChaqueRoleNeReferenceQueDesPermissionsExistantes(): void
+    {
+        // Une permission mal orthographiee dans un role ne provoque aucune
+        // erreur : le seed l'ignore, et le role se retrouve silencieusement
+        // ampute d'un droit. On ne le decouvre qu'en constatant qu'un
+        // responsable ne peut pas faire son travail.
+        $matrix = require $this->basePath().'/database/rbac-matrix.php';
+
+        $known = [];
+
+        foreach ($matrix['permissions'] as [$resource, $action, $description]) {
+            $known[$resource.':'.$action] = true;
+        }
+
+        $problems = [];
+
+        foreach ($matrix['roles'] as $role) {
+            foreach ($role['permissions'] as $permission) {
+                if (! isset($known[$permission])) {
+                    $problems[] = $role['name'].' -> '.$permission;
+                }
+            }
+        }
+
+        $this->assertSame(
+            [],
+            $problems,
+            'Permission inexistante referencee par un role : '.implode(', ', $problems)
+        );
+    }
+
+    public function testChaqueRolePorteUnLibelleEtUneDescription(): void
+    {
+        // Un role sans description arrive vide dans l'ecran des habilitations,
+        // et personne ne sait ce qu'il autorise.
+        $matrix = require $this->basePath().'/database/rbac-matrix.php';
+        $problems = [];
+
+        foreach ($matrix['roles'] as $role) {
+            if (trim((string) ($role['description'] ?? '')) === '') {
+                $problems[] = $role['name'];
+            }
+
+            if ($role['permissions'] === []) {
+                $problems[] = $role['name'].' (aucune permission)';
+            }
+        }
+
+        $this->assertSame([], $problems, 'Role incomplet : '.implode(', ', $problems));
+    }
+
     public function testChaqueTypeExposeSesFonctionnalitesOptionnelles(): void
     {
         foreach (['PRIMAIRE', 'COLLEGE', 'LYCEE_GENERAL', 'LYCEE_TECHNIQUE', 'CENTRE_FORMATION'] as $type) {

@@ -209,6 +209,8 @@ final class TenantAdminController extends Controller
             'tenant' => $tenant,
             'types' => self::TYPES,
             'regions' => Cameroon::regionChoices(),
+            'departments' => Cameroon::departmentsByRegion(),
+            'ministries' => Cameroon::ministries(),
         ]);
     }
 
@@ -237,11 +239,26 @@ final class TenantAdminController extends Controller
         // qui portent des eleves ne se decide pas depuis un formulaire.
         $region = $request->string('region');
 
-        $this->app->tenant()->global(function () use ($request, $tenant, $name, $type, $region): void {
+        $department = trim($request->string('department'));
+        $ministry = $request->string('ministry');
+
+        // La region se deduit du departement quand il est renseigne : les
+        // laisser saisir independamment permettrait de declarer un
+        // etablissement dans le Mfoundi et dans le Nord a la fois.
+        if (Cameroon::isDepartment($department)) {
+            $region = (string) Cameroon::regionOfDepartment($department);
+        } else {
+            $department = '';
+        }
+
+        $this->app->tenant()->global(function () use (
+            $request, $tenant, $name, $type, $region, $department, $ministry
+        ): void {
             $this->app->db()->execute(
                 'UPDATE tenants SET name = :name, type = :type, status = :status,
                         address = :address, phone = :phone, email = :email,
-                        region = :region, city = :city,
+                        region = :region, department = :department, district = :district,
+                        ministry = :ministry, city = :city,
                         public_enrollment_enabled = :enrollment, updated_at = :updated_at
                  WHERE id = :id',
                 [
@@ -252,6 +269,9 @@ final class TenantAdminController extends Controller
                     'phone' => $request->string('phone') ?: null,
                     'email' => $request->string('email') ?: null,
                     'region' => Cameroon::isRegion($region) ? $region : null,
+                    'department' => $department !== '' ? $department : null,
+                    'district' => $request->string('district') ?: null,
+                    'ministry' => Cameroon::isMinistry($ministry) ? $ministry : null,
                     'city' => $request->string('city') ?: null,
                     'enrollment' => $request->input('public_enrollment_enabled') !== null ? 1 : 0,
                     'updated_at' => date('Y-m-d H:i:s'),
