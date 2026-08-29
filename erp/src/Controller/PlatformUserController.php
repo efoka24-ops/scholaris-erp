@@ -10,6 +10,8 @@ use Scholaris\Http\Exception\HttpException;
 use Scholaris\Http\Request;
 use Scholaris\Http\Response;
 use Scholaris\Platform\PlatformStats;
+use Scholaris\Platform\Scope;
+use Scholaris\Support\Cameroon;
 
 /**
  * Comptes, vus depuis la plateforme.
@@ -337,7 +339,94 @@ final class PlatformUserController extends Controller
 
         return $this->view('platform.user-create', [
             'old' => $this->app->session()->pullOldInput(),
+            'regions' => Cameroon::regionChoices(),
         ]);
+    }
+
+    /**
+     * Change le perimetre d'un compte de pilotage.
+     *
+     * C'est le maillon qui manquait : le perimetre existait dans le code et
+     * cadrait deja toutes les lectures, mais rien ne permettait de l'attribuer.
+     * Un delegue regional ne pouvait donc pas exister autrement qu'en
+     * modifiant la base a la main.
+     *
+     * Restreindre est toujours possible ; elargir jusqu'au national ne l'est
+     * que pour un compte qui n'appartient a aucun etablissement — un
+     * administrateur d'ecole ne doit pas pouvoir se voir accorder la vue
+     * nationale par un formulaire.
+     */
+    public function updateScope(Request $request): Response
+    {
+        $this->assertSuperAdmin();
+
+        $user = $this->findUser((string) $request->attribute('id'));
+        $type = $request->string('scope_type');
+        $value = trim($request->string('scope_value'));
+
+        if ($type === Scope::PLATFORM) {
+            if (($user['tenant_id'] ?? null) !== null) {
+                return $this->redirectWithError(
+                    '/admin/comptes',
+                    'Ce compte appartient a un etablissement : il ne peut pas recevoir le perimetre national.'
+                );
+            }
+
+            $this->setScope((string) $user['id'], null, null);
+
+            return $this->redirectWithSuccess('/admin/comptes', $user['email'].' couvre desormais tout le territoire.');
+        }
+
+        if ($type === Scope::REGION) {
+            if (! Cameroon::isRegion($value)) {
+                return $this->redirectWithError('/admin/comptes', 'Region inconnue.');
+            }
+
+            $this->setScope((string) $user['id'], Scope::REGION, $value);
+
+            return $this->redirectWithSuccess(
+                '/admin/comptes',
+                $user['email'].' couvre la region '.Cameroon::regionName($value).'.'
+            );
+        }
+
+        if ($type === Scope::DEPARTMENT) {
+            if ($value === '') {
+                return $this->redirectWithError('/admin/comptes', 'Indiquez le departement.');
+            }
+
+            $this->setScope((string) $user['id'], Scope::DEPARTMENT, $value);
+
+            return $this->redirectWithSuccess('/admin/comptes', $user['email'].' couvre le departement '.$value.'.');
+        }
+
+        return $this->redirectWithError('/admin/comptes', 'Perimetre inconnu.');
+    }
+
+    private function setScope(string $userId, ?string $type, ?string $value): void
+    {
+        $before = $this->app->tenant()->global(fn () => $this->app->db()->selectOne(
+            'SELECT scope_type, scope_value FROM users WHERE id = :id',
+            ['id' => $userId]
+        ));
+
+        $this->app->tenant()->global(function () use ($userId, $type, $value): void {
+            $this->app->db()->execute(
+                'UPDATE users SET scope_type = :type, scope_value = :value, updated_at = :updated_at WHERE id = :id',
+                ['type' => $type, 'value' => $value, 'updated_at' => date('Y-m-d H:i:s'), 'id' => $userId]
+            );
+        });
+
+        // Elargir ou restreindre ce que quelqu'un peut voir est un acte de
+        // gouvernance : il doit pouvoir etre rapporte a son auteur.
+        $this->trail()->changed(
+            'user.scope',
+            'users',
+            $userId,
+            ['scope_type' => $before['scope_type'] ?? null, 'scope_value' => $before['scope_value'] ?? null],
+            ['scope_type' => $type, 'scope_value' => $value],
+            ['scope_type', 'scope_value']
+        );
     }
 
     /**
@@ -374,12 +463,32 @@ final class PlatformUserController extends Controller
         $password = $this->generatePassword();
         $userId = Table::uuid();
 
-        $this->app->tenant()->global(function () use ($userId, $email, $firstName, $lastName, $password): void {
+        // Perimetre demande a la creation : sans lui, tout nouveau compte de
+        // pilotage serait national, et il faudrait le restreindre apres coup —
+        // avec la fenetre d'acces total que cela laisse ouverte entre les deux.
+        $scopeType = $request->string('scope_type');
+        $scopeValue = trim($request->string('scope_value'));
+
+        if ($scopeType === Scope::REGION && Cameroon::isRegion($scopeValue)) {
+            $scope = [Scope::REGION, $scopeValue];
+        } elseif ($scopeType === Scope::DEPARTMENT && $scopeValue !== '') {
+            $scope = [Scope::DEPARTMENT, $scopeValue];
+        } else {
+            $scope = [null, null];
+        }
+
+        // Un delegue n'administre pas la plateforme : il la consulte sur son
+        // territoire. Lui donner SUPER_ADMIN lui ouvrirait la creation
+        // d'etablissements et la gestion des comptes.
+        $roleName = $scope[0] === null ? 'SUPER_ADMIN' : 'Délégué';
+
+        $this->app->tenant()->global(function () use ($userId, $email, $firstName, $lastName, $password, $scope, $roleName): void {
             $now = date('Y-m-d H:i:s');
 
             $this->app->db()->execute(
-                'INSERT INTO users (id, tenant_id, email, password_hash, first_name, last_name, status, must_change_password, created_at, updated_at)
-                 VALUES (:id, NULL, :email, :hash, :first, :last, :status, 1, :created_at, :updated_at)',
+                'INSERT INTO users (id, tenant_id, email, password_hash, first_name, last_name, status,
+                        must_change_password, scope_type, scope_value, created_at, updated_at)
+                 VALUES (:id, NULL, :email, :hash, :first, :last, :status, 1, :scope_type, :scope_value, :created_at, :updated_at)',
                 [
                     'id' => $userId,
                     'email' => $email,
@@ -387,6 +496,8 @@ final class PlatformUserController extends Controller
                     'first' => $firstName,
                     'last' => $lastName,
                     'status' => 'ACTIVE',
+                    'scope_type' => $scope[0],
+                    'scope_value' => $scope[1],
                     'created_at' => $now,
                     'updated_at' => $now,
                 ]
@@ -394,7 +505,7 @@ final class PlatformUserController extends Controller
 
             $roleId = $this->app->db()->scalar(
                 'SELECT id FROM roles WHERE tenant_id IS NULL AND name = :name',
-                ['name' => 'SUPER_ADMIN']
+                ['name' => $roleName]
             );
 
             if ($roleId === null) {

@@ -270,6 +270,7 @@ $router->post('/admin/comptes/{id}/desactiver', [PlatformUserController::class, 
 $router->post('/admin/comptes/{id}/activer', [PlatformUserController::class, 'activate'], 'tenants:update');
 $router->post('/admin/comptes/{id}/deverrouiller', [PlatformUserController::class, 'unlock'], 'tenants:update');
 $router->post('/admin/comptes/{id}/supprimer', [PlatformUserController::class, 'destroy'], 'users:delete');
+$router->post('/admin/comptes/{id}/perimetre', [PlatformUserController::class, 'updateScope'], 'users:assign-roles');
 
 // Lecture du parc : comparatif, journal d'audit, habilitations.
 $router->get('/admin/rapports', [PlatformReportController::class, 'comparison'], 'tenants:read');

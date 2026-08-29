@@ -328,7 +328,14 @@ final class Application
             // n'est pas bloquee, mais l'ecran d'enrolement est propose a
             // chaque requete tant qu'il n'a pas ete traite, sauf si
             // l'utilisateur a explicitement choisi de le faire plus tard.
-            if ($this->auth->check() && $this->auth->needsMfaEnrollment()
+            //
+            // La proposition est desactivable (MFA_ENROLLMENT=0). Imposee a
+            // chaque connexion sur une plateforme en cours de deploiement,
+            // elle se contourne mecaniquement d'un clic sur « Plus tard », et
+            // une protection qu'on apprend a ecarter sans lire ne protege
+            // plus rien. L'enrolement reste accessible a la demande.
+            if ($this->env->bool('MFA_ENROLLMENT', false)
+                && $this->auth->check() && $this->auth->needsMfaEnrollment()
                 && $this->session->get('mfa_enroll_dismissed') !== true
                 && ! str_starts_with($request->path(), '/mfa/')
                 && $request->path() !== '/logout') {

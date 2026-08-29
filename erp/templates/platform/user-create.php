@@ -4,6 +4,7 @@
  *
  * @var \Scholaris\View\View $this
  * @var array<string, mixed> $old
+ * @var array<string, string> $regions
  * @var string $csrfToken
  */
 $this->extends('layouts.app');
@@ -44,6 +45,45 @@ $value = static fn (string $k): string => (string) ($old[$k] ?? '');
                 <input id="email" name="email" type="email" required value="<?= $this->e($value('email')) ?>">
             </div>
         </div>
+
+        <h2 style="margin-top:1.5rem">Perimetre</h2>
+        <p class="muted" style="margin-top:-0.5rem">
+            Ce que ce compte pourra voir. Le perimetre se choisit ici, et non
+            apres coup : creer un compte national puis le restreindre laisse
+            entre les deux une fenetre ou il voit tout.
+        </p>
+
+        <div class="grid-2">
+            <div class="field">
+                <label for="scope_type">Etendue</label>
+                <select id="scope_type" name="scope_type">
+                    <option value="PLATFORM">Tout le territoire — administrateur de la plateforme</option>
+                    <option value="REGION" <?= $value('scope_type') === 'REGION' ? 'selected' : '' ?>>
+                        Une region — delegue regional
+                    </option>
+                    <option value="DEPARTMENT" <?= $value('scope_type') === 'DEPARTMENT' ? 'selected' : '' ?>>
+                        Un departement — delegue departemental
+                    </option>
+                </select>
+            </div>
+            <div class="field">
+                <label for="scope_value">Region ou departement</label>
+                <input id="scope_value" name="scope_value" list="regions-list"
+                       placeholder="Laisser vide pour le territoire entier"
+                       value="<?= $this->e($value('scope_value')) ?>">
+                <datalist id="regions-list">
+                    <?php foreach ($regions as $code => $label) : ?>
+                        <option value="<?= $this->e($code) ?>"><?= $this->e($label) ?></option>
+                    <?php endforeach; ?>
+                </datalist>
+            </div>
+        </div>
+
+        <p class="muted">
+            Un delegue consulte son territoire ; il n administre pas la
+            plateforme et ne cree pas d etablissement.
+        </p>
+
         <button type="submit" class="button">Creer le compte</button>
     </form>
 </div>

@@ -179,6 +179,125 @@ final class ScopeTest extends TestCase
         $this->assertTrue(Scope::platform()->covers(['region' => 'OUEST']), 'Le national couvre tout');
     }
 
+    // --- Attribution ---------------------------------------------------------
+
+    private function actAsSuperAdmin(): string
+    {
+        (new \Scholaris\Database\Seeder($this->db, new \Scholaris\Tenant\TenantContext(), $this->basePath()))
+            ->run('platform@scholaris.test', 'MotDePasseTest1!');
+
+        $userId = $this->createUser($this->tenantA, 'super@a.cm');
+        $this->giveRole($userId, 'SUPER_ADMIN', [
+            'tenants:read', 'tenants:create', 'users:assign-roles', 'users:delete',
+        ]);
+        $this->actingAs($userId);
+
+        return $userId;
+    }
+
+    public function testUnDelegueRegionalSeNommeDepuisLEcran(): void
+    {
+        // Le perimetre cadrait deja toutes les lectures, mais rien ne
+        // permettait de l'attribuer : un delegue ne pouvait exister qu'en
+        // modifiant la base a la main.
+        $this->actAsSuperAdmin();
+
+        $this->request('POST', '/admin/comptes', [
+            'email' => 'delegue.nord@scholaris.test',
+            'first_name' => 'Delegue',
+            'last_name' => 'NORD',
+            'scope_type' => 'REGION',
+            'scope_value' => 'NORD',
+        ]);
+
+        $user = $this->db->selectOne(
+            'SELECT * FROM users WHERE email = :email',
+            ['email' => 'delegue.nord@scholaris.test']
+        );
+
+        $this->assertTrue($user !== null, 'Le compte est cree');
+        $this->assertSame('REGION', (string) $user['scope_type'], 'Avec son etendue');
+        $this->assertSame('NORD', (string) $user['scope_value'], 'Et sa region');
+
+        // Un delegue consulte son territoire ; il n'administre pas la
+        // plateforme et ne cree pas d'etablissement.
+        $role = $this->db->scalar(
+            'SELECT r.name FROM user_roles ur JOIN roles r ON r.id = ur.role_id WHERE ur.user_id = :id',
+            ['id' => $user['id']]
+        );
+        $this->assertSame('Délégué', (string) $role, 'Il recoit le role de delegue, pas SUPER_ADMIN');
+    }
+
+    public function testLePerimetreDUnCompteSeCorrige(): void
+    {
+        $this->actAsSuperAdmin();
+
+        $delegate = $this->createUser($this->tenantA, 'delegue@scholaris.test');
+        $this->db->execute('UPDATE users SET tenant_id = NULL WHERE id = :id', ['id' => $delegate]);
+
+        $this->request('POST', '/admin/comptes/'.$delegate.'/perimetre', [
+            'scope_type' => 'REGION',
+            'scope_value' => 'OUEST',
+        ]);
+
+        $user = $this->db->selectOne('SELECT * FROM users WHERE id = :id', ['id' => $delegate]);
+
+        $this->assertSame('OUEST', (string) $user['scope_value'], 'Le perimetre est applique');
+    }
+
+    public function testUnAdminDEcoleNePeutPasRecevoirLePerimetreNational(): void
+    {
+        // Sinon un formulaire suffirait a faire d'un administrateur d'ecole un
+        // administrateur national.
+        $this->actAsSuperAdmin();
+
+        $schoolAdmin = $this->createUser($this->tenantB, 'admin@b.cm');
+
+        $this->request('POST', '/admin/comptes/'.$schoolAdmin.'/perimetre', ['scope_type' => 'PLATFORM']);
+
+        $user = $this->db->selectOne('SELECT * FROM users WHERE id = :id', ['id' => $schoolAdmin]);
+
+        $this->assertSame($this->tenantB, (string) $user['tenant_id'], 'Il reste rattache a son ecole');
+        $this->assertTrue($user['scope_type'] === null, 'Et ne recoit aucun perimetre national');
+    }
+
+    public function testUneRegionInconnueEstRefusee(): void
+    {
+        $this->actAsSuperAdmin();
+
+        $delegate = $this->createUser($this->tenantA, 'delegue@scholaris.test');
+        $this->db->execute('UPDATE users SET tenant_id = NULL WHERE id = :id', ['id' => $delegate]);
+
+        $this->request('POST', '/admin/comptes/'.$delegate.'/perimetre', [
+            'scope_type' => 'REGION',
+            'scope_value' => 'ATLANTIDE',
+        ]);
+
+        $user = $this->db->selectOne('SELECT * FROM users WHERE id = :id', ['id' => $delegate]);
+
+        $this->assertTrue($user['scope_value'] === null, 'Une region inconnue n est pas enregistree');
+    }
+
+    public function testUnChangementDePerimetreEstJournalise(): void
+    {
+        // Elargir ou restreindre ce que quelqu un peut voir est un acte de
+        // gouvernance : il doit pouvoir etre rapporte a son auteur.
+        $this->actAsSuperAdmin();
+
+        $delegate = $this->createUser($this->tenantA, 'delegue@scholaris.test');
+        $this->db->execute('UPDATE users SET tenant_id = NULL WHERE id = :id', ['id' => $delegate]);
+
+        $this->request('POST', '/admin/comptes/'.$delegate.'/perimetre', [
+            'scope_type' => 'REGION',
+            'scope_value' => 'NORD',
+        ]);
+
+        $entry = $this->db->selectOne("SELECT * FROM audit_logs WHERE action = 'user.scope'");
+
+        $this->assertTrue($entry !== null, 'Le changement est journalise');
+        $this->assertStringContains('NORD', (string) $entry['new_value'], 'Avec le nouveau perimetre');
+    }
+
     // --- Etancheite ----------------------------------------------------------
 
     public function testUnDelegueNePeutPasEntrerDansUneEcoleHorsPerimetre(): void

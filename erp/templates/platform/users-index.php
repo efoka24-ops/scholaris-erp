@@ -11,6 +11,8 @@
  * @var array<string, mixed> $profiles
  * @var string $csrfToken
  */
+use Scholaris\Support\Cameroon;
+
 $this->extends('layouts.app');
 $title = 'Comptes';
 
@@ -130,6 +132,12 @@ $query = static fn (array $extra): string => '/admin/comptes?'.http_build_query(
     </form>
 </div>
 
+<datalist id="regions-list">
+    <?php foreach (Cameroon::regionChoices() as $regionCode => $regionLabel) : ?>
+        <option value="<?= $this->e($regionCode) ?>"><?= $this->e($regionLabel) ?></option>
+    <?php endforeach; ?>
+</datalist>
+
 <div class="card">
     <?php if ($users === []) : ?>
         <p class="muted">Aucun compte ne correspond.</p>
@@ -152,10 +160,16 @@ $query = static fn (array $extra): string => '/admin/comptes?'.http_build_query(
                     <td><?= $this->e(trim($user['last_name'].' '.$user['first_name'])) ?></td>
                     <td><?= $this->e($user['email']) ?></td>
                     <td>
-                        <?php if (($user['tenant_name'] ?? null) === null) : ?>
-                            <span class="badge">plateforme</span>
-                        <?php else : ?>
+                        <?php if (($user['tenant_name'] ?? null) !== null) : ?>
                             <?= $this->e($user['tenant_name']) ?>
+                        <?php elseif (($user['scope_type'] ?? null) === 'REGION') : ?>
+                            <span class="badge badge--warning">
+                                <?= $this->e(Cameroon::regionName($user['scope_value'] ?? null)) ?>
+                            </span>
+                        <?php elseif (($user['scope_type'] ?? null) === 'DEPARTMENT') : ?>
+                            <span class="badge badge--warning"><?= $this->e($user['scope_value']) ?></span>
+                        <?php else : ?>
+                            <span class="badge">tout le territoire</span>
                         <?php endif; ?>
                     </td>
                     <td><span class="muted"><?= $this->e($user['role_name'] ?? 'aucun') ?></span></td>
@@ -200,6 +214,24 @@ $query = static fn (array $extra): string => '/admin/comptes?'.http_build_query(
                                 <input type="hidden" name="_token" value="<?= $this->e($csrfToken) ?>">
                                 <button type="submit" class="link-button">Desactiver</button>
                             </form>
+                        <?php endif; ?>
+
+                        <?php if (($user['tenant_name'] ?? null) === null && $rbac->allows('users:assign-roles')) : ?>
+                            <details>
+                                <summary class="link-button" style="display:inline">Perimetre</summary>
+                                <form method="post" action="/admin/comptes/<?= $this->e($user['id']) ?>/perimetre"
+                                      class="inline-form" style="margin-top:0.5rem;justify-content:flex-end">
+                                    <input type="hidden" name="_token" value="<?= $this->e($csrfToken) ?>">
+                                    <select name="scope_type">
+                                        <option value="PLATFORM">Tout le territoire</option>
+                                        <option value="REGION" <?= ($user['scope_type'] ?? '') === 'REGION' ? 'selected' : '' ?>>Region</option>
+                                        <option value="DEPARTMENT" <?= ($user['scope_type'] ?? '') === 'DEPARTMENT' ? 'selected' : '' ?>>Departement</option>
+                                    </select>
+                                    <input name="scope_value" list="regions-list" style="width:11rem"
+                                           value="<?= $this->e($user['scope_value'] ?? '') ?>">
+                                    <button type="submit" class="link-button">Appliquer</button>
+                                </form>
+                            </details>
                         <?php endif; ?>
 
                         <?php if ($rbac->allows('users:delete')) : ?>
