@@ -179,6 +179,89 @@ final class PlatformGovernanceTest extends TestCase
         $this->assertSame(1, $count, 'Deux comptes de plateforme ne peuvent pas partager une adresse');
     }
 
+    // --- Suppression ---------------------------------------------------------
+
+    public function testUnCompteSeSupprimeApresConfirmationParSonAdresse(): void
+    {
+        $this->actAsSuperAdmin();
+        $userId = $this->createUser($this->tenantA, 'apartir@a.cm');
+        $this->giveRole($userId, 'Secrétaire', ['students:read']);
+
+        $this->request('POST', '/admin/comptes/'.$userId.'/supprimer', ['confirm' => 'apartir@a.cm']);
+
+        $user = $this->db->selectOne('SELECT * FROM users WHERE id = :id', ['id' => $userId]);
+
+        $this->assertTrue($user['deleted_at'] !== null, 'Le compte est retire');
+
+        // Un role laisse en place redonnerait tous ses droits a une eventuelle
+        // reactivation, sans que personne ne l ait decide.
+        $roles = (int) $this->db->scalar(
+            'SELECT COUNT(*) FROM user_roles WHERE user_id = :id',
+            ['id' => $userId]
+        );
+        $this->assertSame(0, $roles, 'Ses habilitations partent avec lui');
+    }
+
+    public function testLaSuppressionExigeLaSaisieDeLAdresse(): void
+    {
+        // Une case a cocher se coche par megarde ; une adresse se recopie
+        // deliberement.
+        $this->actAsSuperAdmin();
+        $userId = $this->createUser($this->tenantA, 'protege@a.cm');
+
+        $this->request('POST', '/admin/comptes/'.$userId.'/supprimer', ['confirm' => '']);
+
+        $deleted = $this->db->scalar('SELECT deleted_at FROM users WHERE id = :id', ['id' => $userId]);
+
+        $this->assertTrue($deleted === null, 'Sans confirmation, rien n est supprime');
+    }
+
+    public function testUnCompteRattacheAUnDossierEleveNeSeSupprimePas(): void
+    {
+        // Supprimer le compte d un eleve laisserait son dossier scolaire sans
+        // acces : c est une desactivation qu il faut, pas une suppression.
+        $this->actAsSuperAdmin();
+        $studentId = $this->createStudent($this->tenantA, 'A/500', 'TITULAIRE');
+        $userId = $this->createUser($this->tenantA, 'eleve@a.cm');
+
+        $this->db->execute(
+            'UPDATE students SET user_id = :user WHERE id = :id',
+            ['user' => $userId, 'id' => $studentId]
+        );
+
+        $this->request('POST', '/admin/comptes/'.$userId.'/supprimer', ['confirm' => 'eleve@a.cm']);
+
+        $deleted = $this->db->scalar('SELECT deleted_at FROM users WHERE id = :id', ['id' => $userId]);
+
+        $this->assertTrue($deleted === null, 'Le dossier resterait sans titulaire');
+    }
+
+    public function testLeSuperAdminNePeutPasSeSupprimerLuiMeme(): void
+    {
+        $userId = $this->actAsSuperAdmin();
+
+        $this->request('POST', '/admin/comptes/'.$userId.'/supprimer', ['confirm' => 'super@a.cm']);
+
+        $deleted = $this->db->scalar('SELECT deleted_at FROM users WHERE id = :id', ['id' => $userId]);
+
+        $this->assertTrue($deleted === null, 'Se supprimer soi-meme ferme la porte de l interieur');
+    }
+
+    public function testUneSuppressionConserveCeQuiADisparu(): void
+    {
+        // C est precisement quand quelqu un part que l on cherche a savoir ce
+        // qu il a fait.
+        $this->actAsSuperAdmin();
+        $userId = $this->createUser($this->tenantA, 'trace@a.cm');
+
+        $this->request('POST', '/admin/comptes/'.$userId.'/supprimer', ['confirm' => 'trace@a.cm']);
+
+        $entry = $this->db->selectOne("SELECT * FROM audit_logs WHERE action = 'user.delete'");
+
+        $this->assertTrue($entry !== null, 'La suppression est journalisee');
+        $this->assertStringContains('trace@a.cm', (string) $entry['old_value'], 'Avec l etat perdu');
+    }
+
     // --- Statistiques par profil ---------------------------------------------
 
     public function testLaPageComptesDistingueCreesEtActives(): void

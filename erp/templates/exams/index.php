@@ -41,7 +41,7 @@ $value = static fn (string $key): string => (string) ($old[$key] ?? '');
                 <td class="font-mono">
                     <?= $this->date($exam['registration_start']) ?> — <?= $this->date($exam['registration_end']) ?>
                     <?php if ($open) : ?>
-                        <span class="badge" style="background:rgba(0,229,160,.15);border-color:rgba(0,229,160,.35);color:#00e5a0">ouvertes</span>
+                        <span class="badge badge--success">ouvertes</span>
                     <?php else : ?>
                         <span class="muted">fermees</span>
                     <?php endif; ?>

@@ -7,6 +7,8 @@
  * @var list<array<string, mixed>> $tenants
  * @var int $total, $page, $perPage
  * @var string $search, $scope
+ * @var \Scholaris\Auth\Rbac $rbac
+ * @var array<string, mixed> $profiles
  * @var string $csrfToken
  */
 $this->extends('layouts.app');
@@ -86,7 +88,7 @@ $query = static fn (array $extra): string => '/admin/comptes?'.http_build_query(
     <?php endif; ?>
 
     <?php if ($profiles['topTenants'] !== []) : ?>
-        <h3 style="margin-top:1.5rem;font-size:0.875rem;text-transform:uppercase;letter-spacing:0.06em;color:rgba(255,255,255,0.55)">
+        <h3 style="margin-top:1.5rem;font-size:0.875rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted)">
             Etablissements les plus fournis
         </h3>
         <ul class="map__list">
@@ -198,6 +200,21 @@ $query = static fn (array $extra): string => '/admin/comptes?'.http_build_query(
                                 <input type="hidden" name="_token" value="<?= $this->e($csrfToken) ?>">
                                 <button type="submit" class="link-button">Desactiver</button>
                             </form>
+                        <?php endif; ?>
+
+                        <?php if ($rbac->allows('users:delete')) : ?>
+                            <details>
+                                <summary class="link-button" style="display:inline">Supprimer</summary>
+                                <form method="post" action="/admin/comptes/<?= $this->e($user['id']) ?>/supprimer"
+                                      class="inline-form" style="margin-top:0.5rem;justify-content:flex-end">
+                                    <input type="hidden" name="_token" value="<?= $this->e($csrfToken) ?>">
+                                    <?php // La confirmation est l adresse elle-meme : une case a cocher se
+                                          // coche par megarde, une adresse se recopie deliberement. ?>
+                                    <input name="confirm" required placeholder="Saisir l email pour confirmer"
+                                           style="width:16rem">
+                                    <button type="submit" class="link-button">Confirmer</button>
+                                </form>
+                            </details>
                         <?php endif; ?>
                     </td>
                 </tr>

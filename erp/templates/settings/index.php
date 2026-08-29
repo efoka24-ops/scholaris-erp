@@ -78,7 +78,7 @@ $title = 'Parametres';
     <div class="guide__validate">
         <?php foreach ($alwaysOn as $name) : ?>
             <span class="guide__check"
-                  style="background:rgba(0,229,160,.12);color:#00e5a0;border:1px solid rgba(0,229,160,.3)">
+                  class="badge badge--success">
                 ✓ <?= $this->e($name) ?>
             </span>
         <?php endforeach; ?>

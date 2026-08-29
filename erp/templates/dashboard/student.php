@@ -68,7 +68,7 @@ $title = 'Mon espace';
             <?php foreach ($results as $result) : ?>
                 <tr>
                     <td>Sequence <?= $this->e($result['period_number']) ?></td>
-                    <td class="font-mono" style="font-weight:700;color:<?= (float) $result['general_average'] >= 10 ? '#00e5a0' : '#ff4d4d' ?>">
+                    <td class="font-mono" style="font-weight:700;color:<?= (float) $result['general_average'] >= 10 ? 'var(--green-dark)' : 'var(--red)' ?>">
                         <?= $this->e(number_format((float) $result['general_average'], 2, ',', ' ')) ?>
                     </td>
                     <td class="font-mono">

@@ -302,6 +302,88 @@ final class InterfaceTest extends TestCase
         $this->assertSame($userId, (string) $entry['user_id'], 'Et qui l a demande');
     }
 
+    public function testAucuneCouleurDuThemeSombreNeSubsisteDansLEspaceAuthentifie(): void
+    {
+        // Le jaune #c8ff00 et le vert menthe #00e5a0 venaient du theme sombre
+        // du site. Poses sur le fond clair de l'application, ils deviennent
+        // illisibles : le texte est bien la, mais on ne le voit pas. Le defaut
+        // ne provoque aucune erreur, il se signale seulement par un
+        // utilisateur qui dit ne rien voir.
+        $forbidden = ['#c8ff00', '#00e5a0', '#ffb800', '#ff4d4d', '#f2f0e8'];
+        $problems = [];
+
+        foreach ($this->authenticatedTemplates() as $file) {
+            $source = (string) file_get_contents($file);
+
+            foreach ($forbidden as $colour) {
+                if (stripos($source, $colour) !== false) {
+                    $problems[] = basename(dirname($file)).'/'.basename($file).' : '.$colour;
+                }
+            }
+
+            // Meme defaut sous une autre forme : du texte blanc, herite du
+            // fond sombre, pose sur une carte blanche.
+            if (preg_match('/color:\s*(#fff|rgba\(255,\s*255,\s*255)/i', $source) === 1) {
+                $problems[] = basename(dirname($file)).'/'.basename($file).' : texte blanc';
+            }
+        }
+
+        $this->assertSame(
+            [],
+            $problems,
+            'Couleur du theme sombre dans l espace authentifie : '.implode(', ', $problems)
+        );
+    }
+
+    public function testAucunTableauNeDeborde(): void
+    {
+        // Un tableau plus large que sa carte entrainerait la page entiere en
+        // travers, rendant les colonnes de droite inatteignables.
+        $css = (string) file_get_contents($this->basePath().'/public/assets/app.css');
+
+        $this->assertStringContains(
+            'overflow-x: auto',
+            $css,
+            'Les cartes doivent contenir un tableau trop large'
+        );
+    }
+
+    /**
+     * Gabarits de l'espace authentifie, qui utilisent la feuille claire.
+     *
+     * Le site public garde sa feuille d'origine et ses couleurs : il ne doit
+     * pas etre inspecte ici.
+     *
+     * @return list<string>
+     */
+    private function authenticatedTemplates(): array
+    {
+        $files = [];
+        $directory = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($this->basePath().'/templates')
+        );
+
+        foreach ($directory as $file) {
+            if (! $file->isFile() || $file->getExtension() !== 'php') {
+                continue;
+            }
+
+            $path = str_replace('\\', '/', $file->getPathname());
+
+            if (str_contains($path, '/templates/public/')
+                || str_contains($path, 'layouts/public.php')
+                || str_contains($path, 'layouts/guest.php')
+                || str_contains($path, 'auth/login.php')
+                || str_contains($path, 'bulletins/verify.php')) {
+                continue;
+            }
+
+            $files[] = $path;
+        }
+
+        return $files;
+    }
+
     public function testUneRubriqueEntierementMasqueeNeLaissePasSonTitre(): void
     {
         // Un intertitre « Gestion » suivi de rien ferait croire a un ecran

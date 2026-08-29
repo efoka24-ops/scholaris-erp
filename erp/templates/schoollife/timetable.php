@@ -44,7 +44,7 @@ $title = 'Emplois du temps';
                 <?php else : ?>
                     <?php foreach ($byDay[$code] as $slot) : ?>
                         <div style="padding:.6rem 0;border-top:1px solid rgba(255,255,255,.06)">
-                            <div class="font-mono" style="font-size:.72rem;color:#c8ff00">
+                            <div class="font-mono" style="font-size:.72rem;color:var(--violet)">
                                 <?= $this->e($slot['start_time']) ?> — <?= $this->e($slot['end_time']) ?>
                             </div>
                             <div style="font-weight:600;font-size:.88rem"><?= $this->e($slot['subject_name']) ?></div>

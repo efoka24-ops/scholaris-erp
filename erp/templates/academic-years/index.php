@@ -53,7 +53,7 @@ $nextYear = (int) date('n') >= 8 ? (int) date('Y') : (int) date('Y') - 1;
             <h2 style="margin:0">
                 <?= $this->e($year['label']) ?>
                 <?php if ($isActive) : ?>
-                    <span class="section-tag" style="color:#c8ff00">EN COURS</span>
+                    <span class="badge badge--success">EN COURS</span>
                 <?php else : ?>
                     <span class="section-tag muted">CLOSE</span>
                 <?php endif; ?>

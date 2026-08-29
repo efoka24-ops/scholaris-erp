@@ -14,7 +14,7 @@ $this->extends('layouts.app');
 $title = 'Presences';
 
 $labels = ['PRESENT' => 'Present', 'ABSENT' => 'Absent', 'LATE' => 'Retard', 'EXCUSED' => 'Excuse'];
-$colours = ['PRESENT' => '#00e5a0', 'ABSENT' => '#ff4d4d', 'LATE' => '#ffb800', 'EXCUSED' => '#00c2ff'];
+$colours = ['PRESENT' => 'var(--green-dark)', 'ABSENT' => 'var(--red)', 'LATE' => 'var(--amber-dark)', 'EXCUSED' => 'var(--blue)'];
 
 $counts = array_fill_keys($statuses, 0);
 

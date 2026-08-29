@@ -35,7 +35,7 @@ $value = static fn (string $k): string => (string) ($old[$k] ?? '');
                     <td><?= $this->e($borrow['title']) ?></td>
                     <td><?= $this->e($borrow['last_name'].' '.$borrow['first_name']) ?></td>
                     <td class="font-mono"><?= $this->date($borrow['borrow_date']) ?></td>
-                    <td class="font-mono" style="color:<?= (string) $borrow['due_date'] < $today ? '#ff4d4d' : 'inherit' ?>">
+                    <td class="font-mono" style="color:<?= (string) $borrow['due_date'] < $today ? 'var(--red)' : 'inherit' ?>">
                         <?= $this->date($borrow['due_date']) ?>
                         <?php if ((string) $borrow['due_date'] < $today) : ?>
                             <span class="badge">en retard</span>

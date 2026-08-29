@@ -52,7 +52,7 @@ $summary = $data['summary'] ?? [];
 
         <div style="text-align:right">
             <span class="section-tag" style="color:rgba(242,240,232,.35)">CODE DE VERIFICATION</span>
-            <div class="font-mono" style="font-weight:700;color:#c8ff00;font-size:1.05rem">
+            <div class="font-mono" style="font-weight:700;color:var(--violet);font-size:1.05rem">
                 <?= $this->e($bulletin['verification_code']) ?>
             </div>
             <div class="font-mono" style="font-size:.65rem;color:rgba(242,240,232,.3);margin-top:.25rem">
@@ -61,7 +61,7 @@ $summary = $data['summary'] ?? [];
         </div>
     </div>
 
-    <div style="height:2px;margin:1.25rem 0;background:linear-gradient(90deg,#5b21f5,#ff3d8a,#ffb800)"></div>
+    <div style="height:2px;margin:1.25rem 0;background:linear-gradient(90deg,var(--violet),var(--indigo),var(--amber))"></div>
 
     <dl class="details">
         <dt>Eleve</dt>
@@ -91,7 +91,7 @@ $summary = $data['summary'] ?? [];
                 <?php $average = (float) $subject['calculated_average']; ?>
                 <tr>
                     <td><?= $this->e($subject['subject_name']) ?></td>
-                    <td class="font-mono" style="font-weight:700;color:<?= $average >= 10 ? '#00e5a0' : '#ff4d4d' ?>">
+                    <td class="font-mono" style="font-weight:700;color:<?= $average >= 10 ? 'var(--green-dark)' : 'var(--red)' ?>">
                         <?= $this->e(number_format($average, 2, ',', ' ')) ?>
                     </td>
                     <td class="font-mono"><?= $this->e(rtrim(rtrim((string) $subject['coefficient'], '0'), '.')) ?></td>

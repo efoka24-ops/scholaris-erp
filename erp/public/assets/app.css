@@ -532,6 +532,18 @@ code {
     padding: 1.4rem;
     margin-bottom: 1.25rem;
     box-shadow: var(--shadow);
+    /* Un tableau plus large que la carte defile a l'interieur de celle-ci.
+     * Sans cette regle il deborde et entraine toute la page en travers, ce
+     * qui rend les colonnes de droite inatteignables. */
+    overflow-x: auto;
+}
+
+/* Une adresse ou un identifiant sans espace ne doit pas elargir sa colonne au
+ * point de pousser les suivantes hors de l'ecran. */
+.table td,
+.card p,
+.map__list li {
+    overflow-wrap: anywhere;
 }
 
 .card h2:first-child,

@@ -65,7 +65,7 @@ foreach ($assignments as $assignment) {
                     <td><?= $this->e($assignment['classroom_name']) ?></td>
                     <td><?= $this->e($assignment['subject_name']) ?></td>
                     <td class="font-mono"><?= $this->e(rtrim(rtrim((string) $assignment['coefficient'], '0'), '.')) ?></td>
-                    <td class="font-mono" style="color:<?= $complete ? '#00e5a0' : ($graded > 0 ? '#ffb800' : '#ff4d4d') ?>">
+                    <td class="font-mono" style="color:<?= $complete ? 'var(--green-dark)' : ($graded > 0 ? 'var(--amber-dark)' : 'var(--red)') ?>">
                         <?= $this->number($graded) ?> / <?= $this->number($headcount) ?>
                         <?php if ($complete) : ?>
                             <span class="badge">complet</span>

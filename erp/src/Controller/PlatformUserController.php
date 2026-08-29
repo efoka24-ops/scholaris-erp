@@ -200,6 +200,117 @@ final class PlatformUserController extends Controller
         return $this->redirectWithSuccess('/admin/comptes', $user['email'].' peut de nouveau se connecter.');
     }
 
+    /**
+     * Retire un compte.
+     *
+     * Suppression logique : les actes deja poses par ce compte — notes
+     * saisies, paiements encaisses, entrees du journal — continuent de lui
+     * etre rattaches. Un journal d'audit qui renvoie vers un auteur disparu ne
+     * vaut plus rien, et c'est precisement quand quelqu'un part que l'on
+     * cherche a savoir ce qu'il a fait.
+     *
+     * Trois refus, dans cet ordre : soi-meme, le dernier administrateur, et un
+     * compte encore rattache a un dossier eleve.
+     */
+    public function destroy(Request $request): Response
+    {
+        $this->assertSuperAdmin();
+
+        $user = $this->findUser((string) $request->attribute('id'));
+
+        if ((string) $user['id'] === (string) $this->app->auth()->id()) {
+            return $this->redirectWithError('/admin/comptes', 'Vous ne pouvez pas supprimer votre propre compte.');
+        }
+
+        if ($this->isLastPlatformAdmin($user)) {
+            return $this->redirectWithError(
+                '/admin/comptes',
+                'C est le dernier administrateur de la plateforme : nommez-en un autre avant de le supprimer.'
+            );
+        }
+
+        // La confirmation est l'adresse elle-meme : une case a cocher se coche
+        // par megarde, une adresse se recopie deliberement.
+        if (strtolower(trim($request->string('confirm'))) !== strtolower((string) $user['email'])) {
+            return $this->redirectWithError(
+                '/admin/comptes',
+                'Pour confirmer la suppression, saisissez l adresse email du compte.'
+            );
+        }
+
+        $linked = $this->linkedRecord($user);
+
+        if ($linked !== null) {
+            return $this->redirectWithError(
+                '/admin/comptes',
+                'Ce compte est rattache a '.$linked.'. Desactivez-le plutot que de le supprimer : '
+                .'le dossier resterait sans titulaire.'
+            );
+        }
+
+        $this->app->tenant()->global(function () use ($user): void {
+            $now = date('Y-m-d H:i:s');
+
+            $this->app->db()->execute(
+                'UPDATE users SET deleted_at = :now, status = :status, updated_at = :updated_at WHERE id = :id',
+                ['now' => $now, 'status' => 'INACTIVE', 'updated_at' => $now, 'id' => $user['id']]
+            );
+
+            // Les habilitations partent avec le compte : un role laisse en
+            // place redonnerait tous ses droits a une eventuelle
+            // reactivation, sans que personne ne l'ait decide.
+            $this->app->db()->execute(
+                'DELETE FROM user_roles WHERE user_id = :id',
+                ['id' => $user['id']]
+            );
+        });
+
+        $this->trail()->deleted('user.delete', 'users', (string) $user['id'], [
+            'email' => $user['email'],
+            'first_name' => $user['first_name'],
+            'last_name' => $user['last_name'],
+            'tenant_id' => $user['tenant_id'],
+        ]);
+
+        return $this->redirectWithSuccess('/admin/comptes', $user['email'].' a ete supprime.');
+    }
+
+    /**
+     * Le compte est-il titulaire d'un dossier qui deviendrait orphelin ?
+     *
+     * Supprimer le compte d'un eleve laisserait son dossier scolaire sans
+     * acces ; celui d'un parent romprait le lien avec ses enfants.
+     */
+    private function linkedRecord(array $user): ?string
+    {
+        return $this->app->tenant()->global(function () use ($user): ?string {
+            $student = $this->app->db()->scalar(
+                'SELECT matricule FROM students WHERE user_id = :id AND deleted_at IS NULL',
+                ['id' => $user['id']]
+            );
+
+            if ($student !== null) {
+                return 'un dossier eleve ('.$student.')';
+            }
+
+            $parent = $this->app->db()->scalar(
+                'SELECT id FROM parents WHERE user_id = :id',
+                ['id' => $user['id']]
+            );
+
+            if ($parent !== null) {
+                return 'une fiche parent';
+            }
+
+            $employee = $this->app->db()->scalar(
+                "SELECT id FROM employees WHERE user_id = :id AND status = 'ACTIVE'",
+                ['id' => $user['id']]
+            );
+
+            return $employee !== null ? 'un dossier du personnel en activite' : null;
+        });
+    }
+
     /** Leve un verrouillage du a des tentatives de connexion repetees. */
     public function unlock(Request $request): Response
     {
