@@ -18,7 +18,7 @@ $statusLabels = [
 <div class="page-header">
     <div>
         <h1>Finance</h1>
-        <p class="subtitle">Recouvrement de la scolarite sur l annee en cours</p>
+        <p class="subtitle">Recouvrement de la scolarité sur l'année en cours</p>
     </div>
     <a class="button button--secondary" href="/finance/invoices">Toutes les factures</a>
 </div>
@@ -65,11 +65,11 @@ $statusLabels = [
     <h2>Derniers encaissements</h2>
 
     <?php if ($recentPayments === []) : ?>
-        <p class="muted">Aucun paiement enregistre.</p>
+        <p class="muted">Aucun paiement enregistré.</p>
     <?php else : ?>
         <table class="table">
             <thead>
-            <tr><th>Recu</th><th>Eleve</th><th>Montant</th><th>Moyen</th><th>Date</th></tr>
+            <tr><th>Reçu</th><th>Élève</th><th>Montant</th><th>Moyen</th><th>Date</th></tr>
             </thead>
             <tbody>
             <?php foreach ($recentPayments as $payment) : ?>

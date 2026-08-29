@@ -26,9 +26,9 @@ $title = 'Mot de passe attribue';
     </dl>
 
     <div class="alert alert--success" style="margin-top:1rem">
-        Un courrier vient d etre adresse a <?= $this->e($user['email']) ?>.
-        Ce mot de passe n est conserve que hache : il ne pourra plus etre
-        affiche. Notez-le si vous devez le dicter.
+        Un courrier vient d'etre adresse a <?= $this->e($user['email']) ?>.
+        Ce mot de passe n'est conserve que hache : il ne pourra plus etre
+        affiché. Notez-le si vous devez le dicter.
     </div>
 
     <p class="muted">
@@ -39,5 +39,5 @@ $title = 'Mot de passe attribue';
 
 <p>
     <a class="button button--secondary" href="/admin/comptes">Retour aux comptes</a>
-    <a class="button" href="/admin/courriers">Verifier l envoi</a>
+    <a class="button" href="/admin/courriers">Verifier l'envoi</a>
 </p>

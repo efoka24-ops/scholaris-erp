@@ -2,7 +2,7 @@
 /**
  * Tableau de bord parent : ses enfants, et rien d'autre.
  *
- * Les moyennes n'apparaissent qu'une fois publiees : un parent ne doit pas
+ * Les moyennes n'apparaissent qu'une fois publiées : un parent ne doit pas
  * decouvrir un resultat avant que le conseil de classe ne l'ait arrete.
  *
  * @var \Scholaris\View\View $this
@@ -18,7 +18,7 @@ $title = 'Mes enfants';
     <div class="card">
         <p class="muted">
             Aucun enfant rattache a votre compte. Contactez le secretariat de
-            l etablissement pour effectuer ce rattachement.
+            l'établissement pour effectuer ce rattachement.
         </p>
     </div>
 <?php else : ?>
@@ -45,7 +45,7 @@ $title = 'Mes enfants';
 
                 <?php if ($child['invoice'] !== null) : ?>
                     <div class="stat">
-                        <div class="stat__label">Scolarite reglee</div>
+                        <div class="stat__label">Scolarité reglee</div>
                         <div class="stat__value stat__value--money"><?= $this->money($child['invoice']['paid_amount']) ?></div>
                     </div>
                     <div class="stat">
@@ -55,17 +55,17 @@ $title = 'Mes enfants';
                 <?php endif; ?>
             </div>
 
-            <h3 style="margin-top:1rem">Resultats publies</h3>
+            <h3 style="margin-top:1rem">Resultats publiés</h3>
 
             <?php if ($child['results'] === []) : ?>
-                <p class="muted">Aucun resultat publie pour le moment.</p>
+                <p class="muted">Aucun résultat publié pour le moment.</p>
             <?php else : ?>
                 <table class="table">
-                    <thead><tr><th>Sequence</th><th>Moyenne</th><th>Rang</th><th>Mention</th></tr></thead>
+                    <thead><tr><th>Séquence</th><th>Moyenne</th><th>Rang</th><th>Mention</th></tr></thead>
                     <tbody>
                     <?php foreach ($child['results'] as $result) : ?>
                         <tr>
-                            <td>Sequence <?= $this->e($result['period_number']) ?></td>
+                            <td>Séquence <?= $this->e($result['period_number']) ?></td>
                             <td class="font-mono" style="font-weight:700;color:<?= (float) $result['general_average'] >= 10 ? 'var(--green-dark)' : 'var(--red)' ?>">
                                 <?= $this->e(number_format((float) $result['general_average'], 2, ',', ' ')) ?>
                             </td>

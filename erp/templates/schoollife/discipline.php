@@ -33,7 +33,7 @@ $sanctionLabels = [
 $value = static fn (string $key): string => (string) ($old[$key] ?? '');
 ?>
 <h1>Discipline</h1>
-<p class="subtitle"><?= $this->number(count($incidents)) ?> incident(s) enregistre(s)</p>
+<p class="subtitle"><?= $this->number(count($incidents)) ?> incident(s) enregistré(s)</p>
 
 <?php if ($rbac->allows('discipline:create')) : ?>
     <form method="post" action="/discipline" class="card">
@@ -42,7 +42,7 @@ $value = static fn (string $key): string => (string) ($old[$key] ?? '');
 
         <div class="grid-2">
             <div class="field">
-                <label for="student_id">Eleve *</label>
+                <label for="student_id">Élève *</label>
                 <select id="student_id" name="student_id" required>
                     <option value="">Choisir...</option>
                     <?php foreach ($students as $student) : ?>
@@ -69,7 +69,7 @@ $value = static fn (string $key): string => (string) ($old[$key] ?? '');
             <div class="field">
                 <label for="sanction">Sanction</label>
                 <select id="sanction" name="sanction">
-                    <option value="">Aucune pour l instant</option>
+                    <option value="">Aucune pour l'instant</option>
                     <?php foreach ($sanctions as $sanction) : ?>
                         <option value="<?= $this->e($sanction) ?>" <?= $value('sanction') === $sanction ? 'selected' : '' ?>>
                             <?= $this->e($sanctionLabels[$sanction] ?? $sanction) ?>
@@ -85,20 +85,20 @@ $value = static fn (string $key): string => (string) ($old[$key] ?? '');
         </div>
 
         <div class="field">
-            <label for="sanction_details">Details de la sanction</label>
+            <label for="sanction_details">Détails de la sanction</label>
             <input id="sanction_details" name="sanction_details" value="<?= $this->e($value('sanction_details')) ?>">
         </div>
 
-        <button type="submit" class="button">Enregistrer l incident</button>
+        <button type="submit" class="button">Enregistrer l'incident</button>
     </form>
 <?php endif; ?>
 
 <?php if ($incidents === []) : ?>
-    <div class="card"><p class="muted">Aucun incident enregistre.</p></div>
+    <div class="card"><p class="muted">Aucun incident enregistré.</p></div>
 <?php else : ?>
     <table class="table">
         <thead>
-        <tr><th>Date</th><th>Eleve</th><th>Type</th><th>Description</th><th>Sanction</th><th>Signale par</th></tr>
+        <tr><th>Date</th><th>Élève</th><th>Type</th><th>Description</th><th>Sanction</th><th>Signale par</th></tr>
         </thead>
         <tbody>
         <?php foreach ($incidents as $incident) : ?>

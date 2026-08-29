@@ -16,7 +16,7 @@ $title = 'Double authentification';
     <div>
         <h1>Activer la double authentification</h1>
         <p class="subtitle">
-            Votre role donne acces a des informations sensibles : ce compte doit
+            Votre role donne accès a des informations sensibles : ce compte doit
             etre protege par un second facteur, en plus du mot de passe.
         </p>
     </div>
@@ -44,7 +44,7 @@ $title = 'Double authentification';
     </div>
 
     <p class="auth__hint">
-        2. Saisissez ci-dessous le code a six chiffres affiche par l'application
+        2. Saisissez ci-dessous le code a six chiffres affiché par l'application
         pour confirmer l'enrolement.
     </p>
 

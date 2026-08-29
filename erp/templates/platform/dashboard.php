@@ -65,7 +65,7 @@ $money = static function (float $amount): string {
 
     <div class="hero__chips">
         <span class="hero__chip">
-            Etablissements <strong><?= $this->number($stats['tenants']['total']) ?></strong>
+            Établissements <strong><?= $this->number($stats['tenants']['total']) ?></strong>
         </span>
         <span class="hero__chip">
             Comptes <strong><?= $this->number($stats['users']['total']) ?></strong>
@@ -78,12 +78,12 @@ $money = static function (float $amount): string {
 
 <div class="page-header">
     <p class="muted" style="margin:0">
-        Vous n appartenez a aucun etablissement : pour consulter les donnees de
-        l un d eux, placez-vous dedans.
+        Vous n'appartenez a aucun établissement : pour consulter les données de
+        l'un d'eux, placez-vous dedans.
     </p>
     <a class="button<?= $stats['requests']['pending'] > 0 ? '' : ' button--secondary' ?>"
-       href="/admin/etablissements">
-        Demandes d ouverture
+       href="/admin/établissements">
+        Demandes d'ouverture
         <?php if ($stats['requests']['pending'] > 0) : ?>
             (<?= $this->number($stats['requests']['pending']) ?>)
         <?php endif; ?>
@@ -93,8 +93,8 @@ $money = static function (float $amount): string {
 <?php if ($stats['requests']['pending'] > 0) : ?>
     <div class="alert alert--<?= ($stats['requests']['oldestPendingDays'] ?? 0) >= 7 ? 'error' : 'info' ?>">
         <strong><?= $this->number($stats['requests']['pending']) ?></strong>
-        demande<?= $stats['requests']['pending'] > 1 ? 's' : '' ?> d ouverture
-        en attente de votre decision.
+        demande<?= $stats['requests']['pending'] > 1 ? 's' : '' ?> d'ouverture
+        en attente de votre décision.
         <?php if (($stats['requests']['oldestPendingDays'] ?? null) !== null) : ?>
             La plus ancienne attend depuis
             <strong><?= $this->number($stats['requests']['oldestPendingDays']) ?> jour<?= $stats['requests']['oldestPendingDays'] > 1 ? 's' : '' ?></strong>.
@@ -106,7 +106,7 @@ $money = static function (float $amount): string {
 <div class="stats stats--rich">
     <div class="stat stat--tinted stat--blue">
         <div class="stat__icon"><?= $this->raw(Navigation::icon("users")) ?></div>
-        <div class="stat__label">Eleves inscrits</div>
+        <div class="stat__label">Élèves inscrits</div>
         <div class="stat__value"><?= $this->number($stats['students']['total']) ?></div>
         <div class="stat__foot">
             +<?= $this->number($stats['students']['thisMonth']) ?> ce mois
@@ -116,14 +116,14 @@ $money = static function (float $amount): string {
 
     <div class="stat stat--tinted stat--green">
         <div class="stat__icon"><?= $this->raw(Navigation::icon("check")) ?></div>
-        <div class="stat__label">Taux de presence</div>
+        <div class="stat__label">Taux de présence</div>
         <?php if ($stats['attendance']['rate'] === null) : ?>
             <div class="stat__value stat__value--muted">&mdash;</div>
-            <div class="stat__foot">aucun appel saisi aujourd hui</div>
+            <div class="stat__foot">aucun appel saisi aujourd'hui</div>
         <?php else : ?>
             <div class="stat__value"><?= $this->e(number_format($stats['attendance']['rate'], 1, ',', ' ')) ?>%</div>
             <div class="stat__foot">
-                aujourd hui, sur <?= $this->number($stats['attendance']['recorded']) ?> saisies
+                aujourd'hui, sur <?= $this->number($stats['attendance']['recorded']) ?> saisies
                 <?= $trend($stats['attendance']['trend'], 'pt') ?>
             </div>
         <?php endif; ?>
@@ -131,10 +131,10 @@ $money = static function (float $amount): string {
 
     <div class="stat stat--tinted stat--amber">
         <div class="stat__icon"><?= $this->raw(Navigation::icon("inbox")) ?></div>
-        <div class="stat__label">Demandes d etablissement</div>
+        <div class="stat__label">Demandes d'établissement</div>
         <div class="stat__value"><?= $this->number($stats['requests']['pending']) ?></div>
         <div class="stat__foot">
-            en attente &middot; <?= $this->number($stats['requests']['thisMonth']) ?> deposees ce mois
+            en attente &middot; <?= $this->number($stats['requests']['thisMonth']) ?> déposées ce mois
             <?= $trend($stats['requests']['trend']) ?>
         </div>
     </div>
@@ -144,14 +144,14 @@ $money = static function (float $amount): string {
         <div class="stat__label">Recouvrement du mois</div>
         <div class="stat__value"><?= $this->e($money((float) $stats['collection']['thisMonth'])) ?></div>
         <div class="stat__foot">
-            FCFA encaisses
+            FCFA encaissés
             <?= $trend($stats['collection']['trend']) ?>
         </div>
     </div>
 
     <div class="stat stat--tinted stat--violet">
         <div class="stat__icon"><?= $this->raw(Navigation::icon("building")) ?></div>
-        <div class="stat__label">Etablissements</div>
+        <div class="stat__label">Établissements</div>
         <div class="stat__value"><?= $this->number($stats['tenants']['total']) ?></div>
         <div class="stat__foot">
             <?= $this->number($stats['tenants']['active']) ?> actifs
@@ -164,7 +164,7 @@ $money = static function (float $amount): string {
     <div class="stat">
         <div class="stat__label">Comptes</div>
         <div class="stat__value"><?= $this->number($stats['users']['total']) ?></div>
-        <div class="stat__foot">tous etablissements confondus</div>
+        <div class="stat__foot">tous établissements confondus</div>
     </div>
 </div>
 
@@ -172,9 +172,9 @@ $money = static function (float $amount): string {
 /**
  * Tout ce que le Super Admin administre, avec son chiffre du moment.
  *
- * L'ecran montrait des indicateurs sans ouvrir sur rien : on y lisait
+ * L'écran montrait des indicateurs sans ouvrir sur rien : on y lisait
  * « 3 demandes en attente » sans pouvoir les instruire, et la moitie des
- * ecrans n'etait atteignable que par le menu lateral. Un tableau de bord qui
+ * écrans n'etait atteignable que par le menu lateral. Un tableau de bord qui
  * ne mene nulle part n'est qu'un rapport.
  *
  * @var array<string, int> $governance
@@ -185,15 +185,15 @@ $areas = [
     [
         'href' => '/admin/etablissements',
         'icon' => 'inbox',
-        'title' => 'Demandes d ouverture',
+        'title' => 'Demandes d\'ouverture',
         'value' => $stats['requests']['pending'],
-        'unit' => 'en attente de decision',
+        'unit' => 'en attente de décision',
         'alert' => $stats['requests']['pending'] > 0,
     ],
     [
         'href' => '/admin/parc',
         'icon' => 'building',
-        'title' => 'Parc d etablissements',
+        'title' => 'Parc d\'établissements',
         'value' => $stats['tenants']['total'],
         'unit' => $stats['tenants']['suspended'] > 0
             ? $stats['tenants']['suspended'].' suspendus'
@@ -205,7 +205,7 @@ $areas = [
         'icon' => 'users',
         'title' => 'Comptes',
         'value' => $stats['users']['total'],
-        'unit' => 'creer, reinitialiser, suspendre',
+        'unit' => 'créer, réinitialiser, suspendre',
         'alert' => false,
     ],
     [
@@ -221,13 +221,13 @@ $areas = [
         'icon' => 'chart',
         'title' => 'Rapports',
         'value' => $stats['tenants']['total'],
-        'unit' => 'etablissements compares, export CSV',
+        'unit' => 'établissements compares, export CSV',
         'alert' => false,
     ],
     [
         'href' => '/admin/journal',
         'icon' => 'history',
-        'title' => 'Journal d audit',
+        'title' => 'Journal d\'audit',
         'value' => $governance['auditEvents'],
         'unit' => 'actes traces',
         'alert' => false,
@@ -235,7 +235,7 @@ $areas = [
     [
         'href' => '/admin/courriers',
         'icon' => 'mail',
-        'title' => 'Courriers envoyes',
+        'title' => 'Courriers envoyés',
         'value' => $governance['mailsTotal'],
         'unit' => $governance['mailsFailed'] > 0
             ? $governance['mailsFailed'].' non remis'
@@ -276,7 +276,7 @@ $areas = [
     <div class="card">
         <h2 style="margin:0">Personnel</h2>
         <p class="muted" style="margin:0.2rem 0 1rem">
-            Effectifs et encadrement sur votre perimetre
+            Effectifs et encadrement sur votre périmètre
         </p>
 
         <div class="stats stats--compact" style="margin-bottom:1rem">
@@ -292,16 +292,16 @@ $areas = [
                         <?= $this->e(number_format($hr['ratio'], 1, ',', ' ')) ?>
                     <?php endif; ?>
                 </div>
-                <div class="stat__label">Eleves par agent</div>
+                <div class="stat__label">Élèves par agent</div>
             </div>
             <div class="stat stat--figure-amber">
                 <div class="stat__value"><?= $this->number($hr['onLeave']) ?></div>
-                <div class="stat__label">En conge aujourd hui</div>
+                <div class="stat__label">En congé aujourd'hui</div>
             </div>
         </div>
 
         <?php if ($hr['byPosition'] === []) : ?>
-            <p class="muted">Aucun personnel enregistre sur ce perimetre.</p>
+            <p class="muted">Aucun personnel enregistré sur ce périmètre.</p>
         <?php else : ?>
             <div class="table-wrap">
                 <table class="table">
@@ -319,9 +319,9 @@ $areas = [
         <?php endif; ?>
 
         <p class="muted">
-            Le taux d encadrement est le seul chiffre qui se compare d un
-            etablissement a l autre : un effectif brut ne dit rien sans la
-            taille de l ecole.
+            Le taux d'encadrement est le seul chiffre qui se compare d'un
+            établissement a l'autre : un effectif brut ne dit rien sans la
+            taille de l'école.
         </p>
     </div>
 
@@ -329,18 +329,18 @@ $areas = [
 
 <div class="card">
     <div class="inline-form" style="justify-content:space-between;align-items:center">
-        <h2 style="margin:0">Etablissements</h2>
+        <h2 style="margin:0">Établissements</h2>
         <a class="button button--secondary" href="/admin/parc">Gerer le parc</a>
     </div>
 
     <?php if ($tenants === []) : ?>
-        <p class="muted">Aucun etablissement sur la plateforme.</p>
+        <p class="muted">Aucun établissement sur la plateforme.</p>
     <?php else : ?>
         <table class="table">
             <thead>
             <tr>
                 <th>Code</th><th>Nom</th><th>Type</th><th>Localisation</th>
-                <th>Comptes</th><th>Eleves</th><th>Pre-inscription</th><th></th>
+                <th>Comptes</th><th>Élèves</th><th>Pre-inscription</th><th></th>
             </tr>
             </thead>
             <tbody>
@@ -361,7 +361,7 @@ $areas = [
                         <?php if ((int) $tenant['public_enrollment_enabled'] === 1) : ?>
                             <span class="badge">ouverte</span>
                         <?php else : ?>
-                            <span class="muted">fermee</span>
+                            <span class="muted">fermée</span>
                         <?php endif; ?>
                     </td>
                     <td>
@@ -377,21 +377,21 @@ $areas = [
         </table>
 
         <p class="muted">
-            Entrer dans un etablissement est journalise. C est ce qui distingue
-            un acces legitime d un acces silencieux aux donnees d une ecole.
+            Entrer dans un établissement est journalisé. C'est ce qui distingue
+            un accès legitime d'un accès silencieux aux données d'une école.
         </p>
     <?php endif; ?>
 </div>
 
 <div class="card">
-    <h2>Dernieres connexions</h2>
+    <h2>Dernières connexions</h2>
 
     <?php if ($recentLogins === []) : ?>
-        <p class="muted">Aucune connexion enregistree.</p>
+        <p class="muted">Aucune connexion enregistrée.</p>
     <?php else : ?>
         <table class="table">
             <thead>
-            <tr><th>Date</th><th>Compte</th><th>Etablissement</th><th>Adresse IP</th></tr>
+            <tr><th>Date</th><th>Compte</th><th>Établissement</th><th>Adresse IP</th></tr>
             </thead>
             <tbody>
             <?php foreach ($recentLogins as $login) : ?>
@@ -414,8 +414,8 @@ $areas = [
 </div>
 
 <script>
-// L heure affichee doit rester juste : une page laissee ouverte toute la
-// matinee annoncerait sinon l heure de son chargement.
+// L'heure affichée doit rester juste : une page laissee ouverte toute la
+// matinee annoncerait sinon l'heure de son chargement.
 (function () {
     var clock = document.getElementById('platform-clock');
 

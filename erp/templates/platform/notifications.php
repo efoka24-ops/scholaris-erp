@@ -10,21 +10,21 @@
  * @var string $csrfToken
  */
 $this->extends('layouts.app');
-$title = 'Courriers envoyes';
+$title = 'Courriers envoyés';
 
 $labels = [
     'SENT' => ['Remis', 'success'],
-    'FAILED' => ['Echec', 'error'],
+    'FAILED' => ['Échec', 'error'],
     'SKIPPED' => ['Non envoye', 'warning'],
     'PENDING' => ['En cours', 'warning'],
 ];
 ?>
 <div class="page-header">
     <div>
-        <h1>Courriers envoyes</h1>
+        <h1>Courriers envoyés</h1>
         <p class="subtitle">
-            Cent derniers courriers. Un envoi en echec peut etre repris ; a
-            defaut, transmettez les informations par un autre moyen.
+            Cent derniers courriers. Un envoi en échec peut etre repris ; a
+            défaut, transmettez les informations par un autre moyen.
         </p>
     </div>
     <a class="button button--secondary" href="/admin">Retour au tableau de bord</a>
@@ -36,7 +36,7 @@ $labels = [
     <?php else : ?>
         <table class="table">
             <thead>
-            <tr><th>Date</th><th>Destinataire</th><th>Objet</th><th>Etat</th><th></th></tr>
+            <tr><th>Date</th><th>Destinataire</th><th>Objet</th><th>État</th><th></th></tr>
             </thead>
             <tbody>
             <?php foreach ($notifications as $mail) : ?>

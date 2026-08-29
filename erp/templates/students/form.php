@@ -11,7 +11,7 @@
 $this->extends('layouts.app');
 
 $isEdit = $student !== null;
-$title = $isEdit ? 'Modifier un eleve' : 'Nouvel eleve';
+$title = $isEdit ? 'Modifier un élève' : 'Nouvel élève';
 $action = $isEdit ? '/students/'.$student['id'] : '/students';
 
 // Priorite aux valeurs re-saisies apres un refus de validation, puis au dossier
@@ -62,7 +62,7 @@ $value = static function (string $field, string $default = '') use ($old, $stude
             <input id="blood_group" name="blood_group" value="<?= $this->e($value('blood_group')) ?>">
         </div>
         <div class="field">
-            <label for="emergency_contact">Contact d urgence</label>
+            <label for="emergency_contact">Contact d'urgence</label>
             <input id="emergency_contact" name="emergency_contact" value="<?= $this->e($value('emergency_contact')) ?>">
         </div>
     </div>
@@ -97,5 +97,5 @@ $value = static function (string $field, string $default = '') use ($old, $stude
 </form>
 
 <?php if (! $isEdit) : ?>
-    <p class="muted">Le matricule est attribue automatiquement a la creation.</p>
+    <p class="muted">Le matricule est attribue automatiquement a la création.</p>
 <?php endif; ?>

@@ -7,16 +7,16 @@
  * @var string $csrfToken
  */
 $this->extends('layouts.app');
-$title = 'Demandes de creation d etablissement';
-$tabs = ['PENDING' => 'En attente', 'APPROVED' => 'Approuvees', 'REJECTED' => 'Refusees'];
+$title = 'Demandes de création d\'établissement';
+$tabs = ['PENDING' => 'En attente', 'APPROVED' => 'Approuvées', 'REJECTED' => 'Refusées'];
 ?>
-<h1>Demandes de creation d etablissement</h1>
+<h1>Demandes de création d'établissement</h1>
 <p class="subtitle"><?= $this->number($pendingCount) ?> demande(s) en attente de traitement</p>
 
 <div class="filters">
     <?php foreach ($tabs as $key => $label) : ?>
         <a class="button <?= $status === $key ? '' : 'button--secondary' ?>"
-           href="/admin/etablissements?status=<?= $this->e($key) ?>">
+           href="/admin/établissements?status=<?= $this->e($key) ?>">
             <?= $this->e($label) ?>
         </a>
     <?php endforeach; ?>
@@ -47,7 +47,7 @@ $tabs = ['PENDING' => 'En attente', 'APPROVED' => 'Approuvees', 'REJECTED' => 'R
             <?php if ($demand['request_status'] === 'PENDING') : ?>
                 <div class="form-actions" style="margin-top:1rem;align-items:flex-start">
                     <form method="post" action="/admin/etablissements/<?= $this->e($demand['id']) ?>/approuver"
-                          onsubmit="return confirm('Creer cet etablissement et le compte de son responsable ?');">
+                          onsubmit="return confirm('Créer cet établissement et le compte de son responsable ?');">
                         <input type="hidden" name="_token" value="<?= $this->e($csrfToken) ?>">
                         <button type="submit" class="button">Approuver</button>
                     </form>

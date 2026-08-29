@@ -15,8 +15,8 @@ $value = static fn (string $k): string => (string) ($old[$k] ?? '');
 <div class="card" style="max-width:640px;width:100%">
     <h1 class="auth__title">Pre-inscription en ligne</h1>
     <p class="auth__hint">
-        Deposez le dossier de votre enfant. L etablissement vous recontactera
-        pour finaliser l inscription. Aucun compte n est necessaire.
+        Deposez le dossier de votre enfant. L'établissement vous recontactera
+        pour finaliser l'inscription. Aucun compte n'est nécessaire.
     </p>
 
     <?php if ($error !== null) : ?>
@@ -25,14 +25,14 @@ $value = static fn (string $k): string => (string) ($old[$k] ?? '');
 
     <?php if ($tenants === []) : ?>
         <div class="alert alert--error">
-            Aucun etablissement n a ouvert la pre-inscription en ligne pour le moment.
+            Aucun établissement n'a ouvert la pre-inscription en ligne pour le moment.
         </div>
     <?php else : ?>
         <form method="post" action="/pre-inscription">
             <input type="hidden" name="_token" value="<?= $this->e($csrfToken) ?>">
 
             <div class="field">
-                <label for="tenant_code">Etablissement souhaite *</label>
+                <label for="tenant_code">Établissement souhaite *</label>
                 <select id="tenant_code" name="tenant_code" required>
                     <option value="">Choisir...</option>
                     <?php foreach ($tenants as $tenant) : ?>
@@ -44,7 +44,7 @@ $value = static fn (string $k): string => (string) ($old[$k] ?? '');
                 </select>
             </div>
 
-            <h2 style="margin-top:1.5rem">L eleve</h2>
+            <h2 style="margin-top:1.5rem">L'élève</h2>
             <div class="grid-2">
                 <div class="field">
                     <label for="applicant_last_name">Nom *</label>
@@ -74,7 +74,7 @@ $value = static fn (string $k): string => (string) ($old[$k] ?? '');
                            value="<?= $this->e($value('level_wanted')) ?>">
                 </div>
                 <div class="field">
-                    <label for="previous_school">Etablissement precedent</label>
+                    <label for="previous_school">Établissement precedent</label>
                     <input id="previous_school" name="previous_school"
                            value="<?= $this->e($value('previous_school')) ?>">
                 </div>
@@ -104,6 +104,6 @@ $value = static fn (string $k): string => (string) ($old[$k] ?? '');
     <?php endif; ?>
 
     <p class="muted" style="margin-top:1.25rem">
-        Vous dirigez un etablissement ? <a href="/demande-etablissement">Demandez son ouverture</a>.
+        Vous dirigez un établissement ? <a href="/demande-etablissement">Demandez son ouverture</a>.
     </p>
 </div>

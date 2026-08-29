@@ -151,7 +151,7 @@ final class AcademicYearTest extends TestCase
         $content = $this->request('GET', '/annees-scolaires')->content();
 
         $this->assertStringContains(
-            'Aucune annee scolaire n est encore ouverte',
+            "Aucune année scolaire n'est encore ouverte",
             $content,
             'L ecran doit dire quoi faire'
         );

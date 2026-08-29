@@ -12,21 +12,21 @@ $title = 'Demande transmise';
 <div class="card card--narrow">
     <h1 class="auth__title">Demande transmise</h1>
     <p>
-        La demande d ouverture de <strong><?= $this->e($name) ?></strong>
-        (code <strong><?= $this->e($code) ?></strong>) a ete enregistree.
+        La demande d'ouverture de <strong><?= $this->e($name) ?></strong>
+        (code <strong><?= $this->e($code) ?></strong>) a ete enregistrée.
     </p>
 
     <div class="alert alert--success" style="margin:1.25rem 0">
-        Reference du dossier
+        Référence du dossier
         <div style="font-size:1.6rem;font-weight:700;letter-spacing:0.08em;margin-top:0.35rem">
             <?= $this->e($reference) ?>
         </div>
     </div>
 
     <p class="muted">
-        Notez cette reference. Un accuse de reception vient d etre adresse a
-        <strong><?= $this->e($email) ?></strong>, et c est a cette meme adresse
-        que vos identifiants seront transmis apres validation.
+        Notez cette référence. Un accuse de reception vient d'etre adresse a
+        <strong><?= $this->e($email) ?></strong>, et c'est a cette meme adresse
+        que vos identifiants seront transmis après validation.
     </p>
 
     <p>

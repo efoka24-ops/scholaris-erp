@@ -64,7 +64,7 @@ $summary = $data['summary'] ?? [];
     <div style="height:2px;margin:1.25rem 0;background:linear-gradient(90deg,var(--violet),var(--indigo),var(--amber))"></div>
 
     <dl class="details">
-        <dt>Eleve</dt>
+        <dt>Élève</dt>
         <dd><strong><?= $this->e(($student['last_name'] ?? '').' '.($student['first_name'] ?? '')) ?></strong></dd>
         <dt>Matricule</dt><dd><?= $this->e($student['matricule'] ?? '-') ?></dd>
         <dt>Ne(e) le</dt><dd><?= $this->date($student['date_of_birth'] ?? null) ?></dd>
@@ -77,14 +77,14 @@ $summary = $data['summary'] ?? [];
 </div>
 
 <div class="card">
-    <h2>Resultats par matiere</h2>
+    <h2>Resultats par matière</h2>
 
     <?php if ($subjects === []) : ?>
-        <p class="muted">Aucune moyenne par matiere enregistree.</p>
+        <p class="muted">Aucune moyenne par matière enregistrée.</p>
     <?php else : ?>
         <table class="table">
             <thead>
-            <tr><th>Matiere</th><th>Moyenne</th><th>Coef.</th><th>Total pondere</th><th>Rang</th></tr>
+            <tr><th>Matière</th><th>Moyenne</th><th>Coef.</th><th>Total pondere</th><th>Rang</th></tr>
             </thead>
             <tbody>
             <?php foreach ($subjects as $subject) : ?>
@@ -106,7 +106,7 @@ $summary = $data['summary'] ?? [];
 
 <div class="stats">
     <div class="stat">
-        <div class="stat__label">Moyenne generale</div>
+        <div class="stat__label">Moyenne générale</div>
         <div class="stat__value"><?= $this->e(number_format((float) ($summary['general_average'] ?? 0), 2, ',', ' ')) ?></div>
     </div>
     <div class="stat">
@@ -123,7 +123,7 @@ $summary = $data['summary'] ?? [];
         <div class="stat__value" style="font-size:1.25rem"><?= $this->e($summary['mention'] ?? '-') ?></div>
     </div>
     <div class="stat">
-        <div class="stat__label">Decision</div>
+        <div class="stat__label">Décision</div>
         <div class="stat__value" style="font-size:1.25rem"><?= $this->e($summary['decision'] ?? '-') ?></div>
     </div>
 </div>
@@ -137,5 +137,5 @@ $summary = $data['summary'] ?? [];
 
 <p class="muted" style="font-size:.85rem">
     Bulletin emis le <?= $this->date($data['generated_at'] ?? null, 'd/m/Y a H:i') ?>.
-    Son authenticite se verifie avec le code <?= $this->e($bulletin['verification_code']) ?>.
+    Son authenticité se verifie avec le code <?= $this->e($bulletin['verification_code']) ?>.
 </p>

@@ -232,7 +232,7 @@ final class InterfaceTest extends TestCase
         $content = $this->request('GET', '/dashboard')->content();
 
         $this->assertStringContains('sidebar__section', $content, 'Les rubriques sont regroupees');
-        $this->assertStringContains('Academique', $content, 'Avec leurs intertitres');
+        $this->assertStringContains('Académique', $content, 'Avec leurs intertitres');
         $this->assertStringContains('topbar__crumb', $content, 'Le fil d Ariane situe la page');
     }
 
@@ -249,8 +249,8 @@ final class InterfaceTest extends TestCase
         $content = $response->content();
 
         $this->assertSame(404, $response->status(), 'Un module non active reste introuvable');
-        $this->assertStringContains('Page introuvable', $content, 'La situation est nommee');
-        $this->assertStringContains('n est pas active', $content, 'Et la cause probable expliquee');
+        $this->assertStringContains("n'est pas activé", $content, 'Et la cause probable expliquee');
+        $this->assertStringContains("n'est pas activé", $content, 'Et la cause probable expliquee');
         $this->assertStringContains('/dashboard', $content, 'Une sortie est proposee');
     }
 

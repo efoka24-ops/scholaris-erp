@@ -14,7 +14,7 @@ $selected = $classroomId !== '' && $periodId !== '';
 <h1>Bulletins</h1>
 <p class="subtitle">
     Un bulletin fige les notes au moment de son emission : un recalcul ulterieur
-    ne modifie pas un document deja remis.
+    ne modifié pas un document déjà remis.
 </p>
 
 <form method="get" action="/bulletins" class="filters">
@@ -27,10 +27,10 @@ $selected = $classroomId !== '' && $periodId !== '';
         <?php endforeach; ?>
     </select>
     <select name="period">
-        <option value="">Choisir une periode...</option>
+        <option value="">Choisir une période...</option>
         <?php foreach ($periods as $period) : ?>
             <option value="<?= $this->e($period['id']) ?>" <?= $periodId === $period['id'] ? 'selected' : '' ?>>
-                Sequence <?= $this->e($period['number']) ?>
+                Séquence <?= $this->e($period['number']) ?>
             </option>
         <?php endforeach; ?>
     </select>
@@ -38,18 +38,18 @@ $selected = $classroomId !== '' && $periodId !== '';
 </form>
 
 <?php if (! $selected) : ?>
-    <div class="card"><p class="muted">Choisissez une classe et une periode.</p></div>
+    <div class="card"><p class="muted">Choisissez une classe et une période.</p></div>
 <?php else : ?>
     <div class="page-header">
         <div>
             <h2><?= $this->number(count($bulletins)) ?> bulletin(s)</h2>
-            <p class="subtitle"><?= $this->number($published) ?> publie(s)</p>
+            <p class="subtitle"><?= $this->number($published) ?> publié(s)</p>
         </div>
         <div class="form-actions" style="margin:0">
             <?php if ($rbac->allows('bulletins:generate')) : ?>
                 <form method="post" action="/bulletins/generate/<?= $this->e($classroomId) ?>/<?= $this->e($periodId) ?>" class="inline-form">
                     <input type="hidden" name="_token" value="<?= $this->e($csrfToken) ?>">
-                    <button type="submit" class="button">Generer les bulletins</button>
+                    <button type="submit" class="button">Générer les bulletins</button>
                 </form>
             <?php endif; ?>
 
@@ -74,7 +74,7 @@ $selected = $classroomId !== '' && $periodId !== '';
     <?php else : ?>
         <table class="table">
             <thead>
-            <tr><th>Matricule</th><th>Eleve</th><th>Code de verification</th><th>Statut</th><th></th></tr>
+            <tr><th>Matricule</th><th>Élève</th><th>Code de verification</th><th>Statut</th><th></th></tr>
             </thead>
             <tbody>
             <?php foreach ($bulletins as $bulletin) : ?>

@@ -36,8 +36,8 @@ $title = 'Factures';
     <table class="table">
         <thead>
         <tr>
-            <th>Eleve</th><th>Classe</th><th>Total</th><th>Regle</th>
-            <th>Solde</th><th>Echeance</th><th>Statut</th>
+            <th>Élève</th><th>Classe</th><th>Total</th><th>Règle</th>
+            <th>Solde</th><th>Échéance</th><th>Statut</th>
         </tr>
         </thead>
         <tbody>
@@ -63,7 +63,7 @@ $title = 'Factures';
     <?php if ($pages > 1) : ?>
         <nav class="pagination">
             <?php for ($p = 1; $p <= $pages; $p++) : ?>
-                <a class="pagination__page<?= $p === $page ? ' pagination__page--active' : '' ?>"
+                <a class="pagination__page<?= $p === $page ? ' pagination__page--activé' : '' ?>"
                    href="/finance/invoices?page=<?= $p ?>&amp;status=<?= urlencode($status) ?>&amp;q=<?= urlencode($search) ?>"><?= $p ?></a>
             <?php endfor; ?>
         </nav>

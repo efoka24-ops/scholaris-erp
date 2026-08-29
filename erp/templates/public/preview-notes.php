@@ -19,7 +19,7 @@ $columns = '1.5fr repeat(4, 72px)';
     <div class="preview__head">
         <div>
             <div class="preview__title">Grille de saisie — Tle C &middot; Mathematiques &middot; Seq. 1</div>
-            <div class="preview__sub">28 eleves &middot; Periode ouverte &middot; 2026–2027</div>
+            <div class="preview__sub">28 élèves &middot; Période ouverte &middot; 2026–2027</div>
         </div>
         <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
             <span class="chip" style="background:rgba(255,184,0,.15);color:#ffb800;border-color:rgba(255,184,0,.3)">📥 Template XLS</span>
@@ -29,7 +29,7 @@ $columns = '1.5fr repeat(4, 72px)';
 
     <div class="grid-table">
         <div class="grid-table__head" style="grid-template-columns:<?= $columns ?>">
-            <span>Eleve</span>
+            <span>Élève</span>
             <span style="text-align:center">Devoir</span>
             <span style="text-align:center">Test</span>
             <span style="text-align:center">Examen</span>

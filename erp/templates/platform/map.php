@@ -16,9 +16,9 @@
 use Scholaris\Support\Cameroon;
 
 $typeLabels = [
-    'PRIMAIRE' => 'Ecole primaire',
+    'PRIMAIRE' => 'École primaire',
     'COLLEGE' => 'College',
-    'LYCEE_GENERAL' => 'Lycee general',
+    'LYCEE_GENERAL' => 'Lycee général',
     'LYCEE_TECHNIQUE' => 'Lycee technique',
     'CENTRE_FORMATION' => 'Centre de formation',
     'SUPERIEUR' => 'Superieur',
@@ -40,18 +40,18 @@ $unlocatedPending = count($map['unlocated']['pending']);
         <div>
             <h2 style="margin:0">Le parc sur le territoire</h2>
             <p class="muted" style="margin:0.25rem 0 0">
-                Survolez une region pour en voir le detail. Trace schematique.
+                Survolez une region pour en voir le détail. Trace schematique.
             </p>
         </div>
         <div class="map__legend">
-            <span><i class="map__key map__key--active"></i> etablissements (<?= $this->number($totalTenants) ?>)</span>
+            <span><i class="map__key map__key--active"></i> établissements (<?= $this->number($totalTenants) ?>)</span>
             <span><i class="map__key map__key--pending"></i> demandes en attente (<?= $this->number($totalPending) ?>)</span>
         </div>
     </div>
 
     <div class="map">
         <svg class="map__svg" viewBox="0 0 <?= Cameroon::WIDTH ?> <?= Cameroon::HEIGHT ?>"
-             role="img" aria-label="Carte schematique du Cameroun et repartition du parc">
+             role="img" aria-label="Carte schematique du Cameroun et répartition du parc">
             <path class="map__country" d="<?= $this->e(Cameroon::outlinePath()) ?>"/>
 
             <?php foreach ($map['regions'] as $region) : ?>
@@ -63,7 +63,7 @@ $unlocatedPending = count($map['unlocated']['pending']);
                 // fournie occupe deux fois plus de surface, non quatre.
                 $radius = $hasAny ? 9 + sqrt($tenantCount + $pendingCount) * 5 : 4;
                 ?>
-                <g class="map__region<?= $hasAny ? ' is-active' : '' ?>"
+                <g class="map__region<?= $hasAny ? ' is-activé' : '' ?>"
                    tabindex="<?= $hasAny ? '0' : '-1' ?>"
                    data-region="<?= $this->e($region['code']) ?>">
                     <?php if ($pendingCount > 0) : ?>
@@ -90,11 +90,11 @@ $unlocatedPending = count($map['unlocated']['pending']);
                 <p class="muted">Chef-lieu : <?= $this->e($region['capital']) ?></p>
 
                 <?php if ($region['tenants'] === [] && $region['pending'] === []) : ?>
-                    <p class="muted">Aucun etablissement ni demande dans cette region.</p>
+                    <p class="muted">Aucun établissement ni demande dans cette region.</p>
                 <?php endif; ?>
 
                 <?php if ($region['tenants'] !== []) : ?>
-                    <h4>Etablissements (<?= $this->number(count($region['tenants'])) ?>)</h4>
+                    <h4>Établissements (<?= $this->number(count($region['tenants'])) ?>)</h4>
                     <ul class="map__list">
                         <?php foreach ($region['tenants'] as $tenant) : ?>
                             <li>
@@ -109,7 +109,7 @@ $unlocatedPending = count($map['unlocated']['pending']);
                                     <?php if (($tenant['city'] ?? null) !== null && $tenant['city'] !== '') : ?>
                                         &middot; <?= $this->e($tenant['city']) ?>
                                     <?php endif; ?>
-                                    &middot; <?= $this->number($tenant['students_count']) ?> eleves
+                                    &middot; <?= $this->number($tenant['students_count']) ?> élèves
                                 </span>
                             </li>
                         <?php endforeach; ?>
@@ -122,14 +122,14 @@ $unlocatedPending = count($map['unlocated']['pending']);
                         <?php foreach ($region['pending'] as $demand) : ?>
                             <li>
                                 <strong><?= $this->e($demand['name']) ?></strong>
-                                <span class="badge badge--warning"><?= $this->e($demand['reference'] ?: 'sans reference') ?></span>
+                                <span class="badge badge--warning"><?= $this->e($demand['reference'] ?: 'sans référence') ?></span>
                                 <br>
                                 <span class="muted">
                                     <?= $this->e($typeLabels[$demand['type']] ?? $demand['type']) ?>
                                     <?php if (($demand['city'] ?? null) !== null && $demand['city'] !== '') : ?>
                                         &middot; <?= $this->e($demand['city']) ?>
                                     <?php endif; ?>
-                                    &middot; depose le <?= $this->date($demand['created_at']) ?>
+                                    &middot; déposé le <?= $this->date($demand['created_at']) ?>
                                 </span>
                             </li>
                         <?php endforeach; ?>
@@ -140,16 +140,16 @@ $unlocatedPending = count($map['unlocated']['pending']);
         <?php endforeach; ?>
 
         <div class="map__detail map__detail--idle" id="map-detail-idle">
-            <h3>Repartition</h3>
+            <h3>Répartition</h3>
             <p class="muted">
-                Passez sur une region pour en voir les etablissements et les
+                Passez sur une region pour en voir les établissements et les
                 demandes en cours.
             </p>
             <?php if ($unlocatedTenants > 0 || $unlocatedPending > 0) : ?>
                 <div class="alert alert--info" style="margin-top:1rem">
                     <?php if ($unlocatedTenants > 0) : ?>
                         <?= $this->number($unlocatedTenants) ?>
-                        etablissement<?= $unlocatedTenants > 1 ? 's' : '' ?> sans region renseignee.
+                        établissement<?= $unlocatedTenants > 1 ? 's' : '' ?> sans region renseignee.
                     <?php endif; ?>
                     <?php if ($unlocatedPending > 0) : ?>
                         <?= $this->number($unlocatedPending) ?>
@@ -163,18 +163,18 @@ $unlocatedPending = count($map['unlocated']['pending']);
 </div>
 
 <script>
-// Le detail suit le survol et le clavier : une carte qui ne repond qu a la
-// souris exclut ceux qui n en utilisent pas.
+// Le détail suit le survol et le clavier : une carte qui ne repond qu'a la
+// souris exclut ceux qui n'en utilisent pas.
 (function () {
     var map = document.currentScript.previousElementSibling;
 
     if (!map) { return; }
 
-    var idle = map.querySelector('#map-detail-idle');
+    var idle = map.querySelector('#map-détail-idle');
     var current = null;
 
     function show(code) {
-        var panel = code ? map.querySelector('#map-detail-' + code) : null;
+        var panel = code ? map.querySelector('#map-détail-' + code) : null;
 
         if (current === panel) { return; }
 

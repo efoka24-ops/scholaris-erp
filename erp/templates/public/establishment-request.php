@@ -11,22 +11,22 @@
  * @var string $csrfToken
  */
 $this->extends('layouts.guest');
-$title = 'Demande de creation d etablissement';
+$title = 'Demande de création d\'établissement';
 $value = static fn (string $k): string => (string) ($old[$k] ?? '');
 $labels = [
-    'PRIMAIRE' => 'Ecole primaire (SIL a CM2)',
+    'PRIMAIRE' => 'École primaire (SIL a CM2)',
     'COLLEGE' => 'College (6eme a 3eme)',
-    'LYCEE_GENERAL' => 'Lycee d enseignement general (6eme a Terminale)',
-    'LYCEE_TECHNIQUE' => 'Lycee d enseignement technique',
+    'LYCEE_GENERAL' => 'Lycee d\'enseignement général (6eme a Terminale)',
+    'LYCEE_TECHNIQUE' => 'Lycee d\'enseignement technique',
     'CENTRE_FORMATION' => 'Centre de formation professionnelle',
     'SUPERIEUR' => 'Enseignement superieur',
 ];
 ?>
 <div class="card" style="max-width:640px;width:100%">
-    <h1 class="auth__title">Ouvrir mon etablissement</h1>
+    <h1 class="auth__title">Ouvrir mon établissement</h1>
     <p class="auth__hint">
-        Renseignez votre etablissement et vos coordonnees. Apres validation, vous
-        recevrez vos identifiants d administrateur.
+        Renseignez votre établissement et vos coordonnees. Après validation, vous
+        recevrez vos identifiants d'administrateur.
     </p>
 
     <?php if ($error !== null) : ?>
@@ -36,7 +36,7 @@ $labels = [
     <form method="post" action="/demande-etablissement">
         <input type="hidden" name="_token" value="<?= $this->e($csrfToken) ?>">
 
-        <h2 style="margin-top:0.5rem">L etablissement</h2>
+        <h2 style="margin-top:0.5rem">L'établissement</h2>
         <div class="grid-2">
             <div class="field">
                 <label for="name">Nom *</label>
@@ -87,7 +87,7 @@ $labels = [
                 <input id="phone" name="phone" value="<?= $this->e($value('phone')) ?>">
             </div>
             <div class="field">
-                <label for="email">Email de l etablissement</label>
+                <label for="email">Email de l'établissement</label>
                 <input id="email" name="email" type="email" value="<?= $this->e($value('email')) ?>">
             </div>
         </div>
@@ -99,7 +99,7 @@ $labels = [
 
         <h2 style="margin-top:1rem">Le responsable</h2>
         <p class="muted" style="margin-top:-0.5rem">
-            Ce compte recevra les droits d administrateur de l etablissement.
+            Ce compte recevra les droits d'administrateur de l'établissement.
         </p>
         <div class="grid-2">
             <div class="field">
@@ -128,6 +128,6 @@ $labels = [
     </form>
 
     <p class="muted" style="margin-top:1.25rem">
-        Vous avez deja un compte ? <a href="/login">Connectez-vous</a>.
+        Vous avez déjà un compte ? <a href="/login">Connectez-vous</a>.
     </p>
 </div>

@@ -10,21 +10,21 @@
  * @var string $csrfToken
  */
 $this->extends('layouts.app');
-$title = 'Inscrire un eleve';
+$title = 'Inscrire un élève';
 
 $value = static fn (string $key, string $default = ''): string => (string) ($old[$key] ?? $default);
 
 $typeLabels = ['NEW' => 'Nouvelle inscription', 'RE_ENROLLMENT' => 'Reinscription', 'TRANSFER' => 'Transfert'];
 $regimeLabels = ['EXTERNAL' => 'Externe', 'HALF_BOARD' => 'Demi-pensionnaire', 'BOARDING' => 'Interne'];
 ?>
-<h1>Inscrire un eleve</h1>
-<p class="subtitle">La facture de scolarite est generee automatiquement depuis la grille tarifaire du niveau.</p>
+<h1>Inscrire un élève</h1>
+<p class="subtitle">La facture de scolarité est générée automatiquement depuis la grille tarifaire du niveau.</p>
 
 <?php if ($students === []) : ?>
     <div class="card">
         <p class="muted">
-            Tous les eleves actifs sont deja inscrits pour cette annee.
-            <a href="/students/create">Creer un nouveau dossier eleve</a> d abord.
+            Tous les élèves actifs sont déjà inscrits pour cette année.
+            <a href="/students/create">Créer un nouveau dossier élève</a> d'abord.
         </p>
     </div>
 <?php else : ?>
@@ -33,7 +33,7 @@ $regimeLabels = ['EXTERNAL' => 'Externe', 'HALF_BOARD' => 'Demi-pensionnaire', '
 
         <div class="grid-2">
             <div class="field">
-                <label for="student_id">Eleve *</label>
+                <label for="student_id">Élève *</label>
                 <select id="student_id" name="student_id" required>
                     <option value="">Choisir...</option>
                     <?php foreach ($students as $student) :
@@ -60,7 +60,7 @@ $regimeLabels = ['EXTERNAL' => 'Externe', 'HALF_BOARD' => 'Demi-pensionnaire', '
             </div>
 
             <div class="field">
-                <label for="type">Type d inscription *</label>
+                <label for="type">Type d'inscription *</label>
                 <select id="type" name="type" required>
                     <?php foreach ($types as $type) : ?>
                         <option value="<?= $this->e($type) ?>" <?= $value('type', 'NEW') === $type ? 'selected' : '' ?>>
@@ -83,13 +83,13 @@ $regimeLabels = ['EXTERNAL' => 'Externe', 'HALF_BOARD' => 'Demi-pensionnaire', '
         </div>
 
         <div class="field">
-            <label for="previous_school">Etablissement precedent</label>
+            <label for="previous_school">Établissement precedent</label>
             <input id="previous_school" name="previous_school" value="<?= $this->e($value('previous_school')) ?>">
         </div>
 
         <div class="checkbox">
             <input id="is_repeater" name="is_repeater" type="checkbox" value="1">
-            <label for="is_repeater">Eleve redoublant</label>
+            <label for="is_repeater">Élève redoublant</label>
         </div>
 
         <div class="form-actions">

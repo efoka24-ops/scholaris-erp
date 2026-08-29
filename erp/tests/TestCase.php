@@ -290,11 +290,21 @@ abstract class TestCase
         }
     }
 
+    /**
+     * Cherche un texte dans une page.
+     *
+     * Le HTML est decode avant la comparaison : une apostrophe francaise sort
+     * du gabarit sous la forme « &#039; », et chercher « d'instruction » dans
+     * la source echouerait alors que le texte s'affiche correctement. Le test
+     * doit porter sur ce que lit l'utilisateur, pas sur l'encodage.
+     */
     protected function assertStringContains(string $needle, string $haystack, string $message): void
     {
         $this->assertions++;
 
-        if (! str_contains($haystack, $needle)) {
+        $readable = html_entity_decode($haystack, ENT_QUOTES, 'UTF-8');
+
+        if (! str_contains($haystack, $needle) && ! str_contains($readable, $needle)) {
             $this->failures[] = $message." (chaine '{$needle}' absente)";
         }
     }

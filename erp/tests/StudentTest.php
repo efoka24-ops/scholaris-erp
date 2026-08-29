@@ -167,7 +167,7 @@ final class StudentTest extends TestCase
         $content = $this->request('GET', '/students')->content();
 
         $this->assertStringContains('score--none', $content, 'L absence de note a son propre traitement');
-        $this->assertStringContains('ce n est pas une note nulle', $content, 'Et la lecture en est expliquee');
+        $this->assertStringContains("ce n'est pas une note nulle", $content, 'Et la lecture en est expliquee');
     }
 
     public function testLaRechercheEtLeStatutFiltrentLaListe(): void

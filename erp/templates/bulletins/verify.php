@@ -15,11 +15,11 @@ $title = 'Verifier un bulletin';
 $data = $bulletin !== null ? json_decode((string) $bulletin['data'], true) : null;
 ?>
 <div class="public">
-    <span class="section-tag" style="color:#00c2ff">— Authenticite</span>
+    <span class="section-tag" style="color:#00c2ff">— Authenticité</span>
     <h1 style="margin-bottom:1rem">Verifier un bulletin</h1>
     <p class="muted" style="margin-bottom:2rem;max-width:600px">
         Saisissez le code imprime sur le bulletin. La verification confirme que
-        le document a bien ete emis par l etablissement, sans en reveler le detail.
+        le document a bien ete emis par l'établissement, sans en reveler le détail.
     </p>
 
     <form method="get" action="/bulletins/verification" class="filters">
@@ -30,25 +30,25 @@ $data = $bulletin !== null ? json_decode((string) $bulletin['data'], true) : nul
 
     <?php if ($searched && $bulletin === null) : ?>
         <div class="alert alert--error">
-            Aucun bulletin publie ne correspond a ce code. Verifiez la saisie ;
-            un bulletin non encore publie n est pas verifiable.
+            Aucun bulletin publié ne correspond a ce code. Verifiez la saisie ;
+            un bulletin non encore publié n'est pas verifiable.
         </div>
     <?php elseif ($bulletin !== null) : ?>
         <div class="card">
             <div class="alert alert--success">Bulletin authentique.</div>
 
             <dl class="details">
-                <dt>Etablissement</dt><dd><?= $this->e($bulletin['tenant_name']) ?></dd>
-                <dt>Eleve</dt>
+                <dt>Établissement</dt><dd><?= $this->e($bulletin['tenant_name']) ?></dd>
+                <dt>Élève</dt>
                 <dd><?= $this->e($bulletin['last_name'].' '.$bulletin['first_name']) ?></dd>
                 <dt>Matricule</dt><dd><?= $this->e($bulletin['matricule']) ?></dd>
                 <dt>Classe</dt><dd><?= $this->e($data['context']['classroom_name'] ?? '-') ?></dd>
-                <dt>Periode</dt>
+                <dt>Période</dt>
                 <dd>
-                    Sequence <?= $this->e($data['context']['period_number'] ?? '-') ?>
+                    Séquence <?= $this->e($data['context']['period_number'] ?? '-') ?>
                     &middot; <?= $this->e($data['context']['year_label'] ?? '') ?>
                 </dd>
-                <dt>Moyenne generale</dt>
+                <dt>Moyenne générale</dt>
                 <dd><strong><?= $this->e(number_format((float) ($data['summary']['general_average'] ?? 0), 2, ',', ' ')) ?>/20</strong></dd>
                 <dt>Emis le</dt><dd><?= $this->date($bulletin['created_at'], 'd/m/Y') ?></dd>
             </dl>

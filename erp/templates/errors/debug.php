@@ -28,7 +28,7 @@
 
         <?php if ($isDatabase) : ?>
             <div class="alert alert--error">
-                Erreur de base de donnees. Verifiez que les migrations ont ete appliquees
+                Erreur de base de données. Verifiez que les migrations ont ete appliquées
                 (<code>artisan migrate</code>) et que le .env pointe la bonne base.
             </div>
         <?php endif; ?>

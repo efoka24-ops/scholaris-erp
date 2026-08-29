@@ -50,7 +50,7 @@ final class PublicFlowTest extends TestCase
         ]);
 
         $this->assertSame(200, $response->status(), 'La confirmation doit s afficher');
-        $this->assertStringContains('Reference du dossier', $response->content(), 'Une reference est remise au parent');
+        $this->assertStringContains('Référence du dossier', $response->content(), 'Une reference est remise au parent');
 
         $application = $this->db->selectOne('SELECT * FROM admission_applications LIMIT 1');
 

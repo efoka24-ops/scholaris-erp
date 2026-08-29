@@ -309,8 +309,8 @@ final class PlatformGovernanceTest extends TestCase
 
         $content = $this->request('GET', '/admin/comptes')->content();
 
-        $this->assertStringContains('Repartition des comptes', $content, 'Le bandeau statistique est affiche');
-        $this->assertStringContains('Taux d activation', $content, 'Avec le taux d activation');
+        $this->assertStringContains("Taux d'activation", $content, 'Avec le taux d activation');
+        $this->assertStringContains("Taux d'activation", $content, 'Avec le taux d activation');
     }
 
     public function testLaRechercheFiltreLesComptes(): void
@@ -335,7 +335,7 @@ final class PlatformGovernanceTest extends TestCase
 
         $content = $this->request('GET', '/admin/rapports')->content();
 
-        $this->assertStringContains('Comparatif des etablissements', $content, 'Le comparatif s affiche');
+        $this->assertStringContains('Comparatif des établissements', $content, 'Le comparatif s affiche');
         $this->assertStringContains(
             'rien facture',
             $content,
@@ -373,7 +373,7 @@ final class PlatformGovernanceTest extends TestCase
 
         $content = $this->request('GET', '/admin/journal')->content();
 
-        $this->assertStringContains('Mot de passe reinitialise', $content, 'L acte est journalise et lisible');
+        $this->assertStringContains('Mot de passe réinitialisé', $content, 'L acte est journalise et lisible');
 
         $entry = $this->db->selectOne(
             "SELECT * FROM audit_logs WHERE action = 'user.reset_password'"

@@ -8,11 +8,11 @@
  * @var int $withRecord
  */
 $this->extends('layouts.app');
-$title = 'Sante scolaire';
+$title = 'Santé scolaire';
 ?>
-<h1>Sante scolaire</h1>
+<h1>Santé scolaire</h1>
 <p class="subtitle">
-    <?= $this->number($withRecord) ?> dossier(s) medical(aux) sur <?= $this->number(count($students)) ?> eleve(s) affiche(s)
+    <?= $this->number($withRecord) ?> dossier(s) médical(aux) sur <?= $this->number(count($students)) ?> élève(s) affiché(s)
 </p>
 
 <form method="get" action="/health" class="filters">
@@ -21,11 +21,11 @@ $title = 'Sante scolaire';
 </form>
 
 <?php if ($students === []) : ?>
-    <div class="card"><p class="muted">Aucun eleve ne correspond a cette recherche.</p></div>
+    <div class="card"><p class="muted">Aucun élève ne correspond a cette recherche.</p></div>
 <?php else : ?>
     <table class="table">
         <thead>
-        <tr><th>Matricule</th><th>Eleve</th><th>Groupe sanguin</th><th>Allergies</th><th>Dossier</th><th></th></tr>
+        <tr><th>Matricule</th><th>Élève</th><th>Groupe sanguin</th><th>Allergies</th><th>Dossier</th><th></th></tr>
         </thead>
         <tbody>
         <?php foreach ($students as $student) : ?>

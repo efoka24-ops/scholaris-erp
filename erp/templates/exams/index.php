@@ -13,7 +13,7 @@
  */
 $this->extends('layouts.app');
 $title = 'Examens officiels';
-$now = date('Y-m-d H:i:s');
+$now = date('Y-m-d\'H:i:s');
 $value = static fn (string $key): string => (string) ($old[$key] ?? '');
 ?>
 <h1>Examens officiels</h1>
@@ -21,7 +21,7 @@ $value = static fn (string $key): string => (string) ($old[$key] ?? '');
 
 <?php if ($academicYearId === null) : ?>
     <div class="alert alert--error">
-        Aucune annee academique active : impossible d ouvrir un examen.
+        Aucune année académique activé : impossible d'ouvrir un examen.
     </div>
 <?php endif; ?>
 
@@ -85,7 +85,7 @@ $value = static fn (string $key): string => (string) ($old[$key] ?? '');
                 </select>
             </div>
             <div class="field">
-                <label for="fee_amount">Frais d inscription (FCFA)</label>
+                <label for="fee_amount">Frais d'inscription (FCFA)</label>
                 <input id="fee_amount" name="fee_amount" inputmode="numeric" value="0">
             </div>
             <div class="field">

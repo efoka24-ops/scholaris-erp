@@ -30,7 +30,7 @@ $url = '/grades/entry/'.$classroom['id'].'/'.$subject['id'].'/'.$period['id'];
         <h1><?= $this->e($subject['name']) ?></h1>
         <p class="subtitle">
             <?= $this->e($classroom['name']) ?>
-            &middot; Sequence <?= $this->e($period['number']) ?>
+            &middot; Séquence <?= $this->e($period['number']) ?>
             &middot; coefficient <?= $this->e(rtrim(rtrim((string) $subject['coefficient'], '0'), '.')) ?>
         </p>
     </div>
@@ -39,7 +39,7 @@ $url = '/grades/entry/'.$classroom['id'].'/'.$subject['id'].'/'.$period['id'];
 
 <?php if (! $periodOpen) : ?>
     <div class="alert alert--error">
-        Cette sequence est fermee : les notes sont consultables mais ne peuvent
+        Cette séquence est fermée : les notes sont consultables mais ne peuvent
         plus etre modifiees.
     </div>
 <?php endif; ?>
@@ -56,7 +56,7 @@ $url = '/grades/entry/'.$classroom['id'].'/'.$subject['id'].'/'.$period['id'];
 </form>
 
 <?php if ($students === []) : ?>
-    <div class="card"><p class="muted">Aucun eleve inscrit dans cette classe.</p></div>
+    <div class="card"><p class="muted">Aucun élève inscrit dans cette classe.</p></div>
 <?php else : ?>
     <form method="post" action="<?= $this->e($url) ?>" class="card">
         <input type="hidden" name="_token" value="<?= $this->e($csrfToken) ?>">
@@ -95,7 +95,7 @@ $url = '/grades/entry/'.$classroom['id'].'/'.$subject['id'].'/'.$period['id'];
                                <?= $isAbsent ? 'checked' : '' ?>
                                <?= $periodOpen && ! $isLocked ? '' : 'disabled' ?>>
                         <?php if ($isLocked) : ?>
-                            <span class="badge">verrouillee</span>
+                            <span class="badge">verrouillée</span>
                         <?php endif; ?>
                     </td>
                 </tr>
@@ -108,7 +108,7 @@ $url = '/grades/entry/'.$classroom['id'].'/'.$subject['id'].'/'.$period['id'];
                 <button type="submit" class="button">Enregistrer les notes</button>
             </div>
             <p class="muted">
-                Les cases laissees vides sont ignorees. Une note hors bareme (au-dela
+                Les cases laissees vides sont ignorees. Une note hors barème (au-dela
                 de 20) est rejetee plutot que ramenee a 20, pour ne pas transformer
                 une faute de frappe en resultat.
             </p>

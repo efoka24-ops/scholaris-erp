@@ -11,9 +11,9 @@
  * @var string $csrfToken
  */
 $this->extends('layouts.app');
-$title = 'Presences';
+$title = 'Présences';
 
-$labels = ['PRESENT' => 'Present', 'ABSENT' => 'Absent', 'LATE' => 'Retard', 'EXCUSED' => 'Excuse'];
+$labels = ['PRESENT' => 'Présent', 'ABSENT' => 'Absent', 'LATE' => 'Retard', 'EXCUSED' => 'Excuse'];
 $colours = ['PRESENT' => 'var(--green-dark)', 'ABSENT' => 'var(--red)', 'LATE' => 'var(--amber-dark)', 'EXCUSED' => 'var(--blue)'];
 
 $counts = array_fill_keys($statuses, 0);
@@ -24,7 +24,7 @@ foreach ($existing as $row) {
     }
 }
 ?>
-<h1>Presences</h1>
+<h1>Présences</h1>
 <p class="subtitle">Appel numerique par classe et par jour.</p>
 
 <form method="get" action="/attendance" class="filters">
@@ -43,7 +43,7 @@ foreach ($existing as $row) {
 <?php if ($classroomId === '') : ?>
     <div class="card"><p class="muted">Choisissez une classe et une date.</p></div>
 <?php elseif ($students === []) : ?>
-    <div class="card"><p class="muted">Aucun eleve inscrit dans cette classe.</p></div>
+    <div class="card"><p class="muted">Aucun élève inscrit dans cette classe.</p></div>
 <?php else : ?>
     <div class="stats">
         <?php foreach ($statuses as $status) : ?>
@@ -62,7 +62,7 @@ foreach ($existing as $row) {
 
         <table class="table">
             <thead>
-            <tr><th>Matricule</th><th>Eleve</th><th>Statut</th><th>Motif</th></tr>
+            <tr><th>Matricule</th><th>Élève</th><th>Statut</th><th>Motif</th></tr>
             </thead>
             <tbody>
             <?php foreach ($students as $student) : ?>
@@ -94,7 +94,7 @@ foreach ($existing as $row) {
 
         <?php if ($rbac->allows('attendance:create')) : ?>
             <div class="form-actions">
-                <button type="submit" class="button">Enregistrer l appel</button>
+                <button type="submit" class="button">Enregistrer l'appel</button>
             </div>
         <?php endif; ?>
     </form>

@@ -77,7 +77,7 @@ $initials = Navigation::initials($fullName);
 
             <?php foreach ($visible as $item) : ?>
                 <a href="<?= $this->e($item['href']) ?>"
-                   class="sidebar__link<?= Navigation::isActive($item['href'], $currentPath) ? ' sidebar__link--active' : '' ?>">
+                   class="sidebar__link<?= Navigation::isActive($item['href'], $currentPath) ? ' sidebar__link--activé' : '' ?>">
                     <?= $this->raw(Navigation::icon($item['icon'])) ?>
                     <span><?= $this->e($item['label']) ?></span>
                     <?php if (($badges[$item['href']] ?? 0) > 0) : ?>
@@ -133,11 +133,11 @@ $initials = Navigation::initials($fullName);
         <div class="impersonation">
             <span>
                 Vous consultez <strong><?= $this->e($tenantName) ?></strong> en tant
-                qu administrateur de la plateforme. Cet acces est journalise.
+                qu'administrateur de la plateforme. Cet accès est journalisé.
             </span>
             <form method="post" action="/admin/quitter" class="inline-form">
                 <input type="hidden" name="_token" value="<?= $this->e($csrfToken) ?>">
-                <button type="submit" class="button button--secondary">Quitter cet etablissement</button>
+                <button type="submit" class="button button--secondary">Quitter cet établissement</button>
             </form>
         </div>
     <?php endif; ?>

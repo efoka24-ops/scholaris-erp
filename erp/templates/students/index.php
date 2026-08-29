@@ -3,7 +3,7 @@
  * Liste des eleves.
  *
  * Le bandeau de compteurs repond a la question qu'on se pose en ouvrant cet
- * ecran — combien d'eleves, combien de dossiers en attente — sans avoir a
+ * écran — combien d'eleves, combien de dossiers en attente — sans avoir a
  * filtrer quatre fois pour l'apprendre.
  *
  * La classe et la moyenne figurent dans le tableau : ce sont les deux
@@ -69,7 +69,7 @@ $query = static fn (array $extra): string => '/students?'.http_build_query(array
         </p>
     </div>
     <?php if ($rbac->allows('students:create')) : ?>
-        <a class="button" href="/students/create">Nouvel eleve</a>
+        <a class="button" href="/students/create">Nouvel élève</a>
     <?php endif; ?>
 </div>
 
@@ -211,7 +211,7 @@ $query = static fn (array $extra): string => '/students?'.http_build_query(array
 
         <p class="muted">
             Un tiret dans la colonne « Moyenne » signale un dossier sans
-            resultat publie : ce n est pas une note nulle.
+            resultat publié : ce n'est pas une note nulle.
         </p>
     <?php endif; ?>
 </div>

@@ -70,7 +70,7 @@ $value = static fn (string $key, string $default = ''): string => (string) ($old
     </div>
 
     <div class="form-actions">
-        <button type="submit" class="button"><?= $isEdit ? 'Enregistrer' : 'Creer la classe' ?></button>
+        <button type="submit" class="button"><?= $isEdit ? 'Enregistrer' : 'Créer la classe' ?></button>
         <a class="button button--secondary" href="/classrooms">Annuler</a>
     </div>
 </form>

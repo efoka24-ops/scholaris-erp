@@ -15,7 +15,7 @@ $title = (string) $classroom['name'];
         <p class="subtitle">
             <?= $this->e($level['name'] ?? '') ?>
             &middot; <span class="badge"><?= $this->e($classroom['section']) ?></span>
-            &middot; <?= $this->number(count($students)) ?> / <?= $this->number($classroom['capacity']) ?> eleves
+            &middot; <?= $this->number(count($students)) ?> / <?= $this->number($classroom['capacity']) ?> élèves
         </p>
     </div>
     <?php if ($rbac->allows('classrooms:update')) : ?>
@@ -24,10 +24,10 @@ $title = (string) $classroom['name'];
 </div>
 
 <div class="card">
-    <h2>Effectif de l annee en cours</h2>
+    <h2>Effectif de l'année en cours</h2>
 
     <?php if ($students === []) : ?>
-        <p class="muted">Aucun eleve inscrit dans cette classe pour l annee en cours.</p>
+        <p class="muted">Aucun élève inscrit dans cette classe pour l'année en cours.</p>
     <?php else : ?>
         <table class="table">
             <thead>

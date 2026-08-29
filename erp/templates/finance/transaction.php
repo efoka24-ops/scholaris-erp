@@ -17,9 +17,9 @@ $isFinal = in_array($status, ['SUCCESS', 'FAILED', 'REJECTED'], true);
 $statusLabels = [
     'PENDING' => 'Initialisation',
     'PROCESSING' => 'En attente de validation par la famille',
-    'SUCCESS' => 'Paiement encaisse',
+    'SUCCESS' => 'Paiement encaissé',
     'FAILED' => 'Paiement echoue',
-    'REJECTED' => 'Demande refusee par la passerelle',
+    'REJECTED' => 'Demande refusée par la passerelle',
     'RECONCILIATION' => 'En cours de reconciliation',
 ];
 ?>
@@ -45,7 +45,7 @@ $statusLabels = [
     <?php if ($status === 'SUCCESS') : ?>
         <div class="alert alert--success">
             <?= $this->e($statusLabels[$status]) ?>. Le solde de la facture a ete
-            mis a jour et un recu a ete emis.
+            mis a jour et un reçu a ete emis.
         </div>
     <?php elseif ($isFinal) : ?>
         <div class="alert alert--error"><?= $this->e($statusLabels[$status] ?? $status) ?></div>
@@ -54,9 +54,9 @@ $statusLabels = [
     <?php endif; ?>
 
     <dl class="details">
-        <dt>Reference</dt><dd><?= $this->e($transaction['external_reference']) ?></dd>
+        <dt>Référence</dt><dd><?= $this->e($transaction['external_reference']) ?></dd>
         <dt>Montant</dt><dd><?= $this->money($transaction['amount']) ?></dd>
-        <dt>Numero</dt><dd><?= $this->e($transaction['phone_number']) ?></dd>
+        <dt>Numéro</dt><dd><?= $this->e($transaction['phone_number']) ?></dd>
         <dt>Demande le</dt><dd><?= $this->date($transaction['created_at'], 'd/m/Y H:i') ?></dd>
         <?php if ($transaction['notified_at']) : ?>
             <dt>Dernier retour</dt><dd><?= $this->date($transaction['notified_at'], 'd/m/Y H:i') ?></dd>

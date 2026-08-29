@@ -149,7 +149,7 @@ final class EstablishmentNotificationTest extends TestCase
         ])->content();
 
         $this->assertStringContains('Ecole suivie', $content, 'Le dossier est retrouve');
-        $this->assertStringContains('En cours d instruction', $content, 'Avec son etat');
+        $this->assertStringContains("En cours d'instruction", $content, 'Avec son etat');
     }
 
     public function testUneReferenceSeuleNeSuffitPas(): void

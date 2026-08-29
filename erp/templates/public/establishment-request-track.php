@@ -14,16 +14,16 @@ $this->extends('layouts.guest');
 $title = 'Suivi de ma demande';
 
 $states = [
-    'PENDING' => ['En cours d instruction', 'Votre dossier a ete recu et attend la validation de l administration de la plateforme.'],
-    'APPROVED' => ['Acceptee', 'Votre etablissement est ouvert. Vos identifiants ont ete adresses a votre adresse email.'],
-    'REJECTED' => ['Non retenue', 'Votre dossier n a pas ete retenu.'],
+    'PENDING' => ['En cours d\'instruction', 'Votre dossier a ete reçu et attend la validation de l\'administration de la plateforme.'],
+    'APPROVED' => ['Acceptee', 'Votre établissement est ouvert. Vos identifiants ont ete adresses a votre adresse email.'],
+    'REJECTED' => ['Non retenue', 'Votre dossier n\'a pas ete retenu.'],
 ];
 ?>
 <div class="card card--narrow">
     <h1 class="auth__title">Suivi de ma demande</h1>
     <p class="auth__hint">
-        Saisissez la reference recue lors du depot et l adresse email du
-        responsable. Les deux sont demandees : une reference seule pourrait
+        Saisissez la référence reçue lors du depot et l'adresse email du
+        responsable. Les deux sont demandees : une référence seule pourrait
         etre devinee.
     </p>
 
@@ -34,7 +34,7 @@ $states = [
     <form method="post" action="/demande-etablissement/suivi">
         <input type="hidden" name="_token" value="<?= $this->e($csrfToken) ?>">
         <div class="field">
-            <label for="reference">Reference du dossier</label>
+            <label for="reference">Référence du dossier</label>
             <input id="reference" name="reference" placeholder="ET-XXXXXX" required
                    value="<?= $this->e($reference) ?>">
         </div>
@@ -55,7 +55,7 @@ $states = [
 
         <h2 style="margin-bottom:0.25rem"><?= $this->e($demand['name']) ?></h2>
         <p class="muted" style="margin-top:0">
-            Code <?= $this->e($demand['code']) ?> &middot; depose le
+            Code <?= $this->e($demand['code']) ?> &middot; déposé le
             <?= $this->e(substr((string) $demand['created_at'], 0, 10)) ?>
         </p>
 

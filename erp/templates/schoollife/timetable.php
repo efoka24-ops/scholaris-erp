@@ -15,7 +15,7 @@ $title = 'Emplois du temps';
 ?>
 <h1>Emplois du temps</h1>
 <p class="subtitle">
-    Un creneau est refuse s il place l enseignant, la salle ou la classe en
+    Un creneau est refuse s'il place l'enseignant, la salle ou la classe en
     double : le conflit se detecte a la saisie, pas sur le terrain.
 </p>
 
@@ -75,7 +75,7 @@ $title = 'Emplois du temps';
 
             <div class="grid-2">
                 <div class="field">
-                    <label for="subject_id">Matiere *</label>
+                    <label for="subject_id">Matière *</label>
                     <select id="subject_id" name="subject_id" required>
                         <option value="">Choisir...</option>
                         <?php foreach ($subjects as $subject) : ?>

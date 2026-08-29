@@ -49,7 +49,7 @@ $balance = (float) $invoice['balance'];
             </select>
         </div>
         <div class="field">
-            <label for="phone_number">Numero du payeur *</label>
+            <label for="phone_number">Numéro du payeur *</label>
             <input id="phone_number" name="phone_number" required placeholder="6XX XX XX XX">
         </div>
     </div>
@@ -60,7 +60,7 @@ $balance = (float) $invoice['balance'];
 
     <p class="muted">
         La famille recevra une demande de validation sur son telephone. Le
-        paiement n est impute sur la facture qu une fois cette validation
-        confirmee par l operateur : une demande envoyee n est pas un encaissement.
+        paiement n'est impute sur la facture qu'une fois cette validation
+        confirmee par l'operateur : une demande envoyée n'est pas un encaissement.
     </p>
 </form>

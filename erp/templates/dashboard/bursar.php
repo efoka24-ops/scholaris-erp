@@ -11,7 +11,7 @@ $this->extends('layouts.app');
 $title = 'Intendance';
 ?>
 <h1>Intendance</h1>
-<p class="subtitle">Recouvrement de la scolarite sur l annee en cours</p>
+<p class="subtitle">Recouvrement de la scolarité sur l'année en cours</p>
 
 <div class="stats">
     <div class="stat">
@@ -41,14 +41,14 @@ $title = 'Intendance';
 </div>
 
 <div class="card">
-    <h2>Soldes les plus eleves</h2>
+    <h2>Soldes les plus élèves</h2>
     <p class="muted" style="margin-top:-0.5rem">Les dossiers a relancer en priorite.</p>
 
     <?php if ($topDebtors === []) : ?>
         <p class="muted">Aucun solde en attente.</p>
     <?php else : ?>
         <table class="table">
-            <thead><tr><th>Matricule</th><th>Eleve</th><th>Solde</th><th></th></tr></thead>
+            <thead><tr><th>Matricule</th><th>Élève</th><th>Solde</th><th></th></tr></thead>
             <tbody>
             <?php foreach ($topDebtors as $debtor) : ?>
                 <tr>
@@ -67,10 +67,10 @@ $title = 'Intendance';
     <h2>Derniers encaissements</h2>
 
     <?php if ($recentPayments === []) : ?>
-        <p class="muted">Aucun paiement enregistre.</p>
+        <p class="muted">Aucun paiement enregistré.</p>
     <?php else : ?>
         <table class="table">
-            <thead><tr><th>Recu</th><th>Eleve</th><th>Montant</th><th>Moyen</th><th>Date</th></tr></thead>
+            <thead><tr><th>Reçu</th><th>Élève</th><th>Montant</th><th>Moyen</th><th>Date</th></tr></thead>
             <tbody>
             <?php foreach ($recentPayments as $payment) : ?>
                 <tr>

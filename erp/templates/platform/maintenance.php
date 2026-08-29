@@ -24,7 +24,7 @@ $title = 'Maintenance';
 <?php if ($pending > 0) : ?>
     <div class="alert alert--error">
         <strong><?= $this->number($pending) ?> migration<?= $pending > 1 ? 's' : '' ?></strong>
-        en attente. Tant qu elles ne sont pas appliquees, le schema de la base
+        en attente. Tant qu'elles ne sont pas appliquées, le schema de la base
         est en retard sur le code : certaines pages peuvent tomber en erreur.
     </div>
 
@@ -39,7 +39,7 @@ $title = 'Maintenance';
 <div class="card">
     <h2>Migrations</h2>
     <table class="table">
-        <thead><tr><th>Fichier</th><th>Etat</th></tr></thead>
+        <thead><tr><th>Fichier</th><th>État</th></tr></thead>
         <tbody>
         <?php foreach ($migrations as $migration) : ?>
             <tr>
@@ -48,7 +48,7 @@ $title = 'Maintenance';
                     <?php if ($migration['applied_at'] === null) : ?>
                         <span class="badge badge--warning">en attente</span>
                     <?php else : ?>
-                        <span class="muted">appliquee le <?= $this->date($migration['applied_at'], 'd/m/Y H:i') ?></span>
+                        <span class="muted">appliquée le <?= $this->date($migration['applied_at'], 'd/m/Y H:i') ?></span>
                     <?php endif; ?>
                 </td>
             </tr>
@@ -57,8 +57,8 @@ $title = 'Maintenance';
     </table>
 
     <p class="muted">
-        Seuls les fichiers livres avec l application sont joues, dans l ordre,
-        et une seule fois chacun. Aucune commande ni aucun SQL exterieur n est
+        Seuls les fichiers livres avec l'application sont joues, dans l'ordre,
+        et une seule fois chacun. Aucune commande ni aucun SQL exterieur n'est
         execute ici.
     </p>
 </div>

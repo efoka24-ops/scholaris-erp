@@ -9,15 +9,15 @@
  * @var string $csrfToken
  */
 $this->extends('layouts.app');
-$title = 'Ouvrir un etablissement';
+$title = 'Ouvrir un établissement';
 $value = static fn (string $k): string => (string) ($old[$k] ?? '');
 ?>
 <div class="page-header">
     <div>
-        <h1>Ouvrir un etablissement</h1>
+        <h1>Ouvrir un établissement</h1>
         <p class="subtitle">
-            L etablissement, le compte de son responsable, sa structure
-            pedagogique et son annee scolaire sont crees ensemble. Il est
+            L'établissement, le compte de son responsable, sa structure
+            pédagogique et son année scolaire sont créés ensemble. Il est
             utilisable immediatement.
         </p>
     </div>
@@ -28,7 +28,7 @@ $value = static fn (string $k): string => (string) ($old[$k] ?? '');
     <input type="hidden" name="_token" value="<?= $this->e($csrfToken) ?>">
 
     <div class="card">
-        <h2>L etablissement</h2>
+        <h2>L'établissement</h2>
         <div class="grid-2">
             <div class="field">
                 <label for="name">Nom *</label>
@@ -75,7 +75,7 @@ $value = static fn (string $k): string => (string) ($old[$k] ?? '');
                 <input id="phone" name="phone" value="<?= $this->e($value('phone')) ?>">
             </div>
             <div class="field">
-                <label for="email">Email de l etablissement</label>
+                <label for="email">Email de l'établissement</label>
                 <input id="email" name="email" type="email" value="<?= $this->e($value('email')) ?>">
             </div>
         </div>
@@ -88,8 +88,8 @@ $value = static fn (string $k): string => (string) ($old[$k] ?? '');
     <div class="card">
         <h2>Le responsable</h2>
         <p class="muted" style="margin-top:-0.5rem">
-            Ce compte recoit les droits d administration de cet etablissement,
-            et d aucun autre. Un mot de passe provisoire est genere et lui est
+            Ce compte recoit les droits d'administration de cet établissement,
+            et d'aucun autre. Un mot de passe provisoire est généré et lui est
             adresse par courrier.
         </p>
         <div class="grid-2">
@@ -111,5 +111,5 @@ $value = static fn (string $k): string => (string) ($old[$k] ?? '');
         </div>
     </div>
 
-    <button type="submit" class="button">Creer l etablissement</button>
+    <button type="submit" class="button">Créer l'établissement</button>
 </form>

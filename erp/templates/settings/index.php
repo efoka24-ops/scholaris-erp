@@ -13,41 +13,41 @@
 $this->extends('layouts.app');
 $title = 'Parametres';
 ?>
-<h1>Parametres</h1>
+<h1>Paramètres</h1>
 <p class="subtitle">
     <?= $this->e($tenant['name'] ?? '') ?>
     &middot; <span class="badge"><?= $this->e($features->typeLabel()) ?></span>
 </p>
 
 <div class="card">
-    <h2>Type d etablissement</h2>
+    <h2>Type d'établissement</h2>
     <p class="muted" style="margin-top:-0.5rem">
-        Le type determine ce qui existe dans votre interface. Les fonctionnalites
+        Le type determine ce qui existe dans votre interface. Les fonctionnalités
         qui ne concernent pas un <?= $this->e(strtolower($features->typeLabel())) ?>
-        ne sont ni affichees ni activables : elles n existent pas ici.
+        ne sont ni affichees ni activables : elles n'existent pas ici.
     </p>
 
     <dl class="details">
         <dt>Type</dt><dd><strong><?= $this->e($features->typeLabel()) ?></strong></dd>
-        <dt>Code etablissement</dt><dd class="font-mono"><?= $this->e($tenant['code'] ?? '-') ?></dd>
-        <dt>Terme pour les eleves</dt><dd><?= $this->e($features->label('students', 'Eleves')) ?></dd>
+        <dt>Code établissement</dt><dd class="font-mono"><?= $this->e($tenant['code'] ?? '-') ?></dd>
+        <dt>Terme pour les élèves</dt><dd><?= $this->e($features->label('students', 'Eleves')) ?></dd>
         <dt>Terme pour les classes</dt><dd><?= $this->e($features->label('classrooms', 'Classes')) ?></dd>
     </dl>
 </div>
 
 <form method="post" action="/parametres" class="card">
     <input type="hidden" name="_token" value="<?= $this->e($csrfToken) ?>">
-    <h2>Fonctionnalites optionnelles</h2>
+    <h2>Fonctionnalités optionnelles</h2>
 
     <?php if ($optional === []) : ?>
         <p class="muted">
-            Aucune fonctionnalite optionnelle pour ce type d etablissement :
-            tout ce qui vous concerne est deja actif.
+            Aucune fonctionnalité optionnelle pour ce type d'établissement :
+            tout ce qui vous concerne est déjà actif.
         </p>
     <?php else : ?>
         <p class="muted" style="margin-top:-0.5rem">
-            Ces modules sont disponibles pour votre type d etablissement mais
-            masques par defaut. Activez ceux dont vous avez l usage.
+            Ces modules sont disponibles pour votre type d'établissement mais
+            masques par défaut. Activez ceux dont vous avez l'usage.
         </p>
 
         <?php foreach ($optional as $key => $entry) : ?>
@@ -64,23 +64,23 @@ $title = 'Parametres';
 
     <?php endif; ?>
 
-    <h2 style="margin-top:2rem">Regles de calcul</h2>
+    <h2 style="margin-top:2rem">Règles de calcul</h2>
     <p class="muted" style="margin-top:-0.5rem">
-        Ces reglages changent les moyennes deja calculees des le prochain
-        calcul. Ils ne modifient pas les bulletins deja publies.
+        Ces réglages changent les moyennes déjà calculees des le prochain
+        calcul. Ils ne modifient pas les bulletins déjà publiés.
     </p>
 
     <div class="grid-2">
         <div class="field">
-            <label for="scale">Bareme</label>
+            <label for="scale">Barème</label>
             <input id="scale" name="scale" type="number" min="1" max="100" step="1"
                    value="<?= $this->e((string) (int) $rules->scale()) ?>">
             <span class="muted" style="font-size:0.8125rem">
-                Les notes saisies sur un autre bareme sont ramenees sur celui-ci.
+                Les notes saisies sur un autre barème sont ramenees sur celui-ci.
             </span>
         </div>
         <div class="field">
-            <label for="pass_mark">Seuil de reussite</label>
+            <label for="pass_mark">Seuil de réussite</label>
             <input id="pass_mark" name="pass_mark" type="number" min="0" step="0.5"
                    value="<?= $this->e((string) $rules->passMark()) ?>">
         </div>
@@ -88,8 +88,8 @@ $title = 'Parametres';
             <label for="rounding">Arrondi</label>
             <select id="rounding" name="rounding">
                 <option value="0" <?= $rules->rounding() === 0 ? 'selected' : '' ?>>Entier</option>
-                <option value="1" <?= $rules->rounding() === 1 ? 'selected' : '' ?>>Dixieme</option>
-                <option value="2" <?= $rules->rounding() === 2 ? 'selected' : '' ?>>Centieme</option>
+                <option value="1" <?= $rules->rounding() === 1 ? 'selected' : '' ?>>Dixième</option>
+                <option value="2" <?= $rules->rounding() === 2 ? 'selected' : '' ?>>Centième</option>
             </select>
         </div>
         <div class="field">
@@ -99,18 +99,18 @@ $title = 'Parametres';
                     Compte zero
                 </option>
                 <option value="IGNORED" <?= $rules->countsUnjustifiedAbsenceAsZero() ? '' : 'selected' ?>>
-                    N entre pas dans la moyenne
+                    N'entre pas dans la moyenne
                 </option>
             </select>
             <span class="muted" style="font-size:0.8125rem">
-                Une absence justifiee n entre jamais dans la moyenne.
+                Une absence justifiee n'entre jamais dans la moyenne.
             </span>
         </div>
     </div>
 
     <h3 style="margin-top:1.5rem">Mentions</h3>
     <p class="muted" style="margin-top:-0.25rem">
-        Du seuil le plus haut au plus bas. Effacer un libelle retire la mention.
+        Du seuil le plus haut au plus bas. Effacer un libelle retiré la mention.
     </p>
 
     <?php
@@ -141,9 +141,9 @@ $title = 'Parametres';
 </form>
 
 <div class="card">
-    <h2>Actives d office</h2>
+    <h2>Actives d'office</h2>
     <p class="muted" style="margin-top:-0.5rem">
-        Ces fonctionnalites sont propres a votre type d etablissement et ne se
+        Ces fonctionnalités sont propres a votre type d'établissement et ne se
         desactivent pas.
     </p>
 

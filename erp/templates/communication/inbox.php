@@ -10,15 +10,15 @@ $title = 'Ma messagerie';
 ?>
 <h1>Ma messagerie</h1>
 <p class="subtitle">
-    <?= $this->number(count($received)) ?> message(s) recu(s) &middot;
+    <?= $this->number(count($received)) ?> message(s) reçu(s) &middot;
     <?= $this->number(count($sent)) ?> envoye(s)
 </p>
 
 <div class="card">
-    <h2>Recus</h2>
+    <h2>Reçus</h2>
 
     <?php if ($received === []) : ?>
-        <p class="muted">Aucun message recu.</p>
+        <p class="muted">Aucun message reçu.</p>
     <?php else : ?>
         <?php foreach ($received as $message) : ?>
             <div style="padding:.85rem 0;border-top:1px solid rgba(255,255,255,.06)">
@@ -35,7 +35,7 @@ $title = 'Ma messagerie';
 </div>
 
 <div class="card">
-    <h2>Envoyes</h2>
+    <h2>Envoyés</h2>
 
     <?php if ($sent === []) : ?>
         <p class="muted">Aucun message envoye.</p>

@@ -10,7 +10,7 @@
  * @var callable $regionName
  */
 $this->extends('layouts.app');
-$title = 'Comparatif des etablissements';
+$title = 'Comparatif des établissements';
 
 $money = static fn (float $a): string => $a >= 1000000
     ? number_format($a / 1000000, 2, ',', ' ').'M'
@@ -18,7 +18,7 @@ $money = static fn (float $a): string => $a >= 1000000
 ?>
 <div class="page-header">
     <div>
-        <h1>Comparatif des etablissements</h1>
+        <h1>Comparatif des établissements</h1>
         <p class="subtitle">
             Effectifs, recouvrement et activite, cote a cote.
         </p>
@@ -28,13 +28,13 @@ $money = static fn (float $a): string => $a >= 1000000
 
 <div class="card">
     <?php if ($rows === []) : ?>
-        <p class="muted">Aucun etablissement sur la plateforme.</p>
+        <p class="muted">Aucun établissement sur la plateforme.</p>
     <?php else : ?>
         <table class="table">
             <thead>
             <tr>
-                <th>Etablissement</th><th>Localisation</th><th>Eleves</th><th>Classes</th>
-                <th>Comptes</th><th>Facture</th><th>Encaisse</th><th>Taux</th><th>Derniere activite</th>
+                <th>Établissement</th><th>Localisation</th><th>Élèves</th><th>Classes</th>
+                <th>Comptes</th><th>Facture</th><th>Encaisse</th><th>Taux</th><th>Dernière activite</th>
             </tr>
             </thead>
             <tbody>
@@ -78,8 +78,8 @@ $money = static fn (float $a): string => $a >= 1000000
         </table>
 
         <p class="muted">
-            Un tiret dans la colonne « Taux » signale un etablissement qui n a
-            rien facture : ce n est pas un recouvrement nul.
+            Un tiret dans la colonne « Taux » signale un établissement qui n'a
+            rien facture : ce n'est pas un recouvrement nul.
         </p>
     <?php endif; ?>
 </div>

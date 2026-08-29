@@ -15,17 +15,17 @@ $title = 'Inscriptions';
 <div class="page-header">
     <div>
         <h1>Inscriptions</h1>
-        <p class="subtitle"><?= $this->number($total) ?> inscription(s) sur l annee en cours</p>
+        <p class="subtitle"><?= $this->number($total) ?> inscription(s) sur l'année en cours</p>
     </div>
     <?php if ($rbac->allows('enrollments:create')) : ?>
-        <a class="button" href="/enrollments/create">Inscrire un eleve</a>
+        <a class="button" href="/enrollments/create">Inscrire un élève</a>
     <?php endif; ?>
 </div>
 
 <?php if (! $hasAcademicYear) : ?>
     <div class="alert alert--error">
-        Aucune annee academique active. Les inscriptions sont impossibles tant
-        qu une annee n est pas ouverte.
+        Aucune année académique activé. Les inscriptions sont impossibles tant
+        qu'une année n'est pas ouverte.
     </div>
 <?php endif; ?>
 
@@ -47,7 +47,7 @@ $title = 'Inscriptions';
     <table class="table">
         <thead>
         <tr>
-            <th>Matricule</th><th>Eleve</th><th>Classe</th><th>Type</th>
+            <th>Matricule</th><th>Élève</th><th>Classe</th><th>Type</th>
             <th>Regime</th><th>Facture</th><th>Statut</th><th></th>
         </tr>
         </thead>

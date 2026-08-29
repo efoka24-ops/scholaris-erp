@@ -2,7 +2,7 @@
 /**
  * Tableau de bord de direction.
  *
- * Il repond a quatre questions, dans cet ordre : combien d'eleves, qui est la
+ * Il repond a quatre questions, dans cet ordre : combien d'élèves, qui est la
  * aujourd'hui, ou en est la saisie des notes, et ou en est l'argent. Le reste
  * vient apres.
  *
@@ -53,11 +53,11 @@ $mentionTotal = array_sum(array_column($mentionSpread, 'value'));
     <p class="hero__meta">
         <?= $this->e($today) ?>
         <?php if ($academicYear !== null) : ?>
-            &middot; annee <?= $this->e($academicYear['label']) ?>
+            &middot; année <?= $this->e($academicYear['label']) ?>
         <?php endif; ?>
         &middot; <?= $this->e($features->typeLabel()) ?>
         <?php if ($openPeriod !== null) : ?>
-            &middot; sequence <?= (int) $openPeriod['number'] ?> en cours
+            &middot; séquence <?= (int) $openPeriod['number'] ?> en cours
         <?php endif; ?>
     </p>
 
@@ -67,7 +67,7 @@ $mentionTotal = array_sum(array_column($mentionSpread, 'value'));
         </span>
         <?php if ($attendanceToday['rate'] !== null) : ?>
             <span class="hero__chip">
-                Presence <strong><?= $this->e(number_format($attendanceToday['rate'], 0, ',', ' ')) ?>%</strong>
+                Présence <strong><?= $this->e(number_format($attendanceToday['rate'], 0, ',', ' ')) ?>%</strong>
             </span>
         <?php endif; ?>
         <span class="hero__chip">
@@ -78,15 +78,15 @@ $mentionTotal = array_sum(array_column($mentionSpread, 'value'));
 
 <?php if ($academicYear === null) : ?>
     <div class="alert alert--error">
-        Aucune annee scolaire n est ouverte. Tant qu il n y en a pas, ni
-        inscription, ni appel, ni note ne peuvent etre enregistres.
-        <a href="/annees-scolaires">Ouvrir une annee</a>
+        Aucune année scolaire n'est ouverte. Tant qu'il n'y en a pas, ni
+        inscription, ni appel, ni note ne peuvent etre enregistrés.
+        <a href="/annees-scolaires">Ouvrir une année</a>
     </div>
 <?php elseif ($openPeriod === null) : ?>
     <div class="alert alert--warning">
-        Aucune sequence n est ouverte a la saisie : les enseignants ne peuvent
+        Aucune séquence n'est ouverte a la saisie : les enseignants ne peuvent
         pas entrer de notes.
-        <a href="/annees-scolaires">Ouvrir une sequence</a>
+        <a href="/annees-scolaires">Ouvrir une séquence</a>
     </div>
 <?php endif; ?>
 
@@ -95,19 +95,19 @@ $mentionTotal = array_sum(array_column($mentionSpread, 'value'));
         <div class="stat__icon"><?= $this->raw(Navigation::icon('users')) ?></div>
         <div class="stat__label"><?= $this->e($studentsLabel) ?> inscrits</div>
         <div class="stat__value"><?= $this->number($stats['students']) ?></div>
-        <div class="stat__foot"><?= $this->number($stats['enrollments']) ?> inscriptions actives</div>
+        <div class="stat__foot"><?= $this->number($stats['enrollments']) ?> inscriptions activés</div>
     </div>
 
     <div class="stat stat--tinted stat--green">
         <div class="stat__icon"><?= $this->raw(Navigation::icon('check')) ?></div>
-        <div class="stat__label">Taux de presence</div>
+        <div class="stat__label">Taux de présence</div>
         <?php if ($attendanceToday['rate'] === null) : ?>
             <div class="stat__value">&mdash;</div>
-            <div class="stat__foot">aucun appel saisi aujourd hui</div>
+            <div class="stat__foot">aucun appel saisi aujourd'hui</div>
         <?php else : ?>
             <div class="stat__value"><?= $this->e(number_format($attendanceToday['rate'], 1, ',', ' ')) ?>%</div>
             <div class="stat__foot">
-                aujourd hui, sur <?= $this->number($attendanceToday['recorded']) ?> saisies
+                aujourd'hui, sur <?= $this->number($attendanceToday['recorded']) ?> saisies
             </div>
         <?php endif; ?>
     </div>
@@ -118,9 +118,9 @@ $mentionTotal = array_sum(array_column($mentionSpread, 'value'));
         <div class="stat__value"><?= $this->number($pendingGradeEntries) ?></div>
         <div class="stat__foot">
             <?php if ($openPeriod !== null) : ?>
-                classes sans saisie &middot; sequence <?= (int) $openPeriod['number'] ?>
+                classes sans saisie &middot; séquence <?= (int) $openPeriod['number'] ?>
             <?php else : ?>
-                aucune sequence ouverte
+                aucune séquence ouverte
             <?php endif; ?>
         </div>
     </div>
@@ -130,7 +130,7 @@ $mentionTotal = array_sum(array_column($mentionSpread, 'value'));
         <div class="stat__label">Recouvrement</div>
         <div class="stat__value"><?= $this->e($money((float) $stats['collected'])) ?></div>
         <div class="stat__foot">
-            FCFA encaisses &middot;
+            FCFA encaissés &middot;
             <span class="stat__trend stat__trend--up">
                 <?= $this->e(number_format((float) $stats['recovery'], 1, ',', ' ')) ?>%
             </span>
@@ -153,13 +153,13 @@ $mentionTotal = array_sum(array_column($mentionSpread, 'value'));
     </div>
 
     <div class="card">
-        <h2 style="margin:0">Resultats publies</h2>
+        <h2 style="margin:0">Resultats publiés</h2>
         <p class="muted" style="margin:0.2rem 0 0">Distribution par mention</p>
 
         <?php if ($mentionTotal === 0) : ?>
             <p class="muted" style="margin-top:1.5rem">
-                Aucun resultat publie pour le moment. La repartition apparaitra
-                des la premiere publication de bulletins.
+                Aucun resultat publié pour le moment. La répartition apparaitra
+                des la première publication de bulletins.
             </p>
         <?php else : ?>
             <div style="max-width:15rem;margin:1rem auto 0">
@@ -173,14 +173,14 @@ $mentionTotal = array_sum(array_column($mentionSpread, 'value'));
 <div class="chart-grid">
     <div class="card">
         <div class="inline-form" style="justify-content:space-between;align-items:center">
-            <h2 style="margin:0">Derniers <?= $this->e(mb_strtolower($studentsLabel)) ?> enregistres</h2>
+            <h2 style="margin:0">Derniers <?= $this->e(mb_strtolower($studentsLabel)) ?> enregistrés</h2>
             <?php if ($rbac->allows('students:read')) : ?>
                 <a class="link-button" href="/students">Tout voir &rarr;</a>
             <?php endif; ?>
         </div>
 
         <?php if ($recentStudents === []) : ?>
-            <p class="muted">Aucun dossier enregistre pour le moment.</p>
+            <p class="muted">Aucun dossier enregistré pour le moment.</p>
         <?php else : ?>
             <div class="table-wrap">
                 <table class="table">
@@ -216,14 +216,14 @@ $mentionTotal = array_sum(array_column($mentionSpread, 'value'));
                 <span class="feed__icon"><?= $this->raw(Navigation::icon('clipboard')) ?></span>
                 <span class="feed__body">
                     <strong><?= $this->number($pendingApplications) ?> pre-inscription<?= $pendingApplications > 1 ? 's' : '' ?></strong>
-                    <span>en attente d instruction</span>
+                    <span>en attente d'instruction</span>
                 </span>
             </li>
             <li>
                 <span class="feed__icon"><?= $this->raw(Navigation::icon('edit')) ?></span>
                 <span class="feed__body">
                     <strong><?= $this->number($pendingGradeEntries) ?> classe<?= $pendingGradeEntries > 1 ? 's' : '' ?></strong>
-                    <span>sans aucune note sur la sequence ouverte</span>
+                    <span>sans aucune note sur la séquence ouverte</span>
                 </span>
             </li>
             <li>

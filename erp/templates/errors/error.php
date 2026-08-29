@@ -2,7 +2,7 @@
 /**
  * Page d'erreur.
  *
- * Ne divulgue aucun detail technique : le message affiche est celui,
+ * Ne divulgue aucun détail technique : le message affiché est celui,
  * volontairement generique, porte par HttpException. Elle nomme en revanche la
  * situation, car un « 404 » sec laisse l'utilisateur sans rien a faire — il ne
  * peut pas savoir si l'adresse est fausse, si le module n'existe pas chez lui,
@@ -42,27 +42,27 @@ $title = $titles[$status] ?? 'Erreur';
 
         <?php if ($status === 404) : ?>
             <p class="auth__hint">
-                L adresse <code><?= $this->e($path) ?></code> ne correspond a
+                L'adresse <code><?= $this->e($path) ?></code> ne correspond a
                 aucune page accessible.
             </p>
             <div class="alert alert--info" style="text-align:left">
                 Deux explications possibles :
                 <ul style="margin:0.5rem 0 0;padding-left:1.1rem">
                     <li>
-                        le module correspondant n est pas active pour votre
-                        etablissement — un administrateur peut l ouvrir depuis
-                        les parametres ;
+                        le module correspondant n'est pas activé pour votre
+                        établissement — un administrateur peut l'ouvrir depuis
+                        les paramètres ;
                     </li>
                     <li>
-                        l adresse a change, ou provient d un lien ancien.
+                        l'adresse a change, ou provient d'un lien ancien.
                     </li>
                 </ul>
             </div>
         <?php elseif ($status === 403) : ?>
             <p class="auth__hint">
-                Votre compte n a pas les droits necessaires pour cette page.
-                Si vous pensez qu il devrait les avoir, demandez-les a
-                l administration de votre etablissement.
+                Votre compte n'a pas les droits nécessaires pour cette page.
+                Si vous pensez qu'il devrait les avoir, demandez-les a
+                l'administration de votre établissement.
             </p>
         <?php else : ?>
             <p class="auth__hint"><?= $this->e($message) ?></p>
@@ -70,7 +70,7 @@ $title = $titles[$status] ?? 'Erreur';
 
         <p style="margin-top:1.5rem">
             <?php if ($isLogged) : ?>
-                <a class="button" href="<?= $this->e($home) ?>">Retour a l accueil</a>
+                <a class="button" href="<?= $this->e($home) ?>">Retour a l'accueil</a>
             <?php else : ?>
                 <a class="button" href="/login">Se connecter</a>
                 <a class="button button--secondary" href="/">Site public</a>

@@ -31,7 +31,7 @@ $value = static fn (string $key): string => (string) ($old[$key] ?? '');
 </form>
 
 <?php if ($menus === []) : ?>
-    <div class="card"><p class="muted">Aucun menu enregistre a partir de cette date.</p></div>
+    <div class="card"><p class="muted">Aucun menu enregistré a partir de cette date.</p></div>
 <?php else : ?>
     <table class="table">
         <thead><tr><th>Date</th><th>Service</th><th>Composition</th></tr></thead>

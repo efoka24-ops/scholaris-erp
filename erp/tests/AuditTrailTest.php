@@ -136,7 +136,7 @@ final class AuditTrailTest extends TestCase
 
         $content = $this->request('GET', '/admin/journal')->content();
 
-        $this->assertStringContains('Note modifiee', $content, 'L acte porte un libelle lisible');
+        $this->assertStringContains('Note modifiée', $content, 'L acte porte un libelle lisible');
         $this->assertStringContains('&rarr;', $content, 'La modification est presentee comme un passage');
         $this->assertStringContains('12', $content, 'Avec la valeur d avant');
         $this->assertStringContains('14', $content, 'Et celle d apres');

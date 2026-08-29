@@ -13,7 +13,7 @@
 use Scholaris\Database\SchoolFactory;
 
 $this->extends('layouts.app');
-$title = 'Etablissement cree';
+$title = 'Établissement créé';
 
 // Annoncer la structure reellement posee, et non une formule generique : le
 // Super Admin doit pouvoir verifier d un coup d oeil que l etablissement part
@@ -27,24 +27,24 @@ foreach ($structure as [, , $levels]) {
     }
 }
 ?>
-<h1>Etablissement cree</h1>
+<h1>Établissement créé</h1>
 <p class="subtitle"><?= $this->e($demand['name']) ?> (<?= $this->e($demand['code']) ?>)</p>
 
 <div class="card">
     <h2>Identifiants du responsable</h2>
     <p class="muted">
         Transmettez-les a <?= $this->e($demand['director_email']) ?>. Ce mot de passe
-        n est pas conserve en clair et ne pourra plus etre affiche.
+        n'est pas conserve en clair et ne pourra plus etre affiché.
     </p>
 
     <dl class="details">
-        <dt>Code etablissement</dt><dd><strong><?= $this->e($demand['code']) ?></strong></dd>
+        <dt>Code établissement</dt><dd><strong><?= $this->e($demand['code']) ?></strong></dd>
         <dt>Email</dt><dd><strong><?= $this->e($demand['director_email']) ?></strong></dd>
         <dt>Mot de passe provisoire</dt><dd><strong><?= $this->e($password) ?></strong></dd>
     </dl>
 
     <div class="alert alert--success" style="margin-top:1rem">
-        <?= count($levelNames) ?> niveaux ont ete crees :
+        <?= count($levelNames) ?> niveaux ont ete créés :
         <?= $this->e(implode(', ', $levelNames)) ?>.
         Le responsable pourra les ajuster depuis son espace.
     </div>

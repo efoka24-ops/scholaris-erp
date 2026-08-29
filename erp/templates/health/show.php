@@ -8,20 +8,20 @@
  * @var string $csrfToken
  */
 $this->extends('layouts.app');
-$title = 'Dossier medical';
+$title = 'Dossier médical';
 $value = static fn (string $k): string => (string) ($old[$k] ?? $record[$k] ?? '');
 ?>
 <div class="page-header">
     <div>
         <h1><?= $this->e($student['last_name'].' '.$student['first_name']) ?></h1>
-        <p class="subtitle">Dossier medical &middot; matricule <?= $this->e($student['matricule']) ?></p>
+        <p class="subtitle">Dossier médical &middot; matricule <?= $this->e($student['matricule']) ?></p>
     </div>
     <a class="button--secondary" href="/health">Retour</a>
 </div>
 
 <div class="alert">
-    Donnees de sante : leur consultation est reservee a l infirmerie et a la
-    direction, et tracee dans le journal d acces.
+    Données de santé : leur consultation est reservee a l'infirmerie et a la
+    direction, et tracee dans le journal d'accès.
 </div>
 
 <form method="post" action="/health/<?= $this->e($student['id']) ?>" class="card">
@@ -33,7 +33,7 @@ $value = static fn (string $k): string => (string) ($old[$k] ?? $record[$k] ?? '
             <input id="blood_type" name="blood_type" value="<?= $this->e($value('blood_type')) ?>">
         </div>
         <div class="field">
-            <label for="emergency_contact">Contact d urgence</label>
+            <label for="emergency_contact">Contact d'urgence</label>
             <input id="emergency_contact" name="emergency_contact" value="<?= $this->e($value('emergency_contact')) ?>">
         </div>
     </div>

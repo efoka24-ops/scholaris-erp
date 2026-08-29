@@ -12,7 +12,7 @@ $kpis = [
 ];
 
 $entries = [
-    ['Kameni, Alice', 'Scolarite T1', '125 000 FCFA', 'Orange Money', '#ffb800'],
+    ['Kameni, Alice', 'Scolarité T1', '125 000 FCFA', 'Orange Money', '#ffb800'],
     ['Mbarga, Jean-Paul', 'Internat', '85 000 FCFA', 'Especes', '#00e5a0'],
     ['Fouda, Emmanuel', 'Transport', '45 000 FCFA', 'MTN MoMo', '#00c2ff'],
     ['Ateba, Marc', 'Inscription', '35 000 FCFA', 'Especes', '#00e5a0'],

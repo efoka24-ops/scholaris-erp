@@ -45,7 +45,7 @@ $value = static fn (string $k): string => (string) ($old[$k] ?? '');
                               style="display:flex;gap:.4rem;flex-wrap:wrap">
                             <input type="hidden" name="_token" value="<?= $this->e($csrfToken) ?>">
                             <select name="student_id" required style="min-width:190px">
-                                <option value="">Eleve...</option>
+                                <option value="">Élève...</option>
                                 <?php foreach ($students as $student) : ?>
                                     <option value="<?= $this->e($student['id']) ?>">
                                         <?= $this->e($student['last_name'].' '.$student['first_name']) ?>
@@ -67,7 +67,7 @@ $value = static fn (string $k): string => (string) ($old[$k] ?? '');
     <div class="card">
         <h2>Abonnements</h2>
         <table class="table">
-            <thead><tr><th>Ligne</th><th>Eleve</th><th>Arret</th></tr></thead>
+            <thead><tr><th>Ligne</th><th>Élève</th><th>Arret</th></tr></thead>
             <tbody>
             <?php foreach ($subscriptions as $subscription) : ?>
                 <tr>
@@ -117,7 +117,7 @@ $value = static fn (string $k): string => (string) ($old[$k] ?? '');
                 <label for="r_stops">Arrets</label>
                 <input id="r_stops" name="stops" placeholder="Poumpoumre, Plateau, Djamboutou">
             </div>
-            <button type="submit" class="button">Creer la ligne</button>
+            <button type="submit" class="button">Créer la ligne</button>
         </form>
     </div>
 <?php endif; ?>

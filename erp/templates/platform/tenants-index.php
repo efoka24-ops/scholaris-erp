@@ -14,19 +14,19 @@
 use Scholaris\Support\Cameroon;
 
 $this->extends('layouts.app');
-$title = 'Parc d etablissements';
+$title = 'Parc d\'établissements';
 ?>
 <div class="page-header">
     <div>
-        <h1>Parc d etablissements</h1>
+        <h1>Parc d'établissements</h1>
         <p class="subtitle">
-            <?= $this->number(count($tenants)) ?> etablissement<?= count($tenants) > 1 ? 's' : '' ?>
+            <?= $this->number(count($tenants)) ?> établissement<?= count($tenants) > 1 ? 's' : '' ?>
             <?php if ($search !== '' || $status !== '') : ?>
                 correspondant a votre recherche
             <?php endif; ?>
         </p>
     </div>
-    <a class="button" href="/admin/parc/creer">Ouvrir un etablissement</a>
+    <a class="button" href="/admin/parc/creer">Ouvrir un établissement</a>
 </div>
 
 <div class="card">
@@ -36,7 +36,7 @@ $title = 'Parc d etablissements';
             <input id="q" name="q" value="<?= $this->e($search) ?>" placeholder="Nom ou code">
         </div>
         <div class="field" style="margin-bottom:0">
-            <label for="statut">Etat</label>
+            <label for="statut">État</label>
             <select id="statut" name="statut">
                 <option value="">Tous</option>
                 <option value="ACTIVE" <?= $status === 'ACTIVE' ? 'selected' : '' ?>>Actifs</option>
@@ -52,7 +52,7 @@ $title = 'Parc d etablissements';
 
 <?php if ($tenants === []) : ?>
     <div class="card">
-        <p class="muted">Aucun etablissement ne correspond.</p>
+        <p class="muted">Aucun établissement ne correspond.</p>
     </div>
 <?php endif; ?>
 
@@ -83,7 +83,7 @@ $title = 'Parc d etablissements';
                     <?php if (($tenant['city'] ?? null) !== null && $tenant['city'] !== '') : ?>
                         &middot; <?= $this->e($tenant['city']) ?>
                     <?php endif; ?>
-                    &middot; <?= $this->number($tenant['students_count']) ?> eleves
+                    &middot; <?= $this->number($tenant['students_count']) ?> élèves
                     &middot; <?= $this->number($tenant['users_count']) ?> comptes
                 </p>
                 <?php if ($suspended && isset($config['suspension']['reason'])) : ?>
@@ -106,15 +106,15 @@ $title = 'Parc d etablissements';
         </div>
 
         <details style="margin-top:1rem">
-            <summary class="muted">Actions sur le compte de cet etablissement</summary>
+            <summary class="muted">Actions sur le compte de cet établissement</summary>
 
             <div style="margin-top:1rem;display:grid;gap:1rem">
                 <?php if ($suspended) : ?>
-                    <form method="post" action="/admin/parc/<?= $this->e($tenant['id']) ?>/reactiver"
+                    <form method="post" action="/admin/parc/<?= $this->e($tenant['id']) ?>/réactiver"
                           class="inline-form" style="gap:0.75rem">
                         <input type="hidden" name="_token" value="<?= $this->e($csrfToken) ?>">
                         <button type="submit" class="button">Lever la suspension</button>
-                        <span class="muted">Les comptes de cet etablissement pourront de nouveau se connecter.</span>
+                        <span class="muted">Les comptes de cet établissement pourront de nouveau se connecter.</span>
                     </form>
                 <?php else : ?>
                     <form method="post" action="/admin/parc/<?= $this->e($tenant['id']) ?>/suspendre"
@@ -144,8 +144,8 @@ $title = 'Parc d etablissements';
                     </form>
                 <?php else : ?>
                     <p class="muted">
-                        Cet etablissement compte <?= $this->number($tenant['students_count']) ?> eleves : il ne
-                        peut pas etre retire. Un dossier scolaire ne s efface pas sur un clic — suspendez-le
+                        Cet établissement compte <?= $this->number($tenant['students_count']) ?> élèves : il ne
+                        peut pas etre retiré. Un dossier scolaire ne s'efface pas sur un clic — suspendez-le
                         si son activite doit cesser.
                     </p>
                 <?php endif; ?>

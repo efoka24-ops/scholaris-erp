@@ -23,16 +23,16 @@ foreach ($periods as $period) {
 <h1>Notes</h1>
 <p class="subtitle">
     <?php if ($openPeriod !== null) : ?>
-        Sequence <?= $this->e($openPeriod['number']) ?> ouverte a la saisie
+        Séquence <?= $this->e($openPeriod['number']) ?> ouverte a la saisie
     <?php else : ?>
-        Aucune sequence ouverte a la saisie
+        Aucune séquence ouverte a la saisie
     <?php endif; ?>
 </p>
 
 <?php if ($openPeriod === null) : ?>
     <div class="alert alert--error">
-        Aucune periode n est ouverte. La saisie des notes est bloquee tant qu une
-        sequence n a pas ete ouverte par la direction.
+        Aucune période n'est ouverte. La saisie des notes est bloquee tant qu'une
+        séquence n'a pas ete ouverte par la direction.
     </div>
 <?php endif; ?>
 
@@ -48,7 +48,7 @@ foreach ($periods as $period) {
     <?php else : ?>
         <table class="table">
             <thead>
-            <tr><th>Classe</th><th>Matiere</th><th>Coef.</th><th></th></tr>
+            <tr><th>Classe</th><th>Matière</th><th>Coef.</th><th></th></tr>
             </thead>
             <tbody>
             <?php foreach ($assignments as $assignment) : ?>
@@ -62,7 +62,7 @@ foreach ($periods as $period) {
                                 Saisir les notes
                             </a>
                         <?php else : ?>
-                            <span class="muted">periode fermee</span>
+                            <span class="muted">période fermée</span>
                         <?php endif; ?>
                     </td>
                 </tr>
@@ -76,9 +76,9 @@ foreach ($periods as $period) {
     <div class="card">
         <h2>Calcul des moyennes</h2>
         <p class="muted">
-            Le calcul reprend toutes les notes de la sequence, recalcule les
-            moyennes par matiere puis la moyenne generale ponderee, et etablit le
-            classement. Il peut etre relance autant de fois que necessaire.
+            Le calcul reprend toutes les notes de la séquence, recalcule les
+            moyennes par matière puis la moyenne générale ponderee, et etablit le
+            classement. Il peut etre relance autant de fois que nécessaire.
         </p>
 
         <table class="table">

@@ -37,7 +37,7 @@ $balance = (float) $invoice['balance'];
         <div class="stat__value stat__value--money"><?= $this->money($invoice['total_amount']) ?></div>
     </div>
     <div class="stat">
-        <div class="stat__label">Regle</div>
+        <div class="stat__label">Règle</div>
         <div class="stat__value stat__value--money"><?= $this->money($invoice['paid_amount']) ?></div>
     </div>
     <div class="stat">
@@ -45,7 +45,7 @@ $balance = (float) $invoice['balance'];
         <div class="stat__value stat__value--money"><?= $this->money($balance) ?></div>
     </div>
     <div class="stat">
-        <div class="stat__label">Echeance</div>
+        <div class="stat__label">Échéance</div>
         <div class="stat__value" style="font-size:1.1rem"><?= $this->date($invoice['due_date']) ?></div>
     </div>
 </div>
@@ -74,7 +74,7 @@ $balance = (float) $invoice['balance'];
                     </select>
                 </div>
                 <div class="field">
-                    <label for="reference">Reference</label>
+                    <label for="reference">Référence</label>
                     <input id="reference" name="reference" placeholder="Numero de transaction, de cheque...">
                 </div>
                 <div class="field">
@@ -93,7 +93,7 @@ $balance = (float) $invoice['balance'];
         </form>
 
         <p class="muted">
-            Un encaissement superieur au solde est refuse : c est presque toujours
+            Un encaissement superieur au solde est refuse : c'est presque toujours
             une erreur de saisie.
         </p>
     </div>
@@ -103,11 +103,11 @@ $balance = (float) $invoice['balance'];
     <h2>Encaissements</h2>
 
     <?php if ($payments === []) : ?>
-        <p class="muted">Aucun encaissement enregistre sur cette facture.</p>
+        <p class="muted">Aucun encaissement enregistré sur cette facture.</p>
     <?php else : ?>
         <table class="table">
             <thead>
-            <tr><th>Recu</th><th>Montant</th><th>Moyen</th><th>Reference</th><th>Encaisse par</th><th>Date</th></tr>
+            <tr><th>Reçu</th><th>Montant</th><th>Moyen</th><th>Référence</th><th>Encaisse par</th><th>Date</th></tr>
             </thead>
             <tbody>
             <?php foreach ($payments as $payment) : ?>

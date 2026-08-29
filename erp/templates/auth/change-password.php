@@ -16,7 +16,7 @@ $title = 'Changer de mot de passe';
         <p class="subtitle">
             <?php if ($forced) : ?>
                 Votre mot de passe est provisoire : changez-le avant de continuer.
-                Aucune autre page n est accessible tant que ce n est pas fait.
+                Aucune autre page n'est accessible tant que ce n'est pas fait.
             <?php else : ?>
                 Choisissez un nouveau mot de passe pour votre compte.
             <?php endif; ?>

@@ -28,10 +28,10 @@ $average = $results === [] ? 0.0 : round($average / count($results), 2);
     <div>
         <h1>Resultats - <?= $this->e($classroom['name']) ?></h1>
         <p class="subtitle">
-            Sequence <?= $this->e($period['number']) ?>
-            &middot; <?= $this->number(count($results)) ?> eleve(s)
+            Séquence <?= $this->e($period['number']) ?>
+            &middot; <?= $this->number(count($results)) ?> élève(s)
             <?php if ($published) : ?>
-                &middot; <span class="badge">publies</span>
+                &middot; <span class="badge">publiés</span>
             <?php endif; ?>
         </p>
     </div>
@@ -41,8 +41,8 @@ $average = $results === [] ? 0.0 : round($average / count($results), 2);
 <?php if ($results === []) : ?>
     <div class="card">
         <p class="muted">
-            Aucun resultat calcule pour cette sequence. Lancez le calcul depuis
-            la page Notes apres avoir saisi les evaluations.
+            Aucun resultat calcule pour cette séquence. Lancez le calcul depuis
+            la page Notes après avoir saisi les evaluations.
         </p>
     </div>
 <?php else : ?>
@@ -56,7 +56,7 @@ $average = $results === [] ? 0.0 : round($average / count($results), 2);
             <div class="stat__value"><?= $this->number($passing) ?> / <?= $this->number(count($results)) ?></div>
         </div>
         <div class="stat">
-            <div class="stat__label">Taux de reussite</div>
+            <div class="stat__label">Taux de réussite</div>
             <div class="stat__value">
                 <?= $this->e(number_format(count($results) > 0 ? $passing / count($results) * 100 : 0, 1, ',', ' ')) ?> %
             </div>
@@ -65,7 +65,7 @@ $average = $results === [] ? 0.0 : round($average / count($results), 2);
 
     <table class="table">
         <thead>
-        <tr><th>Rang</th><th>Matricule</th><th>Eleve</th><th>Moyenne</th><th>Mention</th></tr>
+        <tr><th>Rang</th><th>Matricule</th><th>Élève</th><th>Moyenne</th><th>Mention</th></tr>
         </thead>
         <tbody>
         <?php foreach ($results as $result) : ?>
@@ -88,9 +88,9 @@ $average = $results === [] ? 0.0 : round($average / count($results), 2);
             <input type="hidden" name="_token" value="<?= $this->e($csrfToken) ?>">
             <h2>Publication</h2>
             <p class="muted">
-                Tant qu ils ne sont pas publies, ces resultats restent internes a
-                l etablissement. La publication les rend visibles des parents et
-                des eleves.
+                Tant qu'ils ne sont pas publiés, ces resultats restent internes a
+                l'établissement. La publication les rend visibles des parents et
+                des élèves.
             </p>
             <button type="submit" class="button">Publier les resultats</button>
         </form>

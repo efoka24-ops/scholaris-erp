@@ -58,7 +58,7 @@
 
             <?php
             $columns = [
-                'Produit' => ['Modules', 'Tarifs', 'Roadmap', 'Changelog', 'Statut systeme'],
+                'Produit' => ['Modules', 'Tarifs', 'Roadmap', 'Changelog', 'Statut système'],
                 'Ressources' => ['Documentation', 'Guide API', 'Templates PDF', 'Formations', 'Webinaires'],
                 'Support' => ["Centre d'aide", 'Contact', 'WhatsApp support', '+237 6XX XXX XXX', 'Yaounde, Cameroun'],
             ];
@@ -113,11 +113,11 @@
                 if (!group) return;
 
                 group.querySelectorAll('[data-tab]').forEach(function (b) {
-                    b.classList.toggle('preview__tab--active', b === tab);
+                    b.classList.toggle('preview__tab--activé', b === tab);
                 });
 
                 group.querySelectorAll('[data-panel]').forEach(function (p) {
-                    p.classList.toggle('preview__panel--active', p.dataset.panel === tab.dataset.tab);
+                    p.classList.toggle('preview__panel--activé', p.dataset.panel === tab.dataset.tab);
                 });
 
                 return;
@@ -138,8 +138,8 @@
                     b.querySelector('.guide__chevron').style.transform = on ? 'rotate(180deg)' : 'none';
                 });
 
-                guide.querySelectorAll('[data-guide-detail]').forEach(function (d) {
-                    d.classList.toggle('guide__detail--active', d.dataset.guideDetail === target);
+                guide.querySelectorAll('[data-guide-détail]').forEach(function (d) {
+                    d.classList.toggle('guide__detail--activé', d.dataset.guideDetail === target);
                 });
             }
         });

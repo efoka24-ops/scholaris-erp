@@ -16,7 +16,7 @@ $title = 'Modifier '.$tenant['name'];
 <div class="page-header">
     <div>
         <h1><?= $this->e($tenant['name']) ?></h1>
-        <p class="subtitle">Code <?= $this->e($tenant['code']) ?> &middot; fiche etablissement</p>
+        <p class="subtitle">Code <?= $this->e($tenant['code']) ?> &middot; fiche établissement</p>
     </div>
     <a class="button button--secondary" href="/admin/parc">Retour au parc</a>
 </div>
@@ -25,7 +25,7 @@ $title = 'Modifier '.$tenant['name'];
     <input type="hidden" name="_token" value="<?= $this->e($csrfToken) ?>">
 
     <div class="card">
-        <h2>Identite</h2>
+        <h2>Identité</h2>
         <div class="grid-2">
             <div class="field">
                 <label for="name">Nom *</label>
@@ -60,7 +60,7 @@ $title = 'Modifier '.$tenant['name'];
                 </select>
             </div>
             <div class="field">
-                <label for="department">Departement</label>
+                <label for="department">Département</label>
                 <select id="department" name="department">
                     <option value="">Non renseigne</option>
                     <?php foreach ($departments as $regionCode => $list) : ?>
@@ -80,7 +80,7 @@ $title = 'Modifier '.$tenant['name'];
                 <input id="district" name="district" value="<?= $this->e($tenant['district'] ?? '') ?>">
             </div>
             <div class="field">
-                <label for="ministry">Ministere de tutelle</label>
+                <label for="ministry">Ministère de tutelle</label>
                 <select id="ministry" name="ministry">
                     <option value="">Non renseigne</option>
                     <?php foreach ($ministries as $code => $label) : ?>
@@ -110,14 +110,14 @@ $title = 'Modifier '.$tenant['name'];
         </div>
 
         <p class="muted">
-            La region se deduit du departement : les saisir separement
-            permettrait de declarer un etablissement dans deux regions a la fois.
+            La region se deduit du département : les saisir separement
+            permettrait de declarer un établissement dans deux regions a la fois.
         </p>
 
         <p class="muted">
             Changer le type change les modules ouverts et le vocabulaire, mais
-            ne touche pas aux niveaux deja crees : supprimer des classes qui
-            portent des eleves ne se decide pas depuis un formulaire.
+            ne touche pas aux niveaux déjà créés : supprimer des classes qui
+            portent des élèves ne se decide pas depuis un formulaire.
         </p>
     </div>
 

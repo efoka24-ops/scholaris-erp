@@ -6,12 +6,12 @@
  */
 $tiles = [
     ['Generes', '35/35', '#00e5a0'],
-    ['Envoyes', '28/35', '#ffb800'],
+    ['Envoyés', '28/35', '#ffb800'],
     ['Confirmes', '21', '#5b21f5'],
 ];
 
 $fields = [
-    ['Eleve', 'Kameni, Alice M.'],
+    ['Élève', 'Kameni, Alice M.'],
     ['Moyenne', '15.4/20'],
     ['Rang', '3/35'],
 ];
@@ -20,7 +20,7 @@ $fields = [
     <div class="preview__head">
         <div>
             <div class="preview__title">Bulletins — 1ere A &middot; Trimestre 1</div>
-            <div class="preview__sub">35 generes &middot; 28 envoyes &middot; 21 lus</div>
+            <div class="preview__sub">35 générés &middot; 28 envoyés &middot; 21 lus</div>
         </div>
         <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
             <span class="chip" style="background:rgba(0,229,160,.15);color:#00e5a0;border-color:rgba(0,229,160,.3)">📥 Tout telecharger</span>

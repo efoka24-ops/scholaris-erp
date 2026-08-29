@@ -56,7 +56,7 @@ $value = static fn (string $key): string => (string) ($old[$key] ?? '');
                 </select>
             </div>
             <div class="field">
-                <label for="subject_id">Matiere *</label>
+                <label for="subject_id">Matière *</label>
                 <select id="subject_id" name="subject_id" required>
                     <option value="">Choisir...</option>
                     <?php foreach ($subjects as $subject) : ?>
@@ -87,11 +87,11 @@ $value = static fn (string $key): string => (string) ($old[$key] ?? '');
 <?php endif; ?>
 
 <?php if ($entries === []) : ?>
-    <div class="card"><p class="muted">Aucune seance enregistree.</p></div>
+    <div class="card"><p class="muted">Aucune seance enregistrée.</p></div>
 <?php else : ?>
     <table class="table">
         <thead>
-        <tr><th>Date</th><th>Classe</th><th>Matiere</th><th>Contenu</th><th>Devoirs</th><th>Enseignant</th></tr>
+        <tr><th>Date</th><th>Classe</th><th>Matière</th><th>Contenu</th><th>Devoirs</th><th>Enseignant</th></tr>
         </thead>
         <tbody>
         <?php foreach ($entries as $entry) : ?>

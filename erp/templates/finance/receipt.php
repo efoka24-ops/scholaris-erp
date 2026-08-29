@@ -9,7 +9,7 @@
  * @var array<string, mixed>|null $tenant
  */
 $this->extends('layouts.app');
-$title = 'Recu '.$payment['receipt_number'];
+$title = 'Reçu '.$payment['receipt_number'];
 
 $methodLabels = [
     'CASH' => 'Especes',
@@ -20,8 +20,8 @@ $methodLabels = [
 ?>
 <div class="page-header">
     <div>
-        <h1>Recu de paiement</h1>
-        <p class="subtitle">Numero <?= $this->e($payment['receipt_number']) ?></p>
+        <h1>Reçu de paiement</h1>
+        <p class="subtitle">Numéro <?= $this->e($payment['receipt_number']) ?></p>
     </div>
     <div class="form-actions">
         <button type="button" class="button" onclick="window.print()">Imprimer</button>
@@ -39,28 +39,28 @@ $methodLabels = [
     </p>
 
     <dl class="details" style="margin-top:1.25rem">
-        <dt>Recu numero</dt><dd><strong><?= $this->e($payment['receipt_number']) ?></strong></dd>
+        <dt>Reçu numéro</dt><dd><strong><?= $this->e($payment['receipt_number']) ?></strong></dd>
         <dt>Date</dt><dd><?= $this->date($payment['paid_at'], 'd/m/Y a H:i') ?></dd>
-        <dt>Eleve</dt>
+        <dt>Élève</dt>
         <dd>
             <?= $this->e(($student['last_name'] ?? '').' '.($student['first_name'] ?? '')) ?>
             (<?= $this->e($student['matricule'] ?? '-') ?>)
         </dd>
-        <dt>Montant recu</dt><dd><strong><?= $this->money($payment['amount']) ?></strong></dd>
+        <dt>Montant reçu</dt><dd><strong><?= $this->money($payment['amount']) ?></strong></dd>
         <dt>Moyen de paiement</dt>
         <dd><?= $this->e($methodLabels[$payment['method']] ?? $payment['method']) ?></dd>
         <?php if (! empty($payment['reference'])) : ?>
-            <dt>Reference</dt><dd><?= $this->e($payment['reference']) ?></dd>
+            <dt>Référence</dt><dd><?= $this->e($payment['reference']) ?></dd>
         <?php endif; ?>
         <?php if ($invoice !== null) : ?>
-            <dt>Total de la scolarite</dt><dd><?= $this->money($invoice['total_amount']) ?></dd>
-            <dt>Cumul regle</dt><dd><?= $this->money($invoice['paid_amount']) ?></dd>
+            <dt>Total de la scolarité</dt><dd><?= $this->money($invoice['total_amount']) ?></dd>
+            <dt>Cumul règle</dt><dd><?= $this->money($invoice['paid_amount']) ?></dd>
             <dt>Solde restant</dt><dd><strong><?= $this->money($invoice['balance']) ?></strong></dd>
         <?php endif; ?>
     </dl>
 
     <p class="muted" style="margin-top:1.5rem">
-        Ce recu fait foi du paiement enregistre a la date indiquee.
+        Ce reçu fait foi du paiement enregistré a la date indiquee.
         A conserver par la famille.
     </p>
 </div>

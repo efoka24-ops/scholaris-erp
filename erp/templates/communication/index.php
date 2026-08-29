@@ -31,7 +31,7 @@ $value = static fn (string $key): string => (string) ($old[$key] ?? '');
     <div>
         <h1>Communication</h1>
         <p class="subtitle">
-            <?= $this->number(count($templates)) ?> modele(s) &middot;
+            <?= $this->number(count($templates)) ?> modèle(s) &middot;
             <?= $this->number($pending) ?> message(s) en file
         </p>
     </div>
@@ -39,8 +39,8 @@ $value = static fn (string $key): string => (string) ($old[$key] ?? '');
 </div>
 
 <div class="alert">
-    Aucun prestataire d envoi n est configure : les messages externes restent en
-    file, avec le statut « en attente ». Une file visible vaut mieux qu un envoi
+    Aucun prestataire d'envoi n'est configure : les messages externes restent en
+    file, avec le statut « en attente ». Une file visible vaut mieux qu'un envoi
     silencieusement perdu.
 </div>
 
@@ -116,7 +116,7 @@ $value = static fn (string $key): string => (string) ($old[$key] ?? '');
 <?php if ($rbac->allows('communication-templates:create')) : ?>
     <form method="post" action="/communication/templates" class="card">
         <input type="hidden" name="_token" value="<?= $this->e($csrfToken) ?>">
-        <h2>Nouveau modele</h2>
+        <h2>Nouveau modèle</h2>
 
         <div class="grid-2">
             <div class="field">
@@ -136,13 +136,13 @@ $value = static fn (string $key): string => (string) ($old[$key] ?? '');
                 </select>
             </div>
             <div class="field">
-                <label for="subject_fr">Objet (francais)</label>
+                <label for="subject_fr">Objet (français)</label>
                 <input id="subject_fr" name="subject_fr">
             </div>
         </div>
 
         <div class="field">
-            <label for="body_fr">Message en francais *</label>
+            <label for="body_fr">Message en français *</label>
             <textarea id="body_fr" name="body_fr" rows="3" required></textarea>
         </div>
 
@@ -151,13 +151,13 @@ $value = static fn (string $key): string => (string) ($old[$key] ?? '');
             <textarea id="body_en" name="body_en" rows="3"></textarea>
         </div>
 
-        <button type="submit" class="button">Enregistrer le modele</button>
+        <button type="submit" class="button">Enregistrer le modèle</button>
     </form>
 <?php endif; ?>
 
 <?php if ($templates !== []) : ?>
     <div class="card">
-        <h2>Modeles</h2>
+        <h2>Modèles</h2>
         <table class="table">
             <thead><tr><th>Code</th><th>Nom</th><th>Canal</th><th>Bilingue</th></tr></thead>
             <tbody>
@@ -176,16 +176,16 @@ $value = static fn (string $key): string => (string) ($old[$key] ?? '');
 
 <?php if ($isSuperAdmin) : ?>
     <div class="alert">
-        Modeles systeme (Super Admin) : servent de repli a tous les
-        etablissements tant qu aucun modele local ne les remplace. Le code
-        doit correspondre a celui attendu par l application (account.created,
+        Modèles système (Super Admin) : servent de repli a tous les
+        établissements tant qu'aucun modèle local ne les remplace. Le code
+        doit correspondre a celui attendu par l'application (account.created,
         billing.overdue, attendance.absence, discipline.incident,
         tenant.suspended, tenant.reactivated...).
     </div>
 
     <form method="post" action="/communication/system-templates" class="card">
         <input type="hidden" name="_token" value="<?= $this->e($csrfToken) ?>">
-        <h2>Creer / mettre a jour un modele systeme</h2>
+        <h2>Créer / mettre a jour un modèle système</h2>
 
         <div class="grid-2">
             <div class="field">
@@ -205,13 +205,13 @@ $value = static fn (string $key): string => (string) ($old[$key] ?? '');
                 </select>
             </div>
             <div class="field">
-                <label for="sys_subject_fr">Objet (francais)</label>
+                <label for="sys_subject_fr">Objet (français)</label>
                 <input id="sys_subject_fr" name="subject_fr">
             </div>
         </div>
 
         <div class="field">
-            <label for="sys_body_fr">Message en francais *</label>
+            <label for="sys_body_fr">Message en français *</label>
             <textarea id="sys_body_fr" name="body_fr" rows="3" required></textarea>
         </div>
 
@@ -220,12 +220,12 @@ $value = static fn (string $key): string => (string) ($old[$key] ?? '');
             <textarea id="sys_body_en" name="body_en" rows="3"></textarea>
         </div>
 
-        <button type="submit" class="button">Enregistrer le modele systeme</button>
+        <button type="submit" class="button">Enregistrer le modèle système</button>
     </form>
 
     <?php if ($systemTemplates !== []) : ?>
         <div class="card">
-            <h2>Modeles systeme existants</h2>
+            <h2>Modèles système existants</h2>
             <table class="table">
                 <thead><tr><th>Code</th><th>Nom</th><th>Canal</th><th>Bilingue</th></tr></thead>
                 <tbody>

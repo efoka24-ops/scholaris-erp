@@ -113,7 +113,7 @@ final class DashboardTest extends TestCase
 
         $content = $this->request('GET', '/dashboard')->content();
 
-        $this->assertStringContains('Aucun resultat publie', $content, 'Rien ne doit filtrer avant publication');
+        $this->assertStringContains('Aucun résultat publié', $content, 'Rien ne doit filtrer avant publication');
         $this->assertTrue(! str_contains($content, '14,50'), 'La moyenne ne doit pas apparaitre');
     }
 

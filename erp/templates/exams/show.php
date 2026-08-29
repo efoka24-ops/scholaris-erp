@@ -40,7 +40,7 @@ $statusLabels = [
         Les inscriptions sont fermees
         (du <?= $this->date($exam['registration_start']) ?>
         au <?= $this->date($exam['registration_end']) ?>).
-        Un dossier depose hors periode serait refuse par le centre d examen.
+        Un dossier déposé hors période serait refuse par le centre d'examen.
     </div>
 <?php endif; ?>
 
@@ -49,7 +49,7 @@ $statusLabels = [
 <?php else : ?>
     <table class="table">
         <thead>
-        <tr><th>Numero</th><th>Candidat</th><th>Serie</th><th>Centre</th><th>Frais</th><th>Statut</th><th></th></tr>
+        <tr><th>Numéro</th><th>Candidat</th><th>Serie</th><th>Centre</th><th>Frais</th><th>Statut</th><th></th></tr>
         </thead>
         <tbody>
         <?php foreach ($registrations as $registration) : ?>
@@ -92,7 +92,7 @@ $statusLabels = [
 
         <div class="grid-2">
             <div class="field">
-                <label for="student_id">Eleve *</label>
+                <label for="student_id">Élève *</label>
                 <select id="student_id" name="student_id" required>
                     <option value="">Choisir...</option>
                     <?php foreach ($candidates as $candidate) : ?>
@@ -107,14 +107,14 @@ $statusLabels = [
                 <input id="series" name="series" placeholder="C, D, A4...">
             </div>
             <div class="field">
-                <label for="center_name">Centre d examen</label>
+                <label for="center_name">Centre d'examen</label>
                 <input id="center_name" name="center_name">
             </div>
         </div>
 
         <div class="checkbox">
             <input id="fee_paid" name="fee_paid" type="checkbox" value="1">
-            <label for="fee_paid">Frais d inscription regles</label>
+            <label for="fee_paid">Frais d'inscription règles</label>
         </div>
 
         <button type="submit" class="button">Inscrire</button>

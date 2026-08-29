@@ -32,18 +32,18 @@ final class Navigation
             ['title' => null, 'items' => [
                 self::item('/admin', 'Accueil', 'tenants:read', null, 'home'),
             ]],
-            ['title' => 'Etablissements', 'items' => [
-                self::item('/admin/etablissements', 'Demandes d ouverture', 'tenants:read', null, 'inbox'),
-                self::item('/admin/parc', 'Parc d etablissements', 'tenants:read', null, 'building'),
+            ['title' => 'Établissements', 'items' => [
+                self::item('/admin/etablissements', "Demandes d'ouverture", 'tenants:read', null, 'inbox'),
+                self::item('/admin/parc', "Parc d'établissements", 'tenants:read', null, 'building'),
             ]],
             ['title' => 'Gouvernance', 'items' => [
                 self::item('/admin/comptes', 'Comptes', 'tenants:read', null, 'users'),
                 self::item('/admin/habilitations', 'Habilitations', 'tenants:read', null, 'shield'),
-                self::item('/admin/journal', 'Journal d audit', 'tenants:read', null, 'history'),
+                self::item('/admin/journal', "Journal d'audit", 'tenants:read', null, 'history'),
             ]],
             ['title' => 'Pilotage', 'items' => [
                 self::item('/admin/rapports', 'Rapports', 'tenants:read', null, 'chart'),
-                self::item('/admin/courriers', 'Courriers envoyes', 'tenants:read', null, 'mail'),
+                self::item('/admin/courriers', 'Courriers envoyés', 'tenants:read', null, 'mail'),
                 self::item('/admin/maintenance', 'Maintenance', 'tenants:update', null, 'settings'),
             ]],
         ];
@@ -63,27 +63,27 @@ final class Navigation
             ['title' => null, 'items' => [
                 self::item('/dashboard', 'Accueil', null, null, 'home'),
             ]],
-            ['title' => 'Academique', 'items' => [
-                self::item('/classrooms', 'Structure pedagogique', 'classrooms:read', 'structure.classrooms', 'layers'),
-                self::item('/students', $features->label('students', 'Eleves').' & inscriptions', 'students:read', null, 'users'),
+            ['title' => 'Académique', 'items' => [
+                self::item('/classrooms', 'Structure pédagogique', 'classrooms:read', 'structure.classrooms', 'layers'),
+                self::item('/students', $features->label('students', 'Élèves').' & inscriptions', 'students:read', null, 'users'),
                 self::item('/enrollments', 'Inscriptions', 'enrollments:read', null, 'clipboard'),
                 self::item('/grades', 'Notes & calcul', 'grades:read', null, 'edit'),
-                self::item('/bulletins', 'Bulletins & diplomes', 'bulletins:read', null, 'award'),
+                self::item('/bulletins', 'Bulletins & diplômes', 'bulletins:read', null, 'award'),
                 self::item('/exams', 'Examens officiels', 'exams:read', 'exams.official', 'certificate'),
-                self::item('/annees-scolaires', 'Annee scolaire', 'academic-years:read', null, 'calendar'),
+                self::item('/annees-scolaires', 'Année scolaire', 'academic-years:read', null, 'calendar'),
             ]],
             ['title' => 'Vie scolaire', 'items' => [
                 self::item('/timetable', 'Emplois du temps', 'timetables:read', 'life.timetable', 'calendar'),
-                self::item('/attendance', 'Presences', 'attendance:read', 'life.attendance', 'check'),
+                self::item('/attendance', 'Présences', 'attendance:read', 'life.attendance', 'check'),
                 self::item('/course-log', 'Cahier de textes', 'course-log:read', 'life.textbook', 'book'),
                 self::item('/discipline', 'Discipline', 'discipline:read', 'life.discipline', 'alert'),
-                self::item('/health', 'Sante scolaire', 'health:read', 'life.health', 'heart'),
-                self::item('/library', 'Bibliotheque', 'library:read', 'life.library', 'book'),
+                self::item('/health', 'Santé scolaire', 'health:read', 'life.health', 'heart'),
+                self::item('/library', 'Bibliothèque', 'library:read', 'life.library', 'book'),
                 self::item('/transport', 'Transport', 'transport:read', 'life.transport', 'bus'),
                 self::item('/catering', 'Cantine', 'catering:read', 'life.catering', 'meal'),
             ]],
             ['title' => 'Gestion', 'items' => [
-                self::item('/finance', 'Gestion financiere', 'finance-dashboard:read', 'finance.fees', 'wallet'),
+                self::item('/finance', 'Gestion financière', 'finance-dashboard:read', 'finance.fees', 'wallet'),
                 self::item('/finance/invoices', 'Factures', 'invoices:read', 'finance.payments', 'receipt'),
                 self::item('/hr', 'RH & paie', 'hr:read', 'hr.payroll', 'briefcase'),
                 self::item('/patrimoine', 'Patrimoine', 'assets:read', 'life.assets', 'box'),
@@ -93,7 +93,7 @@ final class Navigation
                 self::item('/messages', 'Messagerie', 'internal-messages:read', null, 'mail'),
             ]],
             ['title' => null, 'items' => [
-                self::item('/parametres', 'Parametres', 'tenants:update', null, 'settings'),
+                self::item('/parametres', 'Paramètres', 'tenants:update', null, 'settings'),
             ]],
         ];
     }

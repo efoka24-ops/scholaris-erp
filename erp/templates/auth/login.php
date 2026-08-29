@@ -19,7 +19,7 @@ $roles = [
     ['Censeur', '#ff3d8a'],
     ['Enseignant', '#ffb800'],
     ['Parent', '#00e5a0'],
-    ['Secretaire', '#00c2ff'],
+    ['Secrétaire', '#00c2ff'],
     ['Intendant', '#ff4d4d'],
 ];
 
@@ -80,12 +80,12 @@ $demoAccounts = [
             <div class="anim-slide-l">
                 <h1 class="login__title">
                     Gerez votre<br>
-                    <span class="gradient-volt">etablissement</span><br>
+                    <span class="gradient-volt">établissement</span><br>
                     intelligemment.
                 </h1>
                 <p class="login__lead">
                     25 modules integres — des inscriptions aux bulletins, de la paie CNPS
-                    aux paiements Orange Money. Un seul systeme concu pour le Cameroun.
+                    aux paiements Orange Money. Un seul système concu pour le Cameroun.
                 </p>
             </div>
 
@@ -99,7 +99,7 @@ $demoAccounts = [
         </div>
 
         <div class="section-tag" style="color:rgba(242,240,232,.25)">
-            TRU GROUP SARL &middot; Yaounde, Cameroun
+            TRU GROUP SARL &middot; Yaoundé, Cameroun
         </div>
     </div>
 
@@ -149,7 +149,7 @@ $demoAccounts = [
                 <?php endif; ?>
 
                 <div class="field">
-                    <label for="tenant_code">Code etablissement (si demande)</label>
+                    <label for="tenant_code">Code établissement (si demande)</label>
                     <input class="inp" id="tenant_code" name="tenant_code" type="text"
                            autocomplete="organization" placeholder="LBG"
                            value="<?= $this->e($old['tenant_code'] ?? '') ?>">
@@ -173,9 +173,9 @@ $demoAccounts = [
 
             <p style="margin-top:1.5rem;font-size:.85rem;color:rgba(242,240,232,.4)">
                 Pas encore de compte ?
-                <a href="/demande-etablissement">Ouvrir un etablissement</a>
+                <a href="/demande-etablissement">Ouvrir un établissement</a>
                 &middot;
-                <a href="/pre-inscription">Pre-inscrire un eleve</a>
+                <a href="/pre-inscription">Pre-inscrire un élève</a>
             </p>
         </div>
     </div>

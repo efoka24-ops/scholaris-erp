@@ -24,7 +24,7 @@ $query = static fn (array $extra): string => '/admin/comptes?'.http_build_query(
         <h1>Comptes</h1>
         <p class="subtitle">
             <?= $this->number($total) ?> compte<?= $total > 1 ? 's' : '' ?>
-            sur l ensemble de la plateforme
+            sur l'ensemble de la plateforme
         </p>
     </div>
     <a class="button" href="/admin/comptes/creer">Nommer un administrateur</a>
@@ -33,15 +33,15 @@ $query = static fn (array $extra): string => '/admin/comptes?'.http_build_query(
 <div class="card">
     <div class="inline-form" style="justify-content:space-between;align-items:flex-start">
         <div>
-            <h2 style="margin:0">Repartition des comptes</h2>
+            <h2 style="margin:0">Répartition des comptes</h2>
             <p class="muted" style="margin:0.25rem 0 0">
-                Un compte cree n est pas un compte utilise. L ecart entre les
-                deux colonnes designe ceux qu il faut relancer.
+                Un compte créé n'est pas un compte utilise. L'ecart entre les
+                deux colonnes designe ceux qu'il faut relancer.
             </p>
         </div>
         <?php if ($profiles['activationRate'] !== null) : ?>
             <div style="text-align:right">
-                <div class="stat__label">Taux d activation</div>
+                <div class="stat__label">Taux d'activation</div>
                 <div class="stat__value"><?= $this->e(number_format($profiles['activationRate'], 1, ',', ' ')) ?>%</div>
             </div>
         <?php endif; ?>
@@ -85,13 +85,13 @@ $query = static fn (array $extra): string => '/admin/comptes?'.http_build_query(
     <?php if ($profiles['withoutRole'] > 0) : ?>
         <p class="muted">
             <?= $this->number($profiles['withoutRole']) ?> compte<?= $profiles['withoutRole'] > 1 ? 's' : '' ?>
-            sans role : ils ne peuvent rien ouvrir dans l application.
+            sans role : ils ne peuvent rien ouvrir dans l'application.
         </p>
     <?php endif; ?>
 
     <?php if ($profiles['topTenants'] !== []) : ?>
         <h3 style="margin-top:1.5rem;font-size:0.875rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted)">
-            Etablissements les plus fournis
+            Établissements les plus fournis
         </h3>
         <ul class="map__list">
             <?php foreach ($profiles['topTenants'] as $row) : ?>
@@ -112,7 +112,7 @@ $query = static fn (array $extra): string => '/admin/comptes?'.http_build_query(
             <input id="q" name="q" value="<?= $this->e($search) ?>" placeholder="Nom, prenom ou email">
         </div>
         <div class="field" style="margin-bottom:0">
-            <label for="perimetre">Perimetre</label>
+            <label for="perimetre">Périmètre</label>
             <select id="perimetre" name="perimetre">
                 <option value="tous">Tous</option>
                 <option value="plateforme" <?= $scope === 'plateforme' ? 'selected' : '' ?>>
@@ -145,8 +145,8 @@ $query = static fn (array $extra): string => '/admin/comptes?'.http_build_query(
         <table class="table">
             <thead>
             <tr>
-                <th>Nom</th><th>Email</th><th>Etablissement</th><th>Role</th>
-                <th>Etat</th><th>Derniere connexion</th><th></th>
+                <th>Nom</th><th>Email</th><th>Établissement</th><th>Role</th>
+                <th>État</th><th>Dernière connexion</th><th></th>
             </tr>
             </thead>
             <tbody>
@@ -175,9 +175,9 @@ $query = static fn (array $extra): string => '/admin/comptes?'.http_build_query(
                     <td><span class="muted"><?= $this->e($user['role_name'] ?? 'aucun') ?></span></td>
                     <td>
                         <?php if ($inactive) : ?>
-                            <span class="badge badge--warning">desactive</span>
+                            <span class="badge badge--warning">désactivé</span>
                         <?php elseif ($locked) : ?>
-                            <span class="badge badge--warning">verrouille</span>
+                            <span class="badge badge--warning">verrouillé</span>
                         <?php else : ?>
                             <span class="badge badge--success">actif</span>
                         <?php endif; ?>
@@ -196,36 +196,36 @@ $query = static fn (array $extra): string => '/admin/comptes?'.http_build_query(
                             <button type="submit" class="link-button">Nouveau mot de passe</button>
                         </form>
                         <?php if ($locked) : ?>
-                            <form method="post" action="/admin/comptes/<?= $this->e($user['id']) ?>/deverrouiller"
+                            <form method="post" action="/admin/comptes/<?= $this->e($user['id']) ?>/déverrouiller"
                                   class="inline-form">
                                 <input type="hidden" name="_token" value="<?= $this->e($csrfToken) ?>">
-                                <button type="submit" class="link-button">Deverrouiller</button>
+                                <button type="submit" class="link-button">Déverrouiller</button>
                             </form>
                         <?php endif; ?>
                         <?php if ($inactive) : ?>
                             <form method="post" action="/admin/comptes/<?= $this->e($user['id']) ?>/activer"
                                   class="inline-form">
                                 <input type="hidden" name="_token" value="<?= $this->e($csrfToken) ?>">
-                                <button type="submit" class="link-button">Reactiver</button>
+                                <button type="submit" class="link-button">Réactiver</button>
                             </form>
                         <?php else : ?>
-                            <form method="post" action="/admin/comptes/<?= $this->e($user['id']) ?>/desactiver"
+                            <form method="post" action="/admin/comptes/<?= $this->e($user['id']) ?>/désactiver"
                                   class="inline-form">
                                 <input type="hidden" name="_token" value="<?= $this->e($csrfToken) ?>">
-                                <button type="submit" class="link-button">Desactiver</button>
+                                <button type="submit" class="link-button">Désactiver</button>
                             </form>
                         <?php endif; ?>
 
                         <?php if (($user['tenant_name'] ?? null) === null && $rbac->allows('users:assign-roles')) : ?>
                             <details>
-                                <summary class="link-button" style="display:inline">Perimetre</summary>
-                                <form method="post" action="/admin/comptes/<?= $this->e($user['id']) ?>/perimetre"
+                                <summary class="link-button" style="display:inline">Périmètre</summary>
+                                <form method="post" action="/admin/comptes/<?= $this->e($user['id']) ?>/périmètre"
                                       class="inline-form" style="margin-top:0.5rem;justify-content:flex-end">
                                     <input type="hidden" name="_token" value="<?= $this->e($csrfToken) ?>">
                                     <select name="scope_type">
                                         <option value="PLATFORM">Tout le territoire</option>
                                         <option value="REGION" <?= ($user['scope_type'] ?? '') === 'REGION' ? 'selected' : '' ?>>Region</option>
-                                        <option value="DEPARTMENT" <?= ($user['scope_type'] ?? '') === 'DEPARTMENT' ? 'selected' : '' ?>>Departement</option>
+                                        <option value="DEPARTMENT" <?= ($user['scope_type'] ?? '') === 'DEPARTMENT' ? 'selected' : '' ?>>Département</option>
                                     </select>
                                     <input name="scope_value" list="regions-list" style="width:11rem"
                                            value="<?= $this->e($user['scope_value'] ?? '') ?>">
@@ -258,16 +258,16 @@ $query = static fn (array $extra): string => '/admin/comptes?'.http_build_query(
             <p class="muted">
                 Page <?= $this->number($page) ?> sur <?= $this->number($pages) ?>
                 <?php if ($page > 1) : ?>
-                    &middot; <a href="<?= $this->e($query(['q' => $search, 'perimetre' => $scope, 'page' => $page - 1])) ?>">precedente</a>
+                    &middot; <a href="<?= $this->e($query(['q' => $search, 'périmètre' => $scope, 'page' => $page - 1])) ?>">precedente</a>
                 <?php endif; ?>
                 <?php if ($page < $pages) : ?>
-                    &middot; <a href="<?= $this->e($query(['q' => $search, 'perimetre' => $scope, 'page' => $page + 1])) ?>">suivante</a>
+                    &middot; <a href="<?= $this->e($query(['q' => $search, 'périmètre' => $scope, 'page' => $page + 1])) ?>">suivante</a>
                 <?php endif; ?>
             </p>
         <?php endif; ?>
 
         <p class="muted">
-            Un mot de passe ne se consulte pas, il se remplace : il n existe
+            Un mot de passe ne se consulte pas, il se remplace : il n'existe
             nulle part en clair, et cela doit le rester.
         </p>
     <?php endif; ?>

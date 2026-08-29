@@ -16,15 +16,15 @@ $title = 'Activation du compte';
 
     <?php if (! $valid) : ?>
         <p class="auth__hint">
-            Ce lien est invalide ou a expire — il n est valable que 72 heures
-            apres son envoi. Demandez a votre administration de vous en
-            renvoyer un, ou de reinitialiser votre mot de passe.
+            Ce lien est invalide ou a expire — il n'est valable que 72 heures
+            après son envoi. Demandez a votre administration de vous en
+            renvoyer un, ou de réinitialiser votre mot de passe.
         </p>
         <p><a href="/login">Retour a la connexion</a></p>
     <?php else : ?>
         <p class="auth__hint">
             Choisissez le mot de passe de votre compte. Il ne sera plus jamais
-            affiche ni transmis par courrier.
+            affiché ni transmis par courrier.
         </p>
 
         <?php if ($error !== null) : ?>

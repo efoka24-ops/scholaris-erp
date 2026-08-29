@@ -18,16 +18,16 @@ $title = 'Roles et habilitations';
     <div>
         <h1>Roles et habilitations</h1>
         <p class="subtitle">
-            <?= $this->number(count($roles)) ?> roles systeme &middot;
+            <?= $this->number(count($roles)) ?> roles système &middot;
             <?= $this->number($total) ?> permissions au referentiel
         </p>
     </div>
 </div>
 
 <div class="alert alert--info">
-    Ces roles sont livres avec l application et partages par tous les
-    etablissements. Les modifier changerait les droits de chacun, partout a la
-    fois : cet ecran les donne a lire, non a editer.
+    Ces roles sont livres avec l'application et partages par tous les
+    établissements. Les modifier changerait les droits de chacun, partout a la
+    fois : cet écran les donne a lire, non a editer.
 </div>
 
 <?php foreach ($roles as $role) : ?>
@@ -44,7 +44,7 @@ $title = 'Roles et habilitations';
         </div>
 
         <details style="margin-top:1rem">
-            <summary class="muted">Voir le detail des droits</summary>
+            <summary class="muted">Voir le détail des droits</summary>
             <table class="table" style="margin-top:1rem">
                 <thead>
                 <tr><th>Ressource</th><th>Action</th><th>Ce que cela autorise</th></tr>

@@ -11,11 +11,11 @@
  * @var string $csrfToken
  */
 $this->extends('layouts.app');
-$title = 'Bibliotheque';
+$title = 'Bibliothèque';
 $today = date('Y-m-d');
 $value = static fn (string $k): string => (string) ($old[$k] ?? '');
 ?>
-<h1>Bibliotheque</h1>
+<h1>Bibliothèque</h1>
 <p class="subtitle">
     <?= $this->number(count($books)) ?> ouvrage(s) &middot;
     <?= $this->number(count($borrows)) ?> emprunt(s) en cours &middot;
@@ -27,7 +27,7 @@ $value = static fn (string $k): string => (string) ($old[$k] ?? '');
         <h2>Emprunts en cours</h2>
         <table class="table">
             <thead>
-            <tr><th>Ouvrage</th><th>Eleve</th><th>Emprunte le</th><th>A rendre le</th><th></th></tr>
+            <tr><th>Ouvrage</th><th>Élève</th><th>Emprunte le</th><th>A rendre le</th><th></th></tr>
             </thead>
             <tbody>
             <?php foreach ($borrows as $borrow) : ?>
@@ -124,7 +124,7 @@ $value = static fn (string $k): string => (string) ($old[$k] ?? '');
                 <input id="category" name="category" value="<?= $this->e($value('category')) ?>">
             </div>
             <div class="field">
-                <label for="quantity">Nombre d exemplaires *</label>
+                <label for="quantity">Nombre d'exemplaires *</label>
                 <input id="quantity" name="quantity" type="number" min="1" value="<?= $this->e($value('quantity') ?: '1') ?>" required>
             </div>
         </div>

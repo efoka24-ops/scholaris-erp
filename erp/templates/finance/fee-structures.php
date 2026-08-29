@@ -14,13 +14,13 @@ $value = static fn (string $key): string => (string) ($old[$key] ?? '');
 ?>
 <h1>Grilles tarifaires</h1>
 <p class="subtitle">
-    Montant de la scolarite par niveau. Une grille sans niveau s applique par
-    defaut a tous les niveaux qui n en ont pas de dediee.
+    Montant de la scolarité par niveau. Une grille sans niveau s'applique par
+    défaut a tous les niveaux qui n'en ont pas de dediee.
 </p>
 
 <?php if ($academicYearId === null) : ?>
     <div class="alert alert--error">
-        Aucune annee academique active : les grilles ne peuvent pas etre creees.
+        Aucune année académique activé : les grilles ne peuvent pas etre créées.
     </div>
 <?php endif; ?>
 
@@ -28,13 +28,13 @@ $value = static fn (string $key): string => (string) ($old[$key] ?? '');
     <div class="card">
         <p class="muted">
             Aucune grille definie. Sans grille, les inscriptions se font mais
-            aucune facture n est generee.
+            aucune facture n'est générée.
         </p>
     </div>
 <?php else : ?>
     <table class="table">
         <thead>
-        <tr><th>Libelle</th><th>Niveau</th><th>Annee</th><th>Montant</th><th>Tranches</th></tr>
+        <tr><th>Libelle</th><th>Niveau</th><th>Année</th><th>Montant</th><th>Tranches</th></tr>
         </thead>
         <tbody>
         <?php foreach ($structures as $structure) : ?>
@@ -75,7 +75,7 @@ $value = static fn (string $key): string => (string) ($old[$key] ?? '');
             <div class="field">
                 <label for="level_id">Niveau</label>
                 <select id="level_id" name="level_id">
-                    <option value="">Tous les niveaux (grille par defaut)</option>
+                    <option value="">Tous les niveaux (grille par défaut)</option>
                     <?php foreach ($levels as $level) : ?>
                         <option value="<?= $this->e($level['id']) ?>" <?= $value('level_id') === $level['id'] ? 'selected' : '' ?>>
                             <?= $this->e($level['name']) ?>

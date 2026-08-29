@@ -20,7 +20,7 @@ $value = static fn (string $key): string => (string) ($old[$key] ?? '');
 <h1>Patrimoine</h1>
 <p class="subtitle">
     <?= $this->number(count($assets)) ?> bien(s) &middot;
-    valeur d acquisition cumulee <?= $this->money($totalValue) ?>
+    valeur d'acquisition cumulee <?= $this->money($totalValue) ?>
 </p>
 
 <form method="get" action="/patrimoine" class="filters">
@@ -36,12 +36,12 @@ $value = static fn (string $key): string => (string) ($old[$key] ?? '');
 </form>
 
 <?php if ($assets === []) : ?>
-    <div class="card"><p class="muted">Aucun bien a l inventaire.</p></div>
+    <div class="card"><p class="muted">Aucun bien a l'inventaire.</p></div>
 <?php else : ?>
     <table class="table">
         <thead>
         <tr>
-            <th>Designation</th><th>Categorie</th><th>Etat</th>
+            <th>Designation</th><th>Categorie</th><th>État</th>
             <th>Acquis le</th><th>Valeur</th><th>Emplacement</th><th>Maintenance</th>
         </tr>
         </thead>
@@ -74,7 +74,7 @@ $value = static fn (string $key): string => (string) ($old[$key] ?? '');
 
 <?php if ($maintenances !== []) : ?>
     <div class="card">
-        <h2>Dernieres interventions</h2>
+        <h2>Dernières interventions</h2>
         <table class="table">
             <thead><tr><th>Date</th><th>Bien</th><th>Intervention</th><th>Technicien</th><th>Cout</th></tr></thead>
             <tbody>
@@ -111,7 +111,7 @@ $value = static fn (string $key): string => (string) ($old[$key] ?? '');
                 </select>
             </div>
             <div class="field">
-                <label for="status">Etat *</label>
+                <label for="status">État *</label>
                 <select id="status" name="status" required>
                     <?php foreach ($statuses as $item) : ?>
                         <option value="<?= $this->e($item) ?>"><?= $this->e($item) ?></option>
@@ -119,7 +119,7 @@ $value = static fn (string $key): string => (string) ($old[$key] ?? '');
                 </select>
             </div>
             <div class="field">
-                <label for="acquisition_date">Date d acquisition</label>
+                <label for="acquisition_date">Date d'acquisition</label>
                 <input id="acquisition_date" name="acquisition_date" type="date">
             </div>
             <div class="field">
@@ -132,6 +132,6 @@ $value = static fn (string $key): string => (string) ($old[$key] ?? '');
             </div>
         </div>
 
-        <button type="submit" class="button">Inscrire a l inventaire</button>
+        <button type="submit" class="button">Inscrire a l'inventaire</button>
     </form>
 <?php endif; ?>

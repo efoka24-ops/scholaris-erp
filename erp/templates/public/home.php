@@ -21,16 +21,16 @@ $title = 'Accueil';
 // Turborepo), abandonnee faute de PHP 8.2 sur l'hebergement.
 $marquee = [
     'Bulletins PDF', 'Orange Money', 'MTN MoMo', 'pawaPay', 'Mobile Money',
-    'Multi-etablissements', 'Isolation des donnees', 'RBAC 122 permissions',
-    'Moteur de calcul', 'Classements ex aequo', 'Recus numerotes', 'SYSCOHADA',
+    'Multi-établissements', 'Isolation des données', 'RBAC 122 permissions',
+    'Moteur de calcul', 'Classements ex aequo', 'Reçus numerotes', 'SYSCOHADA',
     'LMD / ECTS', 'Sections FR / EN', 'PHP 8.1', 'MySQL 8', 'Zero dependance',
-    'Callbacks signes RFC-9421', 'Anti-IDOR', 'Journal d audit',
+    'Callbacks signes RFC-9421', 'Anti-IDOR', 'Journal d\'audit',
 ];
 
 $heroStats = [['25', 'modules'], ['63', 'tables'], ['12', 'roles'], ['131', 'assertions']];
 
 $mockKpis = [
-    ['Eleves', '1 247', '#5b21f5'],
+    ['Élèves', '1 247', '#5b21f5'],
     ['Recouvr.', '87.3%', '#00e5a0'],
     ['Bulletins', '3 842', '#ffb800'],
     ['Impayes', '8.2M', '#ff4d4d'],
@@ -56,8 +56,8 @@ $figures = [
 
 $features = [
     ['⚡', 'Saisie hors-ligne', 'Notes saisies sans connexion. Synchronisation automatique au retour en ligne.'],
-    ['🔒', 'Donnees au Cameroun', 'Infrastructure hebergee localement. Vos donnees ne quittent jamais le pays.'],
-    ['📊', 'Declarations automatiques', 'DIPE, CNPS, IRPP generes automatiquement chaque mois. Zero saisie manuelle.'],
+    ['🔒', 'Données au Cameroun', 'Infrastructure hebergee localement. Vos données ne quittent jamais le pays.'],
+    ['📊', 'Declarations automatiques', 'DIPE, CNPS, IRPP générés automatiquement chaque mois. Zero saisie manuelle.'],
 ];
 ?>
 
@@ -104,12 +104,12 @@ $features = [
                 <p class="hero__lead">
                     <strong>25 modules integres</strong> — des inscriptions aux bulletins,
                     de la paie CNPS aux paiements Orange Money &amp; MTN MoMo.
-                    Concu pour tous les etablissements camerounais.
+                    Concu pour tous les établissements camerounais.
                 </p>
 
                 <div class="hero__actions">
-                    <a class="btn-volt" href="#apercu">Voir l application →</a>
-                    <a class="btn-ghost" href="/demande-etablissement">Creer mon etablissement</a>
+                    <a class="btn-volt" href="#apercu">Voir l'application →</a>
+                    <a class="btn-ghost" href="/demande-etablissement">Créer mon établissement</a>
                 </div>
 
                 <div class="hero__stats">
@@ -196,11 +196,11 @@ $features = [
                 <span class="section-tag" style="color:#5b21f5">— 25 modules complets</span>
                 <h2 class="section__title">
                     Tout ce dont votre<br>
-                    <span class="gradient-all">etablissement a besoin</span>
+                    <span class="gradient-all">établissement a besoin</span>
                 </h2>
             </div>
             <p class="section__note">
-                Du module AUTH jusqu'a l'IA predictive — un systeme coherent, teste, documente.
+                Du module AUTH jusqu'a l'IA predictive — un système coherent, teste, documente.
             </p>
         </div>
 
@@ -235,7 +235,7 @@ $features = [
                 <button class="preview__tab preview__tab--active" data-tab="notes">Saisie Notes</button>
                 <button class="preview__tab" data-tab="bulletins">Bulletins</button>
                 <button class="preview__tab" data-tab="finance">Finance</button>
-                <button class="preview__tab" data-tab="presences">Presences</button>
+                <button class="preview__tab" data-tab="presences">Présences</button>
             </div>
 
             <div class="preview__body">
@@ -330,7 +330,7 @@ $features = [
             <div>
                 <?php foreach ($guide as $index => $entry) : ?>
                     <div class="guide__detail<?= $index === 0 ? ' guide__detail--active' : '' ?>"
-                         data-guide-detail="<?= $this->e($entry['step']) ?>"
+                         data-guide-détail="<?= $this->e($entry['step']) ?>"
                          style="border-color:<?= $this->e($entry['color']) ?>28">
                         <div class="guide__detail-head">
                             <div class="guide__detail-icon"
@@ -380,12 +380,12 @@ $features = [
             <div>
                 <div class="font-display" style="font-weight:700;font-size:1.25rem">Guide complet SCHOLARIS ERP v2.0</div>
                 <div style="color:rgba(242,240,232,.45);font-size:.9rem;margin-top:4px">
-                    Documentation complete &middot; 25 modules &middot; ~200 endpoints &middot; Tests unitaires, integration et E2E
+                    Documentation complète &middot; 25 modules &middot; ~200 endpoints &middot; Tests unitaires, integration et E2E
                 </div>
             </div>
             <div style="display:flex;gap:0.75rem;flex-shrink:0;flex-wrap:wrap">
-                <a class="btn-volt" href="/demande-etablissement">Creer mon etablissement</a>
-                <a class="btn-ghost" href="/pre-inscription">Pre-inscrire un eleve</a>
+                <a class="btn-volt" href="/demande-etablissement">Créer mon établissement</a>
+                <a class="btn-ghost" href="/pre-inscription">Pre-inscrire un élève</a>
             </div>
         </div>
     </div>
@@ -430,7 +430,7 @@ $features = [
             <div class="section__head">
                 <div>
                     <span class="section-tag" style="color:#00c2ff">— Pre-inscription ouverte</span>
-                    <h2 class="section__title">Etablissements <span class="gradient-ice">qui recrutent</span></h2>
+                    <h2 class="section__title">Établissements <span class="gradient-ice">qui recrutent</span></h2>
                 </div>
             </div>
 
@@ -455,9 +455,9 @@ $features = [
         <div class="cta__box noise">
             <div class="cta__inner">
                 <div class="cta__meta">TRU GROUP SARL &middot; Emmanuel &middot; Aout 2026</div>
-                <h2 class="cta__title">Deployez SCHOLARIS dans<br>votre etablissement</h2>
+                <h2 class="cta__title">Deployez SCHOLARIS dans<br>votre établissement</h2>
                 <p class="cta__lead">
-                    48h de deploiement. Formation incluse. Support en francais. Hebergement au Cameroun.
+                    48h de deploiement. Formation incluse. Support en français. Hebergement au Cameroun.
                 </p>
                 <div class="cta__actions">
                     <a class="btn-ink" href="/login">Acceder a la plateforme →</a>

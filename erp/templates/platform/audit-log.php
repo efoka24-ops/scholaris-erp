@@ -15,29 +15,29 @@
  * @var string $action
  */
 $this->extends('layouts.app');
-$title = 'Journal d audit';
+$title = 'Journal d\'audit';
 
 $pages = (int) ceil($total / $perPage);
 
 $labels = [
     'login' => 'Connexion',
-    'tenant.create' => 'Etablissement cree',
-    'tenant.update' => 'Etablissement modifie',
-    'tenant.suspend' => 'Etablissement suspendu',
+    'tenant.create' => 'Établissement créé',
+    'tenant.update' => 'Établissement modifié',
+    'tenant.suspend' => 'Établissement suspendu',
     'tenant.restore' => 'Suspension levee',
-    'tenant.delete' => 'Etablissement retire',
-    'tenant.enter' => 'Entree dans un etablissement',
-    'establishment.approve' => 'Demande approuvee',
-    'establishment.reject' => 'Demande refusee',
-    'user.reset_password' => 'Mot de passe reinitialise',
-    'user.deactivate' => 'Compte desactive',
-    'user.activate' => 'Compte reactive',
+    'tenant.delete' => 'Établissement retiré',
+    'tenant.enter' => 'Entree dans un établissement',
+    'establishment.approve' => 'Demande approuvée',
+    'establishment.reject' => 'Demande refusée',
+    'user.reset_password' => 'Mot de passe réinitialisé',
+    'user.deactivate' => 'Compte désactivé',
+    'user.activate' => 'Compte réactivé',
     'user.unlock' => 'Compte deverrouille',
     'user.create_platform_admin' => 'Administrateur nomme',
-    'schema.migrate' => 'Migration appliquee',
+    'schema.migrate' => 'Migration appliquée',
     'http.not_found' => 'Page introuvable',
     'grade.create' => 'Note saisie',
-    'grade.update' => 'Note modifiee',
+    'grade.update' => 'Note modifiée',
 ];
 
 /**
@@ -73,9 +73,9 @@ $diff = static function (?string $old, ?string $new): string {
 ?>
 <div class="page-header">
     <div>
-        <h1>Journal d audit</h1>
+        <h1>Journal d'audit</h1>
         <p class="subtitle">
-            <?= $this->number($total) ?> evenement<?= $total > 1 ? 's' : '' ?> enregistre<?= $total > 1 ? 's' : '' ?>
+            <?= $this->number($total) ?> événement<?= $total > 1 ? 's' : '' ?> enregistré<?= $total > 1 ? 's' : '' ?>
         </p>
     </div>
 </div>
@@ -83,7 +83,7 @@ $diff = static function (?string $old, ?string $new): string {
 <div class="card">
     <form method="get" action="/admin/journal" class="inline-form" style="gap:0.75rem;align-items:flex-end">
         <div class="field" style="margin-bottom:0;flex:1 1 20rem">
-            <label for="action">Type d evenement</label>
+            <label for="action">Type d'événement</label>
             <select id="action" name="action">
                 <option value="">Tous</option>
                 <?php foreach ($actions as $row) : ?>
@@ -103,13 +103,13 @@ $diff = static function (?string $old, ?string $new): string {
 
 <div class="card">
     <?php if ($entries === []) : ?>
-        <p class="muted">Aucun evenement ne correspond.</p>
+        <p class="muted">Aucun événement ne correspond.</p>
     <?php else : ?>
         <table class="table">
             <thead>
             <tr>
-                <th>Date</th><th>Evenement</th><th>Auteur</th>
-                <th>Perimetre</th><th>Cible</th><th>Modification</th><th>Adresse IP</th>
+                <th>Date</th><th>Événement</th><th>Auteur</th>
+                <th>Périmètre</th><th>Cible</th><th>Modification</th><th>Adresse IP</th>
             </tr>
             </thead>
             <tbody>
@@ -119,7 +119,7 @@ $diff = static function (?string $old, ?string $new): string {
                     <td><?= $this->e($labels[$entry['action']] ?? $entry['action']) ?></td>
                     <td>
                         <?php if (($entry['email'] ?? null) === null) : ?>
-                            <span class="muted">systeme</span>
+                            <span class="muted">système</span>
                         <?php else : ?>
                             <?= $this->e($entry['email']) ?>
                         <?php endif; ?>

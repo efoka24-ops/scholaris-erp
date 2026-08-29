@@ -21,9 +21,9 @@ foreach ($assignments as $assignment) {
 <h1>Mon tableau de bord</h1>
 <p class="subtitle">
     <?php if ($period !== null) : ?>
-        Sequence <?= $this->e($period['number']) ?> ouverte a la saisie
+        Séquence <?= $this->e($period['number']) ?> ouverte a la saisie
     <?php else : ?>
-        Aucune sequence ouverte : la saisie des notes est fermee
+        Aucune séquence ouverte : la saisie des notes est fermée
     <?php endif; ?>
 </p>
 
@@ -50,10 +50,10 @@ foreach ($assignments as $assignment) {
     <h2>Ma saisie</h2>
 
     <?php if ($assignments === []) : ?>
-        <p class="muted">Aucune matiere ne vous est affectee pour le moment.</p>
+        <p class="muted">Aucune matière ne vous est affectee pour le moment.</p>
     <?php else : ?>
         <table class="table">
-            <thead><tr><th>Classe</th><th>Matiere</th><th>Coef.</th><th>Avancement</th><th></th></tr></thead>
+            <thead><tr><th>Classe</th><th>Matière</th><th>Coef.</th><th>Avancement</th><th></th></tr></thead>
             <tbody>
             <?php foreach ($assignments as $assignment) : ?>
                 <?php
@@ -77,7 +77,7 @@ foreach ($assignments as $assignment) {
                                 Saisir
                             </a>
                         <?php else : ?>
-                            <span class="muted">periode fermee</span>
+                            <span class="muted">période fermée</span>
                         <?php endif; ?>
                     </td>
                 </tr>

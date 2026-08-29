@@ -29,7 +29,7 @@ $title = 'Mon espace';
 
     <?php if ($results !== []) : ?>
         <div class="stat">
-            <div class="stat__label">Derniere moyenne</div>
+            <div class="stat__label">Dernière moyenne</div>
             <div class="stat__value"><?= $this->e(number_format((float) $results[0]['general_average'], 2, ',', ' ')) ?></div>
         </div>
         <div class="stat">
@@ -56,18 +56,18 @@ $title = 'Mon espace';
 
     <?php if ($results === []) : ?>
         <p class="muted">
-            Aucun resultat publie pour le moment. Les moyennes apparaissent une
+            Aucun résultat publié pour le moment. Les moyennes apparaissent une
             fois le conseil de classe tenu.
         </p>
     <?php else : ?>
         <table class="table">
             <thead>
-            <tr><th>Sequence</th><th>Moyenne</th><th>Rang</th><th>Mention</th><th>Appreciation</th></tr>
+            <tr><th>Séquence</th><th>Moyenne</th><th>Rang</th><th>Mention</th><th>Appreciation</th></tr>
             </thead>
             <tbody>
             <?php foreach ($results as $result) : ?>
                 <tr>
-                    <td>Sequence <?= $this->e($result['period_number']) ?></td>
+                    <td>Séquence <?= $this->e($result['period_number']) ?></td>
                     <td class="font-mono" style="font-weight:700;color:<?= (float) $result['general_average'] >= 10 ? 'var(--green-dark)' : 'var(--red)' ?>">
                         <?= $this->e(number_format((float) $result['general_average'], 2, ',', ' ')) ?>
                     </td>

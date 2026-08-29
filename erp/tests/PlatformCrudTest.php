@@ -349,7 +349,7 @@ final class PlatformCrudTest extends TestCase
         $content = $this->request('GET', '/admin')->content();
 
         $this->assertStringContains('Bonjour', $content, 'Le Super Admin est salue');
-        $this->assertStringContains('Eleves inscrits', $content, 'Les eleves du parc sont comptes');
+        $this->assertStringContains('Élèves inscrits', $content, 'Les eleves du parc sont comptes');
         $this->assertStringContains('Recouvrement du mois', $content, 'Le recouvrement aussi');
         $this->assertStringContains('Le parc sur le territoire', $content, 'La carte est affichee');
         $this->assertStringContains('Nord', $content, 'Avec la region de l etablissement cree');
@@ -426,7 +426,7 @@ final class PlatformCrudTest extends TestCase
         $content = $this->request('GET', '/admin')->content();
 
         $this->assertStringContains('Agents en poste', $content, 'Les effectifs figurent');
-        $this->assertStringContains('Eleves par agent', $content, 'Ainsi que le taux d encadrement');
+        $this->assertStringContains('Élèves par agent', $content, 'Ainsi que le taux d encadrement');
     }
 
     public function testLaCarteSitueChaqueEtablissementDansSaRegion(): void

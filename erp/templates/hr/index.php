@@ -31,7 +31,7 @@ $value = static fn (string $key): string => (string) ($old[$key] ?? '');
         <div class="stat__value stat__value--money"><?= $this->money($payroll) ?></div>
     </div>
     <div class="stat">
-        <div class="stat__label">Conges en attente</div>
+        <div class="stat__label">Congés en attente</div>
         <div class="stat__value"><?= $this->number($pending) ?></div>
     </div>
 </div>
@@ -44,7 +44,7 @@ $value = static fn (string $key): string => (string) ($old[$key] ?? '');
     <?php else : ?>
         <table class="table">
             <thead>
-            <tr><th>Nom</th><th>Fonction</th><th>Departement</th><th>Embauche</th><th>Salaire</th><th>Compte</th></tr>
+            <tr><th>Nom</th><th>Fonction</th><th>Département</th><th>Embauche</th><th>Salaire</th><th>Compte</th></tr>
             </thead>
             <tbody>
             <?php foreach ($employees as $employee) : ?>
@@ -63,14 +63,14 @@ $value = static fn (string $key): string => (string) ($old[$key] ?? '');
 </div>
 
 <div class="card">
-    <h2>Demandes de conge</h2>
+    <h2>Demandes de congé</h2>
 
     <?php if ($leaves === []) : ?>
         <p class="muted">Aucune demande.</p>
     <?php else : ?>
         <table class="table">
             <thead>
-            <tr><th>Employe</th><th>Du</th><th>Au</th><th>Motif</th><th>Statut</th><th></th></tr>
+            <tr><th>Employé</th><th>Du</th><th>Au</th><th>Motif</th><th>Statut</th><th></th></tr>
             </thead>
             <tbody>
             <?php foreach ($leaves as $leave) : ?>
@@ -121,11 +121,11 @@ $value = static fn (string $key): string => (string) ($old[$key] ?? '');
                 <input id="position" name="position" required placeholder="Enseignant, Surveillant...">
             </div>
             <div class="field">
-                <label for="department">Departement</label>
+                <label for="department">Département</label>
                 <input id="department" name="department">
             </div>
             <div class="field">
-                <label for="hire_date">Date d embauche *</label>
+                <label for="hire_date">Date d'embauche *</label>
                 <input id="hire_date" name="hire_date" type="date" required value="<?= date('Y-m-d') ?>">
             </div>
             <div class="field">
@@ -144,15 +144,15 @@ $value = static fn (string $key): string => (string) ($old[$key] ?? '');
                 </select>
             </div>
 
-            <button type="submit" class="button">Creer la fiche</button>
+            <button type="submit" class="button">Créer la fiche</button>
         </form>
 
         <form method="post" action="/hr/leaves" class="card">
             <input type="hidden" name="_token" value="<?= $this->e($csrfToken) ?>">
-            <h2>Demande de conge</h2>
+            <h2>Demande de congé</h2>
 
             <div class="field">
-                <label for="employee_id">Employe *</label>
+                <label for="employee_id">Employé *</label>
                 <select id="employee_id" name="employee_id" required>
                     <option value="">Choisir...</option>
                     <?php foreach ($employees as $employee) : ?>
