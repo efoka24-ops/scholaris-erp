@@ -1,0 +1,205 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Scholaris\Tests;
+
+use Scholaris\Platform\PlatformStats;
+use Scholaris\Platform\Scope;
+
+/**
+ * Perimetre d'un compte de pilotage.
+ *
+ * L'habilitation reposait sur deux niveaux — un role, une permission. Cela
+ * suffit pour une ecole, pas pour une plateforme nationale : un delegue
+ * regional a exactement les memes permissions de lecture qu'un administrateur
+ * national. Ce qui les distingue n'est pas ce qu'ils peuvent faire, mais
+ * l'etendue sur laquelle ils le font.
+ *
+ * Ces tests portent sur cette etendue. Une fuite de perimetre ne provoque
+ * aucune erreur : l'ecran s'affiche, avec les donnees d'autrui.
+ */
+final class ScopeTest extends TestCase
+{
+    /** @return array{nord: string, ouest: string} */
+    private function twoRegions(): array
+    {
+        $nord = $this->createTenant('NRD', 'Lycee du Nord');
+        $ouest = $this->createTenant('OST', 'Lycee de l Ouest');
+
+        $this->db->execute("UPDATE tenants SET region = 'NORD' WHERE id = :id", ['id' => $nord]);
+        $this->db->execute("UPDATE tenants SET region = 'OUEST' WHERE id = :id", ['id' => $ouest]);
+
+        return ['nord' => $nord, 'ouest' => $ouest];
+    }
+
+    public function testUnPerimetreRegionalNeCompteQueSaRegion(): void
+    {
+        $regions = $this->twoRegions();
+
+        $this->createStudent($regions['nord'], 'N/001');
+        $this->createStudent($regions['nord'], 'N/002');
+        $this->createStudent($regions['ouest'], 'O/001');
+
+        $national = (new PlatformStats($this->db, Scope::platform()))->overview();
+        $regional = (new PlatformStats($this->db, Scope::region('NORD')))->overview();
+
+        $this->assertSame(3, $national['students']['total'], 'Le national voit tout le pays');
+        $this->assertSame(2, $regional['students']['total'], 'Le regional ne voit que sa region');
+    }
+
+    public function testUnPerimetreRegionalNeCompteQueSesEtablissements(): void
+    {
+        $this->twoRegions();
+
+        $regional = (new PlatformStats($this->db, Scope::region('NORD')))->overview();
+
+        $this->assertSame(1, $regional['tenants']['total'], 'Un seul etablissement dans le Nord');
+    }
+
+    public function testLaCarteNAfficheQueLesEtablissementsDuPerimetre(): void
+    {
+        $this->twoRegions();
+
+        $map = (new PlatformStats($this->db, Scope::region('NORD')))->byRegion();
+        $counts = [];
+
+        foreach ($map['regions'] as $region) {
+            $counts[$region['code']] = count($region['tenants']);
+        }
+
+        $this->assertSame(1, $counts['NORD'], 'Le Nord porte son etablissement');
+        $this->assertSame(0, $counts['OUEST'], 'L Ouest reste vide pour un delegue du Nord');
+    }
+
+    public function testLesComptesSontEuxAussiCadres(): void
+    {
+        $regions = $this->twoRegions();
+
+        $nordUser = $this->createUser($regions['nord'], 'prof@nord.cm');
+        $this->giveRole($nordUser, 'Enseignant', ['grades:read']);
+
+        $ouestUser = $this->createUser($regions['ouest'], 'prof@ouest.cm');
+        $this->giveRole($ouestUser, 'Enseignant', ['grades:read']);
+
+        $regional = (new PlatformStats($this->db, Scope::region('NORD')))->accountsByProfile();
+
+        $this->assertSame(1, $regional['profiles']['PERSONNEL']['created'], 'Un seul enseignant dans le Nord');
+    }
+
+    public function testAucuneRequeteDePilotageNEchappeAuPerimetre(): void
+    {
+        // Le vrai risque n'est pas qu'un cadrage soit faux, mais qu'une
+        // requete l'oublie : l'ecran s'affiche alors normalement, avec les
+        // donnees d'autres regions, et personne ne s'en apercoit. Ce controle
+        // lit le fichier plutot que d'esperer qu'on y pense.
+        $source = (string) file_get_contents($this->basePath().'/src/Platform/PlatformStats.php');
+        $lines = explode("\n", $source);
+
+        $problems = [];
+        $open = null;
+        $buffer = '';
+
+        foreach ($lines as $number => $line) {
+            if ($open === null && preg_match('/\$this->db->(select|scalar)\(/', $line) === 1) {
+                $open = $number + 1;
+                $buffer = '';
+            }
+
+            if ($open === null) {
+                continue;
+            }
+
+            $buffer .= $line."\n";
+
+            // Fin de l'appel : une parenthese fermante en fin de ligne.
+            if (preg_match('/\);\s*$/', $line) === 1 || preg_match('/\),\s*$/', $line) === 1) {
+                if (! str_contains($buffer, 'withScope')) {
+                    $problems[] = 'ligne '.$open;
+                }
+
+                $open = null;
+            }
+        }
+
+        $this->assertSame(
+            [],
+            $problems,
+            'Requete de pilotage sans perimetre : '.implode(', ', $problems)
+        );
+    }
+
+    public function testUnPerimetreNationalNeRestreintRien(): void
+    {
+        $this->twoRegions();
+
+        $national = (new PlatformStats($this->db, Scope::platform()))->overview();
+
+        $this->assertSame(4, $national['tenants']['total'], 'Les deux regions plus les deux du socle de test');
+    }
+
+    // --- Resolution depuis le compte ------------------------------------------
+
+    public function testUnComptePlateformeSansPerimetreDeclareEstNational(): void
+    {
+        // C'est le cas du Super Admin d'origine : retomber sur un perimetre
+        // vide le priverait de tout au lieu de tout lui donner.
+        $scope = Scope::forUser(['tenant_id' => null, 'scope_type' => null, 'scope_value' => null]);
+
+        $this->assertTrue($scope->isNational(), 'Aucun perimetre declare vaut perimetre national');
+    }
+
+    public function testUnCompteRattacheAUneEcoleNeVoitQueLaSienne(): void
+    {
+        $scope = Scope::forUser(['tenant_id' => 'abc', 'scope_type' => null, 'scope_value' => null]);
+
+        $this->assertSame(Scope::TENANT, $scope->type(), 'Son etablissement fait son perimetre');
+        $this->assertSame('abc', $scope->value(), 'Et c est bien le sien');
+    }
+
+    public function testUneRegionInventeeNeDonnePasUnAccesNational(): void
+    {
+        // Une valeur de perimetre erronee doit restreindre, jamais elargir :
+        // l'inverse ferait d'une faute de frappe une elevation de privilege.
+        $scope = Scope::forUser([
+            'tenant_id' => null,
+            'scope_type' => 'REGION',
+            'scope_value' => 'ATLANTIDE',
+        ]);
+
+        $this->assertTrue($scope->isNational(), 'Le perimetre retombe sur le compte, sans region reconnue');
+    }
+
+    public function testLePerimetreSaitCeQuIlCouvre(): void
+    {
+        $nord = Scope::region('NORD');
+
+        $this->assertTrue($nord->covers(['region' => 'NORD']), 'Une ecole du Nord est couverte');
+        $this->assertTrue(! $nord->covers(['region' => 'OUEST']), 'Une ecole de l Ouest ne l est pas');
+        $this->assertTrue(Scope::platform()->covers(['region' => 'OUEST']), 'Le national couvre tout');
+    }
+
+    // --- Etancheite ----------------------------------------------------------
+
+    public function testUnDelegueNePeutPasEntrerDansUneEcoleHorsPerimetre(): void
+    {
+        // Filtrer les listes ne suffit pas : l'identifiant se devine, et c'est
+        // a l'entree que l'acces est reellement ouvert.
+        $regions = $this->twoRegions();
+
+        $delegate = $this->createUser($this->tenantA, 'delegue@nord.cm');
+        $this->giveRole($delegate, 'SUPER_ADMIN', ['tenants:read']);
+        $this->db->execute(
+            "UPDATE users SET tenant_id = NULL, scope_type = 'REGION', scope_value = 'NORD' WHERE id = :id",
+            ['id' => $delegate]
+        );
+        $this->actingAs($delegate);
+
+        $refused = $this->request('POST', '/admin/etablissements/'.$regions['ouest'].'/consulter');
+        $allowed = $this->request('POST', '/admin/etablissements/'.$regions['nord'].'/consulter');
+
+        $this->assertSame(403, $refused->status(), 'Une ecole d une autre region est refusee');
+        $this->assertSame(302, $allowed->status(), 'Celle de sa region est ouverte');
+    }
+
+}

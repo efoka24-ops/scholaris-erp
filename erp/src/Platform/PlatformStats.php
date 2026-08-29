@@ -22,9 +22,71 @@ final class PlatformStats
 {
     private Connection $db;
 
-    public function __construct(Connection $db)
+    private Scope $scope;
+
+    public function __construct(Connection $db, ?Scope $scope = null)
     {
         $this->db = $db;
+        $this->scope = $scope ?? Scope::platform();
+    }
+
+    /**
+     * Restriction portee par la table des etablissements elle-meme.
+     *
+     * Rendue sous forme de « AND ... » prete a coller a une clause existante :
+     * les vingt-huit requetes de ce fichier ont toutes deja un WHERE.
+     */
+    private function scopeTenants(string $alias = 'tenants'): string
+    {
+        return ' AND '.$this->scope->condition($alias)['sql'];
+    }
+
+    /** Restriction portee par une colonne tenant_id d'une autre table. */
+    private function scopeVia(string $column): string
+    {
+        return ' AND '.$this->scope->conditionOnTenantColumn($column)['sql'];
+    }
+
+    /**
+     * Restriction des demandes d'ouverture.
+     *
+     * Une demande n'appartient a aucun etablissement — elle en cree un. Elle se
+     * rattache donc a la region declaree par le demandeur. Un compte cantonne a
+     * un etablissement n'a rien a voir ici : instruire les demandes n'est pas
+     * son role.
+     */
+    private function scopeRequests(): string
+    {
+        return match ($this->scope->type()) {
+            Scope::REGION => ' AND region = :scope_region',
+            Scope::DEPARTMENT => ' AND LOWER(city) = :scope_department',
+            Scope::TENANT => ' AND 1 = 0',
+            default => '',
+        };
+    }
+
+    /**
+     * Parametres du perimetre, restreints a ceux que la requete utilise.
+     *
+     * MySQL refuse un parametre lie qui n'apparait pas dans la requete : les
+     * fournir systematiquement ferait echouer toutes celles qui n'ont pas de
+     * clause de perimetre.
+     *
+     * @param  array<string, mixed>  $params
+     * @return array<string, mixed>
+     */
+    private function withScope(string $sql, array $params): array
+    {
+        foreach (array_merge(
+            $this->scope->condition()['params'],
+            $this->scope->conditionOnTenantColumn('x')['params']
+        ) as $name => $value) {
+            if (str_contains($sql, ':'.$name)) {
+                $params[$name] = $value;
+            }
+        }
+
+        return $params;
     }
 
     /**
@@ -36,13 +98,13 @@ final class PlatformStats
         $previousMonthStart = date('Y-m-01 00:00:00', strtotime('-1 month'));
         $today = date('Y-m-d');
 
-        $students = $this->count('SELECT COUNT(*) FROM students WHERE deleted_at IS NULL');
+        $students = $this->count('SELECT COUNT(*) FROM students WHERE deleted_at IS NULL'.$this->scopeVia('tenant_id'));
         $studentsThisMonth = $this->count(
-            'SELECT COUNT(*) FROM students WHERE deleted_at IS NULL AND created_at >= :since',
+            'SELECT COUNT(*) FROM students WHERE deleted_at IS NULL AND created_at >= :since'.$this->scopeVia('tenant_id'),
             ['since' => $monthStart]
         );
         $studentsLastMonth = $this->count(
-            'SELECT COUNT(*) FROM students WHERE deleted_at IS NULL AND created_at >= :from AND created_at < :to',
+            'SELECT COUNT(*) FROM students WHERE deleted_at IS NULL AND created_at >= :from AND created_at < :to'.$this->scopeVia('tenant_id'),
             ['from' => $previousMonthStart, 'to' => $monthStart]
         );
 
@@ -56,20 +118,20 @@ final class PlatformStats
             'requests' => $this->requests($monthStart, $previousMonthStart),
             'collection' => $this->collection($monthStart, $previousMonthStart),
             'tenants' => [
-                'total' => $this->count('SELECT COUNT(*) FROM tenants WHERE deleted_at IS NULL'),
+                'total' => $this->count('SELECT COUNT(*) FROM tenants WHERE deleted_at IS NULL'.$this->scopeTenants()),
                 'active' => $this->count(
-                    "SELECT COUNT(*) FROM tenants WHERE deleted_at IS NULL AND platform_status = 'ACTIVE'"
+                    "SELECT COUNT(*) FROM tenants WHERE deleted_at IS NULL AND platform_status = 'ACTIVE'".$this->scopeTenants()
                 ),
                 'suspended' => $this->count(
-                    "SELECT COUNT(*) FROM tenants WHERE deleted_at IS NULL AND platform_status = 'SUSPENDED'"
+                    "SELECT COUNT(*) FROM tenants WHERE deleted_at IS NULL AND platform_status = 'SUSPENDED'".$this->scopeTenants()
                 ),
                 'thisMonth' => $this->count(
-                    'SELECT COUNT(*) FROM tenants WHERE deleted_at IS NULL AND created_at >= :since',
+                    'SELECT COUNT(*) FROM tenants WHERE deleted_at IS NULL AND created_at >= :since'.$this->scopeTenants(),
                     ['since' => $monthStart]
                 ),
             ],
             'users' => [
-                'total' => $this->count('SELECT COUNT(*) FROM users WHERE deleted_at IS NULL'),
+                'total' => $this->count('SELECT COUNT(*) FROM users WHERE deleted_at IS NULL'.$this->scopeVia('tenant_id')),
             ],
         ];
     }
@@ -84,14 +146,14 @@ final class PlatformStats
      */
     private function attendanceToday(string $today): array
     {
-        $recorded = $this->count('SELECT COUNT(*) FROM attendances WHERE date = :date', ['date' => $today]);
+        $recorded = $this->count('SELECT COUNT(*) FROM attendances WHERE date = :date'.$this->scopeVia('tenant_id'), ['date' => $today]);
 
         if ($recorded === 0) {
             return ['rate' => null, 'present' => 0, 'recorded' => 0, 'trend' => null];
         }
 
         $present = $this->count(
-            "SELECT COUNT(*) FROM attendances WHERE date = :date AND status IN ('PRESENT', 'LATE')",
+            "SELECT COUNT(*) FROM attendances WHERE date = :date AND status IN ('PRESENT', 'LATE')".$this->scopeVia('tenant_id'),
             ['date' => $today]
         );
 
@@ -99,12 +161,12 @@ final class PlatformStats
 
         // Comparaison a la veille, pour situer la journee.
         $yesterday = date('Y-m-d', strtotime($today.' -1 day'));
-        $previousRecorded = $this->count('SELECT COUNT(*) FROM attendances WHERE date = :date', ['date' => $yesterday]);
+        $previousRecorded = $this->count('SELECT COUNT(*) FROM attendances WHERE date = :date'.$this->scopeVia('tenant_id'), ['date' => $yesterday]);
         $trend = null;
 
         if ($previousRecorded > 0) {
             $previousPresent = $this->count(
-                "SELECT COUNT(*) FROM attendances WHERE date = :date AND status IN ('PRESENT', 'LATE')",
+                "SELECT COUNT(*) FROM attendances WHERE date = :date AND status IN ('PRESENT', 'LATE')".$this->scopeVia('tenant_id'),
                 ['date' => $yesterday]
             );
 
@@ -120,23 +182,23 @@ final class PlatformStats
     private function requests(string $monthStart, string $previousMonthStart): array
     {
         $thisMonth = $this->count(
-            'SELECT COUNT(*) FROM establishment_requests WHERE created_at >= :since',
+            'SELECT COUNT(*) FROM establishment_requests WHERE created_at >= :since'.$this->scopeRequests(),
             ['since' => $monthStart]
         );
         $lastMonth = $this->count(
-            'SELECT COUNT(*) FROM establishment_requests WHERE created_at >= :from AND created_at < :to',
+            'SELECT COUNT(*) FROM establishment_requests WHERE created_at >= :from AND created_at < :to'.$this->scopeRequests(),
             ['from' => $previousMonthStart, 'to' => $monthStart]
         );
 
         return [
             'pending' => $this->count(
-                "SELECT COUNT(*) FROM establishment_requests WHERE request_status = 'PENDING'"
+                "SELECT COUNT(*) FROM establishment_requests WHERE request_status = 'PENDING'".$this->scopeRequests()
             ),
             'approved' => $this->count(
-                "SELECT COUNT(*) FROM establishment_requests WHERE request_status = 'APPROVED'"
+                "SELECT COUNT(*) FROM establishment_requests WHERE request_status = 'APPROVED'".$this->scopeRequests()
             ),
             'rejected' => $this->count(
-                "SELECT COUNT(*) FROM establishment_requests WHERE request_status = 'REJECTED'"
+                "SELECT COUNT(*) FROM establishment_requests WHERE request_status = 'REJECTED'".$this->scopeRequests()
             ),
             'thisMonth' => $thisMonth,
             'trend' => $this->trend($thisMonth, $lastMonth),
@@ -148,9 +210,10 @@ final class PlatformStats
 
     private function oldestPendingDays(): ?int
     {
-        $oldest = $this->db->scalar(
-            "SELECT MIN(created_at) FROM establishment_requests WHERE request_status = 'PENDING'"
-        );
+        $sql = "SELECT MIN(created_at) FROM establishment_requests WHERE request_status = 'PENDING'"
+            .$this->scopeRequests();
+
+        $oldest = $this->db->scalar($sql, $this->withScope($sql, []));
 
         if (! is_string($oldest) || $oldest === '') {
             return null;
@@ -173,17 +236,17 @@ final class PlatformStats
     private function collection(string $monthStart, string $previousMonthStart): array
     {
         $thisMonth = $this->money(
-            'SELECT COALESCE(SUM(amount), 0) FROM payments WHERE deleted_at IS NULL AND paid_at >= :since',
+            'SELECT COALESCE(SUM(amount), 0) FROM payments WHERE deleted_at IS NULL AND paid_at >= :since'.$this->scopeVia('tenant_id'),
             ['since' => $monthStart]
         );
         $lastMonth = $this->money(
             'SELECT COALESCE(SUM(amount), 0) FROM payments
-             WHERE deleted_at IS NULL AND paid_at >= :from AND paid_at < :to',
+             WHERE deleted_at IS NULL AND paid_at >= :from AND paid_at < :to'.$this->scopeVia('tenant_id'),
             ['from' => $previousMonthStart, 'to' => $monthStart]
         );
 
-        $invoiced = $this->money('SELECT COALESCE(SUM(total_amount), 0) FROM invoices WHERE deleted_at IS NULL');
-        $collected = $this->money('SELECT COALESCE(SUM(amount), 0) FROM payments WHERE deleted_at IS NULL');
+        $invoiced = $this->money('SELECT COALESCE(SUM(total_amount), 0) FROM invoices WHERE deleted_at IS NULL'.$this->scopeVia('tenant_id'));
+        $collected = $this->money('SELECT COALESCE(SUM(amount), 0) FROM payments WHERE deleted_at IS NULL'.$this->scopeVia('tenant_id'));
 
         return [
             'thisMonth' => $thisMonth,
@@ -221,13 +284,13 @@ final class PlatformStats
             ];
         }
 
-        $tenants = $this->db->select(
-            'SELECT t.id, t.code, t.name, t.type, t.region, t.city, t.platform_status,
+        $tenantSql = 'SELECT t.id, t.code, t.name, t.type, t.region, t.city, t.platform_status,
                     (SELECT COUNT(*) FROM students s WHERE s.tenant_id = t.id AND s.deleted_at IS NULL) AS students_count
              FROM tenants t
-             WHERE t.deleted_at IS NULL
-             ORDER BY t.name'
-        );
+             WHERE t.deleted_at IS NULL'.$this->scopeTenants('t').'
+             ORDER BY t.name';
+
+        $tenants = $this->db->select($tenantSql, $this->withScope($tenantSql, []));
 
         $unlocated = ['tenants' => [], 'pending' => []];
 
@@ -244,12 +307,12 @@ final class PlatformStats
             $regions[$region]['students'] += (int) $tenant['students_count'];
         }
 
-        $pending = $this->db->select(
-            "SELECT id, code, name, type, region, city, reference, created_at
+        $pendingSql = "SELECT id, code, name, type, region, city, reference, created_at
              FROM establishment_requests
-             WHERE request_status = 'PENDING'
-             ORDER BY created_at"
-        );
+             WHERE request_status = 'PENDING'".$this->scopeRequests()."
+             ORDER BY created_at";
+
+        $pending = $this->db->select($pendingSql, $this->withScope($pendingSql, []));
 
         foreach ($pending as $demand) {
             $region = (string) ($demand['region'] ?? '');
@@ -293,8 +356,7 @@ final class PlatformStats
             'PLATEFORME' => ['label' => 'Administration plateforme', 'roles' => ['SUPER_ADMIN']],
         ];
 
-        $rows = $this->db->select(
-            "SELECT r.name AS role_name,
+        $rolesSql = "SELECT r.name AS role_name,
                     COUNT(*) AS created,
                     SUM(CASE WHEN u.last_login IS NOT NULL THEN 1 ELSE 0 END) AS activated,
                     SUM(CASE WHEN u.status <> 'ACTIVE' THEN 1 ELSE 0 END) AS suspended,
@@ -303,13 +365,13 @@ final class PlatformStats
              FROM users u
              JOIN user_roles ur ON ur.user_id = u.id
              JOIN roles r ON r.id = ur.role_id
-             WHERE u.deleted_at IS NULL
-             GROUP BY r.name",
-            [
-                'since' => date('Y-m-d H:i:s', strtotime('-30 days')),
-                'stale' => date('Y-m-d H:i:s', strtotime('-30 days')),
-            ]
-        );
+             WHERE u.deleted_at IS NULL".$this->scopeVia('u.tenant_id')."
+             GROUP BY r.name";
+
+        $rows = $this->db->select($rolesSql, $this->withScope($rolesSql, [
+            'since' => date('Y-m-d H:i:s', strtotime('-30 days')),
+            'stale' => date('Y-m-d H:i:s', strtotime('-30 days')),
+        ]));
 
         $byRole = [];
 
@@ -366,11 +428,12 @@ final class PlatformStats
             ];
         }
 
-        $withoutRole = (int) $this->db->scalar(
-            'SELECT COUNT(*) FROM users u
+        $orphanSql = 'SELECT COUNT(*) FROM users u
              WHERE u.deleted_at IS NULL
                AND NOT EXISTS (SELECT 1 FROM user_roles ur WHERE ur.user_id = u.id)'
-        );
+            .$this->scopeVia('u.tenant_id');
+
+        $withoutRole = (int) $this->db->scalar($orphanSql, $this->withScope($orphanSql, []));
 
         $total = array_sum(array_column($profiles, 'created')) + $withoutRole;
         $activated = array_sum(array_column($profiles, 'activated'));
@@ -381,16 +444,26 @@ final class PlatformStats
             'total' => $total,
             'activated' => $activated,
             'activationRate' => $total > 0 ? round($activated / $total * 100, 1) : null,
-            'topTenants' => $this->db->select(
-                'SELECT t.name, t.code, COUNT(u.id) AS accounts
+            'topTenants' => $this->topTenants(),
+        ];
+    }
+
+    /**
+     * Etablissements les plus fournis en comptes, dans le perimetre.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function topTenants(): array
+    {
+        $sql = 'SELECT t.name, t.code, COUNT(u.id) AS accounts
                  FROM tenants t
                  JOIN users u ON u.tenant_id = t.id AND u.deleted_at IS NULL
-                 WHERE t.deleted_at IS NULL
+                 WHERE t.deleted_at IS NULL'.$this->scopeTenants('t').'
                  GROUP BY t.id, t.name, t.code
                  ORDER BY accounts DESC
-                 LIMIT 5'
-            ),
-        ];
+                 LIMIT 5';
+
+        return $this->db->select($sql, $this->withScope($sql, []));
     }
 
     /**
@@ -411,12 +484,12 @@ final class PlatformStats
     /** @param  array<string, mixed>  $params */
     private function count(string $sql, array $params = []): int
     {
-        return (int) $this->db->scalar($sql, $params);
+        return (int) $this->db->scalar($sql, $this->withScope($sql, $params));
     }
 
     /** @param  array<string, mixed>  $params */
     private function money(string $sql, array $params = []): float
     {
-        return (float) $this->db->scalar($sql, $params);
+        return (float) $this->db->scalar($sql, $this->withScope($sql, $params));
     }
 }

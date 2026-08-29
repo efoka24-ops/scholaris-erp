@@ -58,7 +58,9 @@ $money = static function (float $amount): string {
     <h1>Bonjour <?= $this->e(trim(($auth['first_name'] ?? '').' '.($auth['last_name'] ?? ''))) ?></h1>
     <p class="hero__meta">
         <?= $this->e($fullDate) ?> &middot; <span id="platform-clock"><?= date('H:i', $now) ?></span>
-        &middot; administration de la plateforme
+        <?php // Dire ce que l'on regarde : sans cela, un delegue croit voir le
+              // pays entier et lit ses chiffres comme des chiffres nationaux. ?>
+        &middot; <?= $this->e($scope->label()) ?>
     </p>
 
     <div class="hero__chips">

@@ -139,6 +139,44 @@ return [
 
     'roles' => [
         [
+            // Délégué régional ou départemental. Ses permissions sont celles
+            // d'une consultation de pilotage ; ce qui le distingue du Super
+            // Admin n'est pas ce qu'il peut faire, mais l'étendue sur laquelle
+            // il le fait — portée par le périmètre du compte, pas par le rôle.
+            'name' => 'Délégué',
+            'description' => 'Pilotage des établissements de son périmètre — lecture et rapports',
+            'permissions' => [
+                'tenants:read',
+                'students:read',
+                'grades:read',
+                'bulletins:read',
+                'finance-dashboard:read',
+                'attendance:read',
+                'exams:read',
+                'audit-logs:read',
+            ],
+        ],
+        [
+            // Auditeur : lecture stricte, aucune écriture nulle part. Le rôle
+            // existe pour qu'un contrôle externe puisse être ouvert sans
+            // accorder au passage le moindre droit de modification.
+            'name' => 'Observateur',
+            'description' => 'Consultation seule, sans aucun droit d\'écriture',
+            'permissions' => [
+                'tenants:read',
+                'students:read',
+                'classrooms:read',
+                'enrollments:read',
+                'grades:read',
+                'bulletins:read',
+                'attendance:read',
+                'exams:read',
+                'finance-dashboard:read',
+                'invoices:read',
+                'audit-logs:read',
+            ],
+        ],
+        [
             'name' => 'Admin Établissement',
             'description' => 'Administrateur technique de l\'établissement — config, moteur de calcul, utilisateurs',
             'permissions' => [

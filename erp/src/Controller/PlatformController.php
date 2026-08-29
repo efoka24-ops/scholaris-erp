@@ -8,6 +8,7 @@ use Scholaris\Http\Exception\HttpException;
 use Scholaris\Http\Request;
 use Scholaris\Http\Response;
 use Scholaris\Platform\PlatformStats;
+use Scholaris\Platform\Scope;
 
 /**
  * Espace de l'administrateur de la plateforme.
@@ -26,31 +27,37 @@ final class PlatformController extends Controller
     {
         $this->assertSuperAdmin();
 
-        $stats = new PlatformStats($this->app->db());
+        // Le perimetre du compte restreint tout ce qui suit : un delegue
+        // regional voit sa region, pas le pays.
+        $stats = new PlatformStats($this->app->db(), Scope::forUser($this->app->auth()->user()));
 
         // Toutes ces lectures traversent les etablissements : elles doivent
         // donc etre explicitement hors scope.
+        $scope = Scope::forUser($this->app->auth()->user());
+        $tenantScope = $scope->condition('t');
+
+        // Calcule une seule fois : chaque appel a overview() lance une
+        // vingtaine de requetes.
+        $overview = $this->app->tenant()->global(fn (): array => $stats->overview());
+
         $data = $this->app->tenant()->global(fn (): array => [
-            'stats' => $stats->overview(),
+            'stats' => $overview,
             'map' => $stats->byRegion(),
+            'scope' => $scope,
+            // La liste suit le meme perimetre que les chiffres : les servir
+            // depuis deux sources differentes finirait par les faire diverger.
             'tenants' => $this->app->db()->select(
                 'SELECT t.*,
                         (SELECT COUNT(*) FROM users u WHERE u.tenant_id = t.id AND u.deleted_at IS NULL) AS users_count,
                         (SELECT COUNT(*) FROM students s WHERE s.tenant_id = t.id AND s.deleted_at IS NULL) AS students_count
                  FROM tenants t
-                 WHERE t.deleted_at IS NULL
-                 ORDER BY t.name'
+                 WHERE t.deleted_at IS NULL AND '.$tenantScope['sql'].'
+                 ORDER BY t.name',
+                $tenantScope['params']
             ),
-            'pendingRequests' => (int) $this->app->db()->scalar(
-                'SELECT COUNT(*) FROM establishment_requests WHERE request_status = :status',
-                ['status' => 'PENDING']
-            ),
-            'totalStudents' => (int) $this->app->db()->scalar(
-                'SELECT COUNT(*) FROM students WHERE deleted_at IS NULL'
-            ),
-            'totalUsers' => (int) $this->app->db()->scalar(
-                'SELECT COUNT(*) FROM users WHERE deleted_at IS NULL'
-            ),
+            'pendingRequests' => $overview['requests']['pending'],
+            'totalStudents' => $overview['students']['total'],
+            'totalUsers' => $overview['users']['total'],
             'recentLogins' => $this->app->db()->select(
                 'SELECT a.timestamp, a.ip_address, u.email, u.first_name, u.last_name, t.name AS tenant_name
                  FROM audit_logs a
@@ -85,6 +92,13 @@ final class PlatformController extends Controller
 
         if ($tenant === null) {
             throw new HttpException(404);
+        }
+
+        // Un delegue regional ne se place pas dans une ecole d'une autre
+        // region. Filtrer les listes ne suffit pas : l'identifiant se devine,
+        // et c'est ici que l'acces est reellement ouvert.
+        if (! Scope::forUser($this->app->auth()->user())->covers($tenant)) {
+            throw new HttpException(403, 'Cet etablissement est hors de votre perimetre.');
         }
 
         $this->app->session()->set('impersonated_tenant_id', $tenantId);
