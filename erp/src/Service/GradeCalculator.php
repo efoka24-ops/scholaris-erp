@@ -23,10 +23,33 @@ final class GradeCalculator
 
     private TenantContext $tenant;
 
+    /**
+     * Regles de l'etablissement : bareme, arrondi, mentions, absences.
+     *
+     * Elles etaient ecrites en dur ici. Chargees une fois par calcul, elles ne
+     * changent pas en cours de route — deux eleves de la meme classe ne
+     * peuvent pas etre notes sur des baremes differents.
+     */
+    private ?CalculationRules $rules = null;
+
     public function __construct(Connection $db, TenantContext $tenant)
     {
         $this->db = $db;
         $this->tenant = $tenant;
+    }
+
+    private function rules(): CalculationRules
+    {
+        if ($this->rules !== null) {
+            return $this->rules;
+        }
+
+        $tenant = $this->tenant->global(fn () => $this->db->selectOne(
+            'SELECT type, config_json FROM tenants WHERE id = :id',
+            ['id' => $this->tenant->requireId()]
+        ));
+
+        return $this->rules = CalculationRules::forTenant($tenant);
     }
 
     /**
@@ -95,7 +118,7 @@ final class GradeCalculator
             // Sans aucune note, l'eleve n'a pas de moyenne : mieux vaut
             // l'absence de resultat qu'un zero qui fausserait le classement.
             $averages[$studentId] = $coefficientTotal > 0
-                ? round($weightedTotal / $coefficientTotal, 2)
+                ? $this->rules()->round($weightedTotal / $coefficientTotal)
                 : null;
         }
 
@@ -126,6 +149,7 @@ final class GradeCalculator
             ]
         );
 
+        $rules = $this->rules();
         $weightedTotal = 0.0;
         $weightTotal = 0.0;
 
@@ -133,7 +157,16 @@ final class GradeCalculator
             $isAbsent = (int) $grade['is_absent'] === 1;
             $isJustified = (int) $grade['is_justified'] === 1;
 
+            // Une absence justifiee ne penalise jamais : un eleve malade n'a
+            // pas a voir sa moyenne baisser.
             if ($isAbsent && $isJustified) {
+                continue;
+            }
+
+            // Une absence non justifiee vaut zero, ou ne compte pas : le choix
+            // appartient a l'etablissement, et il change la moyenne du tout au
+            // tout.
+            if ($isAbsent && ! $rules->countsUnjustifiedAbsenceAsZero()) {
                 continue;
             }
 
@@ -145,13 +178,13 @@ final class GradeCalculator
             }
 
             $raw = $isAbsent ? 0.0 : (float) ($grade['value'] ?? 0);
-            $normalized = $raw * 20 / $maxValue;
+            $normalized = $rules->normalize($raw, $maxValue);
 
             $weightedTotal += $normalized * $weight;
             $weightTotal += $weight;
         }
 
-        return $weightTotal > 0 ? round($weightedTotal / $weightTotal, 2) : null;
+        return $weightTotal > 0 ? $rules->round($weightedTotal / $weightTotal) : null;
     }
 
     private function storeSubjectAverage(
@@ -175,7 +208,7 @@ final class GradeCalculator
         );
 
         $now = date('Y-m-d H:i:s');
-        $weighted = round($average * $coefficient, 2);
+        $weighted = $this->rules()->round($average * $coefficient);
 
         if ($existing !== null) {
             $this->db->execute(
@@ -268,7 +301,7 @@ final class GradeCalculator
                 'average' => $average,
                 'rank' => $ranks[$studentId] ?? null,
                 'total' => $totalStudents,
-                'mention' => self::mention($average),
+                'mention' => $this->rules()->mention($average),
                 'classroom' => $classroomId,
                 'updated_at' => $now,
             ];
@@ -303,27 +336,4 @@ final class GradeCalculator
         }
     }
 
-    /**
-     * Mention correspondant a une moyenne sur 20, bareme camerounais usuel.
-     */
-    public static function mention(float $average): string
-    {
-        if ($average >= 16) {
-            return 'Tres bien';
-        }
-
-        if ($average >= 14) {
-            return 'Bien';
-        }
-
-        if ($average >= 12) {
-            return 'Assez bien';
-        }
-
-        if ($average >= 10) {
-            return 'Passable';
-        }
-
-        return 'Insuffisant';
-    }
 }

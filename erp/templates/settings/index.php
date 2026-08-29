@@ -62,10 +62,82 @@ $title = 'Parametres';
             </div>
         <?php endforeach; ?>
 
-        <div class="form-actions">
-            <button type="submit" class="button">Enregistrer</button>
-        </div>
     <?php endif; ?>
+
+    <h2 style="margin-top:2rem">Regles de calcul</h2>
+    <p class="muted" style="margin-top:-0.5rem">
+        Ces reglages changent les moyennes deja calculees des le prochain
+        calcul. Ils ne modifient pas les bulletins deja publies.
+    </p>
+
+    <div class="grid-2">
+        <div class="field">
+            <label for="scale">Bareme</label>
+            <input id="scale" name="scale" type="number" min="1" max="100" step="1"
+                   value="<?= $this->e((string) (int) $rules->scale()) ?>">
+            <span class="muted" style="font-size:0.8125rem">
+                Les notes saisies sur un autre bareme sont ramenees sur celui-ci.
+            </span>
+        </div>
+        <div class="field">
+            <label for="pass_mark">Seuil de reussite</label>
+            <input id="pass_mark" name="pass_mark" type="number" min="0" step="0.5"
+                   value="<?= $this->e((string) $rules->passMark()) ?>">
+        </div>
+        <div class="field">
+            <label for="rounding">Arrondi</label>
+            <select id="rounding" name="rounding">
+                <option value="0" <?= $rules->rounding() === 0 ? 'selected' : '' ?>>Entier</option>
+                <option value="1" <?= $rules->rounding() === 1 ? 'selected' : '' ?>>Dixieme</option>
+                <option value="2" <?= $rules->rounding() === 2 ? 'selected' : '' ?>>Centieme</option>
+            </select>
+        </div>
+        <div class="field">
+            <label for="unjustified_absence">Absence non justifiee</label>
+            <select id="unjustified_absence" name="unjustified_absence">
+                <option value="ZERO" <?= $rules->countsUnjustifiedAbsenceAsZero() ? 'selected' : '' ?>>
+                    Compte zero
+                </option>
+                <option value="IGNORED" <?= $rules->countsUnjustifiedAbsenceAsZero() ? '' : 'selected' ?>>
+                    N entre pas dans la moyenne
+                </option>
+            </select>
+            <span class="muted" style="font-size:0.8125rem">
+                Une absence justifiee n entre jamais dans la moyenne.
+            </span>
+        </div>
+    </div>
+
+    <h3 style="margin-top:1.5rem">Mentions</h3>
+    <p class="muted" style="margin-top:-0.25rem">
+        Du seuil le plus haut au plus bas. Effacer un libelle retire la mention.
+    </p>
+
+    <?php
+    // Une ligne vide en fin de liste permet d'ajouter une mention sans autre
+    // ecran ni bouton.
+    $mentions = $rules->mentions();
+    $mentions[] = ['threshold' => '', 'label' => ''];
+    ?>
+    <?php foreach ($mentions as $index => $mention) : ?>
+        <div class="inline-form" style="gap:0.75rem;margin-bottom:0.5rem">
+            <input name="mention[<?= (int) $index ?>][threshold]" type="number" min="0" step="0.5"
+                   style="width:7rem" placeholder="Seuil"
+                   value="<?= $this->e((string) $mention['threshold']) ?>">
+            <input name="mention[<?= (int) $index ?>][label]" style="flex:1 1 14rem"
+                   placeholder="Libelle de la mention"
+                   value="<?= $this->e((string) $mention['label']) ?>">
+        </div>
+    <?php endforeach; ?>
+
+    <div class="field" style="max-width:22rem;margin-top:0.75rem">
+        <label for="fail_label">En dessous du dernier seuil</label>
+        <input id="fail_label" name="fail_label" value="<?= $this->e($rules->failLabel()) ?>">
+    </div>
+
+    <div class="form-actions" style="margin-top:1.5rem">
+        <button type="submit" class="button">Enregistrer</button>
+    </div>
 </form>
 
 <div class="card">

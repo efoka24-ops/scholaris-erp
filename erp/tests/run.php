@@ -51,6 +51,7 @@ $suites = [
     Scholaris\Tests\InterfaceTest::class,
     Scholaris\Tests\AuditTrailTest::class,
     Scholaris\Tests\ScopeTest::class,
+    Scholaris\Tests\CalculationRulesTest::class,
 ];
 
 $totalTests = 0;
