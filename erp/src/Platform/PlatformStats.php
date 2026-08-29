@@ -538,11 +538,13 @@ final class PlatformStats
             // afficher « 0 eleve par agent » laisserait croire a un
             // sureffectif.
             'ratio' => $total > 0 ? round($students / $total, 1) : null,
+            // Deux marqueurs distincts pour la meme date : MySQL en preparation
+            // native refuse qu'un nom soit reutilise dans une requete.
             'onLeave' => $this->count(
                 "SELECT COUNT(*) FROM leave_requests
-                 WHERE status = 'APPROVED' AND start_date <= :today AND end_date >= :today"
+                 WHERE status = 'APPROVED' AND start_date <= :from AND end_date >= :to"
                 .$this->scopeVia('tenant_id'),
-                ['today' => date('Y-m-d')]
+                ['from' => date('Y-m-d'), 'to' => date('Y-m-d')]
             ),
             'pendingLeave' => $this->count(
                 "SELECT COUNT(*) FROM leave_requests WHERE status = 'PENDING'".$this->scopeVia('tenant_id')
@@ -552,6 +554,35 @@ final class PlatformStats
             'hiredThisYear' => $this->count(
                 'SELECT COUNT(*) FROM employees WHERE hire_date >= :since'.$this->scopeVia('tenant_id'),
                 ['since' => date('Y-01-01')]
+            ),
+        ];
+    }
+
+    /**
+     * Chiffre-cle de chaque domaine d'administration.
+     *
+     * Le tableau de bord montrait des indicateurs sans ouvrir sur rien : on y
+     * lisait « 3 demandes en attente » sans pouvoir les instruire, et la
+     * moitie des ecrans n'etait atteignable que par le menu lateral. Un
+     * tableau de bord qui ne mene nulle part n'est qu'un rapport.
+     *
+     * @return array<string, int>
+     */
+    public function governance(): array
+    {
+        return [
+            'roles' => $this->count('SELECT COUNT(*) FROM roles WHERE tenant_id IS NULL'),
+            'auditEvents' => $this->count(
+                'SELECT COUNT(*) FROM audit_logs a
+                 WHERE a.user_id IS NULL OR a.user_id IN (
+                     SELECT u.id FROM users u WHERE 1 = 1'.$this->scopeVia('u.tenant_id').'
+                 )'
+            ),
+            'mailsFailed' => $this->count(
+                "SELECT COUNT(*) FROM notifications WHERE status <> 'SENT'".$this->scopeVia('tenant_id')
+            ),
+            'mailsTotal' => $this->count(
+                'SELECT COUNT(*) FROM notifications WHERE 1 = 1'.$this->scopeVia('tenant_id')
             ),
         ];
     }

@@ -168,6 +168,163 @@ $money = static function (float $amount): string {
     </div>
 </div>
 
+<?php
+/**
+ * Tout ce que le Super Admin administre, avec son chiffre du moment.
+ *
+ * L'ecran montrait des indicateurs sans ouvrir sur rien : on y lisait
+ * « 3 demandes en attente » sans pouvoir les instruire, et la moitie des
+ * ecrans n'etait atteignable que par le menu lateral. Un tableau de bord qui
+ * ne mene nulle part n'est qu'un rapport.
+ *
+ * @var array<string, int> $governance
+ * @var array<string, mixed> $hr
+ * @var int $pendingMigrations
+ */
+$areas = [
+    [
+        'href' => '/admin/etablissements',
+        'icon' => 'inbox',
+        'title' => 'Demandes d ouverture',
+        'value' => $stats['requests']['pending'],
+        'unit' => 'en attente de decision',
+        'alert' => $stats['requests']['pending'] > 0,
+    ],
+    [
+        'href' => '/admin/parc',
+        'icon' => 'building',
+        'title' => 'Parc d etablissements',
+        'value' => $stats['tenants']['total'],
+        'unit' => $stats['tenants']['suspended'] > 0
+            ? $stats['tenants']['suspended'].' suspendus'
+            : 'tous actifs',
+        'alert' => $stats['tenants']['suspended'] > 0,
+    ],
+    [
+        'href' => '/admin/comptes',
+        'icon' => 'users',
+        'title' => 'Comptes',
+        'value' => $stats['users']['total'],
+        'unit' => 'creer, reinitialiser, suspendre',
+        'alert' => false,
+    ],
+    [
+        'href' => '/admin/habilitations',
+        'icon' => 'shield',
+        'title' => 'Habilitations',
+        'value' => $governance['roles'],
+        'unit' => 'roles et leurs droits',
+        'alert' => false,
+    ],
+    [
+        'href' => '/admin/rapports',
+        'icon' => 'chart',
+        'title' => 'Rapports',
+        'value' => $stats['tenants']['total'],
+        'unit' => 'etablissements compares, export CSV',
+        'alert' => false,
+    ],
+    [
+        'href' => '/admin/journal',
+        'icon' => 'history',
+        'title' => 'Journal d audit',
+        'value' => $governance['auditEvents'],
+        'unit' => 'actes traces',
+        'alert' => false,
+    ],
+    [
+        'href' => '/admin/courriers',
+        'icon' => 'mail',
+        'title' => 'Courriers envoyes',
+        'value' => $governance['mailsTotal'],
+        'unit' => $governance['mailsFailed'] > 0
+            ? $governance['mailsFailed'].' non remis'
+            : 'tous remis',
+        'alert' => $governance['mailsFailed'] > 0,
+    ],
+    [
+        'href' => '/admin/maintenance',
+        'icon' => 'settings',
+        'title' => 'Maintenance',
+        'value' => $pendingMigrations,
+        'unit' => $pendingMigrations > 0 ? 'migrations a appliquer' : 'schema a jour',
+        'alert' => $pendingMigrations > 0,
+    ],
+];
+?>
+<div class="card">
+    <h2 style="margin:0">Ce que vous administrez</h2>
+    <p class="muted" style="margin:0.25rem 0 1.25rem">
+        Chaque domaine avec son chiffre du moment. En ambre, ce qui appelle une
+        action de votre part.
+    </p>
+
+    <div class="tiles">
+        <?php foreach ($areas as $area) : ?>
+            <a class="tile<?= $area['alert'] ? ' tile--alert' : '' ?>" href="<?= $this->e($area['href']) ?>">
+                <span class="tile__icon"><?= $this->raw(Navigation::icon($area['icon'])) ?></span>
+                <span class="tile__body">
+                    <span class="tile__value"><?= $this->number($area['value']) ?></span>
+                    <strong><?= $this->e($area['title']) ?></strong>
+                    <span class="muted"><?= $this->e($area['unit']) ?></span>
+                </span>
+            </a>
+        <?php endforeach; ?>
+    </div>
+</div>
+
+    <div class="card">
+        <h2 style="margin:0">Personnel</h2>
+        <p class="muted" style="margin:0.2rem 0 1rem">
+            Effectifs et encadrement sur votre perimetre
+        </p>
+
+        <div class="stats stats--compact" style="margin-bottom:1rem">
+            <div class="stat">
+                <div class="stat__value"><?= $this->number($hr['total']) ?></div>
+                <div class="stat__label">Agents en poste</div>
+            </div>
+            <div class="stat stat--figure-violet">
+                <div class="stat__value">
+                    <?php if ($hr['ratio'] === null) : ?>
+                        &mdash;
+                    <?php else : ?>
+                        <?= $this->e(number_format($hr['ratio'], 1, ',', ' ')) ?>
+                    <?php endif; ?>
+                </div>
+                <div class="stat__label">Eleves par agent</div>
+            </div>
+            <div class="stat stat--figure-amber">
+                <div class="stat__value"><?= $this->number($hr['onLeave']) ?></div>
+                <div class="stat__label">En conge aujourd hui</div>
+            </div>
+        </div>
+
+        <?php if ($hr['byPosition'] === []) : ?>
+            <p class="muted">Aucun personnel enregistre sur ce perimetre.</p>
+        <?php else : ?>
+            <div class="table-wrap">
+                <table class="table">
+                    <thead><tr><th>Fonction</th><th>Effectif</th></tr></thead>
+                    <tbody>
+                    <?php foreach (array_slice($hr['byPosition'], 0, 8) as $row) : ?>
+                        <tr>
+                            <td><?= $this->e($row['position']) ?></td>
+                            <td><?= $this->number($row['total']) ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        <?php endif; ?>
+
+        <p class="muted">
+            Le taux d encadrement est le seul chiffre qui se compare d un
+            etablissement a l autre : un effectif brut ne dit rien sans la
+            taille de l ecole.
+        </p>
+    </div>
+
 <?= $this->include('platform.map', ['map' => $map]) ?>
 
 <div class="card">

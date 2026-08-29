@@ -44,6 +44,9 @@ final class PlatformController extends Controller
             'stats' => $overview,
             'map' => $stats->byRegion(),
             'scope' => $scope,
+            'governance' => $stats->governance(),
+            'hr' => $stats->humanResources(),
+            'pendingMigrations' => $this->pendingMigrations(),
             // La liste suit le meme perimetre que les chiffres : les servir
             // depuis deux sources differentes finirait par les faire diverger.
             'tenants' => $this->app->db()->select(
@@ -133,6 +136,27 @@ final class PlatformController extends Controller
         $this->app->tenant()->clear();
 
         return $this->redirectWithSuccess('/admin', 'Retour a l administration de la plateforme.');
+    }
+
+    /**
+     * Migrations livrees mais pas encore appliquees.
+     *
+     * Signalee sur l'accueil parce qu'un schema en retard sur le code se
+     * manifeste par des pages en erreur, sans que rien ne dise pourquoi.
+     */
+    private function pendingMigrations(): int
+    {
+        $files = glob($this->app->basePath().'/database/migrations/*.sql');
+
+        if ($files === false) {
+            return 0;
+        }
+
+        $applied = (int) $this->app->tenant()->global(
+            fn () => $this->app->db()->scalar('SELECT COUNT(*) FROM migrations')
+        );
+
+        return max(0, count($files) - $applied);
     }
 
     private function assertSuperAdmin(): void

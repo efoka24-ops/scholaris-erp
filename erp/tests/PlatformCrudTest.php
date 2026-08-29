@@ -355,6 +355,80 @@ final class PlatformCrudTest extends TestCase
         $this->assertStringContains('Nord', $content, 'Avec la region de l etablissement cree');
     }
 
+    public function testLAccueilOuvreSurTousLesDomainesAdministres(): void
+    {
+        // L'ecran montrait des indicateurs sans mener nulle part : on y lisait
+        // « 3 demandes en attente » sans pouvoir les instruire, et la moitie
+        // des ecrans n'etait atteignable que par le menu lateral. Un tableau
+        // de bord qui ne mene nulle part n'est qu'un rapport.
+        $this->actAsSuperAdmin();
+
+        $content = $this->request('GET', '/admin')->content();
+
+        $domains = [
+            '/admin/etablissements',
+            '/admin/parc',
+            '/admin/comptes',
+            '/admin/habilitations',
+            '/admin/rapports',
+            '/admin/journal',
+            '/admin/courriers',
+            '/admin/maintenance',
+        ];
+
+        $missing = [];
+
+        foreach ($domains as $href) {
+            if (! str_contains($content, 'href="'.$href.'"')) {
+                $missing[] = $href;
+            }
+        }
+
+        $this->assertSame([], $missing, 'Domaines absents de l accueil : '.implode(', ', $missing));
+    }
+
+    public function testLAccueilSignaleCeQuiAppelleUneAction(): void
+    {
+        // L'ambre ne doit designer que ce qui attend quelqu'un : un signal
+        // permanent cesse d'etre lu.
+        $userId = $this->actAsSuperAdmin();
+
+        // Un compte de plateforme n'appartient a aucun etablissement : rattache
+        // a l'un d'eux, son perimetre se restreint et les demandes
+        // d'ouverture — qui ne relevent d'aucune ecole — disparaissent.
+        $this->db->execute('UPDATE users SET tenant_id = NULL WHERE id = :id', ['id' => $userId]);
+        $this->actingAs($userId);
+
+        $sansRien = $this->request('GET', '/admin')->content();
+
+        // Une demande en attente doit faire apparaitre le signal.
+        $this->db->execute(
+            "INSERT INTO establishment_requests
+                (id, name, code, type, status, director_first_name, director_last_name,
+                 director_email, request_status, created_at, updated_at)
+             VALUES (:id, 'Ecole', 'ATT', 'PRIMAIRE', 'PRIVE', 'Chef', 'ETAB',
+                 'chef@att.cm', 'PENDING', :now, :updated)",
+            ['id' => \Scholaris\Database\Table::uuid(), 'now' => date('Y-m-d H:i:s'), 'updated' => date('Y-m-d H:i:s')]
+        );
+
+        $avecDemande = $this->request('GET', '/admin')->content();
+
+        $this->assertTrue(
+            substr_count($avecDemande, 'tile--alert') > substr_count($sansRien, 'tile--alert'),
+            'Une demande en attente doit se signaler sur l accueil'
+        );
+    }
+
+    public function testLAccueilPorteLesChiffresDuPersonnel(): void
+    {
+        $this->actAsSuperAdmin();
+
+        $content = $this->request('GET', '/admin')->content();
+
+        $this->assertStringContains('Agents en poste', $content, 'Les effectifs figurent');
+        $this->assertStringContains('Eleves par agent', $content, 'Ainsi que le taux d encadrement');
+    }
+
     public function testLaCarteSitueChaqueEtablissementDansSaRegion(): void
     {
         $this->actAsSuperAdmin();

@@ -1380,3 +1380,87 @@ input[type="checkbox"], input[type="radio"] {
     .content { margin: 0; padding: 0; }
     .card { box-shadow: none; border-color: #ccc; }
 }
+
+/* --- Grille d'acces aux domaines -------------------------------------------
+ * Un tableau de bord qui ne mene nulle part n'est qu'un rapport : chaque
+ * domaine porte son chiffre du moment et ouvre sur son ecran. L'ambre signale
+ * ce qui appelle une action, et rien d'autre — un signal permanent cesse
+ * d'etre lu. */
+
+.tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+    gap: 0.75rem;
+}
+
+.tile {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.85rem;
+    padding: 1rem;
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    background: var(--surface-muted);
+    color: var(--text);
+    text-decoration: none;
+    transition: border-color 0.12s ease, transform 0.12s ease;
+}
+
+.tile:hover {
+    border-color: var(--violet);
+    text-decoration: none;
+    transform: translateY(-1px);
+}
+
+.tile:focus-visible {
+    outline: none;
+    border-color: var(--violet);
+    box-shadow: 0 0 0 3px var(--violet-soft);
+}
+
+.tile--alert {
+    background: var(--amber-soft);
+    border-color: #f0d49a;
+}
+
+.tile--alert:hover {
+    border-color: var(--amber-dark);
+}
+
+.tile__icon {
+    width: 2.4rem;
+    height: 2.4rem;
+    border-radius: 0.65rem;
+    background: var(--violet-soft);
+    color: var(--violet);
+    display: grid;
+    place-items: center;
+    flex: none;
+}
+
+.tile--alert .tile__icon {
+    background: rgba(217, 119, 6, 0.16);
+    color: var(--amber-dark);
+}
+
+.tile__body {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.tile__value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+}
+
+.tile__body strong {
+    font-size: 0.9375rem;
+    font-weight: 600;
+}
+
+.tile__body .muted {
+    font-size: 0.8125rem;
+}
