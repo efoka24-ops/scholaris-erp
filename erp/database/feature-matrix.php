@@ -166,6 +166,29 @@ return [
         'hr.leaves' => ['PRIMAIRE' => $opt, 'COLLEGE' => $opt, 'LYCEE_GENERAL' => $on, 'LYCEE_TECHNIQUE' => $on, 'CENTRE_FORMATION' => $on, 'SUPERIEUR' => $on],
         'hr.cnps_dipe' => ['PRIMAIRE' => $off, 'COLLEGE' => $off, 'LYCEE_GENERAL' => $on, 'LYCEE_TECHNIQUE' => $on, 'CENTRE_FORMATION' => $on, 'SUPERIEUR' => $on],
 
+        // ── 8bis. Gestion administrative et financière ───────────────────────
+        //
+        // Une école primaire de village tient sa caisse sur un cahier : lui
+        // imposer une comptabilité SYSCOHADA et un magasin ne l'aiderait pas.
+        // Ces modules lui restent donc proposés, jamais imposés. Ils sont en
+        // revanche actifs d'office là où un intendant et un comptable
+        // existent réellement.
+        'finance.accounting' => ['PRIMAIRE' => $opt, 'COLLEGE' => $opt, 'LYCEE_GENERAL' => $on, 'LYCEE_TECHNIQUE' => $on, 'CENTRE_FORMATION' => $on, 'SUPERIEUR' => $on],
+        'finance.budget' => ['PRIMAIRE' => $opt, 'COLLEGE' => $opt, 'LYCEE_GENERAL' => $on, 'LYCEE_TECHNIQUE' => $on, 'CENTRE_FORMATION' => $on, 'SUPERIEUR' => $on],
+        'purchase.orders' => ['PRIMAIRE' => $opt, 'COLLEGE' => $opt, 'LYCEE_GENERAL' => $on, 'LYCEE_TECHNIQUE' => $on, 'CENTRE_FORMATION' => $on, 'SUPERIEUR' => $on],
+        'stock.items' => ['PRIMAIRE' => $opt, 'COLLEGE' => $on, 'LYCEE_GENERAL' => $on, 'LYCEE_TECHNIQUE' => $on, 'CENTRE_FORMATION' => $on, 'SUPERIEUR' => $on],
+        'hr.payslips' => ['PRIMAIRE' => $opt, 'COLLEGE' => $opt, 'LYCEE_GENERAL' => $on, 'LYCEE_TECHNIQUE' => $on, 'CENTRE_FORMATION' => $on, 'SUPERIEUR' => $on],
+
+        // La GED et les rendez-vous servent partout : toute école classe des
+        // pièces et reçoit des familles, quelle que soit sa taille.
+        'ged.documents' => ['PRIMAIRE' => $on, 'COLLEGE' => $on, 'LYCEE_GENERAL' => $on, 'LYCEE_TECHNIQUE' => $on, 'CENTRE_FORMATION' => $on, 'SUPERIEUR' => $on],
+        'life.appointments' => ['PRIMAIRE' => $on, 'COLLEGE' => $on, 'LYCEE_GENERAL' => $on, 'LYCEE_TECHNIQUE' => $on, 'CENTRE_FORMATION' => $opt, 'SUPERIEUR' => $on],
+
+        // Les actes de carrière n'ont de sens que là où le personnel relève
+        // d'un statut : un centre de formation privé n'en prend pas.
+        'admin.public_acts' => ['PRIMAIRE' => $on, 'COLLEGE' => $on, 'LYCEE_GENERAL' => $on, 'LYCEE_TECHNIQUE' => $on, 'CENTRE_FORMATION' => $opt, 'SUPERIEUR' => $on],
+        'pilot.objectives' => ['PRIMAIRE' => $opt, 'COLLEGE' => $on, 'LYCEE_GENERAL' => $on, 'LYCEE_TECHNIQUE' => $on, 'CENTRE_FORMATION' => $on, 'SUPERIEUR' => $on],
+
         // ── 9. Reporting ─────────────────────────────────────────────────────
         'report.dashboard' => ['PRIMAIRE' => $on, 'COLLEGE' => $on, 'LYCEE_GENERAL' => $on, 'LYCEE_TECHNIQUE' => $on, 'CENTRE_FORMATION' => $on, 'SUPERIEUR' => $on],
         'report.by_level' => ['PRIMAIRE' => $on, 'COLLEGE' => $on, 'LYCEE_GENERAL' => $on, 'LYCEE_TECHNIQUE' => $on, 'CENTRE_FORMATION' => $on, 'SUPERIEUR' => $on],
@@ -266,5 +289,14 @@ return [
         'hr.payroll' => 'Paie et salaires',
         'hr.leaves' => 'Conges',
         'report.exam_success' => 'Taux de reussite aux examens',
+        'finance.accounting' => 'Comptabilite generale',
+        'finance.budget' => 'Budget previsionnel',
+        'purchase.orders' => 'Achats et fournisseurs',
+        'stock.items' => 'Stocks et magasin',
+        'hr.payslips' => 'Bulletins de paie',
+        'ged.documents' => 'Documents (GED)',
+        'life.appointments' => 'Rendez-vous',
+        'admin.public_acts' => 'Actes de carriere et notes de service',
+        'pilot.objectives' => 'Objectifs et performances',
     ],
 ];

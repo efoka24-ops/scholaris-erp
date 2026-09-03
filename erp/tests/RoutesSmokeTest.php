@@ -42,6 +42,13 @@ final class RoutesSmokeTest extends TestCase
         '/messages',
         '/annees-scolaires',
         '/parametres',
+
+        // Modules de gestion actifs d'office pour un college.
+        '/stocks',
+        '/documents',
+        '/rendez-vous',
+        '/administration',
+        '/objectifs',
     ];
 
     /**
@@ -57,6 +64,12 @@ final class RoutesSmokeTest extends TestCase
         '/catering' => 'life.catering',
         '/patrimoine' => 'life.assets',
         '/hr' => 'hr.payroll',
+
+        // Comptabilite, achats et paie restent proposes a un college : une
+        // petite structure n'a pas d'intendant pour les tenir.
+        '/comptabilite' => 'finance.accounting',
+        '/achats' => 'purchase.orders',
+        '/paie' => 'hr.payslips',
     ];
 
     /** Pages accessibles sans compte. */

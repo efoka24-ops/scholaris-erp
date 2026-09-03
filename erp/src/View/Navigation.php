@@ -81,12 +81,24 @@ final class Navigation
                 self::item('/library', 'Bibliothèque', 'library:read', 'life.library', 'book'),
                 self::item('/transport', 'Transport', 'transport:read', 'life.transport', 'bus'),
                 self::item('/catering', 'Cantine', 'catering:read', 'life.catering', 'meal'),
+                self::item('/rendez-vous', 'Rendez-vous', 'appointments:read', 'life.appointments', 'clock'),
             ]],
             ['title' => 'Gestion', 'items' => [
                 self::item('/finance', 'Gestion financière', 'finance-dashboard:read', 'finance.fees', 'wallet'),
                 self::item('/finance/invoices', 'Factures', 'invoices:read', 'finance.payments', 'receipt'),
-                self::item('/hr', 'RH & paie', 'hr:read', 'hr.payroll', 'briefcase'),
+                self::item('/comptabilite', 'Comptabilité', 'accounting:read', 'finance.accounting', 'ledger'),
+                self::item('/achats', 'Achats & fournisseurs', 'purchases:read', 'purchase.orders', 'cart'),
+                self::item('/stocks', 'Stocks & magasin', 'stock:read', 'stock.items', 'box'),
                 self::item('/patrimoine', 'Patrimoine', 'assets:read', 'life.assets', 'box'),
+            ]],
+            ['title' => 'Personnel', 'items' => [
+                self::item('/hr', 'Dossiers & congés', 'hr:read', 'hr.payroll', 'briefcase'),
+                self::item('/paie', 'Paie & bulletins', 'payroll:read', 'hr.payslips', 'banknote'),
+                self::item('/administration', 'Actes & notes de service', 'staff-decisions:read', 'admin.public_acts', 'stamp'),
+            ]],
+            ['title' => 'Pilotage', 'items' => [
+                self::item('/objectifs', 'Objectifs & performances', 'objectives:read', 'pilot.objectives', 'target'),
+                self::item('/documents', 'Documents', 'documents:read', 'ged.documents', 'folder'),
             ]],
             ['title' => 'Communication', 'items' => [
                 self::item('/communication', 'Annonces', 'communications:read', null, 'megaphone'),
@@ -228,6 +240,13 @@ final class Navigation
             'chart' => '<path d="M4 20V4"/><path d="M4 20h16"/><path d="M8 17v-5M12.5 17V8M17 17v-7"/>',
             'logout' => '<path d="M14 4h4.5A1.5 1.5 0 0 1 20 5.5v13a1.5 1.5 0 0 1-1.5 1.5H14"/><path d="M10 16l-4-4 4-4"/><path d="M6 12h9"/>',
             'menu' => '<path d="M4 7h16M4 12h16M4 17h16"/>',
+            'clock' => '<circle cx="12" cy="12" r="9"/><path d="M12 7v5.5l3.5 2"/>',
+            'ledger' => '<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 3v18"/><path d="M11.5 8h5M11.5 12h5M11.5 16h3"/>',
+            'cart' => '<path d="M3 4h2.2l2.3 11h9.6l2-7.5H6.2"/><circle cx="9" cy="19" r="1.5"/><circle cx="17" cy="19" r="1.5"/>',
+            'banknote' => '<rect x="2.5" y="6" width="19" height="12" rx="2"/><circle cx="12" cy="12" r="2.6"/><path d="M6 9.5v5M18 9.5v5"/>',
+            'stamp' => '<path d="M9 3h6a2 2 0 0 1 2 2l-1 6H8L7 5a2 2 0 0 1 2-2z"/><rect x="4" y="13" width="16" height="4" rx="1"/><path d="M4.5 20h15"/>',
+            'target' => '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1"/>',
+            'folder' => '<path d="M3 6.5A1.5 1.5 0 0 1 4.5 5h4l2 2.5h7A1.5 1.5 0 0 1 19 9v8.5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 3 17.5z"/>',
         ];
 
         $path = $paths[$name] ?? $paths['home'];

@@ -56,6 +56,30 @@ final class Response
         return new self('', $status, ['Location' => $location]);
     }
 
+    /**
+     * Sert un fichier stocke, en telechargement.
+     *
+     * Le type est impose plutot que devine par le navigateur, et le nom
+     * propose est echappe : un document depose sous un nom contenant des
+     * guillemets ne doit pas pouvoir injecter d'en-tete supplementaire.
+     *
+     * Content-Disposition vaut « attachment » sans exception. Afficher un
+     * document televerse dans l'onglet reviendrait a executer son contenu sur
+     * l'origine de l'application : un HTML depose comme piece jointe y
+     * lirait la session de celui qui l'ouvre.
+     */
+    public static function download(string $content, string $filename, string $mimeType): self
+    {
+        $safeName = str_replace(["\r", "\n", '"'], '', $filename);
+
+        return new self($content, 200, [
+            'Content-Type' => $mimeType,
+            'Content-Disposition' => 'attachment; filename="'.$safeName.'"',
+            'Content-Length' => (string) strlen($content),
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
+    }
+
     public function status(): int
     {
         return $this->status;

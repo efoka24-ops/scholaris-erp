@@ -138,6 +138,55 @@ return [
         ['hr', 'update', 'Modifier un dossier employé ou statut de congé'],
         ['users', 'assign-roles', 'Assigner un ou plusieurs rôles à un utilisateur'],
         ['payments', 'cashout', 'Initier un décaissement / paiement via CAMOO'],
+
+        // Module 22 — comptabilité. Saisir une écriture et la valider sont
+        // deux droits distincts : la validation rend l'écriture définitive,
+        // et c'est le seul geste qu'un contrôle regardera.
+        ['accounting', 'read', 'Consulter la comptabilité, la balance et le budget'],
+        ['accounting', 'create', 'Saisir une écriture au brouillard'],
+        ['accounting', 'post', 'Valider ou contre-passer une écriture'],
+        ['budget', 'read', 'Consulter le budget prévisionnel'],
+        ['budget', 'create', 'Créer une ligne budgétaire'],
+
+        // Module 23 — achats. Demander et approuver sont séparés : c'est la
+        // seule protection réelle contre l'engagement de dépenses non
+        // autorisées.
+        ['suppliers', 'read', 'Consulter les fournisseurs'],
+        ['suppliers', 'create', 'Enregistrer un fournisseur'],
+        ['purchases', 'read', 'Consulter les commandes d\'achat'],
+        ['purchases', 'create', 'Établir une demande d\'achat'],
+        ['purchases', 'approve', 'Approuver ou refuser une demande d\'achat'],
+        ['purchases', 'receive', 'Enregistrer la réception d\'une commande'],
+
+        // Module 24 — stocks.
+        ['stock', 'read', 'Consulter le magasin et les mouvements'],
+        ['stock', 'create', 'Créer un article au catalogue'],
+        ['stock', 'move', 'Enregistrer une entrée, une sortie ou un inventaire'],
+
+        // Module 42 — paie.
+        ['payroll', 'read', 'Consulter la paie et les bulletins'],
+        ['payroll', 'create', 'Ouvrir une période et générer les bulletins'],
+        ['payroll', 'close', 'Valider un bulletin et clore une période de paie'],
+
+        // Module 37 — gestion électronique des documents.
+        ['documents', 'read', 'Consulter et télécharger les documents'],
+        ['documents', 'create', 'Déposer un document'],
+        ['documents', 'delete', 'Retirer un document'],
+
+        // Module 39 — rendez-vous.
+        ['appointments', 'read', 'Consulter les rendez-vous'],
+        ['appointments', 'create', 'Prendre un rendez-vous'],
+        ['appointments', 'update', 'Confirmer, annuler ou clore un rendez-vous'],
+
+        // Module 40 — administration publique.
+        ['staff-decisions', 'read', 'Consulter les actes de carrière et notes de service'],
+        ['staff-decisions', 'create', 'Préparer un acte ou une note de service'],
+        ['staff-decisions', 'sign', 'Signer un acte, publier une note de service'],
+
+        // Module 43 — objectifs et performances.
+        ['objectives', 'read', 'Consulter les objectifs et leur avancement'],
+        ['objectives', 'create', 'Fixer un objectif'],
+        ['objectives', 'update', 'Relever une valeur, changer le statut d\'un objectif'],
     ],
 
     'roles' => [
@@ -231,6 +280,13 @@ return [
                 // permissions séparé donnerait deux vérités sur le même droit.
                 'hr:read', 'hr:create', 'hr:update',
                 'internal-messages:read', 'internal-messages:create',
+
+                // Le responsable RH prépare la paie et les actes de carrière ;
+                // la validation finale revient au directeur.
+                'payroll:read', 'payroll:create',
+                'staff-decisions:read', 'staff-decisions:create',
+                'documents:read', 'documents:create',
+                'objectives:read',
             ],
         ],
         [
@@ -389,6 +445,20 @@ return [
                 'exams:results',
                 'reports:read',
                 'payments:cashout',
+
+                // Administrateur technique de l'établissement : il doit
+                // pouvoir configurer et dépanner chaque module, y compris les
+                // huit modules de gestion.
+                'accounting:read', 'accounting:create', 'accounting:post',
+                'budget:read', 'budget:create',
+                'suppliers:read', 'suppliers:create',
+                'purchases:read', 'purchases:create', 'purchases:approve', 'purchases:receive',
+                'stock:read', 'stock:create', 'stock:move',
+                'payroll:read', 'payroll:create', 'payroll:close',
+                'documents:read', 'documents:create', 'documents:delete',
+                'appointments:read', 'appointments:create', 'appointments:update',
+                'staff-decisions:read', 'staff-decisions:create', 'staff-decisions:sign',
+                'objectives:read', 'objectives:create', 'objectives:update',
             ],
         ],
         [
@@ -452,6 +522,29 @@ return [
                 'exams:read',
                 'exams:results',
                 'reports:read',
+
+                // Le directeur approuve les achats mais ne les saisit pas :
+                // c'est la séparation qui donne son sens à l'approbation.
+                // Il signe les actes de carrière, prérogative propre au chef
+                // d'établissement, et fixe les objectifs de l'année.
+                'accounting:read',
+                'budget:read',
+                'purchases:read',
+                'purchases:approve',
+                'suppliers:read',
+                'stock:read',
+                'payroll:read',
+                'documents:read',
+                'documents:create',
+                'appointments:read',
+                'appointments:create',
+                'appointments:update',
+                'staff-decisions:read',
+                'staff-decisions:create',
+                'staff-decisions:sign',
+                'objectives:read',
+                'objectives:create',
+                'objectives:update',
             ],
         ],
         [
@@ -623,6 +716,25 @@ return [
                 'internal-messages:read',
                 'internal-messages:create',
                 'payments:cashout',
+
+                // L'intendant tient le magasin et prépare les commandes ; il
+                // ne les approuve pas lui-même, et ne signe pas les actes.
+                'accounting:read',
+                'accounting:create',
+                'budget:read',
+                'budget:create',
+                'suppliers:read',
+                'suppliers:create',
+                'purchases:read',
+                'purchases:create',
+                'purchases:receive',
+                'stock:read',
+                'stock:create',
+                'stock:move',
+                'payroll:read',
+                'payroll:create',
+                'documents:read',
+                'documents:create',
             ],
         ],
         [
@@ -641,6 +753,20 @@ return [
                 'classrooms:read',
                 'internal-messages:read',
                 'internal-messages:create',
+
+                // Le comptable tient les écritures et les valide : c'est son
+                // métier. Il n'approuve pas les achats et n'accède pas à la
+                // paie, conformément à la description du rôle.
+                'accounting:read',
+                'accounting:create',
+                'accounting:post',
+                'budget:read',
+                'budget:create',
+                'suppliers:read',
+                'purchases:read',
+                'stock:read',
+                'documents:read',
+                'documents:create',
             ],
         ],
         [
@@ -681,6 +807,16 @@ return [
                 'internal-messages:create',
                 'exams:read',
                 'exams:register',
+
+                // Le secrétariat tient l'agenda de la direction et le fonds
+                // documentaire : c'est lui qui reçoit les familles et classe
+                // les pièces.
+                'documents:read',
+                'documents:create',
+                'appointments:read',
+                'appointments:create',
+                'appointments:update',
+                'staff-decisions:read',
             ],
         ],
         [

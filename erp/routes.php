@@ -13,7 +13,15 @@ declare(strict_types=1);
  */
 
 use Scholaris\Application;
+use Scholaris\Controller\AccountingController;
+use Scholaris\Controller\AppointmentController;
 use Scholaris\Controller\AuthController;
+use Scholaris\Controller\DocumentController;
+use Scholaris\Controller\ObjectiveController;
+use Scholaris\Controller\PayrollController;
+use Scholaris\Controller\ProcurementController;
+use Scholaris\Controller\PublicAdministrationController;
+use Scholaris\Controller\StockController;
 use Scholaris\Controller\ClassroomController;
 use Scholaris\Controller\DashboardController;
 use Scholaris\Controller\EnrollmentController;
@@ -207,6 +215,67 @@ $router->get('/hr', [HrController::class, 'index'], 'hr:read', 'hr.payroll');
 $router->post('/hr/employees', [HrController::class, 'storeEmployee'], 'hr:create', 'hr.payroll');
 $router->post('/hr/leaves', [HrController::class, 'storeLeave'], 'hr:create', 'hr.payroll');
 $router->post('/hr/leaves/{id}', [HrController::class, 'decideLeave'], 'hr:update', 'hr.leaves');
+
+// Module 22 : comptabilite generale et budget.
+// Saisir et valider portent des permissions distinctes : la validation rend
+// l'ecriture definitive, et c'est le seul geste qu'un controle regardera.
+$router->get('/comptabilite', [AccountingController::class, 'index'], 'accounting:read', 'finance.accounting');
+$router->get('/comptabilite/ecritures/{id}', [AccountingController::class, 'show'], 'accounting:read', 'finance.accounting');
+$router->post('/comptabilite/comptes', [AccountingController::class, 'storeAccount'], 'accounting:create', 'finance.accounting');
+$router->post('/comptabilite/plan', [AccountingController::class, 'seedChart'], 'accounting:create', 'finance.accounting');
+$router->post('/comptabilite/ecritures', [AccountingController::class, 'storeEntry'], 'accounting:create', 'finance.accounting');
+$router->post('/comptabilite/ecritures/{id}/valider', [AccountingController::class, 'postEntry'], 'accounting:post', 'finance.accounting');
+$router->post('/comptabilite/ecritures/{id}/contrepasser', [AccountingController::class, 'reverseEntry'], 'accounting:post', 'finance.accounting');
+$router->post('/comptabilite/budget', [AccountingController::class, 'storeBudget'], 'budget:create', 'finance.budget');
+
+// Module 23 : achats et fournisseurs.
+$router->get('/achats', [ProcurementController::class, 'index'], 'purchases:read', 'purchase.orders');
+$router->get('/achats/{id}', [ProcurementController::class, 'show'], 'purchases:read', 'purchase.orders');
+$router->post('/achats/fournisseurs', [ProcurementController::class, 'storeSupplier'], 'suppliers:create', 'purchase.orders');
+$router->post('/achats/commandes', [ProcurementController::class, 'storeOrder'], 'purchases:create', 'purchase.orders');
+$router->post('/achats/{id}/decision', [ProcurementController::class, 'decide'], 'purchases:approve', 'purchase.orders');
+$router->post('/achats/{id}/reception', [ProcurementController::class, 'receive'], 'purchases:receive', 'purchase.orders');
+
+// Module 24 : stocks et magasin.
+$router->get('/stocks', [StockController::class, 'index'], 'stock:read', 'stock.items');
+$router->get('/stocks/{id}', [StockController::class, 'show'], 'stock:read', 'stock.items');
+$router->post('/stocks/articles', [StockController::class, 'storeItem'], 'stock:create', 'stock.items');
+$router->post('/stocks/{id}/mouvement', [StockController::class, 'move'], 'stock:move', 'stock.items');
+
+// Module 42 : paie.
+$router->get('/paie', [PayrollController::class, 'index'], 'payroll:read', 'hr.payslips');
+$router->get('/paie/bulletins/{id}', [PayrollController::class, 'show'], 'payroll:read', 'hr.payslips');
+$router->post('/paie/periodes', [PayrollController::class, 'storePeriod'], 'payroll:create', 'hr.payslips');
+$router->post('/paie/periodes/{id}/generer', [PayrollController::class, 'generate'], 'payroll:create', 'hr.payslips');
+$router->post('/paie/periodes/{id}/clore', [PayrollController::class, 'close'], 'payroll:close', 'hr.payslips');
+$router->post('/paie/bulletins/{id}/valider', [PayrollController::class, 'validateSlip'], 'payroll:close', 'hr.payslips');
+
+// Module 37 : gestion electronique des documents.
+// Le telechargement passe par le controleur, jamais par un fichier statique :
+// un chemin devinable ne doit pas suffire a lire une piece.
+$router->get('/documents', [DocumentController::class, 'index'], 'documents:read', 'ged.documents');
+$router->get('/documents/{id}/telecharger', [DocumentController::class, 'download'], 'documents:read', 'ged.documents');
+$router->post('/documents', [DocumentController::class, 'store'], 'documents:create', 'ged.documents');
+$router->post('/documents/{id}/retirer', [DocumentController::class, 'destroy'], 'documents:delete', 'ged.documents');
+
+// Module 39 : rendez-vous.
+$router->get('/rendez-vous', [AppointmentController::class, 'index'], 'appointments:read', 'life.appointments');
+$router->post('/rendez-vous', [AppointmentController::class, 'store'], 'appointments:create', 'life.appointments');
+$router->post('/rendez-vous/{id}/statut', [AppointmentController::class, 'updateStatus'], 'appointments:update', 'life.appointments');
+
+// Module 40 : administration publique — actes de carriere et notes de service.
+$router->get('/administration', [PublicAdministrationController::class, 'index'], 'staff-decisions:read', 'admin.public_acts');
+$router->get('/administration/actes/{id}', [PublicAdministrationController::class, 'showDecision'], 'staff-decisions:read', 'admin.public_acts');
+$router->post('/administration/actes', [PublicAdministrationController::class, 'storeDecision'], 'staff-decisions:create', 'admin.public_acts');
+$router->post('/administration/actes/{id}/signer', [PublicAdministrationController::class, 'signDecision'], 'staff-decisions:sign', 'admin.public_acts');
+$router->post('/administration/notes', [PublicAdministrationController::class, 'storeNote'], 'staff-decisions:create', 'admin.public_acts');
+$router->post('/administration/notes/{id}/publier', [PublicAdministrationController::class, 'publishNote'], 'staff-decisions:sign', 'admin.public_acts');
+
+// Module 43 : objectifs et performances.
+$router->get('/objectifs', [ObjectiveController::class, 'index'], 'objectives:read', 'pilot.objectives');
+$router->post('/objectifs', [ObjectiveController::class, 'store'], 'objectives:create', 'pilot.objectives');
+$router->post('/objectifs/{id}/releve', [ObjectiveController::class, 'record'], 'objectives:update', 'pilot.objectives');
+$router->post('/objectifs/{id}/statut', [ObjectiveController::class, 'updateStatus'], 'objectives:update', 'pilot.objectives');
 
 // Module 8 : communication
 $router->get('/communication', [CommunicationController::class, 'index'], 'communications:read');
