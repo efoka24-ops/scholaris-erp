@@ -1,0 +1,16 @@
+{
+  "name": "SCHOLARIS",
+  "short_name": "SCHOLARIS",
+  "description": "Gestion scolaire, utilisable meme sans reseau.",
+  "start_url": "/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#09080f",
+  "theme_color": "#09080f",
+  "lang": "fr",
+  "icons": [
+    { "src": "/assets/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/assets/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}

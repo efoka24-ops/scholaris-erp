@@ -1,0 +1,27 @@
+# Filet de securite pour l'hebergement mutualise.
+#
+# Laravel ne doit exposer que son dossier public/. La configuration a preferer
+# est de pointer la racine du sous-domaine sur .../scholaris-erp/public
+# (cPanel > Domaines > modifier la racine). Ce fichier sert au cas ou la racine
+# reste sur .../scholaris-erp : il renvoie les requetes vers public/ et refuse
+# l'acces au code et a la configuration.
+#
+# Tout est exprime en mod_rewrite, volontairement : les directives Options,
+# FilesMatch et Require dependent d'un AllowOverride que ce mutualise n'accorde
+# pas, et provoquent une erreur 500 sur l'ensemble du site, fichiers statiques
+# compris.
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Refus net sur la configuration et le code. Ces regles passent avant la
+    # redirection : elles ne doivent pas etre contournables.
+    RewriteRule ^\.env - [F,L]
+    RewriteRule ^composer\.(json|lock)$ - [F,L]
+    RewriteRule ^(app|bootstrap|config|database|resources|routes|scripts|storage|tests|vendor)/ - [F,L]
+    RewriteRule \.(sqlite|log)$ - [F,L]
+
+    # Tout le reste est servi depuis public/.
+    RewriteCond %{REQUEST_URI} !^/public/
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>

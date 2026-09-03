@@ -20,7 +20,6 @@ const tenantSchema = z.object({
   phone: z.string().optional(),
   email: z.union([z.string().email("Email invalide"), z.literal("")]).optional(),
   logoUrl: z.union([z.string().url("URL invalide"), z.literal("")]).optional(),
-  publicEnrollmentEnabled: z.boolean().optional(),
 });
 type TenantInput = z.infer<typeof tenantSchema>;
 
@@ -31,11 +30,13 @@ const AVAILABLE_MODULES: { code: string; label: string }[] = [
   { code: "communication", label: "Communication multicanal" },
   { code: "timetables", label: "Emplois du temps" },
   { code: "attendance", label: "Présences" },
+  { code: "health", label: "Santé scolaire" },
   { code: "discipline", label: "Discipline" },
+  { code: "clubs", label: "Clubs & Activités" },
   { code: "school-life", label: "Vie scolaire" },
   { code: "library", label: "Bibliothèque" },
   { code: "transport", label: "Transport" },
-  { code: "catering", label: "Restauration" },
+  { code: "catering", label: "Cantine & Internat" },
   { code: "assets", label: "Patrimoine" },
   { code: "hr", label: "Ressources humaines & Paie" },
 ];
@@ -52,7 +53,7 @@ export default function EstablishmentSettingsPage() {
 
   const form = useForm<TenantInput>({
     resolver: zodResolver(tenantSchema),
-    defaultValues: { name: "", address: "", phone: "", email: "", logoUrl: "", publicEnrollmentEnabled: false },
+    defaultValues: { name: "", address: "", phone: "", email: "", logoUrl: "" },
   });
 
   useEffect(() => {
@@ -71,7 +72,6 @@ export default function EstablishmentSettingsPage() {
           phone: t.phone ?? "",
           email: t.email ?? "",
           logoUrl: t.logoUrl ?? "",
-          publicEnrollmentEnabled: t.publicEnrollmentEnabled ?? false,
         });
         setEnabledModules(modulesRes.data?.data ?? modulesRes.data ?? []);
       })
@@ -90,7 +90,6 @@ export default function EstablishmentSettingsPage() {
         ...(values.phone ? { phone: values.phone } : {}),
         ...(values.email ? { email: values.email } : {}),
         ...(values.logoUrl ? { logoUrl: values.logoUrl } : {}),
-        publicEnrollmentEnabled: values.publicEnrollmentEnabled ?? false,
       };
       const { data } = await resourceClient.put(`/tenants/${user.tenantId}`, payload);
       setTenant(data?.data ?? data);
@@ -107,6 +106,7 @@ export default function EstablishmentSettingsPage() {
     setServerError(null);
     try {
       await resourceClient.put(`/tenants/${user.tenantId}/modules`, { enabledModules: next });
+      window.dispatchEvent(new CustomEvent("modules-updated", { detail: next }));
     } catch (error: any) {
       setServerError(error.response?.data?.message ?? "Impossible de mettre à jour les modules activés.");
       setEnabledModules(enabledModules);
@@ -133,16 +133,13 @@ export default function EstablishmentSettingsPage() {
           <CardDescription>Nom, adresse, contacts et identifiants officiels</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Libellés simples (hors <Form>) : FormLabel appelle useFormContext()
-              qui est null en dehors du provider → crash client. On utilise donc
-              des <label> natifs pour ces deux champs en lecture seule. */}
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Code établissement</label>
+              <FormLabel>Code établissement</FormLabel>
               <Input value={tenant?.code ?? ""} disabled />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Type</label>
+              <FormLabel>Type</FormLabel>
               <Input value={tenant?.type ?? ""} disabled />
             </div>
           </div>
@@ -216,30 +213,6 @@ export default function EstablishmentSettingsPage() {
                   )}
                 />
               </div>
-              <FormField
-                control={form.control}
-                name="publicEnrollmentEnabled"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-start gap-2 space-y-0">
-                    <FormControl>
-                      <input
-                        type="checkbox"
-                        checked={field.value ?? false}
-                        onChange={(e) => field.onChange(e.target.checked)}
-                        disabled={!canUpdate}
-                        className="mt-1 h-4 w-4 rounded border-border"
-                      />
-                    </FormControl>
-                    <div>
-                      <FormLabel>Visible dans l'annuaire public de pré-inscription</FormLabel>
-                      <p className="text-xs text-muted-foreground">
-                        Les parents pourront choisir cet établissement depuis le formulaire de pré-inscription en
-                        ligne (page vitrine, sans authentification).
-                      </p>
-                    </div>
-                  </FormItem>
-                )}
-              />
               {canUpdate ? (
                 <Button type="submit" disabled={form.formState.isSubmitting} className="w-fit">
                   {form.formState.isSubmitting ? "Enregistrement…" : "Enregistrer les modifications"}

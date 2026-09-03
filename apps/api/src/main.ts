@@ -62,6 +62,9 @@ async function bootstrap() {
 
   const app = await NestFactory.create(AppModule, {
     logger: WinstonModule.createLogger({ transports }),
+    // Les webhooks de paiement signent les octets recus : re-serialiser le
+    // JSON invaliderait la signature. Nest expose alors req.rawBody.
+    rawBody: true,
   });
   console.log("✅ Application NestJS créée");
 

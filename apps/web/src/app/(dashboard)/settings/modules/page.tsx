@@ -55,7 +55,8 @@ export default function ModulesPage() {
         enabledModules: [...enabled],
       });
       setConfigured(true);
-      setMsg("Modules mis à jour. Le menu latéral reflète votre sélection (rechargez si besoin).");
+      window.dispatchEvent(new CustomEvent("modules-updated", { detail: [...enabled] }));
+      setMsg("Modules mis à jour. Le menu latéral reflète votre sélection.");
     } catch (e: any) {
       setErr(e.response?.data?.message ?? "Échec de l'enregistrement.");
     } finally {

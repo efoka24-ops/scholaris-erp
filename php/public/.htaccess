@@ -1,0 +1,27 @@
+<IfModule mod_rewrite.c>
+    # La directive "Options -MultiViews -Indexes" livree par Laravel a ete
+    # retiree : ce mutualise n'accorde pas AllowOverride Options, et Apache
+    # repond alors 500 sur tout le site, fichiers statiques compris.
+    # MultiViews n'est pas actif ici, et le listage de repertoire est deja
+    # empeche par la presence de index.php.
+
+    RewriteEngine On
+
+    # Handle Authorization Header
+    RewriteCond %{HTTP:Authorization} .
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+    # Handle X-XSRF-Token Header
+    RewriteCond %{HTTP:x-xsrf-token} .
+    RewriteRule .* - [E=HTTP_X_XSRF_TOKEN:%{HTTP:X-XSRF-Token}]
+
+    # Redirect Trailing Slashes If Not A Folder...
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_URI} (.+)/$
+    RewriteRule ^ %1 [L,R=301]
+
+    # Send Requests To Front Controller...
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^ index.php [L]
+</IfModule>

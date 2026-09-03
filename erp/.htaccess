@@ -1,0 +1,25 @@
+# Racine du projet.
+#
+# Seul public/ doit etre expose. La configuration a preferer reste de pointer
+# la racine du sous-domaine sur .../scholaris-erp/public ; ce fichier assure le
+# fonctionnement tant que ce n'est pas fait, en renvoyant vers public/ et en
+# refusant l'acces au code, aux gabarits et a la configuration.
+#
+# Tout est exprime en mod_rewrite volontairement : cet hebergement n'accorde
+# pas l'AllowOverride exige par Options, FilesMatch ou Require, et ces
+# directives y provoquent une erreur 500 sur l'ensemble du site, fichiers
+# statiques compris.
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Refus net, avant toute redirection.
+    RewriteRule ^\.env - [F,L]
+    RewriteRule ^(src|templates|database|storage|tests)/ - [F,L]
+    RewriteRule ^(artisan|console\.php|routes\.php)$ - [F,L]
+    RewriteRule \.(sqlite|log|sql)$ - [F,L]
+
+    # Le reste est servi depuis public/.
+    RewriteCond %{REQUEST_URI} !^/public/
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>

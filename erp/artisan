@@ -1,0 +1,248 @@
+<?php
+
+declare(strict_types=1);
+
+/**
+ * Commandes en ligne de commande.
+ *
+ * Usage : artisan <commande>   (ou php artisan <commande>)
+ *   migrate   applique les migrations non encore jouees
+ *   seed      cree le referentiel RBAC et le compte Super Admin (sans ecole)
+ *   ecole     cree un etablissement et le compte de son chef d'etablissement
+ *   fresh     supprime toutes les tables, migre, puis seme (developpement)
+ *   demo      etablissement de demonstration complet (Lycee Bilingue de Garoua)
+ *   relances  envoie une relance aux parents des factures en retard (a planifier)
+ *   status    etat de la base et des migrations
+ *
+ * Le shell CSHIELD de l'hebergement n'autorise pas les commandes interactives :
+ * chacune s'execute d'un trait, sans rien demander a l'utilisateur.
+ */
+
+use Scholaris\Application;
+use Scholaris\Autoloader;
+use Scholaris\Database\Connection;
+use Scholaris\Database\Migrator;
+use Scholaris\Database\Seeder;
+use Scholaris\Support\Env;
+use Scholaris\Tenant\TenantContext;
+
+if (PHP_SAPI !== 'cli') {
+    http_response_code(404);
+    exit;
+}
+
+$root = __DIR__;
+
+require $root.'/src/Autoloader.php';
+Autoloader::register($root.'/src');
+
+$env = Env::load($root.'/.env');
+
+$db = ($env->get('DB_CONNECTION', 'mysql') === 'sqlite')
+    ? Connection::sqlite($env->require('DB_DATABASE'))
+    : Connection::mysql(
+        $env->get('DB_HOST', 'localhost') ?? 'localhost',
+        $env->require('DB_DATABASE'),
+        $env->require('DB_USERNAME'),
+        $env->get('DB_PASSWORD', '') ?? '',
+        (int) ($env->get('DB_PORT', '3306') ?? '3306')
+    );
+
+$migrator = new Migrator($db, $root.'/database/migrations');
+$command = $argv[1] ?? 'status';
+
+function line(string $message): void
+{
+    echo $message, PHP_EOL;
+}
+
+try {
+    switch ($command) {
+        case 'migrate':
+            $ran = $migrator->migrate();
+
+            if ($ran === []) {
+                line('Aucune migration a appliquer, la base est a jour.');
+                break;
+            }
+
+            foreach ($ran as $file) {
+                line('  applique  '.$file);
+            }
+
+            line(count($ran).' migration(s) appliquee(s).');
+            break;
+
+        case 'seed':
+            $seeder = new Seeder($db, new TenantContext(), $root);
+            $report = $seeder->run(
+                $env->get('SEED_SUPER_ADMIN_EMAIL', 'admin@scholaris.dev') ?? 'admin@scholaris.dev',
+                $env->get('SEED_SUPER_ADMIN_PASSWORD', 'ChangeMe123!') ?? 'ChangeMe123!',
+                $env->get('SEED_TENANT_CODE', 'DEMO') ?? 'DEMO',
+                $env->get('SEED_TENANT_NAME', 'Etablissement Demo') ?? 'Etablissement Demo'
+            );
+
+            foreach ($report as $item) {
+                line('  '.$item);
+            }
+
+            line('Donnees initiales en place.');
+            break;
+
+        case 'fresh':
+            if ($env->get('APP_ENV') === 'production') {
+                line('Refus : "fresh" supprime toutes les tables et APP_ENV vaut production.');
+                exit(1);
+            }
+
+            $migrator->dropAll();
+            $migrator->migrate();
+
+            $seeder = new Seeder($db, new TenantContext(), $root);
+            $seeder->run(
+                $env->get('SEED_SUPER_ADMIN_EMAIL', 'admin@scholaris.dev') ?? 'admin@scholaris.dev',
+                $env->get('SEED_SUPER_ADMIN_PASSWORD', 'ChangeMe123!') ?? 'ChangeMe123!',
+                $env->get('SEED_TENANT_CODE', 'DEMO') ?? 'DEMO',
+                $env->get('SEED_TENANT_NAME', 'Etablissement Demo') ?? 'Etablissement Demo',
+                true
+            );
+
+            line('Base reinitialisee, migree et semee.');
+            break;
+
+        case 'demo':
+            // Etablissement de demonstration complet : le RBAC doit exister
+            // avant, les comptes y etant rattaches par role.
+            $seeder = new Seeder($db, new TenantContext(), $root);
+            $seeder->run(
+                $env->get('SEED_SUPER_ADMIN_EMAIL', 'admin@scholaris.dev') ?? 'admin@scholaris.dev',
+                $env->get('SEED_SUPER_ADMIN_PASSWORD', 'ChangeMe123!') ?? 'ChangeMe123!',
+                $env->get('SEED_TENANT_CODE', 'DEMO') ?? 'DEMO',
+                $env->get('SEED_TENANT_NAME', 'Etablissement Demo') ?? 'Etablissement Demo',
+                true
+            );
+
+            $school = new Scholaris\Database\DemoSchoolSeeder($db, new TenantContext(), $root);
+
+            foreach ($school->run() as $item) {
+                line('  '.$item);
+            }
+
+            line('Lycee Bilingue de Garoua en place.');
+            break;
+
+        case 'ecole':
+            // artisan ecole CODE "Nom complet" TYPE email Prenom NOM
+            //
+            // Cree un etablissement et le compte de son chef d'etablissement.
+            // Le Super Admin passe normalement par l'ecran d'approbation des
+            // demandes ; cette commande sert a amorcer un etablissement sans
+            // attendre qu'une demande soit deposee.
+            $args = array_slice($argv, 2);
+
+            if (count($args) < 6) {
+                line('Usage : artisan ecole CODE "Nom de l etablissement" TYPE email.directeur@exemple.cm Prenom NOM');
+                line('Types : PRIMAIRE, COLLEGE, LYCEE_GENERAL, LYCEE_TECHNIQUE, CENTRE_FORMATION, SUPERIEUR');
+                exit(1);
+            }
+
+            [$code, $name, $type, $email, $firstName] = $args;
+            // Le nom de famille peut comporter plusieurs mots.
+            $lastName = implode(' ', array_slice($args, 5));
+
+            $factory = new Scholaris\Database\SchoolFactory($db, new TenantContext());
+            $result = $factory->create($code, $name, strtoupper($type), $email, $firstName, $lastName);
+
+            line('Etablissement cree.');
+            line('  Nom        : '.$name);
+            line('  Code       : '.strtoupper($code));
+            line('  Type       : '.strtoupper($type));
+            line('  Niveaux    : '.$result['levels']);
+            line('  Directeur  : '.$firstName.' '.$lastName.' <'.$email.'>');
+            line('  Mot de passe initial : '.$result['password']);
+            line('');
+            line('Ce mot de passe ne sera plus jamais affiche : transmettez-le');
+            line('au directeur et demandez-lui de le changer a la connexion.');
+            break;
+
+        case 'relances':
+            // artisan relances : parcourt chaque etablissement actif et
+            // avertit par courrier les parents des factures en retard.
+            // Destinee a etre planifiee (cron quotidien) ; aucune dependance
+            // externe, un simple appel PHP suffit.
+            $app = new Application($root, $env, $db);
+            $tenants = $db->select(
+                "SELECT id, name FROM tenants WHERE deleted_at IS NULL AND platform_status = 'ACTIVE'"
+            );
+            $sent = 0;
+
+            foreach ($tenants as $tenantRow) {
+                $app->tenant()->set((string) $tenantRow['id']);
+
+                $billing = new Scholaris\Service\Billing($db, $app->tenant());
+
+                foreach ($billing->overdueInvoices() as $invoice) {
+                    $parents = $db->select(
+                        'SELECT p.email, p.first_name, p.last_name
+                         FROM student_parents sp
+                         INNER JOIN parents p ON p.id = sp.parent_id
+                         WHERE sp.student_id = :student AND p.deleted_at IS NULL',
+                        ['student' => $invoice['student_id']]
+                    );
+
+                    foreach ($parents as $parent) {
+                        if (($parent['email'] ?? '') === '') {
+                            continue;
+                        }
+
+                        $app->accountMails()->paymentOverdue(
+                            (string) $parent['email'],
+                            trim($parent['first_name'].' '.$parent['last_name']),
+                            trim($invoice['first_name'].' '.$invoice['last_name']),
+                            (float) $invoice['balance'],
+                            (string) ($invoice['due_date'] ?? ''),
+                            (string) $tenantRow['id']
+                        );
+
+                        $sent++;
+                    }
+                }
+
+                $app->tenant()->clear();
+            }
+
+            line($sent.' relance(s) d impaye envoyee(s).');
+            break;
+
+        case 'status':
+            line('PHP        : '.PHP_VERSION);
+            line('Moteur     : '.$db->driver());
+            line('Base       : '.($env->get('DB_DATABASE') ?? '(non definie)'));
+
+            if ($migrator->tableExists('migrations')) {
+                $applied = $db->select('SELECT filename, applied_at FROM migrations ORDER BY filename');
+                line('Migrations : '.count($applied).' appliquee(s)');
+
+                foreach ($applied as $row) {
+                    line('  '.$row['filename'].'  '.$row['applied_at']);
+                }
+
+                if ($migrator->tableExists('users')) {
+                    line('Comptes    : '.$db->scalar('SELECT COUNT(*) FROM users'));
+                    line('Eleves     : '.$db->scalar('SELECT COUNT(*) FROM students'));
+                }
+            } else {
+                line('Migrations : aucune, lancer "artisan migrate"');
+            }
+
+            break;
+
+        default:
+            line('Commandes : migrate | seed | ecole | demo | fresh | relances | status');
+            exit(1);
+    }
+} catch (Throwable $e) {
+    line('ECHEC : '.$e->getMessage());
+    line('  '.$e->getFile().':'.$e->getLine());
+    exit(1);
+}
