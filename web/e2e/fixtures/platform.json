@@ -1,0 +1,105 @@
+{
+    "recorded_from": "tests/E2E/PlatformUiFixturesRecorderTest.php",
+    "tracking_token": "8c5238ebef613790dbb730787260d6ca25c8c80ecad1cf88",
+    "calls": {
+        "public.applications": {
+            "status": 200,
+            "content_type": "application/json; charset=utf-8",
+            "body": {
+                "data": [
+                    {
+                        "key": "higher",
+                        "label": "IPES - Enseignement supérieur",
+                        "target": "higher",
+                        "status": "available",
+                        "version": "0.1.0",
+                        "monthly_price_xaf": 60000,
+                        "trial_days": 90
+                    },
+                    {
+                        "key": "nursery",
+                        "label": "Maternelle",
+                        "target": "nursery",
+                        "status": "coming_soon",
+                        "version": "0.1.0",
+                        "monthly_price_xaf": 60000,
+                        "trial_days": 90
+                    },
+                    {
+                        "key": "primary",
+                        "label": "Enseignement primaire",
+                        "target": "primary",
+                        "status": "coming_soon",
+                        "version": "0.1.0",
+                        "monthly_price_xaf": 60000,
+                        "trial_days": 90
+                    },
+                    {
+                        "key": "secondary",
+                        "label": "Enseignement secondaire",
+                        "target": "secondary",
+                        "status": "coming_soon",
+                        "version": "0.1.0",
+                        "monthly_price_xaf": 60000,
+                        "trial_days": 90
+                    }
+                ]
+            }
+        },
+        "public.request.invalid": {
+            "status": 422,
+            "content_type": "application/problem+json; charset=utf-8",
+            "body": {
+                "type": "https://api.scholaris.cm/errors/validation",
+                "title": "Données invalides",
+                "status": 422,
+                "detail": "Données invalides.",
+                "trace_id": "01M4SBWXSB8PFMA662N5W0KQPN",
+                "errors": {
+                    "contact_email": [
+                        "Adresse e-mail invalide."
+                    ]
+                }
+            }
+        },
+        "public.request.accepted": {
+            "status": 202,
+            "content_type": "application/json; charset=utf-8",
+            "body": {
+                "data": {
+                    "tracking_token": "8c5238ebef613790dbb730787260d6ca25c8c80ecad1cf88",
+                    "status": "pending",
+                    "message": "Demande enregistrée. Si les informations sont valides, vous recevrez un message de confirmation."
+                }
+            }
+        },
+        "public.track.pending": {
+            "status": 200,
+            "content_type": "application/json; charset=utf-8",
+            "body": {
+                "data": {
+                    "reference": "HCSTKJAD",
+                    "institution_name": "Collège Bilingue de Recette",
+                    "app_key": "secondary",
+                    "app_label": "Enseignement secondaire",
+                    "status": "pending",
+                    "info_request": null,
+                    "decision_reason": null,
+                    "submitted_at": "2026-10-14T10:00:00+01:00",
+                    "updated_at": "2026-10-14T10:00:00+01:00"
+                }
+            }
+        },
+        "public.track.unknown": {
+            "status": 404,
+            "content_type": "application/problem+json; charset=utf-8",
+            "body": {
+                "type": "https://api.scholaris.cm/errors/not-found",
+                "title": "Introuvable",
+                "status": 404,
+                "detail": "Demande introuvable.",
+                "trace_id": "01M4SBWXT0PDEDY8ZZF2SBDJNY"
+            }
+        }
+    }
+}

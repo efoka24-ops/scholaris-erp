@@ -1,0 +1,10 @@
+# Racine du projet : redirige tout vers public/ et interdit l'accès au code et aux secrets.
+# Préférable : pointer la racine du sous-domaine directement sur public/.
+# Uniquement mod_rewrite (AllowOverride restreint sur l'hébergement de recette).
+RewriteEngine On
+
+RewriteRule ^(src|config|database|storage|tests|vendor|specs|scripts|web|\.specify|\.github|\.phpunit[^/]*|\.agents|\.claude)(/|$) - [F,L]
+RewriteRule ^(\.env.*|artisan|composer\.(json|lock)|phpunit(\.[a-z]+)?\.xml|phpstan\.neon|\.php-cs-fixer.*)$ - [F,L]
+
+RewriteCond %{REQUEST_URI} !^/public/
+RewriteRule ^(.*)$ public/$1 [L]

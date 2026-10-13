@@ -1,0 +1,840 @@
+# Contrat OpenAPI 3.1 du service S02 Organisation (fusionné avec openapi.yaml par le test de contrat).
+paths:
+  /api/v1/establishments:
+    get:
+      summary: "Liste des établissements du client (filtre type ; tris name, type, created_at)"
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: "Page d'établissements"
+        '403':
+          description: "Accès refusé"
+        '422':
+          description: "Filtre ou tri hors liste blanche"
+    post:
+      summary: "Crée un établissement (type définitif)"
+      security:
+        - bearer: []
+      responses:
+        '201':
+          description: "Établissement créé"
+        '403':
+          description: "Accès refusé"
+        '409':
+          description: "Nom déjà employé"
+        '422':
+          description: "Données invalides"
+  /api/v1/establishments/{id}:
+    get:
+      summary: "Détail d'un établissement du client"
+      security:
+        - bearer: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Établissement"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+    patch:
+      summary: "Renomme un établissement (le type ne peut pas changer)"
+      security:
+        - bearer: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Établissement modifié"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable"
+        '409':
+          description: "Nom déjà employé"
+        '422':
+          description: "Tentative de changer le type"
+  /api/v1/establishments/{id}/branding:
+    get:
+      summary: "Identité visuelle (accent, logo, en-têtes, signataires, numéros d'autorisation)"
+      security:
+        - bearer: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Identité"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable"
+    put:
+      summary: "Modifie l'identité visuelle (accent #RRGGBB, contraste d'au moins 4,5:1 avec du texte noir)"
+      security:
+        - bearer: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Identité enregistrée"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable"
+        '422':
+          description: "Couleur ou logo refusé"
+  /api/v1/establishments/{id}/modules:
+    get:
+      summary: "Modules activés pour l'établissement"
+      security:
+        - bearer: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Modules activés et disponibles"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable"
+    put:
+      summary: "Remplace la liste des modules activés"
+      security:
+        - bearer: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Modules enregistrés"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable"
+        '422':
+          description: "Module inconnu"
+  /api/v1/vocabulary:
+    get:
+      summary: "Vocabulaire de l'interface par type d'établissement (paramètre type)"
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: "Termes"
+        '401':
+          description: "Non authentifié"
+        '422':
+          description: "Type inconnu"
+  /api/v1/org-units:
+    get:
+      summary: "Liste des unités internes de l'établissement actif (curseur, filtres et tris en liste blanche)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Page de résultats"
+        '403':
+          description: "Accès refusé"
+        '422':
+          description: "Filtre ou tri hors liste blanche"
+    post:
+      summary: "Crée une unité interne"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '201':
+          description: "Créé"
+        '403':
+          description: "Accès refusé"
+        '409':
+          description: "Doublon"
+        '422':
+          description: "Données invalides"
+  /api/v1/org-units/{id}:
+    get:
+      summary: "Détail de une unité interne"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Ressource"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable"
+    patch:
+      summary: "Modifie une unité interne"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Modifié"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable"
+        '409':
+          description: "Conflit"
+        '422':
+          description: "Données invalides"
+  /api/v1/academic-years:
+    get:
+      summary: "Liste des années scolaires de l'établissement actif (curseur, filtres et tris en liste blanche)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Page de résultats"
+        '403':
+          description: "Accès refusé"
+        '422':
+          description: "Filtre ou tri hors liste blanche"
+    post:
+      summary: "Crée une année scolaire"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '201':
+          description: "Créé"
+        '403':
+          description: "Accès refusé"
+        '409':
+          description: "Doublon"
+        '422':
+          description: "Données invalides"
+  /api/v1/academic-years/{id}:
+    get:
+      summary: "Détail de une année scolaire"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Ressource"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable"
+    patch:
+      summary: "Modifie une année scolaire"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Modifié"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable"
+        '409':
+          description: "Conflit"
+        '422':
+          description: "Données invalides"
+  /api/v1/academic-years/{id}/close:
+    post:
+      summary: "Demande la clôture de l'année scolaire de cet établissement (organisation.manage ; corps facultatif next_academic_year_id). Les contrôles préalables bloquants refusent la demande (409) ; sinon une demande d'approbation est créée (202, ou 200 si une demande est déjà en cours). L'année n'est close qu'à l'approbation par une autre personne"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Demande déjà en cours"
+        '202':
+          description: "Demande de clôture déposée, en attente d'approbation"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable"
+        '409':
+          description: "Déjà clôturée ou contrôle bloquant (impayés, notes non verrouillées, délibérations ouvertes)"
+        '422':
+          description: "Année suivante invalide"
+  /api/v1/periods:
+    get:
+      summary: "Liste des périodes de l'établissement actif (curseur, filtres et tris en liste blanche)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Page de résultats"
+        '403':
+          description: "Accès refusé"
+        '422':
+          description: "Filtre ou tri hors liste blanche"
+    post:
+      summary: "Crée une période"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '201':
+          description: "Créé"
+        '403':
+          description: "Accès refusé"
+        '409':
+          description: "Doublon"
+        '422':
+          description: "Données invalides"
+  /api/v1/periods/{id}:
+    get:
+      summary: "Détail de une période"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Ressource"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable"
+    patch:
+      summary: "Modifie une période"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Modifié"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable"
+        '409':
+          description: "Conflit"
+        '422':
+          description: "Données invalides"
+  /api/v1/structures:
+    get:
+      summary: "Liste des structures pédagogiques de l'établissement actif (curseur, filtres et tris en liste blanche)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Page de résultats"
+        '403':
+          description: "Accès refusé"
+        '422':
+          description: "Filtre ou tri hors liste blanche"
+    post:
+      summary: "Crée une structure pédagogique"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '201':
+          description: "Créé"
+        '403':
+          description: "Accès refusé"
+        '409':
+          description: "Doublon"
+        '422':
+          description: "Données invalides"
+  /api/v1/structures/{id}:
+    get:
+      summary: "Détail de une structure pédagogique"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Ressource"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable"
+    patch:
+      summary: "Modifie une structure pédagogique"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Modifié"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable"
+        '409':
+          description: "Conflit"
+        '422':
+          description: "Données invalides"
+  /api/v1/structures/{id}/enrolment:
+    get:
+      summary: "Indique si la structure peut recevoir des inscriptions (autorisation valide à la date « on »)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "can_enrol vrai ou faux"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable"
+        '422':
+          description: "Date invalide"
+  /api/v1/authorizations/expiring:
+    get:
+      summary: "Autorisations qui expirent dans les prochains jours (paramètre days, 30 par défaut)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Alertes d'expiration"
+        '403':
+          description: "Accès refusé"
+        '422':
+          description: "Paramètre invalide"
+  /api/v1/authorizations:
+    get:
+      summary: "Liste des autorisations administratives de l'établissement actif (curseur, filtres et tris en liste blanche)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Page de résultats"
+        '403':
+          description: "Accès refusé"
+        '422':
+          description: "Filtre ou tri hors liste blanche"
+    post:
+      summary: "Crée une autorisation administrative"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '201':
+          description: "Créé"
+        '403':
+          description: "Accès refusé"
+        '409':
+          description: "Doublon"
+        '422':
+          description: "Données invalides"
+  /api/v1/authorizations/{id}:
+    get:
+      summary: "Détail de une autorisation administrative"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Ressource"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable"
+    patch:
+      summary: "Modifie une autorisation administrative"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Modifié"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable"
+        '409':
+          description: "Conflit"
+        '422':
+          description: "Données invalides"
+  /api/v1/rooms:
+    get:
+      summary: "Liste des salles de l'établissement actif (curseur, filtres et tris en liste blanche)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Page de résultats"
+        '403':
+          description: "Accès refusé"
+        '422':
+          description: "Filtre ou tri hors liste blanche"
+    post:
+      summary: "Crée une salle"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '201':
+          description: "Créé"
+        '403':
+          description: "Accès refusé"
+        '409':
+          description: "Doublon"
+        '422':
+          description: "Données invalides"
+  /api/v1/rooms/{id}:
+    get:
+      summary: "Détail de une salle"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Ressource"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable"
+    patch:
+      summary: "Modifie une salle"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Modifié"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable"
+        '409':
+          description: "Conflit"
+        '422':
+          description: "Données invalides"
+  /api/v1/settings:
+    get:
+      summary: "Valeurs définies à un niveau (filter[scope] platform, tenant, establishment ou org_unit avec filter[org_unit_id] ; filter[key])"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Page de paramètres"
+        '403':
+          description: "Accès refusé"
+        '422':
+          description: "Filtre invalide"
+    put:
+      summary: "Définit un paramètre à un niveau {scope, key, value, org_unit_id si scope=org_unit} (tracé dans le journal d'audit)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Valeur enregistrée et valeur effective"
+        '403':
+          description: "Accès refusé"
+        '422':
+          description: "Données invalides"
+  /api/v1/settings/effective:
+    get:
+      summary: "Valeur effective avec son origine et les niveaux masqués (filter[key], filter[org_unit_id] : héritage plateforme > client > établissement > unités parentes > unité)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Valeurs effectives"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Clé non définie"
+  /api/v1/establishments/export:
+    get:
+      summary: "Export CSV / Excel des établissements : mêmes filtres et mêmes droits que GET /establishments, plafonné à 5 000 lignes"
+      security:
+        - bearer: []
+      parameters:
+        - name: format
+          in: query
+          required: false
+          description: "Format du fichier : csv (défaut ; UTF-8 avec BOM, séparateur « ; ») ou xlsx (Excel)"
+          schema: {type: string, enum: [csv, xlsx], default: csv}
+      responses:
+        '200':
+          description: "Fichier CSV (UTF-8 avec BOM, séparateur « ; ») ou Excel selon le paramètre format"
+          content:
+            text/csv:
+              schema: {type: string}
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema: {type: string, format: binary}
+        '403':
+          description: "Accès refusé"
+        '422':
+          description: "Filtre hors liste blanche"
+  /api/v1/org-units/export:
+    get:
+      summary: "Export CSV / Excel des unités organisationnelles : mêmes filtres et tris que GET /org-units, plafonné à 5 000 lignes"
+      security:
+        - bearer: []
+      parameters:
+        - name: format
+          in: query
+          required: false
+          description: "Format du fichier : csv (défaut ; UTF-8 avec BOM, séparateur « ; ») ou xlsx (Excel)"
+          schema: {type: string, enum: [csv, xlsx], default: csv}
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Fichier CSV (UTF-8 avec BOM, séparateur « ; ») ou Excel selon le paramètre format"
+          content:
+            text/csv:
+              schema: {type: string}
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema: {type: string, format: binary}
+        '403':
+          description: "Accès refusé"
+        '422':
+          description: "Filtre ou tri hors liste blanche"
+  /api/v1/academic-years/export:
+    get:
+      summary: "Export CSV / Excel des années académiques : mêmes filtres et tris que GET /academic-years, plafonné à 5 000 lignes"
+      security:
+        - bearer: []
+      parameters:
+        - name: format
+          in: query
+          required: false
+          description: "Format du fichier : csv (défaut ; UTF-8 avec BOM, séparateur « ; ») ou xlsx (Excel)"
+          schema: {type: string, enum: [csv, xlsx], default: csv}
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Fichier CSV (UTF-8 avec BOM, séparateur « ; ») ou Excel selon le paramètre format"
+          content:
+            text/csv:
+              schema: {type: string}
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema: {type: string, format: binary}
+        '403':
+          description: "Accès refusé"
+        '422':
+          description: "Filtre ou tri hors liste blanche"
+  /api/v1/periods/export:
+    get:
+      summary: "Export CSV / Excel des périodes : mêmes filtres et tris que GET /periods, plafonné à 5 000 lignes"
+      security:
+        - bearer: []
+      parameters:
+        - name: format
+          in: query
+          required: false
+          description: "Format du fichier : csv (défaut ; UTF-8 avec BOM, séparateur « ; ») ou xlsx (Excel)"
+          schema: {type: string, enum: [csv, xlsx], default: csv}
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Fichier CSV (UTF-8 avec BOM, séparateur « ; ») ou Excel selon le paramètre format"
+          content:
+            text/csv:
+              schema: {type: string}
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema: {type: string, format: binary}
+        '403':
+          description: "Accès refusé"
+        '422':
+          description: "Filtre ou tri hors liste blanche"
+  /api/v1/structures/export:
+    get:
+      summary: "Export CSV / Excel des structures pédagogiques : mêmes filtres et tris que GET /structures, plafonné à 5 000 lignes"
+      security:
+        - bearer: []
+      parameters:
+        - name: format
+          in: query
+          required: false
+          description: "Format du fichier : csv (défaut ; UTF-8 avec BOM, séparateur « ; ») ou xlsx (Excel)"
+          schema: {type: string, enum: [csv, xlsx], default: csv}
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Fichier CSV (UTF-8 avec BOM, séparateur « ; ») ou Excel selon le paramètre format"
+          content:
+            text/csv:
+              schema: {type: string}
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema: {type: string, format: binary}
+        '403':
+          description: "Accès refusé"
+        '422':
+          description: "Filtre ou tri hors liste blanche"
+  /api/v1/authorizations/export:
+    get:
+      summary: "Export CSV / Excel des autorisations d’ouverture : mêmes filtres et tris que GET /authorizations, plafonné à 5 000 lignes"
+      security:
+        - bearer: []
+      parameters:
+        - name: format
+          in: query
+          required: false
+          description: "Format du fichier : csv (défaut ; UTF-8 avec BOM, séparateur « ; ») ou xlsx (Excel)"
+          schema: {type: string, enum: [csv, xlsx], default: csv}
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Fichier CSV (UTF-8 avec BOM, séparateur « ; ») ou Excel selon le paramètre format"
+          content:
+            text/csv:
+              schema: {type: string}
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema: {type: string, format: binary}
+        '403':
+          description: "Accès refusé"
+        '422':
+          description: "Filtre ou tri hors liste blanche"
+  /api/v1/rooms/export:
+    get:
+      summary: "Export CSV / Excel des salles : mêmes filtres et tris que GET /rooms, plafonné à 5 000 lignes"
+      security:
+        - bearer: []
+      parameters:
+        - name: format
+          in: query
+          required: false
+          description: "Format du fichier : csv (défaut ; UTF-8 avec BOM, séparateur « ; ») ou xlsx (Excel)"
+          schema: {type: string, enum: [csv, xlsx], default: csv}
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Fichier CSV (UTF-8 avec BOM, séparateur « ; ») ou Excel selon le paramètre format"
+          content:
+            text/csv:
+              schema: {type: string}
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema: {type: string, format: binary}
+        '403':
+          description: "Accès refusé"
+        '422':
+          description: "Filtre ou tri hors liste blanche"
