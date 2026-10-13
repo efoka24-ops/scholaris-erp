@@ -1,0 +1,210 @@
+# Contrat OpenAPI 3.1 des inscriptions de l'application Supérieur (INS, EX-INS-01 à 08) : inscriptions administratives depuis une
+# candidature admise ou en réinscription (RG-INS-3), validation et réserve financière (RG-INS-2), matricule (RG-INS-1), statuts,
+# abandon et remboursement (RG-INS-6), contrat pédagogique (UE optionnelles, dettes, UE capitalisées : RG-INS-4, RG-MAQ-1),
+# changement de filière, groupe ou mode, carte d'étudiant DOC-05 et fiche DOC-04, dossier étudiant, consentement (RG-INS-7),
+# dérogations (RG-INS-5), décisions de passage. Fusionné avec openapi.yaml par le test de contrat. Erreurs RFC 9457. WriteGate et
+# périmètre école/département/filière/niveau/groupe comme pour toutes les routes Higher.
+# Permissions : lecture higher.enrolment.read | higher.enrol | higher.enrolment.validate (l'étudiant lit les siennes) ; écriture
+# higher.enrol (R07) ; validation sous réserve financière et décisions de passage higher.enrolment.validate (R04) ; dérogation
+# higher.enrolment.derogate (R04).
+paths:
+  /api/v1/higher/enrolments:
+    get:
+      summary: "Inscriptions du périmètre : filter[school_id|program_id|level_id|group_id|academic_year_id|status|person_id|enrolment_kind]"
+      responses:
+        '200': {description: "Liste paginée"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Application Supérieur fermée ou jamais ouverte au client, ou ressource hors périmètre"}
+    post:
+      summary: "Créer une inscription en attente : depuis une candidature « admis » (application_id) ou réinscription (person_id, level_id, academic_year_id)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                application_id: {type: string}
+                person_id: {type: string}
+                level_id: {type: string}
+                academic_year_id: {type: string}
+                group_id: {type: string}
+                study_mode: {type: string, enum: [day, evening, work_study]}
+      responses:
+        '201': {description: "Inscription créée (version de maquette mémorisée, contrat pédagogique, règlement figé)"}
+        '409': {description: "Candidature non admise ; inscription déjà en cours dans la filière ; double cursus non autorisé"}
+        '422': {description: "Garde IPES (RG-ACA-1/2), décision de passage absente ou insuffisante (RG-INS-3), limite d'inscriptions dans le niveau sans dérogation (RG-INS-5), blocage de réinscription pour impayés"}
+  /api/v1/higher/enrolments/{id}:
+    get:
+      summary: "Inscription (périmètre ou l'étudiant lui-même)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Inscription avec le matricule"}
+        '404': {description: "Introuvable ou hors périmètre"}
+  /api/v1/higher/enrolments/{id}/validate:
+    post:
+      summary: "Valider : frais d'inscription payés, sinon financial_hold=true avec motif (R04, RG-INS-2) ; matricule attribué (RG-INS-1) et NOT-04 ; rappel après paiement = levée de la réserve"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object, properties: {financial_hold: {type: boolean}, reason: {type: string}}}
+      responses:
+        '200': {description: "Inscription validée (enrolled ou financial_hold)"}
+        '403': {description: "Réserve financière sans higher.enrolment.validate"}
+        '409': {description: "Inscription ni en attente ni sous réserve"}
+        '422': {description: "Frais d'inscription non payés"}
+  /api/v1/higher/enrolments/{id}/status:
+    post:
+      summary: "Changer le statut (EX-INS-04) : suspended, withdrawn (remboursement selon la grille, RG-INS-6), excluded, transferred, graduated, enrolled (réintégration)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object, required: [status, reason], properties: {status: {type: string, enum: [enrolled, suspended, withdrawn, excluded, transferred, graduated]}, reason: {type: string}}}
+      responses:
+        '200': {description: "Statut changé (refund_percent, refund_xaf pour un abandon)"}
+        '409': {description: "Transition impossible"}
+  /api/v1/higher/enrolments/{id}/change:
+    post:
+      summary: "Changer de filière (level_id d'une autre filière), de groupe ou de mode (EX-INS-05) ; matricule inchangé ; fees_recalculation_required"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object, required: [reason], properties: {level_id: {type: string}, group_id: {type: string}, study_mode: {type: string, enum: [day, evening, work_study]}, reason: {type: string}}}
+      responses:
+        '200': {description: "Inscription modifiée"}
+        '409': {description: "Inscription close ou filière déjà suivie"}
+        '422': {description: "Garde IPES ou groupe hors niveau"}
+  /api/v1/higher/enrolments/{id}/link:
+    post:
+      summary: "Lier l'inscription du socle (People) : même personne, établissement et année"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object, required: [enrollment_id], properties: {enrollment_id: {type: string}}}
+      responses:
+        '200': {description: "Inscription liée"}
+        '422': {description: "Inscription du socle incohérente"}
+  /api/v1/higher/enrolments/{id}/learning-contract:
+    get:
+      summary: "Contrat pédagogique : UE normales, optionnelles choisies, dettes, capitalisées ; crédits ; UE à choix disponibles"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Contrat pédagogique"}
+        '404': {description: "Introuvable"}
+    put:
+      summary: "Inscription pédagogique : UE optionnelles (N parmi M par groupe de choix), rattachement au groupe, arrêt du contrat (finalize)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object, properties: {optional_unit_ids: {type: array, items: {type: string}}, group_id: {type: string}, finalize: {type: boolean}}}
+      responses:
+        '200': {description: "Contrat à jour"}
+        '409': {description: "Contrat arrêté"}
+        '422': {description: "Choix invalide"}
+  /api/v1/higher/enrolments/{id}/student-card:
+    post:
+      summary: "Émettre la carte d'étudiant avec QR (DOC-05) d'une inscription validée"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '201': {description: "Document émis (numéro RG-DOC-1, jeton de vérification)"}
+        '409': {description: "Inscription non validée"}
+        '422': {description: "Profil documentaire de l'école absent ou blocage"}
+  /api/v1/higher/enrolments/{id}/enrolment-form:
+    post:
+      summary: "Émettre la fiche d'inscription et le contrat pédagogique (DOC-04)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '201': {description: "Document émis"}
+        '409': {description: "Inscription non validée"}
+  /api/v1/higher/enrolments/{id}/events:
+    get:
+      summary: "Journal de l'inscription : création, validation, réserve financière, statuts, changements"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Événements"}
+        '404': {description: "Application Supérieur fermée ou jamais ouverte au client, ou ressource hors périmètre"}
+  /api/v1/higher/students/{personId}:
+    get:
+      summary: "Dossier étudiant : matricule unique, photo, garant, consentement, tous les parcours (double cursus RG-ORG-6)"
+      parameters:
+        - {name: personId, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Dossier"}
+        '404': {description: "Introuvable ou hors périmètre"}
+    patch:
+      summary: "Photo (référence de document) et garant du dossier"
+      parameters:
+        - {name: personId, in: path, required: true, schema: {type: string}}
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object, properties: {photo_ref: {type: string}, guarantor_person_id: {type: string}}}
+      responses:
+        '200': {description: "Dossier modifié"}
+  /api/v1/higher/students/{personId}/guarantor-consent:
+    put:
+      summary: "RG-INS-7 : l'étudiant (ou la scolarité, sur son choix écrit) décide du partage de ses notes et absences avec son garant"
+      parameters:
+        - {name: personId, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object, required: [share_with_guarantor], properties: {share_with_guarantor: {type: boolean}}}
+      responses:
+        '200': {description: "Dossier avec le consentement"}
+        '404': {description: "Introuvable"}
+  /api/v1/higher/enrolment-derogations:
+    post:
+      summary: "Dérogation du directeur d'école à la limite d'inscriptions dans un niveau (RG-INS-5), pour une personne, un niveau et une année"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object, required: [person_id, level_id, academic_year_id, reason], properties: {person_id: {type: string}, level_id: {type: string}, academic_year_id: {type: string}, reason: {type: string}}}
+      responses:
+        '201': {description: "Dérogation accordée"}
+        '409': {description: "Dérogation déjà accordée"}
+  /api/v1/higher/progression-decisions:
+    get:
+      summary: "Décisions de passage : filter[person_id|program_id|level_id|academic_year_id|decision]"
+      responses:
+        '200': {description: "Décisions"}
+        '404': {description: "Application Supérieur fermée ou jamais ouverte au client, ou ressource hors périmètre"}
+    post:
+      summary: "Enregistrer la décision de passage de l'année N (admitted, admitted_with_debts, repeat, excluded) avec UE acquises et manquantes"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [person_id, level_id, academic_year_id, decision]
+              properties:
+                person_id: {type: string}
+                level_id: {type: string}
+                academic_year_id: {type: string}
+                decision: {type: string, enum: [admitted, admitted_with_debts, repeat, excluded]}
+                acquired_units: {type: array, items: {type: string}}
+                missing_units: {type: array, items: {type: string}}
+      responses:
+        '201': {description: "Décision enregistrée (remplace la précédente de la même année)"}

@@ -11,6 +11,7 @@ use Psr\Http\Message\ResponseInterface;
 use Scholaris\Core\RateLimit\Clock;
 use Scholaris\Core\Security\PermissionChecker;
 use Scholaris\Modules\Socle\Organisation\Contracts\EnrolmentGate;
+use Scholaris\Modules\Socle\Organisation\Contracts\EnrolmentGuards;
 use Scholaris\Modules\Socle\Organisation\Contracts\EstablishmentDirectory;
 use Scholaris\Modules\Socle\Organisation\Contracts\SettingsReader;
 use Scholaris\Modules\Socle\People\Application\PersonService;
@@ -40,6 +41,11 @@ abstract class PeopleTestCase extends AppTestCase
         $this->structures = new OpenStructures();
         $this->teaching = new FixedTeaching();
         $this->storage = sys_get_temp_dir() . '/scholaris-people-' . bin2hex(random_bytes(6));
+        // Sans garde fourni par le test, on neutralise ceux des applications chargées par le Kernel (voir NoEnrolmentGuards).
+        $ownGuards = array_filter(array_keys($extra), static fn (int|string $key): bool => str_starts_with((string) $key, EnrolmentGuards::PREFIX));
+        if ($ownGuards === []) {
+            $extra += [EnrolmentGuards::class => new NoEnrolmentGuards()];
+        }
         $this->boot($extra + [
             PermissionChecker::class => $this->permissions,
             Clock::class => $this->clock,

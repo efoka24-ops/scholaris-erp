@@ -1,0 +1,444 @@
+# Contrat OpenAPI 3.1 du paramétrage académique de l'application Supérieur (ACA) : écoles, départements, filières, niveaux,
+# groupes, autorisations MINESUP, tutelles, règlement des études, calendrier, contrôle d'éligibilité (garde d'inscription).
+# Fusionné avec openapi.yaml par le test de contrat. Erreurs au format RFC 9457 (components/schemas/Problem).
+# Toutes les routes : authentification, en-tête X-Establishment-Id ; GET -> 404 si l'application est fermée ; écritures -> 423 si
+# l'abonnement est suspendu, 403 si l'application n'est pas ouverte (WriteGate, voir higher-core.yaml).
+# Périmètre (RG-ORG-2) : une ligne hors du périmètre de la personne répond 404 en lecture, 403 (journalisé) en écriture.
+# Listes : pagination par curseur (per_page, cursor), filter[champ], sort ; sélecteur « École » `school_id` (identifiant ou all).
+# Permissions : lecture higher.settings.read ou higher.curriculum.read (registres : + higher.tutelage.manage,
+# higher.regulation.amend, higher.calendar.manage) ; écriture higher.settings.manage (école, R04 ; établissement, R20) ;
+# tutelles higher.tutelage.manage (R03) ; règlement figé higher.regulation.amend + 2FA récente (R03) ;
+# calendrier higher.calendar.manage ou higher.settings.manage.
+paths:
+  /api/v1/higher/schools:
+    get:
+      summary: "Écoles internes du périmètre (EX-ACA-01)"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: school_id, in: query, required: false, schema: {type: string}}
+        - {name: 'filter[code]', in: query, required: false, schema: {type: string}}
+      responses:
+        '200': {description: "Liste paginée {data, meta.next_cursor}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Application fermée ou école sélectionnée hors périmètre"}
+    post:
+      summary: "Créer une école interne (unité `school` du socle + extension hi_schools) ; exige tout l'établissement"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code, name]
+              properties:
+                code: {type: string, maxLength: 12, description: "Code de l'école (matricule, numéros de documents)"}
+                name: {type: string, maxLength: 160}
+                director_person_id: {type: [string, 'null']}
+      responses:
+        '201': {description: "École créée"}
+        '403': {description: "Permission ou périmètre insuffisant"}
+        '409': {description: "Code déjà utilisé"}
+        '422': {description: "Données invalides"}
+        '423': {description: "Abonnement suspendu"}
+  /api/v1/higher/schools/{id}:
+    get:
+      summary: "Une école"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "École"}
+        '404': {description: "Introuvable ou hors périmètre"}
+    patch:
+      summary: "Modifier une école (code, nom, directeur)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "École modifiée"}
+        '403': {description: "Hors périmètre"}
+        '409': {description: "Code déjà utilisé"}
+        '422': {description: "Données invalides"}
+  /api/v1/higher/schools/{id}/settings:
+    get:
+      summary: "Paramètres Higher de l'école : valeur de l'établissement, valeur de l'école, surcharge visible (RG-ORG-5)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: "Liste {key, establishment_value, school_value, overridden}"
+        '404': {description: "Introuvable ou hors périmètre"}
+  /api/v1/higher/departments:
+    get:
+      summary: "Départements du périmètre"
+      parameters:
+        - {name: 'filter[school_id]', in: query, required: false, schema: {type: string}}
+      responses:
+        '200': {description: "Liste paginée"}
+        '404': {description: "Application Supérieur fermée ou jamais ouverte au client, ou ressource hors périmètre"}
+    post:
+      summary: "Créer un département (unité `department`, parent = école)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [school_id, code, name]
+              properties:
+                school_id: {type: string}
+                code: {type: string, maxLength: 12}
+                name: {type: string}
+                head_person_id: {type: [string, 'null']}
+      responses:
+        '201': {description: "Département créé"}
+        '403': {description: "École hors périmètre"}
+        '409': {description: "Code déjà utilisé dans l'école"}
+        '422': {description: "École introuvable"}
+  /api/v1/higher/departments/{id}:
+    patch:
+      summary: "Modifier un département"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Département modifié"}
+        '403': {description: "Hors périmètre"}
+  /api/v1/higher/programs:
+    get:
+      summary: "Filières et spécialités du périmètre (API-01)"
+      parameters:
+        - {name: school_id, in: query, required: false, schema: {type: string}}
+        - {name: 'filter[regime]', in: query, required: false, schema: {type: string, enum: [lmd, bts, hnd, certificate]}}
+        - {name: 'filter[department_id]', in: query, required: false, schema: {type: string}}
+      responses:
+        '200': {description: "Liste paginée"}
+        '404': {description: "Application Supérieur fermée ou jamais ouverte au client, ou ressource hors périmètre"}
+    post:
+      summary: "Créer une filière ou une spécialité (structure `track` du socle + hi_programs)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [department_id, code, name, regime, duration_years]
+              properties:
+                department_id: {type: string}
+                parent_program_id: {type: [string, 'null'], description: "Spécialité d'une filière (même école, même régime)"}
+                code: {type: string, maxLength: 12}
+                name: {type: string}
+                regime: {type: string, enum: [lmd, bts, hnd, certificate]}
+                teaching_language: {type: string, enum: [fr, en, bilingual], default: fr}
+                study_mode: {type: string, enum: [day, evening, work_study], default: day}
+                duration_years: {type: integer, minimum: 1, maximum: 8}
+      responses:
+        '201': {description: "Filière créée"}
+        '403': {description: "Département hors périmètre"}
+        '409': {description: "Code déjà utilisé dans l'école"}
+        '422': {description: "Données invalides"}
+  /api/v1/higher/programs/{id}:
+    get:
+      summary: "Une filière"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Filière (requires_tutelage vrai en LMD)"}
+        '404': {description: "Introuvable ou hors périmètre"}
+    patch:
+      summary: "Modifier une filière ; le régime ne change jamais (RG-ORG-7 : 409)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Filière modifiée"}
+        '409': {description: "Régime non modifiable (type .../errors/higher-regime-immutable) ou code déjà utilisé"}
+        '422': {description: "Durée inférieure au dernier niveau"}
+  /api/v1/higher/levels:
+    get:
+      summary: "Niveaux (filter[program_id])"
+      responses:
+        '200': {description: "Liste paginée"}
+        '404': {description: "Application Supérieur fermée ou jamais ouverte au client, ou ressource hors périmètre"}
+    post:
+      summary: "Créer un niveau (structure `level` sous la filière ; rang <= durée)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [program_id, ordinal, code, name]
+              properties:
+                program_id: {type: string}
+                ordinal: {type: integer, minimum: 1, maximum: 8}
+                code: {type: string, examples: [L1, M2, BTS1]}
+                name: {type: string}
+      responses:
+        '201': {description: "Niveau créé"}
+        '409': {description: "Rang déjà présent"}
+        '422': {description: "Rang au-delà de la durée"}
+  /api/v1/higher/levels/{id}:
+    patch:
+      summary: "Modifier un niveau (code, nom)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Niveau modifié"}
+  /api/v1/higher/groups:
+    get:
+      summary: "Groupes (filter[level_id])"
+      responses:
+        '200': {description: "Liste paginée"}
+        '404': {description: "Application Supérieur fermée ou jamais ouverte au client, ou ressource hors périmètre"}
+    post:
+      summary: "Créer un groupe (structure `group` sous le niveau)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [level_id, code, name]
+              properties:
+                level_id: {type: string}
+                code: {type: string, maxLength: 20}
+                name: {type: string}
+                capacity: {type: [integer, 'null'], minimum: 1}
+      responses:
+        '201': {description: "Groupe créé"}
+        '409': {description: "Code déjà utilisé pour ce niveau"}
+  /api/v1/higher/groups/{id}:
+    patch:
+      summary: "Modifier un groupe"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Groupe modifié"}
+  /api/v1/higher/authorizations:
+    get:
+      summary: "Registre des autorisations MINESUP (EX-ACA-03) : valeurs du registre du socle, état (valid, expired, upcoming), jours restants"
+      responses:
+        '200': {description: "Liste paginée"}
+        '404': {description: "Application Supérieur fermée ou jamais ouverte au client, ou ressource hors périmètre"}
+    post:
+      summary: "Enregistrer une autorisation (API-02) : lève le blocage RG-ACA-1 pour les niveaux couverts"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [program_id, decree_number, valid_from, valid_to]
+              properties:
+                program_id: {type: string}
+                decree_number: {type: string, description: "N° de l'arrêté"}
+                decree_date: {type: [string, 'null'], format: date}
+                authority: {type: [string, 'null'], default: MINESUP}
+                valid_from: {type: string, format: date}
+                valid_to: {type: string, format: date}
+                level_ids: {type: [array, 'null'], items: {type: string}, description: "Niveaux autorisés (null = tous)"}
+                document_id: {type: [string, 'null'], description: "Arrêté numérisé"}
+      responses:
+        '201': {description: "Autorisation enregistrée"}
+        '403': {description: "Filière hors périmètre"}
+        '422': {description: "Dates ou niveaux invalides"}
+  /api/v1/higher/authorizations/expiring:
+    get:
+      summary: "Autorisations valides qui expirent dans les N jours (défaut 90)"
+      parameters:
+        - {name: days, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 365}}
+      responses:
+        '200': {description: "Liste triée par jours restants"}
+        '404': {description: "Application Supérieur fermée ou jamais ouverte au client, ou ressource hors périmètre"}
+        '422': {description: "Nombre de jours invalide"}
+  /api/v1/higher/authorizations/{id}:
+    get:
+      summary: "Une autorisation"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Autorisation"}
+        '404': {description: "Introuvable ou hors périmètre"}
+    patch:
+      summary: "Modifier une autorisation (la filière ne change pas)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Autorisation modifiée"}
+        '422': {description: "Données invalides"}
+    delete:
+      summary: "Supprimer une autorisation saisie par erreur (le blocage RG-ACA-1 revient)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "{data: {id, deleted: true}}"}
+  /api/v1/higher/tutelages:
+    get:
+      summary: "Registre des tutelles (EX-ACA-04) : une université par filière LMD et par année (RG-ORG-8)"
+      parameters:
+        - {name: 'filter[program_id]', in: query, required: false, schema: {type: string}}
+        - {name: 'filter[academic_year_id]', in: query, required: false, schema: {type: string}}
+      responses:
+        '200': {description: "Liste paginée"}
+        '404': {description: "Application Supérieur fermée ou jamais ouverte au client, ou ressource hors périmètre"}
+    post:
+      summary: "Rattacher une filière LMD à son université de tutelle pour une année (R03)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [program_id, academic_year_id, university_name]
+              properties:
+                program_id: {type: string}
+                academic_year_id: {type: string}
+                university_name: {type: string}
+                convention_reference: {type: [string, 'null']}
+                convention_document_id: {type: [string, 'null'], description: "Convention numérisée"}
+                convention_starts_on: {type: [string, 'null'], format: date}
+                convention_ends_on: {type: [string, 'null'], format: date, description: "Alertes 90/30/7 jours"}
+                approved_programme_ref: {type: [string, 'null'], description: "Référence du programme approuvé (RG-MAQ-3)"}
+                contacts: {type: array, items: {type: object, properties: {name: {type: string}, role: {type: string}, email: {type: string}, phone: {type: string}}}}
+      responses:
+        '201': {description: "Tutelle enregistrée"}
+        '409': {description: "Déjà une tutelle pour cette filière et cette année"}
+        '422': {description: "Filière non LMD ou données invalides"}
+  /api/v1/higher/tutelages/{id}:
+    get:
+      summary: "Une tutelle"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Tutelle"}
+        '404': {description: "Introuvable ou hors périmètre"}
+    patch:
+      summary: "Modifier convention, contacts, programme approuvé ; l'université d'une année est figée (RG-ORG-8 : 409)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Tutelle modifiée"}
+        '409': {description: "Changement d'université : enregistrer la tutelle de l'année concernée"}
+  /api/v1/higher/eligibility:
+    get:
+      summary: "La garde d'inscription IPES permettrait-elle une inscription ? (RG-ACA-1 niveau et date, RG-ACA-2 tutelle de l'année)"
+      parameters:
+        - {name: structure_id, in: query, required: true, schema: {type: string}, description: "Niveau ou groupe"}
+        - {name: academic_year_id, in: query, required: false, schema: {type: string}}
+        - {name: date, in: query, required: false, schema: {type: string, format: date}}
+      responses:
+        '200': {description: "{data: {allowed, reason}}"}
+        '404': {description: "Application Supérieur fermée ou jamais ouverte au client, ou ressource hors périmètre"}
+        '422': {description: "Paramètres invalides"}
+  /api/v1/higher/regulations:
+    get:
+      summary: "Règlements des études (EX-ACA-05) par école, régime et année"
+      responses:
+        '200': {description: "Liste paginée"}
+        '404': {description: "Application Supérieur fermée ou jamais ouverte au client, ou ressource hors périmètre"}
+    post:
+      summary: "Créer un règlement en brouillon : valeurs par défaut du CDC selon le régime, surchargées par `parameters`"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [school_id, regime, academic_year_id]
+              properties:
+                school_id: {type: string}
+                regime: {type: string, enum: [lmd, bts, hnd, certificate]}
+                academic_year_id: {type: string}
+                parameters:
+                  type: object
+                  description: "cc_weight_percent, rounding_decimals, grade_step, unit_pass_mark, compensation_enabled, compensation_threshold, eliminatory_unit_mark, resit_enabled, resit_replaces_exam, resit_unit_cap, progression_admitted_credits, progression_debts_min_credits, credits_per_semester, jury_points_max, max_consecutive_enrolments, annual_pass_average, national_exam_min_attendance_percent"
+      responses:
+        '201': {description: "Règlement créé"}
+        '409': {description: "Déjà un règlement pour cette école, ce régime et cette année"}
+        '422': {description: "Paramètre inconnu ou hors bornes"}
+  /api/v1/higher/regulations/{id}:
+    get:
+      summary: "Un règlement"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Règlement"}
+        '404': {description: "Introuvable ou hors périmètre"}
+    patch:
+      summary: "Modifier un règlement en brouillon (figé : 409, voir /amend)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Règlement modifié"}
+        '409': {description: "Règlement figé (RG-ACA-3)"}
+  /api/v1/higher/regulations/{id}/freeze:
+    post:
+      summary: "Figer le règlement (ouverture des inscriptions, RG-ACA-3)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Règlement figé"}
+        '409': {description: "Déjà figé"}
+  /api/v1/higher/regulations/{id}/amend:
+    post:
+      summary: "Modifier un règlement figé : directeur académique (higher.regulation.amend), double authentification récente, motif ; version + 1 et révision tracée"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [parameters, reason]
+              properties:
+                parameters: {type: object}
+                reason: {type: string, maxLength: 500}
+      responses:
+        '200': {description: "Règlement modifié"}
+        '403': {description: "Pas le directeur académique, ou double authentification absente (type .../errors/second-factor-required)"}
+        '409': {description: "Règlement encore en brouillon"}
+  /api/v1/higher/regulations/{id}/revisions:
+    get:
+      summary: "Révisions d'un règlement figé (avant, après, motif, auteur)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Liste des révisions"}
+        '404': {description: "Application Supérieur fermée ou jamais ouverte au client, ou ressource hors périmètre"}
+  /api/v1/higher/calendar-entries:
+    get:
+      summary: "Calendrier académique (EX-ACA-06) : filter[school_id], filter[academic_year_id], filter[entry_kind]"
+      responses:
+        '200': {description: "Liste paginée"}
+        '404': {description: "Application Supérieur fermée ou jamais ouverte au client, ou ressource hors périmètre"}
+    post:
+      summary: "Ajouter une entrée : semestre, période d'examens, rattrapage, délibération, férié, période d'inscription"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [school_id, academic_year_id, entry_kind, label, starts_on, ends_on]
+              properties:
+                school_id: {type: string}
+                academic_year_id: {type: string}
+                entry_kind: {type: string, enum: [semester, exam_period, resit_period, deliberation, holiday, enrolment_period, other]}
+                label: {type: string}
+                starts_on: {type: string, format: date}
+                ends_on: {type: string, format: date}
+                semester_ordinal: {type: [integer, 'null'], description: "Obligatoire pour un semestre"}
+      responses:
+        '201': {description: "Entrée créée"}
+        '422': {description: "Dates incohérentes ou numéro de semestre manquant"}
+  /api/v1/higher/calendar-entries/{id}:
+    patch:
+      summary: "Modifier une entrée du calendrier"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Entrée modifiée"}
+    delete:
+      summary: "Supprimer une entrée du calendrier"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "{data: {id, deleted: true}}"}

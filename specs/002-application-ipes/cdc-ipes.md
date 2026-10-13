@@ -118,3 +118,5 @@ RG-DOC-1 numéro unique non réutilisable : code du document, code d'école, ann
 
 ## Notifications (reçues jusqu'à NOT-11)
 NOT-01 candidature reçue et complète (candidat ; SMS, e-mail) · 02 pièce manquante ou refusée (candidat) · 03 décision d'admission (candidat) · 04 inscription validée, matricule attribué (étudiant, garant ; SMS) · 05 changement d'emploi du temps (étudiants du groupe, enseignant ; notification mobile) · 06 absence enregistrée (étudiant ; garant si consentement ; mobile, SMS) · 07 seuil d'assiduité presque atteint à 25 % d'absences (étudiant ; garant si consentement ; SMS) · 08 échéance J-7 (étudiant, garant ; SMS) · 09 tranche en retard J+1 et J+15 (SMS) · 10 paiement reçu, reçu disponible (payeur, étudiant ; SMS) · 11 saisie des notes en retard (enseignant). NOT-12 et suivantes : texte non reçu.
+
+> **Complément reçu le 2026-10-13** : la fin du cahier (NOT-12 à 15, API-01 à 19, sécurité, cycles de vie, TST-01 à 12, feuille de route, risques, questions ouvertes) est dans [cdc-ipes-complement.md](cdc-ipes-complement.md). La mention « tronqué » ci-dessus est levée.

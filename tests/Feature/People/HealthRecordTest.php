@@ -19,14 +19,14 @@ final class HealthRecordTest extends PeopleTestCase
         $person = $this->person('Yann', 'Foka');
         $path = '/people/' . $person['id'] . '/health';
 
-        [$response, $body] = $this->api('PUT', $path, body: ['allergies' => 'arachides', 'doctor_name' => 'Dr Essomba', 'blood_group' => 'O+']);
+        [$response, $body] = $this->api('PUT', $path, body: ['allergies' => 'arachides', 'doctor_name' => 'Dr Essomba', 'blood_group' => 'AB-']);
         self::assertSame(200, $response->getStatusCode());
         self::assertSame('arachides', $body['data']['allergies']);
 
         $raw = $this->connections()->pdo()->query('SELECT * FROM health_records')->fetchAll();
         self::assertCount(1, $raw);
         $dump = json_encode($raw, JSON_THROW_ON_ERROR);
-        foreach (['arachides', 'Essomba', 'O+'] as $secret) {
+        foreach (['arachides', 'Essomba', 'AB-'] as $secret) {
             self::assertStringNotContainsString($secret, $dump);
         }
         self::assertSame('arachides', $this->api('GET', $path)[1]['data']['allergies']);
