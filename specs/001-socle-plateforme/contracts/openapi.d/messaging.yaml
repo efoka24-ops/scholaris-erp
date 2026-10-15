@@ -1,0 +1,650 @@
+# Contrat OpenAPI 3.1 du service S05 Messaging (fusionné avec openapi.yaml par le test de contrat).
+paths:
+  /api/v1/message-templates:
+    get:
+      summary: "Liste des modèles visibles : établissement et plateforme (filtres template_key, locale, channel)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Page de modèles"
+        '403':
+          description: "Accès refusé"
+        '422':
+          description: "Filtre hors liste blanche"
+    post:
+      summary: "Crée un modèle d’établissement (variables limitées à la liste blanche)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '201':
+          description: "Modèle créé"
+        '403':
+          description: "Accès refusé"
+        '409':
+          description: "Modèle déjà existant pour cette clé, langue et canal"
+        '422':
+          description: "Données invalides ou variable non autorisée"
+  /api/v1/message-templates/{id}:
+    get:
+      summary: "Détail d’un modèle visible"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Modèle"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable"
+    patch:
+      summary: "Modifie objet et texte d’un modèle d’établissement"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Modèle modifié"
+        '403':
+          description: "Accès refusé ou modèle de la plateforme"
+        '404':
+          description: "Introuvable"
+        '422':
+          description: "Données invalides"
+    delete:
+      summary: "Supprime un modèle d’établissement"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Modèle supprimé"
+        '403':
+          description: "Accès refusé ou modèle de la plateforme"
+        '404':
+          description: "Introuvable"
+  /api/v1/messages/audience-preview:
+    post:
+      summary: "Nombre de destinataires et exemple, sans rien envoyer"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Aperçu"
+        '403':
+          description: "Accès refusé"
+        '422':
+          description: "Audience invalide"
+  /api/v1/messages:
+    get:
+      summary: "Liste des messages de l’établissement (filtres status, template_key)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Page de messages"
+        '403':
+          description: "Accès refusé"
+        '422':
+          description: "Filtre hors liste blanche"
+    post:
+      summary: "Crée un message en brouillon (modèle ou texte libre, audience, canaux, envoi programmé)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '201':
+          description: "Brouillon créé"
+        '403':
+          description: "Accès refusé"
+        '422':
+          description: "Données invalides"
+  /api/v1/messages/{id}:
+    get:
+      summary: "Détail d’un message avec le décompte des livraisons par statut"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Message"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable"
+  /api/v1/messages/{id}/send:
+    post:
+      summary: "Envoie le message : une livraison par destinataire et par canal, traitée par lots (plage 7 h à 21 h, consentement)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Message envoyé ou programmé"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable"
+        '409':
+          description: "Message déjà envoyé"
+        '422':
+          description: "Aucun destinataire"
+  /api/v1/messages/{id}/deliveries:
+    get:
+      summary: "Suivi de délivrance par destinataire (filtres status, channel)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Page de livraisons"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable"
+  /api/v1/announcements:
+    get:
+      summary: "Liste des annonces de l’établissement"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Page d’annonces"
+        '403':
+          description: "Accès refusé"
+    post:
+      summary: "Publie une annonce"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '201':
+          description: "Annonce publiée"
+        '403':
+          description: "Accès refusé"
+        '422':
+          description: "Données invalides"
+  /api/v1/announcements/{id}:
+    get:
+      summary: "Détail d’une annonce"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Annonce"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable"
+    patch:
+      summary: "Modifie une annonce"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Annonce modifiée"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable"
+        '422':
+          description: "Données invalides"
+    delete:
+      summary: "Supprime une annonce"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Annonce supprimée"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable"
+  /api/v1/sms-usage:
+    get:
+      summary: "SMS envoyés par mois pour l’établissement (filtre month = AAAA-MM)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Compteurs mensuels"
+        '403':
+          description: "Accès refusé"
+        '422':
+          description: "Mois invalide"
+  /api/v1/conversation-contacts:
+    get:
+      summary: "Interlocuteurs que l’appelant peut joindre au sujet d’un apprenant (paramètre learner_id) : enseignants et direction pour un parent, parents consentants pour le personnel"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: learner_id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Interlocuteurs"
+        '403':
+          description: "Accès refusé"
+        '422':
+          description: "Apprenant absent ou non inscrit"
+  /api/v1/conversations:
+    get:
+      summary: "Conversations de l’appelant avec leur nombre de messages non lus (filtres status, kind ; scope=all réservé aux modérateurs)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Page de conversations"
+        '403':
+          description: "Accès refusé"
+        '422':
+          description: "Filtre hors liste blanche"
+    post:
+      summary: "Ouvre une conversation parent et enseignant ou parent et direction : apprenant inscrit, consentement du parent, interlocuteurs de son périmètre, premier message"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '201':
+          description: "Conversation créée"
+        '403':
+          description: "Accès refusé"
+        '422':
+          description: "Interlocuteur hors périmètre, consentement absent, pièce jointe invalide ou donnée invalide"
+  /api/v1/conversations/{id}:
+    get:
+      summary: "Détail d’une conversation et de ses participants (participant ou modérateur)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Conversation"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou non participant"
+  /api/v1/conversations/{id}/archive:
+    post:
+      summary: "Archive une conversation (modérateur) : plus aucun envoi possible"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Conversation archivée"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable"
+        '409':
+          description: "Déjà archivée"
+  /api/v1/conversations/{id}/messages:
+    get:
+      summary: "Messages d’une conversation, du plus récent au plus ancien ; les messages masqués n’exposent plus leur texte aux participants ; marque les messages comme lus ; la lecture par un modérateur non participant est auditée"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Page de messages"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou non participant"
+    post:
+      summary: "Poste un message (texte et pièces jointes par référence de document) ; périmètre et consentement sont recontrôlés ; les autres participants sont notifiés sans le texte"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '201':
+          description: "Message posté"
+        '403':
+          description: "Accès refusé, périmètre ou consentement modifié"
+        '404':
+          description: "Introuvable ou non participant"
+        '409':
+          description: "Conversation archivée"
+        '422':
+          description: "Texte ou pièce jointe invalide"
+  /api/v1/conversations/{id}/messages/{messageId}/report:
+    post:
+      summary: "Signale un message d’un autre participant (motif obligatoire)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '201':
+          description: "Signalement enregistré"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou non participant"
+        '409':
+          description: "Déjà signalé"
+        '422':
+          description: "Motif invalide ou message de l’appelant"
+  /api/v1/conversations/{id}/messages/{messageId}/hide:
+    post:
+      summary: "Masque un message (modérateur, motif obligatoire) et clôt ses signalements ouverts"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Message masqué"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable"
+        '409':
+          description: "Déjà masqué"
+        '422':
+          description: "Motif invalide"
+  /api/v1/conversations/{id}/messages/{messageId}/restore:
+    post:
+      summary: "Rétablit un message masqué (modérateur)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Message rétabli"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable"
+        '409':
+          description: "Message non masqué"
+  /api/v1/conversation-reports:
+    get:
+      summary: "File de modération : signalements de l’établissement (filtres status, conversation_id)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Page de signalements"
+        '403':
+          description: "Accès refusé"
+        '422':
+          description: "Filtre hors liste blanche"
+  /api/v1/conversation-reports/{id}/dismiss:
+    post:
+      summary: "Classe un signalement sans suite (modérateur)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Signalement classé"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable"
+        '409':
+          description: "Déjà traité"
+  /api/v1/message-templates/export:
+    get:
+      summary: "Export CSV / Excel des modèles de messages visibles (établissement et plateforme) : mêmes filtres et mêmes droits que GET /message-templates, plafonné à 5 000 lignes"
+      security:
+        - bearer: []
+      parameters:
+        - name: format
+          in: query
+          required: false
+          description: "Format du fichier : csv (défaut ; UTF-8 avec BOM, séparateur « ; ») ou xlsx (Excel)"
+          schema: {type: string, enum: [csv, xlsx], default: csv}
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Fichier CSV (UTF-8 avec BOM, séparateur « ; ») ou Excel selon le paramètre format"
+          content:
+            text/csv:
+              schema: {type: string}
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema: {type: string, format: binary}
+        '403':
+          description: "Accès refusé"
+        '422':
+          description: "Filtre hors liste blanche"
+  /api/v1/messages/export:
+    get:
+      summary: "Export CSV / Excel des messages : mêmes filtres et mêmes droits que GET /messages, plafonné à 5 000 lignes"
+      security:
+        - bearer: []
+      parameters:
+        - name: format
+          in: query
+          required: false
+          description: "Format du fichier : csv (défaut ; UTF-8 avec BOM, séparateur « ; ») ou xlsx (Excel)"
+          schema: {type: string, enum: [csv, xlsx], default: csv}
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Fichier CSV (UTF-8 avec BOM, séparateur « ; ») ou Excel selon le paramètre format"
+          content:
+            text/csv:
+              schema: {type: string}
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema: {type: string, format: binary}
+        '403':
+          description: "Accès refusé"
+        '422':
+          description: "Filtre hors liste blanche"
+  /api/v1/messages/{id}/deliveries/export:
+    get:
+      summary: "Export CSV / Excel du journal d’envoi d’un message : mêmes filtres et mêmes droits que GET /messages/{id}/deliveries, plafonné à 5 000 lignes"
+      security:
+        - bearer: []
+      parameters:
+        - name: format
+          in: query
+          required: false
+          description: "Format du fichier : csv (défaut ; UTF-8 avec BOM, séparateur « ; ») ou xlsx (Excel)"
+          schema: {type: string, enum: [csv, xlsx], default: csv}
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Fichier CSV (UTF-8 avec BOM, séparateur « ; ») ou Excel selon le paramètre format"
+          content:
+            text/csv:
+              schema: {type: string}
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema: {type: string, format: binary}
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Message introuvable"
+        '422':
+          description: "Filtre hors liste blanche"
+  /api/v1/announcements/export:
+    get:
+      summary: "Export CSV / Excel des annonces : mêmes droits que GET /announcements, plafonné à 5 000 lignes"
+      security:
+        - bearer: []
+      parameters:
+        - name: format
+          in: query
+          required: false
+          description: "Format du fichier : csv (défaut ; UTF-8 avec BOM, séparateur « ; ») ou xlsx (Excel)"
+          schema: {type: string, enum: [csv, xlsx], default: csv}
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Fichier CSV (UTF-8 avec BOM, séparateur « ; ») ou Excel selon le paramètre format"
+          content:
+            text/csv:
+              schema: {type: string}
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema: {type: string, format: binary}
+        '403':
+          description: "Accès refusé"
+  /api/v1/conversation-reports/export:
+    get:
+      summary: "Export CSV / Excel des conversations signalées : mêmes filtres et mêmes droits (modération) que GET /conversation-reports, plafonné à 5 000 lignes"
+      security:
+        - bearer: []
+      parameters:
+        - name: format
+          in: query
+          required: false
+          description: "Format du fichier : csv (défaut ; UTF-8 avec BOM, séparateur « ; ») ou xlsx (Excel)"
+          schema: {type: string, enum: [csv, xlsx], default: csv}
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Fichier CSV (UTF-8 avec BOM, séparateur « ; ») ou Excel selon le paramètre format"
+          content:
+            text/csv:
+              schema: {type: string}
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema: {type: string, format: binary}
+        '403':
+          description: "Permission de modération manquante"
+        '422':
+          description: "Filtre hors liste blanche"

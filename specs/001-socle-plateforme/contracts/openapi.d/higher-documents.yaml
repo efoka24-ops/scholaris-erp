@@ -1,0 +1,117 @@
+# Contrat OpenAPI 3.1 du module DOC de l'application Supérieur (IPES), lot I1 : catalogue DOC-01 à DOC-06 et DOC-27 à DOC-30
+# (types déclarés par les modules Higher, tag de conteneur higher.document_types.*), profil documentaire versionné de chaque
+# école (en-tête, logo, couleur, code du numéro, langue), émission par le socle avec numéro RG-DOC-1 (ex. REL-EC-2026-000315),
+# registre, annulation sans suppression, duplicata. Vérification publique (QR) : route du socle GET /api/v1/public/verify/{token}
+# (type, titulaire masqué, date, statut ; jamais les notes, RG-DOC-2 ; état valid/cancelled/replaced avec
+# documents.verification.detailed_status). Permissions : higher.document.read, documents.issue, documents.templates.manage,
+# higher.quitus.issue (DOC-30). Écritures : 423 si l'abonnement est suspendu, 403 si l'application est fermée.
+paths:
+  /api/v1/higher/documents/catalog:
+    get:
+      summary: "Catalogue des documents de l'IPES : signataire, QR, blocage, gabarit de numéro, variables et modèles FR/EN à installer au socle"
+      responses:
+        '200': {description: "Types (champ socle : définition pour /document-types et modèles pour /document-templates ; null pour le reçu DOC-27 du socle)"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Application fermée"}
+  /api/v1/higher/documents/catalog/{code}:
+    get:
+      summary: "Un type du catalogue (DOC-nn)"
+      parameters:
+        - {name: code, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Type"}
+        '404': {description: "Type inconnu"}
+  /api/v1/higher/documents/schools/{schoolId}/profile:
+    get:
+      summary: "Profil documentaire de l'école (version courante et historique)"
+      parameters:
+        - {name: schoolId, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Profil"}
+        '404': {description: "Aucun profil ou école hors périmètre"}
+    put:
+      summary: "Nouvelle version du profil documentaire (les documents émis gardent la version de leur émission, RG-DOC-6)"
+      parameters:
+        - {name: schoolId, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [school_code, display_name]
+              properties:
+                school_code: {type: string, pattern: '^[A-Z0-9]{1,10}$', description: "Jeton {ECOLE} du numéro"}
+                display_name: {type: string}
+                header_text: {type: [string, 'null']}
+                logo_url: {type: [string, 'null'], format: uri}
+                primary_color: {type: [string, 'null'], pattern: '^#[0-9A-Fa-f]{6}$'}
+                default_locale: {type: [string, 'null'], enum: [fr, en, null]}
+      responses:
+        '404': {description: "Application fermée, ressource introuvable ou hors périmètre"}
+        '200': {description: "Profil versionné"}
+        '403': {description: "Hors périmètre"}
+        '422': {description: "Champ invalide"}
+        '423': {description: "Abonnement suspendu"}
+  /api/v1/higher/documents/issue:
+    post:
+      summary: "Émettre un document de l'IPES (numéro PREFIXE-ECOLE-AAAA-NNNNNN, langue de la filière ou de l'école, signataire de l'école)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code, person_id, school_id]
+              properties:
+                code: {type: string, pattern: '^DOC-\d{2}$'}
+                person_id: {type: string}
+                school_id: {type: string}
+                program_id: {type: [string, 'null']}
+                level_id: {type: [string, 'null']}
+                locale: {type: [string, 'null'], enum: [fr, en, null]}
+                data: {type: object, additionalProperties: {type: [string, number, boolean, 'null']}}
+      responses:
+        '404': {description: "Application fermée, ressource introuvable ou hors périmètre"}
+        '201': {description: "Document émis (number, verification_token, status valid)"}
+        '403': {description: "Permission (documents.issue ; higher.quitus.issue pour DOC-30) ou périmètre"}
+        '422': {description: "Type inconnu, profil d'école absent, variable non déclarée, blocage pour impayé (types bloquables seulement), garde : quitus avec solde non nul"}
+        '423': {description: "Abonnement suspendu"}
+  /api/v1/higher/documents:
+    get:
+      summary: "Registre des documents émis (filtres person_id, code, school_id, status)"
+      responses:
+        '404': {description: "Application fermée, ressource introuvable ou hors périmètre"}
+        '200': {description: "Documents"}
+        '403': {description: "Permission absente"}
+  /api/v1/higher/documents/{id}:
+    get:
+      summary: "Un document émis"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Document"}
+        '404': {description: "Introuvable ou hors périmètre"}
+  /api/v1/higher/documents/{id}/cancel:
+    post:
+      summary: "Annuler un document émis par erreur (jamais supprimé, motif obligatoire) ; replaced_by = remplacé par un autre document valide"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '403': {description: "Permission absente, hors périmètre ou application fermée (écriture)"}
+        '404': {description: "Application fermée, ressource introuvable ou hors périmètre"}
+        '200': {description: "Document annulé ou remplacé"}
+        '409': {description: "Déjà annulé"}
+        '422': {description: "Motif manquant ou remplaçant invalide"}
+        '423': {description: "Abonnement suspendu"}
+  /api/v1/higher/documents/{id}/duplicate:
+    post:
+      summary: "Duplicata : mention « Duplicata » datée, numéro d'origine conservé, rendu par le socle (render_path)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '403': {description: "Permission absente, hors périmètre ou application fermée (écriture)"}
+        '404': {description: "Application fermée, ressource introuvable ou hors périmètre"}
+        '200': {description: "Duplicata tracé"}
+        '409': {description: "Document annulé"}
+        '423': {description: "Abonnement suspendu"}

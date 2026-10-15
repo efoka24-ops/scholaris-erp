@@ -1,0 +1,88 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Scholaris\Modules\Socle\Organisation\Application;
+
+use Scholaris\Core\Database\ConnectionFactory;
+use Scholaris\Core\Http\HttpException;
+use Scholaris\Core\Support\Ulid;
+use Scholaris\Modules\Socle\Organisation\Contracts\ClientProvisioning;
+use Scholaris\Modules\Socle\Organisation\Contracts\ModuleActivator;
+use Scholaris\Modules\Socle\Organisation\Domain\EstablishmentType;
+use Scholaris\Modules\Socle\Organisation\Domain\ModuleCatalog;
+use Scholaris\Modules\Socle\Organisation\Infrastructure\EstablishmentMapper;
+use Scholaris\Modules\Socle\Organisation\Infrastructure\Repositories;
+
+/** Création de clients et d'établissements pour la plateforme, et activation des modules requis par une application. */
+final class ClientOnboarding implements ClientProvisioning, ModuleActivator
+{
+    private const PLATFORM_TENANT = 'platform';
+
+    public function __construct(
+        private readonly ConnectionFactory $connections,
+        private readonly EstablishmentService $establishments,
+        private readonly Repositories $repositories,
+        private readonly OrgClock $clock,
+    ) {
+    }
+
+    public function createTenant(string $name): string
+    {
+        $name = trim($name);
+        if ($name === '' || mb_strlen($name) > 160) {
+            throw HttpException::validation(['name' => ['Nom de client invalide.']]);
+        }
+        $id = (string) new Ulid();
+        $now = $this->clock->now();
+        $this->connections->pdo()
+            ->prepare('INSERT INTO tenants (id, name, status, plan, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)')
+            ->execute([$id, $name, 'active', 'platform', $now, $now]);
+
+        return $id;
+    }
+
+    public function tenantExists(string $tenantId): bool
+    {
+        if ($tenantId === self::PLATFORM_TENANT) {
+            return false;
+        }
+        $statement = $this->connections->pdo()->prepare('SELECT 1 FROM tenants WHERE id = ?');
+        $statement->execute([$tenantId]);
+
+        return $statement->fetchColumn() !== false;
+    }
+
+    public function tenants(): array
+    {
+        $statement = $this->connections->pdo()->prepare('SELECT id, name, status, created_at FROM tenants WHERE id <> ? ORDER BY created_at, id');
+        $statement->execute([self::PLATFORM_TENANT]);
+        $rows = [];
+        foreach ($statement->fetchAll() as $row) {
+            $rows[] = ['id' => (string) $row['id'], 'name' => (string) $row['name'], 'status' => (string) $row['status'], 'created_at' => (string) $row['created_at']];
+        }
+
+        return $rows;
+    }
+
+    public function createEstablishment(string $tenantId, string $name, string $type): string
+    {
+        $kind = EstablishmentType::tryFrom($type) ?? throw HttpException::validation(['type' => ['Type d\'établissement inconnu.']]);
+        if (!$this->tenantExists($tenantId)) {
+            throw HttpException::notFound('Client introuvable.');
+        }
+
+        return (string) $this->establishments->create($tenantId, trim($name), $kind)['id'];
+    }
+
+    public function enable(string $tenantId, string $establishmentId, array $modules): void
+    {
+        $row = $this->repositories->explicit('establishments', $tenantId)->findOrFail($establishmentId);
+        $current = array_values(array_filter(EstablishmentMapper::decode((string) $row['modules_enabled']), 'is_string'));
+        $wanted = array_values(array_unique(array_merge($current, array_filter($modules, [ModuleCatalog::class, 'isKnown']))));
+        if (array_diff($wanted, $current) === []) {
+            return;
+        }
+        $this->establishments->setModules($tenantId, $establishmentId, $wanted);
+    }
+}

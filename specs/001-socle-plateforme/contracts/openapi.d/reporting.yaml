@@ -1,0 +1,34 @@
+# Contrat OpenAPI 3.1 du service S11 Tableaux de bord (fusionné avec openapi.yaml par le test de contrat).
+# GET /api/v1/me/todo est décrit dans identity.yaml ; Reporting en fournit l'agrégation.
+paths:
+  /api/v1/dashboards/{kind}:
+    get:
+      summary: "Tableau de bord (direction, censeur ou groupe). Direction et censeur exigent X-Establishment-Id et reporting.read ; groupe exige reporting.group.read (vue consolidée). Un indicateur sans source renvoie available:false avec sa raison. Les applications peuvent déclarer d'autres tableaux de bord (reporting.dashboards.*, ex. ecole, academique, tutelle : établissement, permission propre, org_unit_id facultatif)."
+      security:
+        - bearer: []
+      parameters:
+        - name: kind
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [direction, censeur, groupe]
+        - name: org_unit_id
+          in: query
+          required: false
+          description: "École interne (tableaux de bord déclarés par une application seulement)"
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Indicateurs {key, label, available, value, unit, reason?, detail?} ; la vue groupe ajoute consolidated et establishments"
+        '400':
+          description: "X-Establishment-Id manquant"
+        '401':
+          description: "Authentification requise"
+        '403':
+          description: "Droit manquant ou établissement non autorisé"
+        '404':
+          description: "Tableau de bord ou établissement inconnu"
+        '422':
+          description: "org_unit_id invalide"

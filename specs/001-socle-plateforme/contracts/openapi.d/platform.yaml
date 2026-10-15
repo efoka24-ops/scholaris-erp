@@ -1,0 +1,466 @@
+# Contrat OpenAPI 3.1 du module Platform : catalogue d'applications, droits d'usage par client, demandes d'accès publiques,
+# administrateur de plateforme et abonnements (fusionné avec openapi.yaml par le test de contrat).
+# Erreurs au format RFC 9457 (components/schemas/Problem). Montants entiers en XAF, dates AAAA-MM-JJ ou ISO 8601.
+# Routes /platform/** : compte du client technique `platform` avec le rôle platform_admin ; les actions marquées
+# « 2FA récente » exigent une double authentification validée depuis moins de 15 minutes (403 two-factor-recent-required).
+paths:
+  /api/v1/public/applications:
+    get:
+      summary: "Catalogue public : applications disponibles ou annoncées (clé, libellé, cible, statut, tarif mensuel XAF, jours d'essai)"
+      security: []
+      responses:
+        '200':
+          description: "Liste des applications (les applications retirées sont exclues)"
+  /api/v1/public/access-requests:
+    post:
+      summary: "Demande d'accès sans compte. Limitation : 5 par heure et par IP, 3 par jour et par e-mail ; champ piège `website` ; champs inconnus refusés"
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [institution_name, target_type, city, region, contact_first_name, contact_last_name, contact_email, app_key]
+              properties:
+                institution_name: {type: string, minLength: 3, maxLength: 160}
+                target_type: {type: string, enum: [higher, secondary, primary, nursery]}
+                city: {type: string, minLength: 2, maxLength: 80}
+                region: {type: string, minLength: 2, maxLength: 80}
+                country: {type: string, pattern: '^[A-Z]{2}$', default: CM}
+                contact_first_name: {type: string, maxLength: 80}
+                contact_last_name: {type: string, maxLength: 80}
+                contact_email: {type: string, format: email, maxLength: 190}
+                contact_phone: {type: string, description: "Format international, 8 à 15 chiffres"}
+                contact_position: {type: string, maxLength: 80}
+                ministerial_authorization: {type: string, maxLength: 120, description: "Référence de l'autorisation ministérielle, facultative"}
+                app_key: {type: string, description: "Application demandée ; sa cible doit être target_type"}
+                message: {type: string, maxLength: 2000}
+                locale: {type: string, enum: [fr, en]}
+                website: {type: string, description: "Champ piège : doit rester vide (réponse leurre sinon)"}
+      responses:
+        '202':
+          description: "Demande enregistrée : jeton de suivi (affiché une seule fois). Réponse identique que l'e-mail soit connu ou non"
+        '400':
+          description: "Corps JSON invalide"
+        '422':
+          description: "Données invalides"
+        '429':
+          description: "Limite de débit atteinte (Retry-After)"
+  /api/v1/public/access-requests/{token}:
+    get:
+      summary: "Suivi d'une demande par son jeton (statut, complément demandé, motif de refus ; aucune donnée de contact)"
+      security: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema: {type: string, pattern: '^[a-f0-9]{48}$'}
+      responses:
+        '200':
+          description: "État de la demande"
+        '404':
+          description: "Jeton inconnu"
+        '429':
+          description: "Limite de débit atteinte"
+  /api/v1/public/access-requests/{token}/complement:
+    post:
+      summary: "Réponse du demandeur à une demande de complément ({ message }) ; la demande repasse en attente"
+      security: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Demande mise à jour"
+        '404':
+          description: "Jeton inconnu"
+        '409':
+          description: "Aucun complément attendu"
+        '422':
+          description: "Données invalides"
+  /api/v1/platform/dashboard:
+    get:
+      summary: "Tableau de bord de la plateforme : clients, demandes en attente, applications ouvertes, essais qui se terminent (14 j), impayés, MRR ; indicateur sans source = available:false"
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: "Indicateurs"
+        '403':
+          description: "Réservé à l'administrateur de plateforme"
+  /api/v1/platform/applications:
+    get:
+      summary: "Catalogue complet (y compris retirées), modules du socle requis, tarif, essai, délai de grâce"
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: "Applications"
+        '403':
+          description: "Réservé à l'administrateur de plateforme"
+  /api/v1/platform/applications/{key}:
+    patch:
+      summary: "Modifie libellé, statut (available, coming_soon, retired), version, tarif mensuel XAF, jours d'essai, délai de grâce (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Application mise à jour"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Application inconnue"
+        '422':
+          description: "Données invalides"
+  /api/v1/platform/clients:
+    get:
+      summary: "Clients de la plateforme et leurs droits d'usage (aucune donnée métier)"
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: "Clients"
+        '403':
+          description: "Réservé à l'administrateur de plateforme"
+  /api/v1/platform/clients/{tenant}:
+    get:
+      summary: "Détail d'un client : établissements (nom, type) et droits d'usage"
+      security:
+        - bearer: []
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Client"
+        '403':
+          description: "Réservé à l'administrateur de plateforme"
+        '404':
+          description: "Client introuvable"
+  /api/v1/platform/clients/{tenant}/applications:
+    post:
+      summary: "Ouvre une application à un client ({ app_key }), en essai gratuit ; active les modules requis (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '201':
+          description: "Droit d'usage ouvert"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Client ou application introuvable"
+        '409':
+          description: "Déjà ouverte ou application retirée"
+  /api/v1/platform/clients/{tenant}/applications/{key}:
+    patch:
+      summary: "Tarif mensuel propre au client ({ monthly_price_xaf: entier | null }) (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema: {type: string}
+        - name: key
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Droit d'usage mis à jour"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Introuvable"
+        '422':
+          description: "Données invalides"
+  /api/v1/platform/clients/{tenant}/applications/{key}/suspend:
+    post:
+      summary: "Suspend l'application ({ reason } obligatoire) : écritures refusées, lecture et export conservés (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema: {type: string}
+        - name: key
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Suspendue"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Introuvable"
+        '409':
+          description: "État incompatible"
+  /api/v1/platform/clients/{tenant}/applications/{key}/close:
+    post:
+      summary: "Ferme l'application ({ reason } obligatoire) (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema: {type: string}
+        - name: key
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Fermée"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Introuvable"
+        '409':
+          description: "Déjà fermée"
+  /api/v1/platform/clients/{tenant}/applications/{key}/reactivate:
+    post:
+      summary: "Réactive une application suspendue ({ reason?, until?: AAAA-MM-JJ pour couvrir jusqu'à cette date }) (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema: {type: string}
+        - name: key
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Réactivée"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Introuvable"
+        '409':
+          description: "Non suspendue"
+  /api/v1/platform/access-requests:
+    get:
+      summary: "Demandes d'accès (filter[status]=pending|info_requested|accepted|rejected, pagination par curseur)"
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: "Page de demandes"
+        '403':
+          description: "Réservé à l'administrateur de plateforme"
+        '422':
+          description: "Filtre invalide"
+  /api/v1/platform/access-requests/{id}:
+    get:
+      summary: "Détail d'une demande d'accès"
+      security:
+        - bearer: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Demande"
+        '403':
+          description: "Réservé à l'administrateur de plateforme"
+        '404':
+          description: "Introuvable"
+  /api/v1/platform/access-requests/{id}/accept:
+    post:
+      summary: "Accepte ({ tenant_id?, force_reason? } ; tenant_id pour rattacher à un client existant) : crée client et établissement, ouvre l'application en essai de 90 jours, invite le premier administrateur (activation par code) (2FA récente)"
+      description: "Une application à venir (coming_soon) ou retirée n'est pas ouverte en essai : refus 422 sur app_key, sauf si l'administrateur force explicitement avec un motif force_reason (tracé dans l'audit)."
+      security:
+        - bearer: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Demande acceptée, droit d'usage et administrateur invité"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Introuvable"
+        '409':
+          description: "Déjà traitée"
+        '422':
+          description: "Client de rattachement introuvable, ou application à venir (coming_soon) ou retirée sans force_reason (F2)"
+  /api/v1/platform/access-requests/{id}/reject:
+    post:
+      summary: "Refuse ({ reason } obligatoire, transmis au demandeur) (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Demande refusée"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Introuvable"
+        '409':
+          description: "Déjà traitée"
+        '422':
+          description: "Motif manquant"
+  /api/v1/platform/access-requests/{id}/request-info:
+    post:
+      summary: "Demande un complément au demandeur ({ message })"
+      security:
+        - bearer: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Complément demandé"
+        '403':
+          description: "Réservé à l'administrateur de plateforme"
+        '404':
+          description: "Introuvable"
+        '409':
+          description: "Déjà traitée"
+  /api/v1/platform/payments:
+    get:
+      summary: "Paiements d'abonnement de tous les clients (filter[status], filter[tenant_id], curseur)"
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: "Page de paiements"
+        '403':
+          description: "Réservé à l'administrateur de plateforme"
+  /api/v1/platform/payments/webhook:
+    post:
+      summary: "Webhook de l'agrégateur de paiement (signature vérifiée par la passerelle ; idempotent par event_id)"
+      security: []
+      responses:
+        '200':
+          description: "Événement traité (outcome : succeeded, failed, duplicate, unknown_reference, amount_mismatch, already_*)"
+        '401':
+          description: "Signature absente ou invalide"
+        '422':
+          description: "Corps invalide"
+  /api/v1/me/applications:
+    get:
+      summary: "Lanceur : applications ouvertes aux établissements de l'utilisateur (état, jours d'essai restants, échéance) ; meta.catalog : applications non ouvertes"
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: "Applications de l'utilisateur"
+        '403':
+          description: "Compte de la plateforme"
+  /api/v1/applications/{key}/open:
+    post:
+      summary: "Libre-service : ouvre l'application pour le client (essai gratuit de 90 jours) ; permission applications.manage"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: key
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '201':
+          description: "Droit d'usage ouvert"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Application inconnue"
+        '409':
+          description: "Déjà ouverte"
+        '422':
+          description: "Application à venir (coming_soon) ou retirée : non ouvrable en libre-service (F2)"
+  /api/v1/applications/{key}/payments:
+    post:
+      summary: "Paie l'abonnement ({ months: 1..12, channel: mtn_momo|orange_money, payer_phone }) ; Idempotency-Key facultatif ; confirmation par webhook"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: key
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '202':
+          description: "Paiement demandé (en attente de confirmation)"
+        '200':
+          description: "Même clé d'idempotence : paiement déjà créé"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Application non ouverte"
+        '409':
+          description: "Application fermée"
+        '422':
+          description: "Données invalides"
+    get:
+      summary: "Historique des paiements de l'application et état du droit d'usage"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: key
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Paiements"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Application non ouverte"
+  /api/v1/application-payments/{id}/receipt:
+    get:
+      summary: "Reçu simple d'un paiement confirmé (aucune facture Billing)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Reçu"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '409':
+          description: "Paiement non confirmé"

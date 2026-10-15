@@ -1,0 +1,381 @@
+# Contrat OpenAPI 3.1 du service S01 Identité (fusionné avec openapi.yaml par le test de contrat).
+paths:
+  /api/v1/auth/login:
+    post:
+      summary: "Connexion par téléphone ou e-mail et mot de passe (option remember, client web = cookie HttpOnly). Réponse : token, new_device, two_factor_required, two_factor_setup_required"
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [identifier, password]
+              properties:
+                identifier: {type: string}
+                password: {type: string}
+                remember: {type: boolean}
+                device_id: {type: string}
+                client: {type: string, enum: [web, mobile]}
+      responses:
+        '200':
+          description: "Connecté (jeton opaque ; 2FA éventuellement à franchir)"
+        '401':
+          description: "Identifiants incorrects ; attempts_left donne les essais restants (réponse identique si l'identifiant est inconnu)"
+        '422':
+          description: "Champs manquants"
+        '423':
+          description: "Compte verrouillé 15 minutes (locked_until, Retry-After) ou bloqué par « Ce n'est pas moi »"
+  /api/v1/auth/logout:
+    post:
+      summary: "Ferme la session courante"
+      security:
+        - bearer: []
+      responses:
+        '204':
+          description: "Session fermée"
+        '401':
+          description: "Non authentifié"
+  /api/v1/auth/activation/request:
+    post:
+      summary: "Envoie un code d'activation à 6 chiffres (5 min, 3 essais, renvoi après 60 s) par SMS ou e-mail"
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [identifier]
+              properties:
+                identifier: {type: string}
+                channel: {type: string, enum: [sms, email]}
+      responses:
+        '200':
+          description: "Réponse identique que le compte existe ou non : channel, masked_to, expires_in, resend_in"
+        '422':
+          description: "Identifiant invalide"
+        '429':
+          description: "Renvoi trop rapide (Retry-After)"
+  /api/v1/auth/activation/verify:
+    post:
+      summary: "Vérifie le code reçu et renvoie le ticket qui autorise le choix du mot de passe"
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [identifier, code]
+              properties:
+                identifier: {type: string}
+                code: {type: string}
+      responses:
+        '200':
+          description: "Code valide : ticket"
+        '422':
+          description: "Code incorrect, expiré ou épuisé (attempts_left)"
+  /api/v1/auth/activation/password:
+    post:
+      summary: "Définit le mot de passe (10 caractères minimum, refus des mots de passe compromis) et active le compte"
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ticket, password]
+              properties:
+                ticket: {type: string}
+                password: {type: string}
+                password_confirmation: {type: string}
+      responses:
+        '200':
+          description: "Compte actif"
+        '422':
+          description: "Ticket expiré ou mot de passe refusé"
+  /api/v1/auth/password/forgot:
+    post:
+      summary: "Démarre la réinitialisation du mot de passe par code (même réponse que la demande d'activation)"
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [identifier]
+              properties:
+                identifier: {type: string}
+                channel: {type: string, enum: [sms, email]}
+      responses:
+        '200':
+          description: "channel, masked_to, expires_in, resend_in"
+        '422':
+          description: "Identifiant invalide"
+        '429':
+          description: "Renvoi trop rapide (Retry-After)"
+  /api/v1/auth/not-me:
+    post:
+      summary: "« Ce n'est pas moi » : verrouille le compte et révoque tous les appareils et jetons"
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: "Compte bloqué"
+        '401':
+          description: "Non authentifié"
+  /api/v1/auth/2fa/verify:
+    post:
+      summary: "Valide le code TOTP (ou SMS avec method=sms) ; trust_device fait confiance à l'appareil 30 jours"
+      security:
+        - bearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code: {type: string}
+                method: {type: string, enum: [totp, sms]}
+                trust_device: {type: boolean}
+      responses:
+        '200':
+          description: "Double authentification franchie"
+        '401':
+          description: "Trois échecs : session fermée"
+        '422':
+          description: "Code incorrect (attempts_left)"
+  /api/v1/auth/2fa/sms:
+    post:
+      summary: "Envoie un code de double authentification par SMS"
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: "channel, masked_to, expires_in, resend_in"
+        '409':
+          description: "Aucun numéro enregistré"
+        '429':
+          description: "Renvoi trop rapide"
+  /api/v1/auth/2fa/recovery:
+    post:
+      summary: "Utilise un code de secours (8 caractères, usage unique)"
+      security:
+        - bearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code: {type: string}
+                trust_device: {type: boolean}
+      responses:
+        '200':
+          description: "Double authentification franchie ; backup_codes_left"
+        '401':
+          description: "Trois échecs : session fermée"
+        '422':
+          description: "Code incorrect (attempts_left)"
+  /api/v1/auth/2fa/setup:
+    post:
+      summary: "Génère la clé TOTP (secret, secret_grouped, otpauth_uri) et indique les rôles qui l'exigent"
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: "Clé à scanner ou saisir"
+        '409':
+          description: "Déjà activée"
+  /api/v1/auth/2fa/confirm:
+    post:
+      summary: "Confirme l'activation avec un premier code ; renvoie les 10 codes de secours (affichés une seule fois)"
+      security:
+        - bearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code: {type: string}
+      responses:
+        '200':
+          description: "Activée ; backup_codes"
+        '401':
+          description: "Trois échecs : session fermée"
+        '409':
+          description: "Pas de clé générée ou déjà activée"
+        '422':
+          description: "Code incorrect (attempts_left)"
+  /api/v1/me:
+    get:
+      summary: "Profil de la personne connectée (prénom, état de la 2FA, contexte actif)"
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: "Profil"
+        '401':
+          description: "Non authentifié"
+  /api/v1/me/contexts:
+    get:
+      summary: "Tuiles « Mes établissements » : id, nom, type, accent, logo, rôles, période en cours (champ period : trimestre, semestre ou séquence couvrant la date du jour, omis si inconnue), deux indicateurs (champ indicators, omis si aucune source) ; tuile « Tout le groupe » pour la direction de groupe"
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: "Contextes accessibles"
+        '403':
+          description: "Double authentification requise"
+  /api/v1/me/context:
+    post:
+      summary: "Change d'établissement (ou « group ») et de rôle sans reconnexion"
+      security:
+        - bearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [establishment_id]
+              properties:
+                establishment_id: {type: string}
+                role: {type: string}
+      responses:
+        '422':
+          description: "Établissement ou rôle absent ou invalide"
+        '200':
+          description: "Contexte actif"
+        '403':
+          description: "Établissement ou rôle non autorisé"
+  /api/v1/me/todo:
+    get:
+      summary: "Tâches à faire de la personne (approbations, signatures, saisies en attente)"
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: "Liste (vide tant qu'aucun module n'en fournit)"
+  /api/v1/me/devices:
+    get:
+      summary: "Appareils connectés (current marque l'appareil courant)"
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: "Appareils"
+  /api/v1/me/devices/{id}:
+    delete:
+      summary: "Révoque un appareil et ses jetons"
+      security:
+        - bearer: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: "Appareil révoqué"
+        '404':
+          description: "Appareil introuvable"
+  /api/v1/me/sessions:
+    delete:
+      summary: "Déconnecter partout : révoque tous les jetons"
+      security:
+        - bearer: []
+      responses:
+        '204':
+          description: "Toutes les sessions sont fermées"
+  /api/v1/role-assignments:
+    get:
+      summary: "Liste des affectations de rôle (filtres person_id, role, scope_type ; pagination par curseur)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Page d'affectations"
+        '403':
+          description: "Accès refusé"
+    post:
+      summary: "Attribue un rôle à une personne dans un périmètre (tenant, establishment, org_unit, class, structure), avec dates de validité"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '201':
+          description: "Affectation créée"
+        '403':
+          description: "Accès refusé"
+        '422':
+          description: "Données invalides"
+  /api/v1/role-assignments/delegations:
+    post:
+      summary: "Délègue temporairement à une autre personne un rôle que l'on exerce (date de fin obligatoire, 90 jours au plus)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '201':
+          description: "Délégation créée"
+        '403':
+          description: "Rôle non détenu"
+        '422':
+          description: "Données invalides"
+  /api/v1/role-assignments/{id}:
+    delete:
+      summary: "Retire une affectation ou une délégation"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: "Affectation retirée"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable"
+  /api/v1/users:
+    post:
+      summary: "Inscrit une personne et crée son compte en attente d'activation (permission identity.manage)"
+      description: >-
+        Fiche unique par client (FR-006) : le compte est rattaché à la fiche `person_id` si elle est fournie (sans compte),
+        sinon à l'unique fiche sans compte de même téléphone ou e-mail et de mêmes prénom et nom ; une nouvelle fiche
+        n'est créée qu'à défaut. La réponse indique `person_linked`.
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '201':
+          description: "Compte créé (person_id, user_id, person_linked, status pending)"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Fiche person_id introuvable dans ce client"
+        '409':
+          description: "Téléphone ou e-mail déjà utilisé, ou la fiche désignée a déjà un compte"
+        '422':
+          description: "Données invalides"

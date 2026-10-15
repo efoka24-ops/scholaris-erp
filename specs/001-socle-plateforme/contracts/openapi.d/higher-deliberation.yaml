@@ -1,0 +1,178 @@
+# Contrat OpenAPI 3.1 des délibérations de l'application Supérieur (DEL, API-13, DOC-09, DOC-14 à DOC-16).
+# Calcul LMD et BTS/HND paramétré par filière ; erreurs RFC 9457 ; WriteGate (423 suspendue).
+paths:
+  /api/v1/higher/deliberation/juries:
+    get:
+      summary: "Jurys du périmètre : filter[structure_id|period_id|exam_session|status|academic_year_id]"
+      responses:
+        '200': {description: "Succès"}
+        '403': {description: "Permission absente ou hors périmètre (journalisé)"}
+        '404': {description: "Introuvable ou hors périmètre"}
+        '422': {description: "Filtre invalide"}
+    post:
+      summary: "Constituer un jury (groupe, semestre, session, président, membres)"
+      responses:
+        '201': {description: "Succès"}
+        '403': {description: "Permission absente ou hors périmètre (journalisé)"}
+        '404': {description: "Introuvable ou hors périmètre"}
+        '409': {description: "État incompatible (cycle de vie, version)"}
+        '422': {description: "Données invalides"}
+        '423': {description: "Application suspendue (écriture refusée)"}
+  /api/v1/higher/deliberation/juries/{id}:
+    get:
+      summary: "Jury, membres, état et empreinte du PV"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Succès"}
+        '403': {description: "Permission absente ou hors périmètre (journalisé)"}
+        '404': {description: "Introuvable ou hors périmètre"}
+        '422': {description: "Filtre invalide"}
+    patch:
+      summary: "Modifier un jury non signé"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Succès"}
+        '403': {description: "Permission absente ou hors périmètre (journalisé)"}
+        '404': {description: "Introuvable ou hors périmètre"}
+        '409': {description: "État incompatible (cycle de vie, version)"}
+        '422': {description: "Données invalides"}
+        '423': {description: "Application suspendue (écriture refusée)"}
+  /api/v1/higher/deliberation/juries/{id}/attendance:
+    post:
+      summary: "Présence des membres en séance (quorum)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Succès"}
+        '403': {description: "Permission absente ou hors périmètre (journalisé)"}
+        '404': {description: "Introuvable ou hors périmètre"}
+        '409': {description: "État incompatible (cycle de vie, version)"}
+        '422': {description: "Données invalides"}
+        '423': {description: "Application suspendue (écriture refusée)"}
+  /api/v1/higher/deliberation/juries/{id}/simulate:
+    post:
+      summary: "Simuler les résultats sans les écrire (API-13) : propositions, cas limites à 0,5 point"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Succès"}
+        '403': {description: "Permission absente ou hors périmètre (journalisé)"}
+        '404': {description: "Introuvable ou hors périmètre"}
+        '409': {description: "État incompatible (cycle de vie, version)"}
+        '422': {description: "Données invalides"}
+        '423': {description: "Application suspendue (écriture refusée)"}
+  /api/v1/higher/deliberation/juries/{id}/points:
+    post:
+      summary: "Accorder des points de jury nominatifs et motivés"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Succès"}
+        '403': {description: "Permission absente ou hors périmètre (journalisé)"}
+        '404': {description: "Introuvable ou hors périmètre"}
+        '409': {description: "État incompatible (cycle de vie, version)"}
+        '422': {description: "Données invalides"}
+        '423': {description: "Application suspendue (écriture refusée)"}
+  /api/v1/higher/deliberation/juries/{id}/resit-list:
+    get:
+      summary: "Convoqués au rattrapage par EC"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Succès"}
+        '403': {description: "Permission absente ou hors périmètre (journalisé)"}
+        '404': {description: "Introuvable ou hors périmètre"}
+        '422': {description: "Filtre invalide"}
+    post:
+      summary: "Enregistrer la liste du rattrapage et convoquer (NOT-13)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Succès"}
+        '403': {description: "Permission absente ou hors périmètre (journalisé)"}
+        '404': {description: "Introuvable ou hors périmètre"}
+        '409': {description: "État incompatible (cycle de vie, version)"}
+        '422': {description: "Données invalides"}
+        '423': {description: "Application suspendue (écriture refusée)"}
+  /api/v1/higher/deliberation/juries/{id}/documents:
+    post:
+      summary: "Émettre un document du jury (DOC-14 grille, DOC-15 PV, DOC-16 liste des résultats)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '201': {description: "Succès"}
+        '403': {description: "Permission absente ou hors périmètre (journalisé)"}
+        '404': {description: "Introuvable ou hors périmètre"}
+        '409': {description: "État incompatible (cycle de vie, version)"}
+        '422': {description: "Données invalides"}
+        '423': {description: "Application suspendue (écriture refusée)"}
+  /api/v1/higher/deliberation/rules-template:
+    get:
+      summary: "Modèle de règles de calcul LMD ou BTS/HND d'une filière"
+      responses:
+        '200': {description: "Succès"}
+        '403': {description: "Permission absente ou hors périmètre (journalisé)"}
+        '404': {description: "Introuvable ou hors périmètre"}
+        '422': {description: "Filtre invalide"}
+  /api/v1/higher/deliberation/jury-portal:
+    get:
+      summary: "Portail du membre de jury : jurys où siéger et PV à signer"
+      responses:
+        '200': {description: "Succès"}
+        '403': {description: "Permission absente ou hors périmètre (journalisé)"}
+        '404': {description: "Introuvable ou hors périmètre"}
+        '422': {description: "Filtre invalide"}
+  /api/v1/higher/deliberation/year-decisions:
+    get:
+      summary: "Décisions annuelles : filter[structure_id|academic_year_id]"
+      responses:
+        '200': {description: "Succès"}
+        '403': {description: "Permission absente ou hors périmètre (journalisé)"}
+        '404': {description: "Introuvable ou hors périmètre"}
+        '422': {description: "Filtre invalide"}
+    post:
+      summary: "Enregistrer les décisions annuelles"
+      responses:
+        '201': {description: "Succès"}
+        '403': {description: "Permission absente ou hors périmètre (journalisé)"}
+        '404': {description: "Introuvable ou hors périmètre"}
+        '409': {description: "État incompatible (cycle de vie, version)"}
+        '422': {description: "Données invalides"}
+        '423': {description: "Application suspendue (écriture refusée)"}
+  /api/v1/higher/deliberation/year-decisions/preview:
+    post:
+      summary: "Prévisualiser les décisions annuelles (passage, crédits cumulés, dérogations)"
+      responses:
+        '200': {description: "Succès"}
+        '403': {description: "Permission absente ou hors périmètre (journalisé)"}
+        '404': {description: "Introuvable ou hors périmètre"}
+        '409': {description: "État incompatible (cycle de vie, version)"}
+        '422': {description: "Données invalides"}
+        '423': {description: "Application suspendue (écriture refusée)"}
+  /api/v1/higher/deliberation/transcripts:
+    get:
+      summary: "Relevés émis : filter[person_id|period_id]"
+      responses:
+        '200': {description: "Succès"}
+        '403': {description: "Permission absente ou hors périmètre (journalisé)"}
+        '404': {description: "Introuvable ou hors périmètre"}
+        '422': {description: "Filtre invalide"}
+    post:
+      summary: "Émettre un relevé semestriel DOC-09 (PV signé exigé, RG-DOC-3)"
+      responses:
+        '201': {description: "Succès"}
+        '403': {description: "Permission absente ou hors périmètre (journalisé)"}
+        '404': {description: "Introuvable ou hors périmètre"}
+        '409': {description: "État incompatible (cycle de vie, version)"}
+        '422': {description: "Données invalides"}
+        '423': {description: "Application suspendue (écriture refusée)"}
+  /api/v1/higher/deliberation/my-results:
+    get:
+      summary: "Résultats publiés de l'étudiant connecté"
+      responses:
+        '200': {description: "Succès"}
+        '403': {description: "Permission absente ou hors périmètre (journalisé)"}
+        '404': {description: "Introuvable ou hors périmètre"}
+        '422': {description: "Filtre invalide"}

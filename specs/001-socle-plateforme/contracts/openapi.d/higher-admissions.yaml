@@ -1,0 +1,303 @@
+# Contrat OpenAPI 3.1 des admissions de l'application Supérieur (ADM, EX-ADM-01 à 08) : campagnes par filière et niveau,
+# candidatures en ligne ou au guichet, pièces vérifiées, frais de dossier (facture et paiement du socle, D4), décisions motivées
+# (RG-ADM-1 à 4), concours, transferts et statistiques. Fusionné avec openapi.yaml par le test de contrat. Erreurs RFC 9457.
+# Toutes les routes passent par WriteGate (application suspendue : 423 en écriture ; fermée : 404) et par le périmètre
+# école/département/filière/niveau (lecture hors périmètre : 404 ; écriture : 403 journalisé).
+# Permissions : lecture higher.admission.read | higher.application.manage | higher.admission.decide ; campagnes, guichet, pièces,
+# concours, notes : higher.application.manage (R07) ; candidature en ligne du candidat : higher.application.submit (R12, la sienne) ;
+# décision, dépassement de places, équivalences : higher.admission.decide (R04).
+paths:
+  /api/v1/higher/admissions/campaigns:
+    get:
+      summary: "Campagnes du périmètre : filter[school_id|department_id|program_id|level_id|academic_year_id|status|selection_mode], school_id (sélecteur École)"
+      responses:
+        '200': {description: "Liste paginée (curseur)"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Application Supérieur fermée ou jamais ouverte au client, ou ressource hors périmètre"}
+    post:
+      summary: "Créer une campagne en brouillon (EX-ADM-01) ; prérequis et pièces par défaut selon le niveau (bac/GCE A Level au niveau 1 ; BTS, HND ou licence au niveau 3)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [level_id, academic_year_id, opens_on, closes_on, seats, application_fee_xaf]
+              properties:
+                level_id: {type: string}
+                academic_year_id: {type: string}
+                title: {type: string}
+                opens_on: {type: string, format: date}
+                closes_on: {type: string, format: date}
+                seats: {type: integer, minimum: 1}
+                application_fee_xaf: {type: integer, minimum: 0, description: "Frais de dossier non remboursables (RG-ADM-4)"}
+                selection_mode: {type: string, enum: [file, contest, mixed]}
+                required_documents:
+                  type: array
+                  items: {type: object, required: [code, label], properties: {code: {type: string}, label: {type: string}, blocking: {type: boolean}, proves_prerequisite: {type: boolean}}}
+                prerequisites:
+                  type: object
+                  properties:
+                    diplomas: {type: array, items: {type: string, enum: [bac, gce_al, bts, hnd, licence, master1, master, other]}}
+                    series: {type: array, items: {type: string}}
+                    min_year: {type: integer}
+                    min_mention: {type: string, enum: [passable, assez_bien, bien, tres_bien]}
+      responses:
+        '201': {description: "Campagne créée"}
+        '403': {description: "Hors périmètre"}
+        '422': {description: "Niveau introuvable, filière fermée, dates ou pièces invalides"}
+  /api/v1/higher/admissions/campaigns/{id}:
+    get:
+      summary: "Campagne"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Campagne"}
+        '404': {description: "Introuvable ou hors périmètre"}
+    patch:
+      summary: "Modifier titre, dates, places ; frais, pièces, prérequis et mode en brouillon seulement"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Campagne modifiée"}
+        '409': {description: "Campagne ouverte, close ou annulée"}
+  /api/v1/higher/admissions/campaigns/{id}/open:
+    post:
+      summary: "Ouvrir aux candidatures : garde IPES (autorisation MINESUP du niveau, tutelle LMD de l'année : RG-ACA-1/2)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Campagne ouverte"}
+        '409': {description: "Campagne ni en brouillon ni close"}
+        '422': {description: "Ouverture refusée par la garde (motif)"}
+  /api/v1/higher/admissions/campaigns/{id}/close:
+    post:
+      summary: "Clore la campagne"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Campagne close"}
+        '409': {description: "Campagne non ouverte"}
+  /api/v1/higher/admissions/campaigns/{id}/cancel:
+    post:
+      summary: "Annuler la campagne : candidatures retirées, frais de dossier payés marqués remboursables (seule exception de RG-ADM-4)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object, required: [reason], properties: {reason: {type: string}}}
+      responses:
+        '200': {description: "Campagne annulée"}
+        '409': {description: "Déjà annulée"}
+  /api/v1/higher/admissions/campaigns/{id}/jury:
+    put:
+      summary: "Jury d'admission (président et membres, EX-ADM-04)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object, required: [president_person_id, member_person_ids], properties: {president_person_id: {type: string}, member_person_ids: {type: array, items: {type: string}}}}
+      responses:
+        '200': {description: "Campagne avec son jury"}
+  /api/v1/higher/admissions/campaigns/{id}/ranking:
+    post:
+      summary: "Classer les candidatures notées : rang avec ex æquo (1, 2, 2, 4), liste principale (places) et liste d'attente"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Classement [{application_id, reference, score_hundredths, rank_position, list_kind}]"}
+  /api/v1/higher/admissions/campaigns/{id}/statistics:
+    get:
+      summary: "Statistiques de campagne (EX-ADM-08) : candidatures par état et canal, places prises, dépassements, frais encaissés, taux d'inscription"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Statistiques"}
+        '404': {description: "Introuvable ou hors périmètre"}
+  /api/v1/higher/admissions/campaigns/{id}/contest-sessions:
+    get:
+      summary: "Épreuves de concours de la campagne et leurs tables (EX-ADM-05)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Épreuves"}
+        '404': {description: "Application Supérieur fermée ou jamais ouverte au client, ou ressource hors périmètre"}
+    post:
+      summary: "Créer une épreuve : date, centre, salle, capacité (campagne sur concours ou mixte)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object, required: [contest_date, center_name, room_name, room_capacity], properties: {contest_date: {type: string, format: date}, center_name: {type: string}, room_name: {type: string}, room_capacity: {type: integer}}}
+      responses:
+        '201': {description: "Épreuve créée"}
+        '409': {description: "Campagne sur dossier"}
+  /api/v1/higher/admissions/contest-sessions/{id}/convocations:
+    post:
+      summary: "Convoquer les candidatures complètes non placées : numéro de table et convocation DOC-02"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Convocations créées"}
+  /api/v1/higher/admissions/applications:
+    get:
+      summary: "Candidatures du périmètre, ou les siennes pour le candidat : filter[campaign_id|school_id|program_id|level_id|academic_year_id|status|channel|person_id|list_kind]"
+      responses:
+        '200': {description: "Liste paginée"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Application Supérieur fermée ou jamais ouverte au client, ou ressource hors périmètre"}
+    post:
+      summary: "Créer une candidature : au guichet (higher.application.manage ; person_id ou identity, compte créé) ou en ligne par le candidat (higher.application.submit)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [campaign_id, diploma]
+              properties:
+                campaign_id: {type: string}
+                person_id: {type: string}
+                identity: {type: object, properties: {first_name: {type: string}, last_name: {type: string}, phone: {type: string}, email: {type: string}, locale: {type: string, enum: [fr, en]}}}
+                application_kind: {type: string, enum: [new, transfer]}
+                origin_institution: {type: string}
+                diploma: {type: string, enum: [bac, gce_al, bts, hnd, licence, master1, master, other]}
+                diploma_series: {type: string}
+                diploma_year: {type: integer}
+                diploma_mention: {type: string, enum: [passable, assez_bien, bien, tres_bien]}
+      responses:
+        '201': {description: "Candidature en brouillon avec ses pièces exigées"}
+        '409': {description: "Campagne non ouverte ou hors dates ; candidature déjà déposée"}
+  /api/v1/higher/admissions/applications/{id}:
+    get:
+      summary: "Candidature avec pièces, décisions et équivalences (périmètre ou candidat propriétaire)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Candidature"}
+        '404': {description: "Introuvable ou hors périmètre"}
+  /api/v1/higher/admissions/applications/{id}/documents:
+    post:
+      summary: "Déposer ou remplacer une pièce numérisée (référence d'un document) ; la vérification précédente est perdue"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object, required: [requirement_code, document_ref], properties: {requirement_code: {type: string}, document_ref: {type: string}}}
+      responses:
+        '200': {description: "Candidature à jour (complète : NOT-01 et DOC-01)"}
+        '404': {description: "Pièce non exigée"}
+  /api/v1/higher/admissions/applications/{id}/documents/{documentId}/verify:
+    post:
+      summary: "Vérifier une pièce (scolarité, RG-ADM-1)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+        - {name: documentId, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Pièce vérifiée"}
+        '409': {description: "Pièce non déposée"}
+  /api/v1/higher/admissions/applications/{id}/documents/{documentId}/reject:
+    post:
+      summary: "Refuser une pièce avec motif : NOT-02 au candidat, candidature redevenue incomplète"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+        - {name: documentId, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object, required: [reason], properties: {reason: {type: string}}}
+      responses:
+        '200': {description: "Pièce refusée"}
+  /api/v1/higher/admissions/applications/{id}/submit:
+    post:
+      summary: "Déposer la candidature : facture des frais de dossier (code hi.dossier) au nom du candidat"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Candidature déposée"}
+        '409': {description: "Déjà déposée ou campagne close"}
+  /api/v1/higher/admissions/applications/{id}/fee-payment:
+    post:
+      summary: "Payer les frais de dossier (orange_money, mtn_momo : en attente de l'opérateur ; cash au guichet) ; rappel sans canal = relecture du paiement en attente"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object, properties: {channel: {type: string, enum: [orange_money, mtn_momo, cash, transfer, card]}, payer_phone: {type: string}, external_reference: {type: string}}}
+      responses:
+        '200': {description: "Candidature avec l'état des frais (paid, pending)"}
+        '409': {description: "Aucun frais ou déjà payés"}
+  /api/v1/higher/admissions/applications/{id}/score:
+    post:
+      summary: "Note de dossier ou de concours en centièmes de point sur 20"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object, required: [score_hundredths], properties: {score_hundredths: {type: integer, minimum: 0, maximum: 2000}}}
+      responses:
+        '200': {description: "Candidature notée"}
+  /api/v1/higher/admissions/applications/{id}/decision:
+    post:
+      summary: "Décision motivée (R04) : admitted (prérequis et pièces bloquantes vérifiées, RG-ADM-1, TST-02), conditional (30 jours, RG-ADM-2), waitlisted, rejected ; NOT-03 et DOC-03"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [decision, reason]
+              properties:
+                decision: {type: string, enum: [admitted, conditional, waitlisted, rejected]}
+                reason: {type: string}
+                over_capacity_reason: {type: string, description: "Obligatoire au-delà des places (RG-ADM-3), tracé"}
+      responses:
+        '200': {description: "Décision enregistrée"}
+        '409': {description: "Candidature incomplète ou places prises sans motif de dépassement"}
+        '422': {description: "« Admis » impossible : prérequis non satisfaits ou pièce bloquante non vérifiée"}
+  /api/v1/higher/admissions/applications/{id}/withdraw:
+    post:
+      summary: "Retirer la candidature (frais de dossier non remboursés, RG-ADM-4)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object, required: [reason], properties: {reason: {type: string}}}
+      responses:
+        '200': {description: "Candidature retirée"}
+  /api/v1/higher/admissions/applications/{id}/equivalences:
+    put:
+      summary: "Équivalences d'UE d'un transfert décidées par la commission (EX-ADM-07), reportées comme UE capitalisées à l'inscription"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [commission_reference, items]
+              properties:
+                commission_reference: {type: string}
+                items:
+                  type: array
+                  items: {type: object, required: [origin_unit_code, origin_unit_title, origin_credits, unit_code, granted], properties: {origin_unit_code: {type: string}, origin_unit_title: {type: string}, origin_credits: {type: integer}, origin_grade_hundredths: {type: integer}, unit_code: {type: string}, granted: {type: boolean}}}
+      responses:
+        '200': {description: "Candidature avec ses équivalences"}
+        '409': {description: "Pas un transfert, ou déjà inscrite"}

@@ -1,0 +1,154 @@
+# Contrat OpenAPI 3.1 des présences et de la discipline de l'application Supérieur (PRE, EX-PRE-01 à 05, RG-PRE-1, RG-PRE-2).
+# L'appel (par séance, QR, hors ligne) et les justificatifs passent par les routes du socle (/attendance-sessions*, /absence-justifications*).
+# Ici : assiduité par EC (absences non justifiées ÷ séances tenues, attendance.base), alerte NOT-07 à 25 %, non autorisé à composer au-delà
+# de 30 %, transmission au service des examens, levée tracée, présence ≥ 70 % des examens nationaux (indicateur distinct), épreuves de
+# remplacement après ABJ, sanctions, conseil de discipline avec PV signé, exclusion définitive (RG-PRE-2), DOC-31.
+# Permissions : higher.attendance.read, attendance.justify (R07), higher.exam.manage (R08), higher.enrolment.derogate (R04),
+# attendance.discipline.manage et higher.council.manage (R11). L'étudiant lit sa propre assiduité.
+paths:
+  /api/v1/higher/attendance/assiduity:
+    get:
+      summary: "Assiduité des étudiants d'un groupe pour un EC : element_id, group_id, academic_year_id (statuts ok, alert, barred, lifted)"
+      responses:
+        '404': {description: "Introuvable, hors périmètre ou application non ouverte au client"}
+        '200': {description: "Taux par étudiant et seuils"}
+        '422': {description: "Paramètres manquants"}
+  /api/v1/higher/attendance/barred:
+    get:
+      summary: "Non autorisés à composer un EC (au-delà du seuil, levées comprises)"
+      responses:
+        '404': {description: "Introuvable, hors périmètre ou application non ouverte au client"}
+        '200': {description: "Liste"}
+  /api/v1/higher/attendance/students/{personId}/assiduity:
+    get:
+      summary: "Assiduité d'un étudiant pour chaque EC de sa maquette (l'étudiant lui-même ou le périmètre)"
+      parameters:
+        - {name: personId, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Taux par EC"}
+        '404': {description: "Inscription introuvable ou hors périmètre"}
+  /api/v1/higher/attendance/students/{personId}/presence:
+    get:
+      summary: "Taux de présence sur la période (from, to), éligibilité aux examens nationaux BTS/HND (70 %)"
+      parameters:
+        - {name: personId, in: path, required: true, schema: {type: string}}
+      responses:
+        '404': {description: "Introuvable, hors périmètre ou application non ouverte au client"}
+        '200': {description: "Présence"}
+  /api/v1/higher/attendance/alerts:
+    post:
+      summary: "Envoyer l'alerte NOT-07 aux étudiants à 25 % d'absences non justifiées d'un EC (une fois par étudiant et EC)"
+      responses:
+        '404': {description: "Introuvable, hors périmètre ou application non ouverte au client"}
+        '200': {description: "Étudiants alertés et déjà alertés"}
+  /api/v1/higher/attendance/barred-lists:
+    get:
+      summary: "Listes de non-autorisés transmises : filter[element_id|group_id|academic_year_id]"
+      responses:
+        '404': {description: "Introuvable, hors périmètre ou application non ouverte au client"}
+        '200': {description: "Liste paginée"}
+    post:
+      summary: "Transmettre la liste des non-autorisés d'un EC et d'un groupe au service des examens"
+      responses:
+        '404': {description: "Introuvable, hors périmètre ou application non ouverte au client"}
+        '201': {description: "Liste transmise"}
+  /api/v1/higher/attendance/barred-lists/{id}/receive:
+    post:
+      summary: "Accusé de réception par le service des examens"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '404': {description: "Introuvable, hors périmètre ou application non ouverte au client"}
+        '200': {description: "Reçue"}
+  /api/v1/higher/attendance/barred-lifts:
+    post:
+      summary: "Lever l'interdiction de composer (dérogation tracée du directeur d'école)"
+      responses:
+        '404': {description: "Introuvable, hors périmètre ou application non ouverte au client"}
+        '201': {description: "Levée enregistrée"}
+        '409': {description: "Étudiant non concerné"}
+  /api/v1/higher/attendance/replacement-exams:
+    get:
+      summary: "Épreuves de remplacement : filter[person_id|element_id|group_id|status]"
+      responses:
+        '404': {description: "Introuvable, hors périmètre ou application non ouverte au client"}
+        '200': {description: "Liste paginée"}
+    post:
+      summary: "Demander une épreuve de remplacement après absence justifiée (ABJ)"
+      responses:
+        '404': {description: "Introuvable, hors périmètre ou application non ouverte au client"}
+        '201': {description: "Demande enregistrée"}
+        '409': {description: "Déjà demandée"}
+  /api/v1/higher/attendance/replacement-exams/{id}/schedule:
+    post:
+      summary: "Programmer l'épreuve de remplacement (service des examens)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '404': {description: "Introuvable, hors périmètre ou application non ouverte au client"}
+        '200': {description: "Programmée"}
+  /api/v1/higher/attendance/replacement-exams/{id}/close:
+    post:
+      summary: "Déclarer l'épreuve tenue ou annulée"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '404': {description: "Introuvable, hors périmètre ou application non ouverte au client"}
+        '200': {description: "Clôturée"}
+  /api/v1/higher/discipline/sanctions:
+    get:
+      summary: "Sanctions : filter[person_id|sanction_kind|status|council_id]"
+      responses:
+        '404': {description: "Introuvable, hors périmètre ou application non ouverte au client"}
+        '200': {description: "Liste paginée"}
+    post:
+      summary: "Prononcer un avertissement, un blâme ou une exclusion temporaire (l'exclusion définitive exige le conseil, RG-PRE-2)"
+      responses:
+        '404': {description: "Introuvable, hors périmètre ou application non ouverte au client"}
+        '201': {description: "Sanction enregistrée"}
+        '409': {description: "Exclusion définitive sans PV signé"}
+  /api/v1/higher/discipline/sanctions/{id}/notification:
+    post:
+      summary: "Émettre la notification de sanction (DOC-31)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '404': {description: "Introuvable, hors périmètre ou application non ouverte au client"}
+        '201': {description: "Document émis"}
+  /api/v1/higher/discipline/councils:
+    get:
+      summary: "Conseils de discipline : filter[person_id|status|decision]"
+      responses:
+        '404': {description: "Introuvable, hors périmètre ou application non ouverte au client"}
+        '200': {description: "Liste paginée"}
+    post:
+      summary: "Convoquer un conseil de discipline (au moins trois membres)"
+      responses:
+        '404': {description: "Introuvable, hors périmètre ou application non ouverte au client"}
+        '201': {description: "Conseil convoqué"}
+  /api/v1/higher/discipline/councils/{id}:
+    get:
+      summary: "Conseil de discipline"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '404': {description: "Introuvable, hors périmètre ou application non ouverte au client"}
+        '200': {description: "Conseil"}
+  /api/v1/higher/discipline/councils/{id}/hearing:
+    post:
+      summary: "Consigner la séance : PV, décision, motif, période d'exclusion temporaire"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '404': {description: "Introuvable, hors périmètre ou application non ouverte au client"}
+        '200': {description: "Séance consignée"}
+        '409': {description: "PV déjà signé"}
+  /api/v1/higher/discipline/councils/{id}/sign:
+    post:
+      summary: "Signer le PV (empreinte SHA-256) : sanction effective ; exclusion définitive = inscription au statut « exclu » (RG-PRE-2)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '404': {description: "Introuvable, hors périmètre ou application non ouverte au client"}
+        '200': {description: "PV signé (exclusion_pending si l'inscription n'a pas pu être close)"}
+        '409': {description: "Séance non consignée ou PV déjà signé"}

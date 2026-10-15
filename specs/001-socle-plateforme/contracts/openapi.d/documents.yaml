@@ -1,0 +1,539 @@
+# Contrat OpenAPI 3.1 du service S06 Documents (fusionné avec openapi.yaml par le test de contrat).
+paths:
+  /api/v1/public/verify/{token}:
+    get:
+      summary: "Vérification publique d'un document (titulaire masqué, aucune note) ; journalise la consultation ; champ state (valid, cancelled, replaced) si documents.verification.detailed_status est actif"
+      security: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Document valide ou révoqué (motif et remplacement)"
+        '404':
+          description: "Introuvable : ce document n'a pas été émis par SCHOLARIS"
+        '429':
+          description: "Limite de débit"
+  /api/v1/document-types:
+    get:
+      summary: "Types de document visibles (établissement + catalogue plateforme)"
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: "Liste"
+        '403':
+          description: "Accès refusé"
+    post:
+      summary: "Crée un type (code, lettre, gabarit de numéro avec jetons {CODE} {AA} {AAAA} {LETTRE} {ECOLE} {N4}-{N9}, QR, blocage impayé, variables autorisées, signer_role facultatif)"
+      security:
+        - bearer: []
+      responses:
+        '201':
+          description: "Type créé"
+        '403':
+          description: "Accès refusé"
+        '409':
+          description: "Code déjà employé"
+        '422':
+          description: "Données invalides"
+  /api/v1/document-types/{id}:
+    get:
+      summary: "Détail d'un type"
+      security:
+        - bearer: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Type"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable"
+    patch:
+      summary: "Modifie un type de l'établissement (code et lettre définitifs)"
+      security:
+        - bearer: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Type modifié"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable"
+        '422':
+          description: "Données invalides"
+  /api/v1/document-templates:
+    get:
+      summary: "Modèles visibles (filtre type_code) : établissement + plateforme en lecture seule"
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: "Liste"
+        '403':
+          description: "Accès refusé"
+    post:
+      summary: "Crée un brouillon, version suivante du couple type + langue ; variables en liste blanche, HTML sans script"
+      security:
+        - bearer: []
+      responses:
+        '201':
+          description: "Brouillon créé"
+        '403':
+          description: "Accès refusé"
+        '422':
+          description: "Variable non autorisée ou HTML dangereux"
+  /api/v1/document-templates/{id}:
+    get:
+      summary: "Détail d'un modèle"
+      security:
+        - bearer: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Modèle"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable"
+    patch:
+      summary: "Modifie le HTML d'un brouillon"
+      security:
+        - bearer: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Brouillon modifié"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable"
+        '409':
+          description: "Version validée"
+        '422':
+          description: "Variable non autorisée ou HTML dangereux"
+    delete:
+      summary: "Supprime un brouillon jamais utilisé"
+      security:
+        - bearer: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Supprimé"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable"
+        '409':
+          description: "Version validée ou utilisée"
+  /api/v1/document-templates/{id}/validate:
+    post:
+      summary: "Valide un brouillon : il devient la version d'émission"
+      security:
+        - bearer: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Version validée"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable"
+        '409':
+          description: "Déjà validée"
+  /api/v1/document-templates/{id}/versions:
+    post:
+      summary: "Crée une nouvelle version (brouillon) à partir d'un modèle existant"
+      security:
+        - bearer: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '201':
+          description: "Brouillon créé"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable"
+        '422':
+          description: "Variable non autorisée ou HTML dangereux"
+  /api/v1/document-seal:
+    get:
+      summary: "Signataire, signature et cachet de l'établissement (indicateurs, jamais les images) ; avec signer_role (et org_unit_id), le signataire de ce rôle pour l'établissement ou une école (S17)"
+      security:
+        - bearer: []
+      parameters:
+        - name: signer_role
+          in: query
+          required: false
+          schema: {type: string}
+        - name: org_unit_id
+          in: query
+          required: false
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Configuration"
+        '403':
+          description: "Accès refusé"
+    put:
+      summary: "Définit signataire, image de signature et cachet (data URI PNG, JPEG ou WebP) ; signer_role et org_unit_id facultatifs déclarent le signataire d'un rôle (directeur d'école, DG, président du jury, comptable), pour l'établissement ou une école (S17)"
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: "Configuration enregistrée"
+        '403':
+          description: "Accès refusé"
+        '422':
+          description: "Image invalide"
+  /api/v1/documents/export:
+    get:
+      summary: "Export CSV du registre (mêmes filtres et tris que la liste)"
+      security:
+        - bearer: []
+      parameters:
+        - name: format
+          in: query
+          required: false
+          description: "Format du fichier : csv (défaut ; UTF-8 avec BOM, séparateur « ; ») ou xlsx (Excel)"
+          schema: {type: string, enum: [csv, xlsx], default: csv}
+      responses:
+        '200':
+          description: "Fichier CSV"
+        '403':
+          description: "Accès refusé"
+        '422':
+          description: "Filtre ou tri hors liste blanche"
+  /api/v1/documents:
+    get:
+      summary: "Registre : filtres view (all, bulletins, certificates, revoked), status, type, subject_person_id, issued_via, number ; tris issued_at, number, type"
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: "Page de documents"
+        '403':
+          description: "Accès refusé"
+        '422':
+          description: "Filtre ou tri hors liste blanche"
+    post:
+      summary: "Émet un document (Idempotency-Key obligatoire) : numéro continu, jeton de vérification, empreinte SHA-256"
+      security:
+        - bearer: []
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+      responses:
+        '201':
+          description: "Document émis"
+        '400':
+          description: "Idempotency-Key manquante"
+        '403':
+          description: "Accès refusé"
+        '422':
+          description: "Type inconnu, variable non déclarée ou personne introuvable"
+  /api/v1/documents/{id}:
+    get:
+      summary: "Détail d'un document"
+      security:
+        - bearer: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Document"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+  /api/v1/documents/{id}/preview:
+    get:
+      summary: "Aperçu PDF du document tel qu'émis"
+      security:
+        - bearer: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "PDF"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable"
+  /api/v1/documents/{id}/duplicate:
+    post:
+      summary: "Duplicata PDF : numéro et version de modèle d'origine, mention et date de réimpression"
+      security:
+        - bearer: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "PDF"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable"
+        '409':
+          description: "Document révoqué"
+  /api/v1/documents/{id}/revoke:
+    post:
+      summary: "Révoque (motif obligatoire, remplacement possible) ; jamais de suppression"
+      security:
+        - bearer: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Document révoqué"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable"
+        '409':
+          description: "Déjà révoqué"
+        '422':
+          description: "Motif manquant ou remplacement invalide"
+  /api/v1/document-batches:
+    get:
+      summary: "Lots de génération"
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: "Page de lots"
+        '403':
+          description: "Accès refusé"
+    post:
+      summary: "Crée un lot ; les titulaires bloqués pour impayé sont exclus avec motif"
+      security:
+        - bearer: []
+      responses:
+        '202':
+          description: "Lot accepté"
+        '403':
+          description: "Accès refusé"
+        '422':
+          description: "Lot invalide"
+  /api/v1/document-batches/{id}:
+    get:
+      summary: "Progression d'un lot (traités / total)"
+      security:
+        - bearer: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Lot"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable"
+  /api/v1/document-batches/{id}/excluded:
+    get:
+      summary: "Titulaires exclus du lot, avec motif"
+      security:
+        - bearer: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Liste des exclus"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable"
+  /api/v1/document-batches/{id}/process:
+    post:
+      summary: "Traite un morceau du lot (en attendant la file de tâches)"
+      security:
+        - bearer: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Lot mis à jour"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable"
+  /api/v1/document-requests:
+    get:
+      summary: "Demandes en ligne (filtre status)"
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: "Page de demandes"
+        '403':
+          description: "Accès refusé"
+    post:
+      summary: "Crée une demande en attente (apprenant ou parent)"
+      security:
+        - bearer: []
+      responses:
+        '201':
+          description: "Demande créée"
+        '403':
+          description: "Accès refusé"
+        '422':
+          description: "Type ou personne inconnus"
+  /api/v1/document-requests/{id}/fulfill:
+    post:
+      summary: "Traite la demande en émettant le document"
+      security:
+        - bearer: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Demande traitée"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable"
+        '409':
+          description: "Déjà traitée"
+        '422':
+          description: "Données invalides"
+  /api/v1/document-requests/{id}/reject:
+    post:
+      summary: "Refuse la demande"
+      security:
+        - bearer: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Demande refusée"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable"
+        '409':
+          description: "Déjà traitée"
+  /api/v1/document-batches/export:
+    get:
+      summary: "Export CSV / Excel des lots de génération de documents : mêmes droits que GET /document-batches, plafonné à 5 000 lignes"
+      security:
+        - bearer: []
+      parameters:
+        - name: format
+          in: query
+          required: false
+          description: "Format du fichier : csv (défaut ; UTF-8 avec BOM, séparateur « ; ») ou xlsx (Excel)"
+          schema: {type: string, enum: [csv, xlsx], default: csv}
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Fichier CSV (UTF-8 avec BOM, séparateur « ; ») ou Excel selon le paramètre format"
+          content:
+            text/csv:
+              schema: {type: string}
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema: {type: string, format: binary}
+        '403':
+          description: "Permission de lecture manquante"
+  /api/v1/document-requests/export:
+    get:
+      summary: "Export CSV / Excel des demandes de documents : mêmes filtres (status) et mêmes droits que GET /document-requests, plafonné à 5 000 lignes"
+      security:
+        - bearer: []
+      parameters:
+        - name: format
+          in: query
+          required: false
+          description: "Format du fichier : csv (défaut ; UTF-8 avec BOM, séparateur « ; ») ou xlsx (Excel)"
+          schema: {type: string, enum: [csv, xlsx], default: csv}
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Fichier CSV (UTF-8 avec BOM, séparateur « ; ») ou Excel selon le paramètre format"
+          content:
+            text/csv:
+              schema: {type: string}
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema: {type: string, format: binary}
+        '403':
+          description: "Permission de lecture manquante"
+        '422':
+          description: "Filtre hors liste blanche"
