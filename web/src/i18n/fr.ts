@@ -3,11 +3,13 @@
 import { adminFr } from './admin-fr';
 import { hrFr } from './hr-fr';
 import { platformFr } from './platform-fr';
+import { higherFr } from './higher-fr';
 
 export const fr = {
   ...adminFr,
   ...hrFr,
   ...platformFr,
+  ...higherFr,
   'nav.reportcards': "Bulletins",
   'reportcards.eyebrow': "Résultats",
   'reportcards.title': "Bulletins de notes",

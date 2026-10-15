@@ -4,7 +4,7 @@ import tseslint from 'typescript-eslint';
 import pluginVue from 'eslint-plugin-vue';
 
 export default tseslint.config(
-  { ignores: ['dist', 'node_modules', 'dev-dist', 'scripts/*.mjs', 'e2e/**'] },
+  { ignores: ['dist', 'build', 'coverage', 'node_modules', 'dev-dist', '**/*.min.js', 'scripts/*.mjs', 'e2e/**'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   ...pluginVue.configs['flat/recommended'],

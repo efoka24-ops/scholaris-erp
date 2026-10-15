@@ -1,5 +1,6 @@
 import type { RouteRecordRaw } from 'vue-router';
 import type { MessageKey } from '@/i18n';
+import { higherRoutes } from '@/views/higher/routes';
 
 declare module 'vue-router' {
   interface RouteMeta {
@@ -291,6 +292,7 @@ export const routes: RouteRecordRaw[] = [
     component: () => import('@/views/platform/PlatformPaymentsView.vue'),
     meta: { platform: true, titleKey: 'plat.pay.title', nav: { labelKey: 'nav.platform.payments', order: 5 } },
   },
+  ...higherRoutes,
   { path: '/interdit', name: 'forbidden', component: () => import('@/views/ForbiddenView.vue'), meta: { titleKey: 'forbidden.title' } },
   { path: '/:pathMatch(.*)*', name: 'not-found', component: () => import('@/views/NotFoundView.vue'), meta: { public: true, titleKey: 'notFound.title' } },
 ];

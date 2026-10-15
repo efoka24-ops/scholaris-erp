@@ -4,11 +4,13 @@ import type { fr } from './fr';
 import { adminEn } from './admin-en';
 import { hrEn } from './hr-en';
 import { platformEn } from './platform-en';
+import { higherEn } from './higher-en';
 
 export const en: Record<keyof typeof fr, string> = {
   ...adminEn,
   ...hrEn,
   ...platformEn,
+  ...higherEn,
   'nav.reportcards': "Report cards",
   'reportcards.eyebrow': "Results",
   'reportcards.title': "Report cards",

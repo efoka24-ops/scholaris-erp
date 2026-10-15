@@ -16,6 +16,9 @@ use Scholaris\Modules\Socle\Documents\Infrastructure\TypeRepository;
 /** Types de document : code, lettre, gabarit de numéro, QR, blocage pour impayé, variables autorisées. */
 final class TypeController extends BaseController
 {
+    /** Relevés, PV et grilles déclarent une variable par ligne d'étudiant (DOC-10 de l'IPES : 139). */
+    private const MAX_VARIABLES = 200;
+
     private const CATEGORIES = ['bulletin', 'certificate', 'other'];
     /** Rôle du signataire attendu pour ce type (S17), ex. directeur_ecole, directeur_general, president_jury, comptable. */
     public const SIGNER_ROLE = '/^[a-z][a-z0-9_]{1,39}$/';
@@ -53,7 +56,7 @@ final class TypeController extends BaseController
             'number_template' => $v->string('number_template', 80),
             'qr_enabled' => $v->bool('qr_enabled'),
             'blockable' => $v->bool('blockable'),
-            'variables' => $v->stringList('variables'),
+            'variables' => $v->stringList('variables', self::MAX_VARIABLES),
             'signer_role' => $v->pattern('signer_role', self::SIGNER_ROLE, self::SIGNER_ROLE_MESSAGE, false, 40),
         ];
         $v->done();
@@ -73,7 +76,7 @@ final class TypeController extends BaseController
             'number_template' => $v->string('number_template', 80),
             'qr_enabled' => $v->bool('qr_enabled'),
             'blockable' => $v->bool('blockable'),
-            'variables' => $v->stringList('variables'),
+            'variables' => $v->stringList('variables', self::MAX_VARIABLES),
             'signer_role' => $v->pattern('signer_role', self::SIGNER_ROLE, self::SIGNER_ROLE_MESSAGE, false, 40),
         ], static fn ($x): bool => $x !== null);
         $v->done();

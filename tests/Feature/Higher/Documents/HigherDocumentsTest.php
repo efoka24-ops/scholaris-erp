@@ -24,6 +24,9 @@ final class HigherDocumentsTest extends HigherFinanceTestCase
     protected function setUp(): void
     {
         $this->bootFinance(['documents.verification.detailed_status' => true, 'higher.documents.issue_place' => 'Douala'], [
+            // Le relevé de test remplace le vrai DOC-09 de Deliberation (qui exige un PV signé).
+            'higher.document_types.deliberation' => [],
+            'documents.issuance_guards.higher_deliberation' => [],
             'higher.document_types.test' => [TranscriptTypeProvider::class],
             'higher.documents.language_resolvers.test' => [EnglishProgramLanguage::class],
         ]);

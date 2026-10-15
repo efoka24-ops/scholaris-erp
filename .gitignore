@@ -12,6 +12,8 @@
 !.env.example
 *.bak
 /auth.json
+*.log
+*.cache
 
 # Données d'exécution
 /storage/logs/*
@@ -40,3 +42,4 @@ web/e2e/playwright-report/
 /.phpunit.cache-mysql/
 tests/Load/.work/
 web/e2e/screenshots/
+web/build/
