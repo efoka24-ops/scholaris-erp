@@ -22,12 +22,19 @@ const cards: Array<{ name: string; title: MessageKey; text: MessageKey; perms?: 
   { name: 'higher-enrolments', title: 'nav.higher.enrolments', text: 'hi.ins.lede', perms: P.enrolmentRead },
   { name: 'higher-accounts', title: 'nav.higher.finance', text: 'hi.fin.accountsLede', perms: P.billingRead },
   { name: 'higher-documents', title: 'nav.higher.documents', text: 'hi.doc.lede', perms: P.documentRead },
+  { name: 'higher-timetable', title: 'nav.higher.teaching', text: 'ht.tt.lede' },
+  { name: 'higher-assiduity', title: 'nav.higher.attendance', text: 'ht.ass.lede' },
+  { name: 'higher-grades', title: 'nav.higherGrades', text: 'hg.lede' },
+  { name: 'higher-del-juries', title: 'nav.higher.deliberation', text: 'hdl.jury.lede' },
+  { name: 'higher-del-portal', title: 'nav.higher.juryPortal', text: 'hdl.portal.lede' },
+  { name: 'higher-my-grades', title: 'hg.me.title', text: 'hg.me.lede', roles: ['apprenant'] },
+  { name: 'higher-del-my-results', title: 'nav.higher.myResults', text: 'hdl.mine.lede', roles: ['apprenant'] },
   { name: 'higher-portal-student', title: 'nav.higher.portalStudent', text: 'hi.por.lede', roles: ['apprenant'] },
   { name: 'higher-portal-guarantor', title: 'nav.higher.portalGuarantor', text: 'hi.por.lede', roles: ['parent'] },
 ];
 
 const visibleCards = computed(() =>
-  cards.filter((c) => router.hasRoute(c.name) && (c.perms ? ctx.can(...c.perms) : true) && (c.roles ? c.roles.includes(ctx.activeRole ?? '') : true)),
+  cards.filter((c) => router.hasRoute(c.name) && ((c.perms ?? (router.resolve({ name: c.name }).meta.perms as string[] | undefined)) ? ctx.can(...(c.perms ?? (router.resolve({ name: c.name }).meta.perms as string[]))) : true) && (c.roles ? c.roles.includes(ctx.activeRole ?? '') : true)),
 );
 
 onMounted(() => void higher.ensure());

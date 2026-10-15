@@ -85,17 +85,18 @@ paths:
         '422': {description: "Garde IPES ou groupe hors niveau"}
   /api/v1/higher/enrolments/{id}/link:
     post:
-      summary: "Lier l'inscription du socle (People) : même personne, établissement et année"
+      summary: "Lier l'inscription du socle (People) : même personne, établissement et année ; sans enrollment_id, inscrire l'étudiant au socle dans son groupe (reprise après un refus signalé à la validation)"
       parameters:
         - {name: id, in: path, required: true, schema: {type: string}}
       requestBody:
         required: true
         content:
           application/json:
-            schema: {type: object, required: [enrollment_id], properties: {enrollment_id: {type: string}}}
+            schema: {type: object, properties: {enrollment_id: {type: string}}}
       responses:
         '200': {description: "Inscription liée"}
-        '422': {description: "Inscription du socle incohérente"}
+        '409': {description: "Inscription IPES non validée"}
+        '422': {description: "Inscription du socle incohérente, ou refusée par le socle (motif : date de naissance, garant, groupe)"}
   /api/v1/higher/enrolments/{id}/learning-contract:
     get:
       summary: "Contrat pédagogique : UE normales, optionnelles choisies, dettes, capitalisées ; crédits ; UE à choix disponibles"

@@ -5,12 +5,18 @@ import { adminEn } from './admin-en';
 import { hrEn } from './hr-en';
 import { platformEn } from './platform-en';
 import { higherEn } from './higher-en';
+import { higherGradesEn } from './higher-grades-en';
+import { higherTeachingEn } from './higher-teaching-en';
+import { higherDeliberationEn } from './higher-deliberation-en';
 
 export const en: Record<keyof typeof fr, string> = {
   ...adminEn,
   ...hrEn,
   ...platformEn,
   ...higherEn,
+  ...higherGradesEn,
+  ...higherTeachingEn,
+  ...higherDeliberationEn,
   'nav.reportcards': "Report cards",
   'reportcards.eyebrow': "Results",
   'reportcards.title': "Report cards",

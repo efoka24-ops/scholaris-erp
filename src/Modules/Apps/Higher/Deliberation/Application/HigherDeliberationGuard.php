@@ -120,7 +120,7 @@ final class HigherDeliberationGuard implements DeliberationGuard
         if ($context->presidentId !== null && $context->presidentId !== (string) $jury['president_person_id']) {
             $out[] = GuardRefusal::conflict('Le président de la délibération doit être celui du jury déclaré (directeur d\'école).');
         }
-        $sheet = $this->marks->sheet($context->tenantId, $context->establishmentId, $context->structureId, $context->periodId, $context->session);
+        $sheet = $this->marks->sheet($context->tenantId, $context->establishmentId, $context->structureId, $context->periodId, $context->session, (string) $jury['academic_year_id']);
         if ($sheet !== null && $sheet->unlocked !== []) {
             $out[] = GuardRefusal::conflict(sprintf(
                 'Toutes les notes des EC doivent être verrouillées avant la délibération (RG-DEL-1) : %d épreuve(s) encore en saisie (%s).',

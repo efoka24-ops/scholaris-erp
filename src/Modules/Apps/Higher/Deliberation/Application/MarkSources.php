@@ -19,10 +19,10 @@ final class MarkSources
     {
     }
 
-    public function sheet(string $tenantId, string $establishmentId, string $structureId, string $periodId, string $session): ?MarkSheet
+    public function sheet(string $tenantId, string $establishmentId, string $structureId, string $periodId, string $session, ?string $academicYearId = null): ?MarkSheet
     {
         foreach ($this->sources() as $source) {
-            $sheet = $source->sheet($tenantId, $establishmentId, $structureId, $periodId, $session);
+            $sheet = $source->sheet($tenantId, $establishmentId, $structureId, $periodId, $session, $academicYearId);
             if ($sheet !== null) {
                 return $sheet;
             }
@@ -32,9 +32,9 @@ final class MarkSources
     }
 
     /** @throws HttpException 409 si aucune source ne fournit les notes */
-    public function require(string $tenantId, string $establishmentId, string $structureId, string $periodId, string $session): MarkSheet
+    public function require(string $tenantId, string $establishmentId, string $structureId, string $periodId, string $session, ?string $academicYearId = null): MarkSheet
     {
-        return $this->sheet($tenantId, $establishmentId, $structureId, $periodId, $session)
+        return $this->sheet($tenantId, $establishmentId, $structureId, $periodId, $session, $academicYearId)
             ?? throw HttpException::conflict('Aucune source de notes n\'est disponible pour ce groupe et cette période : la simulation et la liste du rattrapage exigent les notes verrouillées des EC.');
     }
 

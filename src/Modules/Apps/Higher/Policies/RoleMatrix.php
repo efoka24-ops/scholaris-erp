@@ -102,7 +102,7 @@ final class RoleMatrix
                 'higher.access', 'organisation.read', 'people.read', 'people.manage', 'higher.settings.read', 'higher.admission.read',
                 'higher.application.manage', 'higher.enrolment.read', 'higher.enrol', 'higher.curriculum.read', 'scheduling.read',
                 'scheduling.manage', 'higher.timetable.read', 'higher.session_log.read', 'higher.attendance.read', 'attendance.justify',
-                'higher.grades.read', 'higher.deliberation.read', 'higher.deliberation.prepare', 'higher.billing.read', 'documents.read',
+                'higher.grades.read', 'higher.grades.publish', 'higher.deliberation.read', 'higher.deliberation.prepare', 'higher.billing.read', 'documents.read',
                 'documents.issue', 'higher.document.read', 'higher.national_list.manage', 'higher.dashboard.read',
             ],
         ],

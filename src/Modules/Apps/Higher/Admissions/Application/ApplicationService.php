@@ -31,6 +31,8 @@ final class ApplicationService
     public const TABLE = 'hi_applications';
     public const DOCUMENTS = 'hi_application_documents';
     public const CHANNELS = ['orange_money', 'mtn_momo', 'cash', 'transfer', 'card'];
+    /** Encaissement au guichet (caissier, R14). */
+    private const CASH = 'billing.cash';
 
     public function __construct(
         private readonly AdmissionsStore $store,
@@ -247,7 +249,7 @@ final class ApplicationService
     public function payFee(Principal $principal, string $establishmentId, string $id, ?string $channel, ?string $payerPhone, ?string $externalReference): array
     {
         $tenantId = $principal->tenantId;
-        $application = $this->ownedOrManaged($principal, $establishmentId, $id);
+        $application = $this->payableBy($principal, $establishmentId, $id);
         if ($application['fee_invoice_id'] === null || $application['fee_status'] === ApplicationStatus::FEE_NONE) {
             throw HttpException::conflict('Aucun frais de dossier à payer : déposez d\'abord la candidature.');
         }
@@ -422,6 +424,25 @@ final class ApplicationService
         $this->access->assertWritable($principal, $perimeter, $application, 'hi_application', $id);
 
         return $application;
+    }
+
+    /**
+     * Frais de dossier encaissés au guichet (défaut D-01 de la recette) : le candidat, la scolarité, ou le caissier (`billing.cash`)
+     * dans le périmètre de la candidature, sans autre droit sur elle.
+     *
+     * @return array<string, mixed>
+     */
+    private function payableBy(Principal $principal, string $establishmentId, string $id): array
+    {
+        $cash = $this->access->perimeter($principal, $establishmentId, [self::CASH]);
+        if (!$cash->isEmpty()) {
+            $application = $this->get($principal->tenantId, $establishmentId, $id);
+            if ($this->covers($cash, $application)) {
+                return $application;
+            }
+        }
+
+        return $this->ownedOrManaged($principal, $establishmentId, $id);
     }
 
     /** @return array<string, mixed> */

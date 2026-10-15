@@ -46,7 +46,7 @@ final class PreparationService
     {
         $tenantId = $principal->tenantId;
         $jury = $this->juries->writable($principal, $establishmentId, $juryId, [DeliberationPermissions::PREPARE]);
-        $sheet = $this->marks->require($tenantId, $establishmentId, (string) $jury['structure_id'], (string) $jury['period_id'], (string) $jury['exam_session']);
+        $sheet = $this->marks->require($tenantId, $establishmentId, (string) $jury['structure_id'], (string) $jury['period_id'], (string) $jury['exam_session'], (string) $jury['academic_year_id']);
         $rules = $this->withOverrides($this->rules->forJury($jury), $overrides);
         $points = $this->juries->pointsOf($tenantId, $establishmentId, $juryId);
         $names = $this->juries->names($tenantId, array_keys($sheet->units));
@@ -165,7 +165,7 @@ final class PreparationService
     {
         $tenantId = (string) $jury['tenant_id'];
         $establishmentId = (string) $jury['establishment_id'];
-        $sheet = $this->marks->require($tenantId, $establishmentId, (string) $jury['structure_id'], (string) $jury['period_id'], 'normal');
+        $sheet = $this->marks->require($tenantId, $establishmentId, (string) $jury['structure_id'], (string) $jury['period_id'], 'normal', (string) $jury['academic_year_id']);
         $rules = $this->rules->forJury($jury);
         $unitPass = (float) ($rules->options['unit_pass_mark'] ?? 10.0);
         $points = $this->juries->pointsOf($tenantId, $establishmentId, (string) $jury['id']);

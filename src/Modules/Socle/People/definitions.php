@@ -6,10 +6,12 @@ use function DI\autowire;
 use function DI\factory;
 
 use Scholaris\Core\Config\Config;
+use Scholaris\Modules\Socle\People\Application\EnrollmentWriterService;
 use Scholaris\Modules\Socle\People\Application\YearPromotion;
 use Scholaris\Modules\Socle\People\Contracts\BirthInfo;
 use Scholaris\Modules\Socle\People\Contracts\ConsentChecker;
 use Scholaris\Modules\Socle\People\Contracts\EnrollmentDirectory;
+use Scholaris\Modules\Socle\People\Contracts\EnrollmentWriter;
 use Scholaris\Modules\Socle\People\Contracts\FileScanner;
 use Scholaris\Modules\Socle\People\Contracts\PersonDirectory;
 use Scholaris\Modules\Socle\People\Contracts\TeachingScope;
@@ -31,6 +33,7 @@ use Scholaris\Modules\Socle\People\Infrastructure\StaffTeachingScope;
 return [
     PersonDirectory::class => autowire(PdoPersonDirectory::class),
     EnrollmentDirectory::class => autowire(PdoEnrollmentDirectory::class),
+    EnrollmentWriter::class => autowire(EnrollmentWriterService::class),
     ConsentChecker::class => autowire(PdoConsentChecker::class),
     BirthInfo::class => autowire(PdoBirthInfo::class),
     TeachingScope::class => autowire(StaffTeachingScope::class),

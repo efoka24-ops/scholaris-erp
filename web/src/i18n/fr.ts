@@ -4,12 +4,18 @@ import { adminFr } from './admin-fr';
 import { hrFr } from './hr-fr';
 import { platformFr } from './platform-fr';
 import { higherFr } from './higher-fr';
+import { higherGradesFr } from './higher-grades-fr';
+import { higherTeachingFr } from './higher-teaching-fr';
+import { higherDeliberationFr } from './higher-deliberation-fr';
 
 export const fr = {
   ...adminFr,
   ...hrFr,
   ...platformFr,
   ...higherFr,
+  ...higherGradesFr,
+  ...higherTeachingFr,
+  ...higherDeliberationFr,
   'nav.reportcards': "Bulletins",
   'reportcards.eyebrow': "Résultats",
   'reportcards.title': "Bulletins de notes",

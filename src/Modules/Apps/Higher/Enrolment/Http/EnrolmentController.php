@@ -120,7 +120,7 @@ final class EnrolmentController
     public function link(ServerRequestInterface $request): ResponseInterface
     {
         $body = Body::of($request);
-        $enrollmentId = (string) $body->string('enrollment_id', 40);
+        $enrollmentId = $body->string('enrollment_id', 40, false);
         $body->done();
 
         return $this->json(EnrolmentResources::enrolment($this->enrolments->link(EnrolmentAccess::principal($request), EnrolmentAccess::establishmentId($request), self::id($request), $enrollmentId)));

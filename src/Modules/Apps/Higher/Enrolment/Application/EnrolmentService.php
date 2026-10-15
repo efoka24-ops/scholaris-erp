@@ -21,6 +21,7 @@ use Scholaris\Modules\Apps\Higher\Enrolment\Domain\RefundGrid;
 use Scholaris\Modules\Apps\Higher\Enrolment\Infrastructure\EnrolmentStore;
 use Scholaris\Modules\Socle\Organisation\Contracts\OrgUnitSettingsReader;
 use Scholaris\Modules\Socle\People\Contracts\EnrollmentDirectory;
+use Scholaris\Modules\Socle\People\Contracts\EnrollmentWriter;
 
 /**
  * Inscriptions administratives IPES (EX-INS-01 à 05, T235-T237, T240, T416-T421) :
@@ -56,6 +57,7 @@ final class EnrolmentService
         private readonly RegistrationFees $fees,
         private readonly StudentMessages $messages,
         private readonly EnrolmentClock $clock,
+        private readonly EnrollmentWriter $writer,
     ) {
     }
 
@@ -203,8 +205,39 @@ final class EnrolmentService
         if ($enrolment['status'] === EnrolmentStatus::PENDING) {
             $this->messages->validated($enrolment, $matricule);
         }
+        $rollCall = $this->rollCall($principal, $establishmentId, $id);
 
-        return $this->get($tenantId, $establishmentId, $id);
+        return $this->get($tenantId, $establishmentId, $id) + ['socle_enrollment' => $rollCall];
+    }
+
+    /**
+     * Défaut D-03 (recette) : l'inscription validée dans un groupe inscrit l'étudiant dans ce groupe au socle (liste d'appel, portails,
+     * notes) et s'y lie. Un refus du socle (mineur sans garant, autre inscription vivante) ne bloque pas la validation de l'IPES :
+     * la réponse le signale (`pending` et motif) et une nouvelle validation, ou POST /enrolments/{id}/link, le reprend.
+     *
+     * @return array{status: string, enrollment_id?: string, reason?: string}
+     */
+    private function rollCall(Principal $principal, string $establishmentId, string $id): array
+    {
+        $tenantId = $principal->tenantId;
+        $enrolment = $this->get($tenantId, $establishmentId, $id);
+        if ($enrolment['enrollment_id'] !== null) {
+            return ['status' => 'linked', 'enrollment_id' => (string) $enrolment['enrollment_id']];
+        }
+        if ($enrolment['group_id'] === null) {
+            return ['status' => 'no_group'];
+        }
+        try {
+            $enrollmentId = $this->writer->enrol($tenantId, $establishmentId, (string) $enrolment['person_id'], (string) $enrolment['group_id'], (string) $enrolment['academic_year_id'], $principal->userId);
+        } catch (HttpException $e) {
+            $reasons = array_merge(...array_values(array_map(static fn (mixed $m): array => array_map('strval', (array) $m), $e->errors)));
+
+            return ['status' => 'pending', 'reason' => $reasons === [] ? $e->getMessage() : implode(' ', $reasons)];
+        }
+        $this->store->update(self::TABLE, $tenantId, $establishmentId, ['enrollment_id' => $enrollmentId, 'updated_at' => $this->clock->now()], ['id' => $id]);
+        $this->access->audit($tenantId, $principal->userId, 'higher.enrolment.linked', 'hi_enrolment', $id, null, ['enrollment_id' => $enrollmentId, 'automatic' => true]);
+
+        return ['status' => 'linked', 'enrollment_id' => $enrollmentId];
     }
 
     /**
@@ -295,13 +328,25 @@ final class EnrolmentService
     }
 
     /**
-     * Lien avec l'inscription du socle (People, `enrollments`) : même personne, établissement et année.
+     * Lien avec l'inscription du socle (People, `enrollments`) : même personne, établissement et année. Sans identifiant, l'étudiant
+     * est inscrit au socle dans son groupe (reprise après un refus signalé à la validation, ex. date de naissance complétée).
      *
      * @return array<string, mixed>
      */
-    public function link(Principal $principal, string $establishmentId, string $id, string $enrollmentId): array
+    public function link(Principal $principal, string $establishmentId, string $id, ?string $enrollmentId): array
     {
         $enrolment = $this->writable($principal, $establishmentId, $id, [EnrolmentPermissions::ENROL]);
+        if ($enrollmentId === null) {
+            if (!in_array($enrolment['status'], [EnrolmentStatus::ENROLLED, EnrolmentStatus::FINANCIAL_HOLD], true)) {
+                throw HttpException::conflict('Seule une inscription validée s\'inscrit dans son groupe au socle.');
+            }
+            $rollCall = $this->rollCall($principal, $establishmentId, $id);
+            if ($rollCall['status'] !== 'linked') {
+                throw HttpException::validation(['enrollment_id' => [$rollCall['reason'] ?? 'Aucun groupe : affectez l\'étudiant à un groupe.']]);
+            }
+
+            return $this->get($principal->tenantId, $establishmentId, $id);
+        }
         $socle = $this->enrollments->find($principal->tenantId, $enrollmentId);
         if ($socle === null || $socle->establishmentId !== $establishmentId || $socle->personId !== $enrolment['person_id'] || $socle->academicYearId !== $enrolment['academic_year_id']) {
             throw HttpException::validation(['enrollment_id' => ['Inscription du socle introuvable pour cette personne, cet établissement et cette année.']]);

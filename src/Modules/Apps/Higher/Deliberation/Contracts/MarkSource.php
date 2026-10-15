@@ -17,6 +17,10 @@ interface MarkSource
 {
     public const PREFIX = 'higher.deliberation.mark_sources.';
 
-    /** @return MarkSheet|null null si cette source ne connaît pas ce groupe */
-    public function sheet(string $tenantId, string $establishmentId, string $structureId, string $periodId, string $session): ?MarkSheet;
+    /**
+     * @param string $periodId semestre de la maquette noté « S<n> » (S1, S2… numérotation de la filière)
+     * @param string|null $academicYearId année du jury ; null = la plus récente qui a des notes pour ce groupe
+     * @return MarkSheet|null null si cette source ne connaît pas ce groupe
+     */
+    public function sheet(string $tenantId, string $establishmentId, string $structureId, string $periodId, string $session, ?string $academicYearId = null): ?MarkSheet;
 }
