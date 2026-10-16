@@ -24,4 +24,23 @@ interface ClientProvisioning
      * @throws \Scholaris\Core\Http\HttpException 422 type inconnu, 409 nom déjà utilisé dans ce client
      */
     public function createEstablishment(string $tenantId, string $name, string $type): string;
+
+    /** Renomme le client. @throws \Scholaris\Core\Http\HttpException 404 client introuvable, 422 nom invalide */
+    public function renameTenant(string $tenantId, string $name): void;
+
+    /** État du client : active, suspended ou archived (aucune donnée supprimée). */
+    public function setTenantStatus(string $tenantId, string $status): void;
+
+    /**
+     * Tous les établissements du client, fermés compris (vue de la plateforme : nom, type, dates ; aucune donnée métier).
+     *
+     * @return list<array{id: string, name: string, type: string, closed_at: ?string, created_at: string}>
+     */
+    public function establishmentsOf(string $tenantId): array;
+
+    /** @throws \Scholaris\Core\Http\HttpException 404 introuvable, 409 nom déjà utilisé, 422 nom invalide */
+    public function renameEstablishment(string $tenantId, string $establishmentId, string $name): void;
+
+    /** Ferme (true) ou rouvre (false) un établissement : fermé, il n'est plus proposé par l'annuaire ; ses données restent. */
+    public function setEstablishmentClosed(string $tenantId, string $establishmentId, bool $closed): void;
 }

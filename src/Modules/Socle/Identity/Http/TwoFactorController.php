@@ -7,6 +7,7 @@ namespace Scholaris\Modules\Socle\Identity\Http;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Scholaris\Core\Http\JsonResponder;
+use Scholaris\Core\Support\QrSvg;
 use Scholaris\Modules\Socle\Identity\Application\PermissionResolver;
 use Scholaris\Modules\Socle\Identity\Application\TwoFactorService;
 use Scholaris\Modules\Socle\Identity\Domain\Exception\TwoFactorRejected;
@@ -28,6 +29,8 @@ final class TwoFactorController
     {
         $user = $this->actor->user($request);
         $payload = $this->twoFactor->setup($user);
+        // QR code du lien otpauth:// : scanné par l'application d'authentification au lieu de recopier la clé.
+        $payload['qr_data_uri'] = QrSvg::dataUri($payload['otpauth_uri']);
         $payload['required_for'] = $this->resolver->sensitiveRoles($user->tenantId, $user->personId, $this->actor->locale($request));
 
         return $this->responder->json($payload);

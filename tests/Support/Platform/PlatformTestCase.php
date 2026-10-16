@@ -84,6 +84,10 @@ abstract class PlatformTestCase extends TestCase
             'platform.applications.manage',
             'platform.pricing.manage',
             'platform.payments.read',
+            'platform.clients.manage',
+            'platform.admins.manage',
+            'platform.payments.manage',
+            'platform.audit.read',
         );
         $this->secondFactor->allow(self::ROOT);
     }

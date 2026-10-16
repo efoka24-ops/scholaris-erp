@@ -39,6 +39,7 @@ return static function (HigherRoutes $routes): void {
 
     $routes->get('/grade-corrections', [GradesController::class, 'corrections']);
     $routes->get('/grade-corrections/{id}', [GradesController::class, 'correction']);
+    $routes->get('/grade-corrections/{id}/attachment', [GradesController::class, 'correctionAttachment']);
     $routes->post('/grade-corrections/{id}/approve', [GradesController::class, 'approveCorrection']);
     $routes->post('/grade-corrections/{id}/reject', [GradesController::class, 'rejectCorrection']);
 

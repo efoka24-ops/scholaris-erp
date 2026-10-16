@@ -75,6 +75,8 @@ export interface TwoFactorSetup {
   secret: string;
   secret_grouped: string;
   otpauth_uri: string;
+  /** QR code du lien otpauth:// (image SVG en data URI), à scanner avec l'application d'authentification. */
+  qr_data_uri?: string;
   required_for?: Array<string | { code?: string; label?: string }>;
 }
 

@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import ErrorNotice from '@/components/ErrorNotice.vue';
+import { saveBlob } from '@/api/exports';
 import { isSecondFactorRequired } from '@/api/higher';
 import { grades, type Correction, type CorrectionStatus } from '@/api/higher-grades';
 import { useAuthStore } from '@/stores/auth';
@@ -58,6 +59,11 @@ async function after(res: Correction | undefined): Promise<void> {
   }
 }
 
+async function download(c: Correction): Promise<void> {
+  const blob = await act.run(() => grades.correctionAttachment(c.id));
+  if (blob) saveBlob(blob, c.attachment_ref || `correction-${c.id}`);
+}
+
 async function approve(c: Correction): Promise<void> {
   needsTwoFactor.value = false;
   await after(await act.run(() => grades.approveCorrection(c.id)));
@@ -102,7 +108,10 @@ onMounted(async () => {
         <div class="hi-grow">
           <strong>{{ c.element_code }} · {{ c.assessment_label }}</strong>
           <p class="hi-small">{{ tg('hg.corr.oldNew', { old: describe(c.old, locale), new: describe(c.new, locale) }) }} — {{ c.reason }}</p>
-          <p class="muted hi-small">{{ c.attachment_ref }} · {{ formatDateTime(c.created_at, locale) }}</p>
+          <p class="muted hi-small">
+            {{ c.attachment_ref }} · {{ formatDateTime(c.created_at, locale) }}
+            <button v-if="c.attachment" type="button" class="hi-linkbtn" :data-test="`attachment-${c.id}`" @click="download(c)">{{ tg('hg.corr.download') }}</button>
+          </p>
           <p v-if="c.next_step" class="hi-small">{{ tg('hg.corr.nextStep', { label: c.next_step.label }) }}</p>
           <p v-for="s in c.approval_trail" :key="`${s.step}-${s.at}`" class="muted hi-small">{{ s.label }} · {{ tg(gk('hg.corr.state.', s.decision)) }}<template v-if="s.reason"> · {{ s.reason }}</template></p>
         </div>

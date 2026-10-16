@@ -123,7 +123,7 @@ paths:
           description: "Données invalides"
   /api/v1/platform/clients:
     get:
-      summary: "Clients de la plateforme et leurs droits d'usage (aucune donnée métier)"
+      summary: "Clients de la plateforme : fiche (état active|suspended|archived, contact, ville, région) et droits d'usage (aucune donnée métier). filter[state] : par défaut tous sauf les archivés"
       security:
         - bearer: []
       responses:
@@ -131,9 +131,39 @@ paths:
           description: "Clients"
         '403':
           description: "Réservé à l'administrateur de plateforme"
+        '422':
+          description: "Filtre invalide"
+    post:
+      summary: "Crée un client directement, sans demande d'accès, avec son premier établissement si establishment_type est donné (2FA récente ; platform.clients.manage)"
+      security:
+        - bearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [name, contact_name]
+              properties:
+                name: {type: string, minLength: 3, maxLength: 160}
+                contact_name: {type: string, minLength: 2, maxLength: 160}
+                contact_email: {type: string, format: email, description: "E-mail ou téléphone obligatoire"}
+                contact_phone: {type: string}
+                city: {type: string, maxLength: 80}
+                region: {type: string, maxLength: 80}
+                locale: {type: string, enum: [fr, en]}
+                establishment_type: {type: string, enum: [higher, secondary, primary, nursery]}
+      responses:
+        '201':
+          description: "Client créé"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '422':
+          description: "Données invalides"
   /api/v1/platform/clients/{tenant}:
     get:
-      summary: "Détail d'un client : établissements (nom, type) et droits d'usage"
+      summary: "Détail d'un client : fiche, établissements (nom, type, fermeture) et droits d'usage"
       security:
         - bearer: []
       parameters:
@@ -148,6 +178,26 @@ paths:
           description: "Réservé à l'administrateur de plateforme"
         '404':
           description: "Client introuvable"
+    patch:
+      summary: "Modifie la fiche ({ name?, contact_name?, contact_email?, contact_phone?, city?, region?, locale? }) (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Client modifié"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Client introuvable"
+        '409':
+          description: "Client archivé"
+        '422':
+          description: "Données invalides ou aucune modification"
   /api/v1/platform/clients/{tenant}/applications:
     post:
       summary: "Ouvre une application à un client ({ app_key }), en essai gratuit ; active les modules requis (2FA récente)"
@@ -261,7 +311,7 @@ paths:
           description: "Non suspendue"
   /api/v1/platform/access-requests:
     get:
-      summary: "Demandes d'accès (filter[status]=pending|info_requested|accepted|rejected, pagination par curseur)"
+      summary: "Demandes d'accès, la plus récente d'abord (filter[status]=pending|info_requested|accepted|rejected, filter[archived]=0|1 (0 par défaut), pagination par curseur)"
       security:
         - bearer: []
       responses:
@@ -288,6 +338,24 @@ paths:
           description: "Réservé à l'administrateur de plateforme"
         '404':
           description: "Introuvable"
+    delete:
+      summary: "Supprime définitivement une demande ARCHIVÉE qui n'a créé aucun client (journalisé) (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Demande supprimée"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Introuvable"
+        '409':
+          description: "Demande non archivée ou ayant créé un client"
   /api/v1/platform/access-requests/{id}/accept:
     post:
       summary: "Accepte ({ tenant_id?, force_reason? } ; tenant_id pour rattacher à un client existant) : crée client et établissement, ouvre l'application en essai de 90 jours, invite le premier administrateur (activation par code) (2FA récente)"
@@ -352,7 +420,7 @@ paths:
           description: "Déjà traitée"
   /api/v1/platform/payments:
     get:
-      summary: "Paiements d'abonnement de tous les clients (filter[status], filter[tenant_id], curseur)"
+      summary: "Paiements d'abonnement de tous les clients, le plus récent d'abord (filter[status]=pending|succeeded|failed|cancelled, filter[tenant_id], curseur)"
       security:
         - bearer: []
       responses:
@@ -360,6 +428,36 @@ paths:
           description: "Page de paiements"
         '403':
           description: "Réservé à l'administrateur de plateforme"
+    post:
+      summary: "Enregistre un paiement manuel confirmé (espèces ou virement) avec reçu ; prolonge la période couverte (2FA récente ; platform.payments.manage)"
+      security:
+        - bearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [tenant_id, app_key, months, channel]
+              properties:
+                tenant_id: {type: string}
+                app_key: {type: string}
+                months: {type: integer, minimum: 1, maximum: 12}
+                channel: {type: string, enum: [cash, bank_transfer]}
+                amount_xaf: {type: integer, minimum: 1, description: "Par défaut : tarif effectif × mois"}
+                note: {type: string, maxLength: 500}
+      responses:
+        '201':
+          description: "Paiement enregistré"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Client ou application introuvable"
+        '409':
+          description: "Application fermée ou client archivé"
+        '422':
+          description: "Données invalides"
   /api/v1/platform/payments/webhook:
     post:
       summary: "Webhook de l'agrégateur de paiement (signature vérifiée par la passerelle ; idempotent par event_id)"
@@ -464,3 +562,475 @@ paths:
           description: "Introuvable ou autre client"
         '409':
           description: "Paiement non confirmé"
+  /api/v1/platform/clients/{tenant}/suspend:
+    post:
+      summary: "Suspend le client ({ reason } obligatoire) : toutes ses applications ouvertes passent en lecture seule (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Client suspendu"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Client introuvable"
+        '409':
+          description: "Client non actif"
+        '422':
+          description: "Motif manquant"
+  /api/v1/platform/clients/{tenant}/reactivate:
+    post:
+      summary: "Réactive un client suspendu ({ reason? }) et les applications suspendues avec lui (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Client réactivé"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Client introuvable"
+        '409':
+          description: "Client non suspendu"
+  /api/v1/platform/clients/{tenant}/archive:
+    post:
+      summary: "Archive un client suspendu ({ reason } obligatoire) : applications fermées, données conservées, aucune suppression (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Client archivé"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Client introuvable"
+        '409':
+          description: "Client non suspendu"
+        '422':
+          description: "Motif manquant"
+  /api/v1/platform/clients/{tenant}/establishments:
+    get:
+      summary: "Établissements du client, fermés compris (nom, type, closed_at)"
+      security:
+        - bearer: []
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Établissements"
+        '403':
+          description: "Réservé à l'administrateur de plateforme"
+        '404':
+          description: "Client introuvable"
+    post:
+      summary: "Crée un établissement ({ name, type: nursery|primary|secondary|higher }) (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '201':
+          description: "Établissement créé"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Client introuvable"
+        '409':
+          description: "Nom déjà utilisé ou client archivé"
+        '422':
+          description: "Données invalides"
+  /api/v1/platform/clients/{tenant}/establishments/{establishment}:
+    patch:
+      summary: "Renomme un établissement ({ name }) (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema: {type: string}
+        - name: establishment
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Établissement renommé"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Introuvable"
+        '409':
+          description: "Nom déjà utilisé ou client archivé"
+        '422':
+          description: "Nom invalide"
+  /api/v1/platform/clients/{tenant}/establishments/{establishment}/close:
+    post:
+      summary: "Ferme un établissement ({ reason } obligatoire) : il n'est plus proposé aux utilisateurs, ses données restent (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema: {type: string}
+        - name: establishment
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Établissement fermé"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Introuvable"
+        '409':
+          description: "Déjà fermé ou client archivé"
+        '422':
+          description: "Motif manquant"
+  /api/v1/platform/clients/{tenant}/establishments/{establishment}/reopen:
+    post:
+      summary: "Rouvre un établissement fermé (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema: {type: string}
+        - name: establishment
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Établissement rouvert"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Introuvable"
+        '409':
+          description: "Déjà ouvert ou client archivé"
+  /api/v1/platform/clients/{tenant}/administrators:
+    get:
+      summary: "Liste des super administrateurs du client (jamais ses autres utilisateurs)"
+      security:
+        - bearer: []
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Administrateurs"
+        '403':
+          description: "Réservé à l'administrateur de plateforme"
+        '404':
+          description: "Client introuvable"
+    post:
+      summary: "Invite un administrateur ({ first_name, last_name, email?, phone?, locale? } ; e-mail ou téléphone obligatoire) : compte en attente, invitation par e-mail vers l'activation par code (SMS non branché) (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '201':
+          description: "Administrateur invité"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Client introuvable"
+        '409':
+          description: "Identifiant déjà utilisé ou client archivé"
+        '422':
+          description: "Données invalides"
+  /api/v1/platform/clients/{tenant}/administrators/{user}/resend-invitation:
+    post:
+      summary: "Renvoie l'invitation d'un compte en attente (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema: {type: string}
+        - name: user
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Invitation renvoyée"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Administrateur introuvable"
+        '409':
+          description: "Compte déjà activé ou bloqué"
+  /api/v1/platform/clients/{tenant}/administrators/{user}/block:
+    post:
+      summary: "Bloque (désactive) un administrateur : sessions révoquées ; jamais soi-même ni le dernier administrateur de plateforme actif (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema: {type: string}
+        - name: user
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Administrateur bloqué"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Administrateur introuvable"
+        '409':
+          description: "Soi-même ou dernier administrateur actif"
+  /api/v1/platform/clients/{tenant}/administrators/{user}/unblock:
+    post:
+      summary: "Débloque un administrateur (actif, ou en attente s'il n'a jamais activé son compte) (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema: {type: string}
+        - name: user
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Administrateur débloqué"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Administrateur introuvable"
+  /api/v1/platform/clients/{tenant}/administrators/{user}/reset-access:
+    post:
+      summary: "Réinitialise l'accès : mot de passe et 2FA effacés, sessions révoquées, nouvelle invitation (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema: {type: string}
+        - name: user
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Accès réinitialisé"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Administrateur introuvable"
+        '409':
+          description: "Son propre accès"
+  /api/v1/platform/administrators:
+    get:
+      summary: "Liste des administrateurs de plateforme (2FA obligatoire pour ce rôle)"
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: "Administrateurs"
+        '403':
+          description: "Réservé à l'administrateur de plateforme"
+        '404':
+          description: "Client introuvable"
+    post:
+      summary: "Invite un administrateur ({ first_name, last_name, email?, phone?, locale? } ; e-mail ou téléphone obligatoire) : compte en attente, invitation par e-mail vers l'activation par code (SMS non branché) (2FA récente)"
+      security:
+        - bearer: []
+      responses:
+        '201':
+          description: "Administrateur invité"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Client introuvable"
+        '409':
+          description: "Identifiant déjà utilisé ou client archivé"
+        '422':
+          description: "Données invalides"
+  /api/v1/platform/administrators/{user}/resend-invitation:
+    post:
+      summary: "Renvoie l'invitation d'un compte en attente (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - name: user
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Invitation renvoyée"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Administrateur introuvable"
+        '409':
+          description: "Compte déjà activé ou bloqué"
+  /api/v1/platform/administrators/{user}/block:
+    post:
+      summary: "Bloque (désactive) un administrateur : sessions révoquées ; jamais soi-même ni le dernier administrateur de plateforme actif (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - name: user
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Administrateur bloqué"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Administrateur introuvable"
+        '409':
+          description: "Soi-même ou dernier administrateur actif"
+  /api/v1/platform/administrators/{user}/unblock:
+    post:
+      summary: "Débloque un administrateur (actif, ou en attente s'il n'a jamais activé son compte) (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - name: user
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Administrateur débloqué"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Administrateur introuvable"
+  /api/v1/platform/administrators/{user}/reset-access:
+    post:
+      summary: "Réinitialise l'accès : mot de passe et 2FA effacés, sessions révoquées, nouvelle invitation (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - name: user
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Accès réinitialisé"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Administrateur introuvable"
+        '409':
+          description: "Son propre accès"
+  /api/v1/platform/access-requests/{id}/archive:
+    post:
+      summary: "Archive une demande refusée ou de test ({ reason } obligatoire) : retirée des files, conservée et tracée (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Demande archivée"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Introuvable"
+        '409':
+          description: "Déjà archivée ou acceptée"
+        '422':
+          description: "Motif manquant"
+  /api/v1/platform/payments/{id}/cancel:
+    post:
+      summary: "Annule un paiement ({ reason } obligatoire) ; un paiement confirmé n'est annulable que s'il est le dernier de l'application (couverture rétablie) (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Paiement annulé"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Introuvable"
+        '409':
+          description: "Déjà annulé ou échoué, ou paiement plus récent"
+        '422':
+          description: "Motif manquant"
+  /api/v1/platform/payments/{id}/receipt:
+    get:
+      summary: "Reçu d'un paiement confirmé (vue plateforme)"
+      security:
+        - bearer: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Reçu"
+        '403':
+          description: "Réservé à l'administrateur de plateforme"
+        '404':
+          description: "Introuvable"
+        '409':
+          description: "Paiement non confirmé"
+  /api/v1/platform/audit:
+    get:
+      summary: "Journal d'audit de la plateforme, le plus récent d'abord (filter[action] préfixe, filter[actor_id], filter[object_type], filter[object_id], filter[from], filter[to] AAAA-MM-JJ ; curseur)"
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: "Page d'entrées"
+        '403':
+          description: "Réservé à l'administrateur de plateforme"
+        '422':
+          description: "Filtre invalide"

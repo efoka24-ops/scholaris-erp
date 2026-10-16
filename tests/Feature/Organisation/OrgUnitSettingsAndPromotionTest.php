@@ -8,6 +8,7 @@ use Scholaris\Core\Http\HttpException;
 use Scholaris\Modules\Socle\Organisation\Application\ClosureProviders;
 use Scholaris\Modules\Socle\Organisation\Application\SettingsService;
 use Scholaris\Modules\Socle\Organisation\Contracts\ClosureStepResult;
+use Scholaris\Modules\Socle\Organisation\Contracts\ConditionalPromotionPlanner;
 use Scholaris\Modules\Socle\Organisation\Contracts\OrgUnitSettingsReader;
 use Scholaris\Modules\Socle\Organisation\Contracts\SettingsReader;
 use Scholaris\Modules\Socle\Organisation\Contracts\StructureWriter;
@@ -21,6 +22,7 @@ final class OrgUnitSettingsAndPromotionTest extends OrganisationTestCase
 {
     private ClosureDoubles $generic;
     private TypedPromotionPlanner $higher;
+    private ConditionalPromotionPlanner $conditional;
     private string $school = '';
     private string $dept = '';
 
@@ -42,9 +44,30 @@ final class OrgUnitSettingsAndPromotionTest extends OrganisationTestCase
                 return new ClosureStepResult(ClosureStepResult::DONE, 'Décisions de passage IPES.', ['admitted' => 1]);
             }
         };
+        $this->conditional = new class () implements ConditionalPromotionPlanner {
+            public int $calls = 0;
+
+            public function establishmentTypes(): array
+            {
+                return ['higher'];
+            }
+
+            public function appliesTo(string $tenantId, string $establishmentId): bool
+            {
+                return $tenantId === 't1' && $establishmentId === 'e1';
+            }
+
+            public function promote(string $tenantId, string $establishmentId, string $fromYearId, string $toYearId): ClosureStepResult
+            {
+                ++$this->calls;
+
+                return new ClosureStepResult(ClosureStepResult::DONE, 'Décisions de passage conditionnel.', ['admitted' => 2]);
+            }
+        };
         $this->bootOrganisation([
             'organisation.closure.promotion.test' => [$this->generic],
             'organisation.closure.promotion.higher' => [$this->higher],
+            'organisation.closure.promotion.conditional' => [$this->conditional],
             'organisation.closure.promotion.people' => [],
         ]);
         $this->seedEstablishment('t1', 'e1', 'Institut', 'higher', 'alice');
@@ -122,8 +145,12 @@ final class OrgUnitSettingsAndPromotionTest extends OrganisationTestCase
     {
         $providers = $this->kernel->container()->get(ClosureProviders::class);
 
-        self::assertSame([$this->higher], $providers->promotersFor('higher'));
-        self::assertSame([$this->generic], $providers->promotersFor('secondary'), 'Secondaire : planificateurs génériques, comportement inchangé.');
-        self::assertSame([$this->generic], $providers->promotersFor('primary'));
+        $applicable = $providers->promotersFor('t1', 'e1', 'higher');
+        self::assertCount(2, $applicable);
+        self::assertContains($this->higher, $applicable);
+        self::assertContains($this->conditional, $applicable);
+
+        self::assertSame([$this->higher], $providers->promotersFor('t1', 'e2', 'higher'), 'Conditionnel ignoré hors périmètre ; typé existant inchangé.');
+        self::assertSame([$this->generic], $providers->promotersFor('t1', 'e1', 'primary'));
     }
 }

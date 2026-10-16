@@ -123,7 +123,7 @@ describe('séparation plateforme / client (garde de routes et menus)', () => {
     mockApi({ 'GET /platform/dashboard': { data: {} } });
     const { wrapper } = await mountView(AppShell, {}, '/platform');
     const labels = wrapper.findAll('nav#nav a').map((a) => a.text());
-    expect(labels).toEqual(['Tableau de bord', 'Demandes d\'accès', 'Clients', 'Catalogue', 'Paiements', 'Sécurité']);
+    expect(labels).toEqual(['Tableau de bord', 'Demandes d\'accès', 'Clients', 'Catalogue', 'Paiements', 'Administrateurs', 'Journal', 'Sécurité']);
     expect(wrapper.text()).toContain('Espace administrateur de plateforme');
     expect(wrapper.find('#ctx-est').exists()).toBe(false);
   });

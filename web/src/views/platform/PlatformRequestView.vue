@@ -8,6 +8,7 @@ import { requestStatusKey, requestTone, targetKey } from './display';
 import { useSensitiveAction } from './useSensitiveAction';
 import TwoFactorPrompt from './TwoFactorPrompt.vue';
 import ReplayNotice from './ReplayNotice.vue';
+import RequestArchivePanel from './RequestArchivePanel.vue';
 
 // Détail d'une demande d'accès et décision : accepter (client existant facultatif), refuser avec motif, demander un complément.
 // Design : Inscription.html (sections), Fondations.html (champs, boutons). Accepter et refuser exigent une 2FA récente.
@@ -26,7 +27,7 @@ const success = ref<string | null>(null);
 const acceptResult = ref<AccessRequest | null>(null);
 const action = useSensitiveAction();
 
-const open = computed(() => request.value?.status === 'pending' || request.value?.status === 'info_requested');
+const open = computed(() => !request.value?.archived_at && (request.value?.status === 'pending' || request.value?.status === 'info_requested'));
 
 async function load(): Promise<void> {
   loadError.value = null;
@@ -87,6 +88,10 @@ async function askInfo(): Promise<void> {
   message.value = '';
 }
 
+function onArchived(next: AccessRequest): void {
+  if (request.value) request.value = { ...request.value, ...next };
+}
+
 onMounted(load);
 </script>
 
@@ -114,6 +119,8 @@ onMounted(load);
           <router-link v-if="acceptResult.tenant_id" class="btn" :to="{ name: 'platform-client', params: { tenant: acceptResult.tenant_id } }">{{ t('plat.req.seeClient') }} →</router-link>
         </template>
       </div>
+
+      <RequestArchivePanel :request="request" @changed="onArchived" />
 
       <div class="layout">
         <section class="card" aria-labelledby="rq-facts">

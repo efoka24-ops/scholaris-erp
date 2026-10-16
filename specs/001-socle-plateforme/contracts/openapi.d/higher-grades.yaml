@@ -20,6 +20,31 @@ paths:
   /api/v1/higher/grades/sync:
     post:
       summary: "Rejouer un lot de saisies hors ligne avec contrôle de version ; conflits renvoyés, jamais résolus automatiquement"
+      description: "Envoyé par la file hors ligne du front (type « higher-marks »). Réponse par entrée : applied, unchanged, duplicate (client_uuid déjà reçu), conflict (server {version, score, absence} et client), rejected (message). Lots non signés par l'appareil : l'authentification et client_uuid suffisent."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [entries]
+              properties:
+                entries:
+                  type: array
+                  minItems: 1
+                  maxItems: 500
+                  items:
+                    type: object
+                    required: [client_uuid, assessment_id, base_version]
+                    properties:
+                      client_uuid: {type: string}
+                      assessment_id: {type: string}
+                      person_id: {type: string}
+                      anonymous_code: {type: string}
+                      base_version: {type: integer}
+                      score: {type: number, nullable: true}
+                      absence: {type: string, nullable: true}
+                      mark_id: {type: string, description: "Ignoré par le serveur (repère de la case côté appareil)"}
       responses:
         '200': {description: "Succès"}
         '403': {description: "Permission absente ou hors périmètre (journalisé)"}
@@ -144,9 +169,14 @@ paths:
         '423': {description: "Application suspendue (écriture refusée)"}
   /api/v1/higher/grade-assessments/{id}/send-back:
     post:
-      summary: "Renvoyer la saisie à l'enseignant avec motif"
+      summary: "Renvoyer la saisie à l'enseignant avec motif (gardé dans status_trail)"
       parameters:
         - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object, required: [reason], properties: {reason: {type: string, maxLength: 500}}}
       responses:
         '200': {description: "Succès"}
         '403': {description: "Permission absente ou hors périmètre (journalisé)"}
@@ -225,8 +255,33 @@ paths:
   /api/v1/higher/grade-marks/{id}/changes:
     post:
       summary: "Demander la correction d'une note verrouillée (API-12, motif et pièce, RG-NOT-2)"
+      description: "Forme recommandée : multipart avec le fichier `attachment` (PDF, JPG ou PNG, 5 Mo au plus ; type réel lu dans le contenu, analyse de sécurité ; refus 422 sur `attachment`), stocké par le dépôt privé du socle (AttachmentStore) et lié à la demande. Forme JSON conservée pour une pièce papier : `attachment_ref` obligatoire."
       parameters:
         - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [reason, attachment]
+              properties:
+                score: {type: string, description: "Nouvelle note (virgule ou point) ; ou absence"}
+                absence: {type: string, maxLength: 12}
+                reason: {type: string, maxLength: 500}
+                query_id: {type: string}
+                attachment_ref: {type: string, maxLength: 255, description: "Nom affiché (facultatif ; par défaut piece-<id>.<ext>)"}
+                attachment: {type: string, format: binary}
+          application/json:
+            schema:
+              type: object
+              required: [reason, attachment_ref]
+              properties:
+                score: {type: number}
+                absence: {type: string, maxLength: 12}
+                reason: {type: string, maxLength: 500}
+                attachment_ref: {type: string, maxLength: 255}
+                query_id: {type: string, nullable: true}
       responses:
         '201': {description: "Succès"}
         '403': {description: "Permission absente ou hors périmètre (journalisé)"}
@@ -252,6 +307,20 @@ paths:
         '403': {description: "Permission absente ou hors périmètre (journalisé)"}
         '404': {description: "Introuvable ou hors périmètre"}
         '422': {description: "Filtre invalide"}
+  /api/v1/higher/grade-corrections/{id}/attachment:
+    get:
+      summary: "Télécharger la pièce téléversée d'une demande de correction (demandeur, validateurs et lecteurs des notes du périmètre ; jamais un autre client)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: "Pièce (Content-Disposition attachment, Cache-Control private, no-store)"
+          content:
+            application/pdf: {schema: {type: string, format: binary}}
+            image/jpeg: {schema: {type: string, format: binary}}
+            image/png: {schema: {type: string, format: binary}}
+        '403': {description: "Permission absente ou hors périmètre (journalisé)"}
+        '404': {description: "Demande invisible, autre client, ou demande sans fichier"}
   /api/v1/higher/grade-corrections/{id}/approve:
     post:
       summary: "Approuver une correction (chef de département puis directeur d'école ; jamais le demandeur)"

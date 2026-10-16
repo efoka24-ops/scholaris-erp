@@ -7,6 +7,7 @@ import { formatDate } from '@/lib/format';
 import PersonPicker from '../PersonPicker.vue';
 import { useHigherStore } from '../store';
 import { useHigherAction } from '../useHigherAction';
+import { useHigherNames } from '../useHigherNames';
 import { TP } from './access';
 import { hk, useHt } from './i18n';
 
@@ -19,6 +20,7 @@ const list = useHigherAction();
 const act = useHigherAction();
 
 const items = ref<Council[]>([]);
+const { label: personLabel } = useHigherNames(() => items.value.map((x) => x.person_id));
 const touched = ref(false);
 const form = reactive({ person_id: null as string | null, reason: '', incident_ref: '', hearing_date: '', members: '' });
 const hearingFor = ref<Council | null>(null);
@@ -82,7 +84,7 @@ onMounted(load);
       <tbody>
         <tr v-for="c in items" :key="c.id">
           <th scope="row">{{ formatDate(c.hearing_date, locale) }}</th>
-          <td class="hi-mono">{{ c.person_id }}</td>
+          <td>{{ personLabel(c.person_id) }}</td>
           <td>{{ c.reason }}</td>
           <td>{{ c.decision ? t(hk('ht.dis.kind.', c.decision)) : '—' }}</td>
           <td>
@@ -102,13 +104,13 @@ onMounted(load);
   </div>
 
   <section v-if="signing" class="card card--strong hi-section" role="dialog" aria-labelledby="cs-title" data-test="sign-council">
-    <h2 id="cs-title">{{ t('ht.dis.sign') }} · {{ signing.person_id }}</h2>
+    <h2 id="cs-title">{{ t('ht.dis.sign') }} · {{ personLabel(signing.person_id) }}</h2>
     <p>{{ t('ht.dis.signText') }}</p>
     <div class="hi-actions"><button type="button" class="btn btn--ink" :disabled="act.busy.value" @click="sign">{{ t('hi.confirm') }}</button><button type="button" class="btn btn--quiet" @click="signing = null">{{ t('hi.back') }}</button></div>
   </section>
 
   <section v-if="hearingFor" class="card card--strong hi-section hi-form" role="dialog" aria-labelledby="ch-title" data-test="hearing">
-    <h2 id="ch-title" class="hi-wide">{{ t('ht.dis.hearing') }} · {{ hearingFor.person_id }}</h2>
+    <h2 id="ch-title" class="hi-wide">{{ t('ht.dis.hearing') }} · {{ personLabel(hearingFor.person_id) }}</h2>
     <div class="field hi-wide"><label for="ch-min">{{ t('ht.dis.minutes') }}</label><textarea id="ch-min" v-model="hearing.minutes_text" rows="6" :aria-invalid="hearingTried && !hearing.minutes_text.trim()" /></div>
     <div class="field"><label for="ch-dec">{{ t('ht.dis.decision') }}</label><select id="ch-dec" v-model="hearing.decision"><option v-for="d in COUNCIL_DECISIONS" :key="d" :value="d">{{ t(hk('ht.dis.kind.', d)) }}</option></select></div>
     <template v-if="hearing.decision === 'temporary_exclusion'">

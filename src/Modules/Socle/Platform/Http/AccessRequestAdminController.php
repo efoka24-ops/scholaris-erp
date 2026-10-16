@@ -24,12 +24,16 @@ final class AccessRequestAdminController
     public function index(ServerRequestInterface $request): ResponseInterface
     {
         $this->guard->platformAdmin($request, 'platform.requests.read');
-        $query = ListQuery::fromRequest($request, ['status']);
+        $query = ListQuery::fromRequest($request, ['status', 'archived']);
         $status = $query->filters['status'] ?? null;
         if ($status !== null && !in_array($status, AccessRequestService::STATUSES, true)) {
             throw \Scholaris\Core\Http\HttpException::validation(['filter[status]' => ['Valeur attendue : ' . implode(', ', AccessRequestService::STATUSES) . '.']]);
         }
-        [$rows, $next] = $this->requests->page($status, ListQuery::decodeCursor($query->cursor), $query->perPage);
+        $archived = $query->filters['archived'] ?? '0';
+        if (!in_array($archived, ['0', '1'], true)) {
+            throw \Scholaris\Core\Http\HttpException::validation(['filter[archived]' => ['Valeur attendue : 0 ou 1.']]);
+        }
+        [$rows, $next] = $this->requests->page($status, ListQuery::decodeCursor($query->cursor), $query->perPage, $archived === '1');
 
         return $this->responder->json(['data' => $rows, 'meta' => ['next_cursor' => $next === null ? null : ListQuery::encodeCursor($next)]]);
     }
@@ -64,6 +68,27 @@ final class AccessRequestAdminController
         $input->validate();
 
         return $this->responder->json(['data' => $this->requests->reject(PlatformGuard::param($request, 'id'), (string) $reason, $principal->userId, PlatformGuard::ip($request))]);
+    }
+
+    /** POST /platform/access-requests/{id}/archive { reason } : demande refusée ou de test retirée des files (2FA récente) */
+    public function archive(ServerRequestInterface $request): ResponseInterface
+    {
+        $principal = $this->guard->platformAdmin($request, 'platform.requests.decide', true);
+        $input = Input::of($request, ['reason']);
+        $reason = $input->longText('reason', 500, true);
+        $input->validate();
+
+        return $this->responder->json(['data' => $this->requests->archive(PlatformGuard::param($request, 'id'), (string) $reason, $principal->userId, PlatformGuard::ip($request))]);
+    }
+
+    /** DELETE /platform/access-requests/{id} : suppression définitive d'une demande archivée sans client (2FA récente) */
+    public function destroy(ServerRequestInterface $request): ResponseInterface
+    {
+        $principal = $this->guard->platformAdmin($request, 'platform.requests.decide', true);
+        $id = PlatformGuard::param($request, 'id');
+        $this->requests->delete($id, $principal->userId, PlatformGuard::ip($request));
+
+        return $this->responder->json(['data' => ['id' => $id, 'deleted' => true]]);
     }
 
     /** POST /platform/access-requests/{id}/request-info { message } */

@@ -3,18 +3,28 @@
 import { adminFr } from './admin-fr';
 import { hrFr } from './hr-fr';
 import { platformFr } from './platform-fr';
+import { platformAdminFr } from './platform-admin-fr';
 import { higherFr } from './higher-fr';
 import { higherGradesFr } from './higher-grades-fr';
 import { higherTeachingFr } from './higher-teaching-fr';
+import { higherExtraFr } from './higher-extra-fr';
+import { higherInternshipsFr } from './higher-internships-fr';
+import { higherVacationsFr } from './higher-vacations-fr';
+import { higherNationalExamsFr } from './higher-nationalexams-fr';
 import { higherDeliberationFr } from './higher-deliberation-fr';
 
 export const fr = {
   ...adminFr,
   ...hrFr,
   ...platformFr,
+  ...platformAdminFr,
   ...higherFr,
   ...higherGradesFr,
   ...higherTeachingFr,
+  ...higherExtraFr,
+  ...higherInternshipsFr,
+  ...higherVacationsFr,
+  ...higherNationalExamsFr,
   ...higherDeliberationFr,
   'nav.reportcards': "Bulletins",
   'reportcards.eyebrow': "Résultats",
@@ -369,6 +379,8 @@ export const fr = {
   'twofa.step1': "Installez une application d'authentification sur votre téléphone.",
   'twofa.step2': 'Saisissez cette clé dans l\'application, ou ouvrez-la directement :',
   'twofa.step3': "Saisissez ci-dessous le code à 6 chiffres que l'application affiche.",
+  'twofa.qrAlt': "Code QR à scanner avec votre application d'authentification",
+  'twofa.qrHint': 'Scannez ce code QR avec votre application (Google Authenticator, Microsoft Authenticator…). Sinon, saisissez la clé ci-dessous.',
   'twofa.openApp': "Ouvrir dans l'application",
   'twofa.activate': 'Activer',
   'twofa.enabled': 'La double authentification est activée.',

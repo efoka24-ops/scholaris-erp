@@ -4,18 +4,28 @@ import type { fr } from './fr';
 import { adminEn } from './admin-en';
 import { hrEn } from './hr-en';
 import { platformEn } from './platform-en';
+import { platformAdminEn } from './platform-admin-en';
 import { higherEn } from './higher-en';
 import { higherGradesEn } from './higher-grades-en';
 import { higherTeachingEn } from './higher-teaching-en';
+import { higherExtraEn } from './higher-extra-en';
+import { higherInternshipsEn } from './higher-internships-en';
+import { higherVacationsEn } from './higher-vacations-en';
+import { higherNationalExamsEn } from './higher-nationalexams-en';
 import { higherDeliberationEn } from './higher-deliberation-en';
 
 export const en: Record<keyof typeof fr, string> = {
   ...adminEn,
   ...hrEn,
   ...platformEn,
+  ...platformAdminEn,
   ...higherEn,
   ...higherGradesEn,
   ...higherTeachingEn,
+  ...higherExtraEn,
+  ...higherInternshipsEn,
+  ...higherVacationsEn,
+  ...higherNationalExamsEn,
   ...higherDeliberationEn,
   'nav.reportcards': "Report cards",
   'reportcards.eyebrow': "Results",
@@ -369,6 +379,8 @@ export const en: Record<keyof typeof fr, string> = {
   'twofa.step1': 'Install an authenticator app on your phone.',
   'twofa.step2': 'Enter this key in the app, or open it directly:',
   'twofa.step3': 'Enter below the 6-digit code shown by the app.',
+  'twofa.qrAlt': 'QR code to scan with your authenticator app',
+  'twofa.qrHint': 'Scan this QR code with your authenticator app (Google Authenticator, Microsoft Authenticator…). Otherwise, type the key below.',
   'twofa.openApp': 'Open in the app',
   'twofa.activate': 'Enable',
   'twofa.enabled': 'Two-factor authentication is enabled.',

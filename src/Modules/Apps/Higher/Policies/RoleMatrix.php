@@ -57,8 +57,8 @@ final class RoleMatrix
             'label_fr' => 'Directeur académique', 'label_en' => 'Academic director', 'scopes' => ['establishment'], 'external' => false, 'max_days' => null,
             // Réouverture d'une délibération signée : `assessment.reopen` (paramètre assessment.deliberation.reopen_permission).
             'permissions' => [
-                'higher.access', 'organisation.read', 'assessment.read', 'assessment.reopen', 'higher.settings.read', 'higher.curriculum.read',
-                'higher.curriculum.approve', 'higher.regulation.amend', 'higher.calendar.manage', 'higher.tutelage.manage',
+                'higher.access', 'higher.internship.read', 'organisation.read', 'assessment.read', 'assessment.reopen', 'higher.settings.read', 'higher.curriculum.read',
+                'higher.curriculum.approve', 'higher.regulation.amend', 'higher.calendar.manage', 'higher.tutelage.manage', 'higher.tutelage.transmit',
                 'higher.admission.read', 'higher.enrolment.read', 'higher.timetable.read', 'higher.attendance.read', 'higher.grades.read',
                 'higher.deliberation.read', 'higher.dashboard.read',
             ],
@@ -79,7 +79,7 @@ final class RoleMatrix
             'code' => 'higher_chef_dept', 'new' => true, 'level' => 'establishment', 'sensitive' => false,
             'label_fr' => 'Chef de département', 'label_en' => 'Head of department', 'scopes' => ['org_unit'], 'external' => false, 'max_days' => null,
             'permissions' => [
-                'higher.access', 'organisation.read', 'assessment.read', 'higher.assignment.manage', 'higher.admission.read',
+                'higher.access', 'higher.internship.read', 'organisation.read', 'assessment.read', 'higher.assignment.manage', 'higher.admission.read',
                 'higher.enrolment.read', 'higher.curriculum.read', 'higher.curriculum.manage', 'scheduling.read', 'scheduling.manage',
                 'higher.timetable.read', 'higher.session_log.read', 'higher.session_log.validate', 'higher.attendance.read',
                 'higher.grades.read', 'assessment.validate', 'assessment.correction.approve', 'higher.deliberation.read',
@@ -99,11 +99,11 @@ final class RoleMatrix
             'code' => 'higher_scolarite', 'new' => true, 'level' => 'establishment', 'sensitive' => false,
             'label_fr' => 'Service de la scolarité', 'label_en' => 'Registrar', 'scopes' => ['org_unit'], 'external' => false, 'max_days' => null,
             'permissions' => [
-                'higher.access', 'organisation.read', 'people.read', 'people.manage', 'higher.settings.read', 'higher.admission.read',
+                'higher.access', 'higher.internship.read', 'organisation.read', 'people.read', 'people.manage', 'higher.settings.read', 'higher.admission.read',
                 'higher.application.manage', 'higher.enrolment.read', 'higher.enrol', 'higher.curriculum.read', 'scheduling.read',
                 'scheduling.manage', 'higher.timetable.read', 'higher.session_log.read', 'higher.attendance.read', 'attendance.justify',
                 'higher.grades.read', 'higher.grades.publish', 'higher.deliberation.read', 'higher.deliberation.prepare', 'higher.billing.read', 'documents.read',
-                'documents.issue', 'higher.document.read', 'higher.national_list.manage', 'higher.dashboard.read',
+                'documents.issue', 'higher.document.read', 'higher.national_list.manage', 'higher.national_list.export', 'higher.tutelage.transmit', 'higher.dashboard.read',
             ],
         ],
         'R08' => [

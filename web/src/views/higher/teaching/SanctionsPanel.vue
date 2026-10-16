@@ -7,6 +7,7 @@ import { formatDate } from '@/lib/format';
 import PersonPicker from '../PersonPicker.vue';
 import { useHigherStore } from '../store';
 import { useHigherAction } from '../useHigherAction';
+import { useHigherNames } from '../useHigherNames';
 import { TP } from './access';
 import { hk, useHt } from './i18n';
 
@@ -18,6 +19,7 @@ const list = useHigherAction();
 const act = useHigherAction();
 
 const items = ref<Sanction[]>([]);
+const { label: personLabel } = useHigherNames(() => items.value.map((x) => x.person_id));
 const touched = ref(false);
 const form = reactive({ person_id: null as string | null, sanction_kind: 'warning' as SanctionKind, reason: '', starts_on: '', ends_on: '' });
 const canSanction = computed(() => ctx.can(...TP.sanction) && !higher.readOnly);
@@ -58,7 +60,7 @@ onMounted(load);
       <tbody>
         <tr v-for="s in items" :key="s.id">
           <th scope="row">{{ formatDate(s.decided_at, locale) }}</th>
-          <td class="hi-mono">{{ s.person_id }}</td>
+          <td>{{ personLabel(s.person_id) }}</td>
           <td>{{ t(hk('ht.dis.kind.', s.sanction_kind)) }}<span v-if="s.starts_on" class="muted hi-small"> · {{ formatDate(s.starts_on, locale) }} → {{ formatDate(s.ends_on, locale) }}</span></td>
           <td>{{ s.reason }}</td>
           <td><span class="tag tag--neutral">{{ t(hk('ht.dis.state.', s.status)) }}</span><span v-if="s.document_number" class="muted hi-small"> · {{ s.document_number }}</span></td>

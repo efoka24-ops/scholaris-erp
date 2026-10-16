@@ -8,6 +8,9 @@ import { sourceKey, stateKey, stateTone, targetKey } from './display';
 import { useSensitiveAction } from './useSensitiveAction';
 import TwoFactorPrompt from './TwoFactorPrompt.vue';
 import ReplayNotice from './ReplayNotice.vue';
+import AdministratorsPanel from './AdministratorsPanel.vue';
+import ClientEstablishmentsPanel from './ClientEstablishmentsPanel.vue';
+import ClientProfilePanel from './ClientProfilePanel.vue';
 
 // Fiche d'un client : établissements (nom, type) et applications : ouvrir, suspendre, fermer, réactiver (motif), tarif spécifique.
 // Design : Dashboard.html (tableau), Fondations.html (formulaires). Chaque action exige une 2FA récente.
@@ -128,6 +131,8 @@ onMounted(load);
         <p class="lede">{{ t('plat.cli.since', { date: formatDate(client.created_at, locale) }) }} · <span class="tag">{{ client.status }}</span></p>
       </header>
 
+      <ClientProfilePanel :client="client" @changed="load" />
+
       <p v-if="done" class="notice notice--success" role="status">{{ done }}</p>
       <TwoFactorPrompt :pending="action.needsTwoFactor.value" @revalidate="action.revalidate" @dismiss="action.dismiss" />
       <ErrorNotice :error="action.error.value" />
@@ -215,16 +220,8 @@ onMounted(load);
         </form>
       </section>
 
-      <section class="block" aria-labelledby="cl-est">
-        <h2 id="cl-est">{{ t('plat.cli.establishments') }}</h2>
-        <p v-if="!client.establishments?.length" class="card muted">{{ t('plat.cli.noEstablishments') }}</p>
-        <ul v-else class="est">
-          <li v-for="e in client.establishments" :key="e.id" class="card card--tight row row--between">
-            <span class="est__name">{{ e.name }}</span>
-            <span class="tag">{{ t(targetKey(e.type)) }}</span>
-          </li>
-        </ul>
-      </section>
+      <ClientEstablishmentsPanel :tenant="client.id" :establishments="client.establishments ?? []" :readonly="client.state === 'archived'" @changed="load" />
+      <AdministratorsPanel :tenant="client.id" :readonly="client.state === 'archived'" />
     </template>
   </div>
 </template>
@@ -240,19 +237,12 @@ onMounted(load);
 .block {
   margin-top: 28px;
 }
-.apps,
-.est {
+.apps {
   list-style: none;
   padding: 0;
   margin: 0;
   display: grid;
   gap: 12px;
-}
-.est {
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
-}
-.est__name {
-  font-weight: 700;
 }
 .app__name {
   margin: 0;

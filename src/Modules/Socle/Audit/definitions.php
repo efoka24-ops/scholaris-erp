@@ -23,6 +23,7 @@ use Scholaris\Modules\Socle\Audit\Infrastructure\PdoPendingApprovals;
  */
 return [
     PendingApprovals::class => autowire(PdoPendingApprovals::class),
+    \Scholaris\Modules\Socle\Audit\Contracts\AuditTrail::class => autowire(\Scholaris\Modules\Socle\Audit\Infrastructure\PdoAuditTrail::class),
 
     'privacy.tenant_data_source.audit' => get(AuditDataSources::class),
     'privacy.subject_data_source.audit' => get(AuditDataSources::class),

@@ -1,0 +1,155 @@
+# Contrat OpenAPI 3.1 du paiement des vacations de l'application Supérieur (EX-ENS-06 état mensuel, EX-ENS-07 paiement, RG-ENS-1 à 5,
+# NOT-14, DOC-25 état mensuel, DOC-26 bulletin de paiement, TST-11 : 43,5 HETD × 6 000 = 261 000 FCFA).
+# Un état par enseignant, département et mois, établi à partir des seules séances validées par le chef de département ; HETD par nature
+# (coefficients staff.hetd.cm|td|tp), taux par grade et niveau (vacation_rates), retenues higher.vacation.deductions (aucune par défaut).
+# Statuts : draft → school_validated → approved → paid ; rejected (recalculable comme draft). Approbation et paiement refusés (409) tant
+# qu'une condition de payabilité du socle retient le solde (RG-ENS-5, higher.vacation.hold_until_grades).
+# Erreurs RFC 9457 ; WriteGate (423 application suspendue) et périmètre école/département comme toutes les routes Higher.
+# Permissions : higher.vacation.read, higher.vacation.read_own, higher.hours.validate, higher.vacation.validate_school,
+# higher.vacation.validate, higher.vacation.pay.
+paths:
+  /api/v1/higher/vacations/statements:
+    get:
+      summary: "États du périmètre : filter[period_month|status|person_id|department_id|school_id] ; statuts draft, school_validated, approved, paid, rejected"
+      responses:
+        '200': {description: "Liste paginée (montants entiers XAF, hetd_milli et hetd décimal, hold_reasons)"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Application non ouverte au client"}
+    post:
+      summary: "Établir ou recalculer (draft, rejected) l'état mensuel d'un enseignant à partir des heures validées, un état par département"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [person_id, period_month]
+              properties:
+                person_id: {type: string}
+                period_month: {type: string, pattern: '^\d{4}-(0[1-9]|1[0-2])$'}
+                department_id: {type: string}
+      responses:
+        '201': {description: "États établis (data : liste)"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Aucune séance dans le périmètre ou application non ouverte au client"}
+        '409': {description: "RG-ENS-1 : aucune heure validée ; aucun taux pour le grade et le niveau ; état déjà visé ou payé"}
+        '422': {description: "Données invalides"}
+        '423': {description: "Application suspendue : consultation seule"}
+  /api/v1/higher/vacations/to-prepare:
+    get:
+      summary: "Enseignants ayant des heures validées pour period_month (requis) et état éventuel, dans le périmètre"
+      parameters:
+        - {name: period_month, in: query, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Liste bornée (data)"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Application non ouverte au client"}
+        '422': {description: "Mois absent ou invalide"}
+  /api/v1/higher/vacations/mine:
+    get:
+      summary: "Mes vacations : états de l'enseignant lié au compte (higher.vacation.read_own)"
+      responses:
+        '200': {description: "Liste paginée"}
+        '403': {description: "Permission absente ou aucune personne liée"}
+        '404': {description: "Application non ouverte au client"}
+  /api/v1/higher/vacations/statements/{id}:
+    get:
+      summary: "État détaillé avec ses lignes (séance, EC, nature, minutes, HETD, taux, payable, motif de refus)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "État"}
+        '404': {description: "Introuvable ou hors périmètre"}
+  /api/v1/higher/vacations/statements/{id}/validate-school:
+    post:
+      summary: "Visa de l'école (directeur d'école) : draft → school_validated (→ approved si higher.vacation.direction_approval est inactif)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "État visé"}
+        '403': {description: "Permission absente ou hors périmètre (journalisé)"}
+        '404': {description: "Introuvable"}
+        '409': {description: "Statut incompatible ou solde retenu"}
+        '423': {description: "Application suspendue"}
+  /api/v1/higher/vacations/statements/{id}/approve:
+    post:
+      summary: "Approbation de la direction : school_validated → approved ; refus si le solde est retenu (RG-ENS-5)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "État approuvé"}
+        '403': {description: "Permission absente ou hors périmètre"}
+        '404': {description: "Introuvable"}
+        '409': {description: "Statut incompatible ou solde retenu (notes de l'EC incomplètes)"}
+        '423': {description: "Application suspendue"}
+  /api/v1/higher/vacations/statements/{id}/reject:
+    post:
+      summary: "Rejeter un état non payé (motif obligatoire) ; il peut ensuite être recalculé"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [reason]
+              properties:
+                reason: {type: string, maxLength: 500}
+      responses:
+        '200': {description: "État rejeté"}
+        '403': {description: "Permission absente ou hors périmètre"}
+        '404': {description: "Introuvable"}
+        '409': {description: "Statut incompatible"}
+        '422': {description: "Motif absent"}
+        '423': {description: "Application suspendue"}
+  /api/v1/higher/vacations/statements/{id}/pay:
+    post:
+      summary: "Paiement par le comptable (virement ou mobile money) : approved → paid ; NOT-14 à l'enseignant"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [payment_method, payment_reference]
+              properties:
+                payment_method: {type: string, enum: [bank_transfer, mobile_money]}
+                payment_reference: {type: string, maxLength: 80}
+                paid_on: {type: string, format: date}
+      responses:
+        '200': {description: "État payé"}
+        '403': {description: "Permission absente ou hors périmètre"}
+        '404': {description: "Introuvable"}
+        '409': {description: "État non approuvé ou solde retenu"}
+        '422': {description: "Données invalides"}
+        '423': {description: "Application suspendue"}
+  /api/v1/higher/vacations/statements/{id}/statement-document:
+    post:
+      summary: "Émettre l'état mensuel des vacations (DOC-25)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '201': {description: "Document émis"}
+        '403': {description: "Permission absente ou hors périmètre"}
+        '404': {description: "Introuvable"}
+        '409': {description: "État rejeté"}
+        '422': {description: "Profil d'école ou modèle absent"}
+        '423': {description: "Application suspendue"}
+  /api/v1/higher/vacations/statements/{id}/payslip:
+    post:
+      summary: "Émettre le bulletin de paiement de vacation (DOC-26) d'un état payé"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '201': {description: "Document émis"}
+        '403': {description: "Permission absente ou hors périmètre"}
+        '404': {description: "Introuvable"}
+        '409': {description: "État non payé"}
+        '422': {description: "Profil d'école ou modèle absent"}
+        '423': {description: "Application suspendue"}

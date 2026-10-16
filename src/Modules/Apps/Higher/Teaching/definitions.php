@@ -7,8 +7,10 @@ use function DI\get;
 
 use Scholaris\Modules\Apps\Higher\Teaching\Application\HigherPayabilityCheck;
 use Scholaris\Modules\Apps\Higher\Teaching\Application\TeachingClock;
+use Scholaris\Modules\Apps\Higher\Teaching\Contracts\TaughtSessions;
 use Scholaris\Modules\Apps\Higher\Teaching\Contracts\TeachingAssignments;
 use Scholaris\Modules\Apps\Higher\Teaching\Documents\TeachingDocumentTypes;
+use Scholaris\Modules\Apps\Higher\Teaching\Infrastructure\PdoTaughtSessions;
 use Scholaris\Modules\Apps\Higher\Teaching\Infrastructure\PdoTeachingAssignments;
 use Scholaris\Modules\Socle\Staff\Contracts\VacationPayabilityCheck;
 
@@ -18,6 +20,7 @@ use Scholaris\Modules\Socle\Staff\Contracts\VacationPayabilityCheck;
  */
 return [
     TeachingAssignments::class => get(PdoTeachingAssignments::class),
+    TaughtSessions::class => get(PdoTaughtSessions::class),
     TeachingClock::class => autowire(),
     VacationPayabilityCheck::REGISTRY_PREFIX . 'higher' => [get(HigherPayabilityCheck::class)],
     'higher.document_types.teaching' => [TeachingDocumentTypes::class],

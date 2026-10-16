@@ -37,8 +37,9 @@ async function discard(i: QueueItem): Promise<void> {
 const attendanceSummary = (i: QueueItem, which: 'client_version' | 'server_version'): string => {
   const v = i[which] as { records?: unknown[]; present_count?: number; absent_count?: number; late_count?: number; status?: string } | undefined;
   if (!v) return '—';
-  if (i.kind === 'grade') {
+  if (i.kind !== 'attendance') {
     const g = v as { value?: number | null; score?: number | null; absence?: string | null };
+    if (i.kind === 'higher-marks' && g.absence) return g.absence.toUpperCase();
     return g.absence ? t('grades.absent') : String(g.value ?? g.score ?? '—');
   }
   const bits: string[] = [];
@@ -91,7 +92,7 @@ onUnmounted(() => stop?.());
           </div>
           <div class="row">
             <button type="button" class="btn" @click="keepServer(i)">{{ t('sync.keepServer') }}</button>
-            <button v-if="i.kind === 'grade'" type="button" class="btn" @click="resend(i)">{{ t('sync.resend') }}</button>
+            <button v-if="i.kind !== 'attendance'" type="button" class="btn" @click="resend(i)">{{ t('sync.resend') }}</button>
           </div>
         </template>
 

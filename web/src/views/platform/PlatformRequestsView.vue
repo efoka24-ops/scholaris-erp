@@ -13,7 +13,8 @@ const route = useRoute();
 const router = useRouter();
 
 const initial = typeof route.query.statut === 'string' ? route.query.statut : 'pending';
-const status = ref<AccessRequestStatus | 'all'>((REQUEST_STATUSES as string[]).includes(initial) || initial === 'all' ? (initial as AccessRequestStatus | 'all') : 'pending');
+type Filter = AccessRequestStatus | 'all' | 'archived';
+const status = ref<Filter>((REQUEST_STATUSES as string[]).includes(initial) || initial === 'all' || initial === 'archived' ? (initial as Filter) : 'pending');
 const items = ref<AccessRequest[]>([]);
 const next = ref<string | null>(null);
 const loading = ref(false);
@@ -24,7 +25,8 @@ async function load(more = false): Promise<void> {
   loading.value = true;
   error.value = null;
   try {
-    const page = await fetchAccessRequests(status.value === 'all' ? null : status.value, more ? next.value : null);
+    const filter = status.value === 'all' || status.value === 'archived' ? null : status.value;
+    const page = await fetchAccessRequests(filter, more ? next.value : null, status.value === 'archived');
     items.value = more ? [...items.value, ...page.items] : page.items;
     next.value = page.nextCursor;
   } catch (e) {
@@ -41,7 +43,7 @@ watch(status, (value) => {
 });
 onMounted(() => load());
 
-const filters: Array<AccessRequestStatus | 'all'> = [...REQUEST_STATUSES, 'all'];
+const filters: Filter[] = [...REQUEST_STATUSES, 'all', 'archived'];
 </script>
 
 <template>
@@ -56,7 +58,7 @@ const filters: Array<AccessRequestStatus | 'all'> = [...REQUEST_STATUSES, 'all']
       <legend class="sr-only">{{ t('plat.req.filter') }}</legend>
       <label v-for="f in filters" :key="f" class="chip" :class="{ 'chip--on': status === f }">
         <input v-model="status" type="radio" name="req-status" :value="f" class="sr-only" />
-        {{ f === 'all' ? t('plat.req.all') : t(requestStatusKey(f)) }}
+        {{ f === 'all' ? t('plat.req.all') : f === 'archived' ? t('pa.req.archived') : t(requestStatusKey(f)) }}
       </label>
     </fieldset>
 

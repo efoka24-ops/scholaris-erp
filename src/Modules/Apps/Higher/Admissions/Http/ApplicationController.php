@@ -65,6 +65,8 @@ final class ApplicationController
                 'phone' => $sub->string('phone', 30, false),
                 'email' => $sub->string('email', 160, false),
                 'locale' => (string) $sub->choice('locale', ['fr', 'en'], false, 'fr'),
+                'birth_date' => $sub->date('birth_date', false),
+                'birth_place' => $sub->string('birth_place', 120, false),
             ];
             if ($input['identity']['phone'] === null && $input['identity']['email'] === null) {
                 $sub->error('phone', 'Téléphone ou e-mail obligatoire (notifications du candidat).');

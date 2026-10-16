@@ -48,7 +48,10 @@ final class GradeLifecycleTest extends GradesTestCase
         $this->enter($a, ['p1' => 8.0, 'p2' => 12.5, 'p3' => 10.0]);
         $this->ok('POST', '/higher/grade-assessments/' . $a . '/submit', null, self::TEACHER);
         self::assertSame(409, $this->enter($a, ['p1' => 9.0])[0], 'Soumise : saisie fermée.');
-        self::assertSame('draft', $this->ok('POST', '/higher/grade-assessments/' . $a . '/send-back', null, self::CHEF)['status']);
+        self::assertSame(422, $this->call('POST', '/higher/grade-assessments/' . $a . '/send-back', [], self::CHEF)[0], 'Renvoi sans motif refusé.');
+        $back = $this->ok('POST', '/higher/grade-assessments/' . $a . '/send-back', ['reason' => 'Note de p2 à vérifier sur la copie.'], self::CHEF);
+        self::assertSame('draft', $back['status']);
+        self::assertSame('Note de p2 à vérifier sur la copie.', end($back['status_trail'])['reason'] ?? null, 'Motif gardé dans l\'historique.');
         self::assertSame(200, $this->enter($a, ['p1' => 9.0])[0]);
     }
 

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import ErrorNotice from '@/components/ErrorNotice.vue';
-import { grades, type AbsenceCode } from '@/api/higher-grades';
+import { ATTACHMENT_TYPES, attachmentProblem, grades, type AbsenceCode } from '@/api/higher-grades';
 import { useHigherAction } from '../useHigherAction';
 import { parseCell } from './marks';
 import { useGradesI18n } from './i18n';
@@ -15,21 +15,31 @@ const act = useHigherAction();
 const score = ref('');
 const absence = ref('');
 const reason = ref('');
-const attachment = ref('');
+const file = ref<File | null>(null);
 const tried = ref(false);
 
 const parsed = computed(() => parseCell(score.value, props.max, props.step, props.codes));
 const valueBad = computed(() => tried.value && (score.value.trim() === '' ? !absence.value : !parsed.value.ok));
+const fileProblem = computed(() => attachmentProblem(file.value));
+const fileMessage = computed(() => {
+  if (!tried.value && fileProblem.value === 'missing') return '';
+  return fileProblem.value === 'missing' ? tg('hg.corr.fileMissing') : fileProblem.value === 'size' ? tg('hg.corr.fileSize') : fileProblem.value === 'type' ? tg('hg.corr.fileType') : '';
+});
+
+function onFile(event: Event): void {
+  file.value = (event.target as HTMLInputElement).files?.[0] ?? null;
+}
 
 async function send(): Promise<void> {
   tried.value = true;
-  if (valueBad.value || !reason.value.trim() || !attachment.value.trim()) return;
+  if (valueBad.value || !reason.value.trim() || fileProblem.value || !file.value) return;
   const value = score.value.trim() !== '' && parsed.value.ok ? parsed.value.value : { score: null, absence: absence.value };
+  const attachment = file.value;
   const res = await act.run(() =>
-    grades.requestCorrection(props.markId, {
+    grades.requestCorrectionWithFile(props.markId, {
       ...(value.absence ? { absence: value.absence } : { score: value.score }),
       reason: reason.value.trim(),
-      attachment_ref: attachment.value.trim(),
+      file: attachment,
       ...(props.queryId ? { query_id: props.queryId } : {}),
     }),
   );
@@ -56,8 +66,8 @@ async function send(): Promise<void> {
     </div>
     <div class="field hi-wide">
       <label for="cr-att">{{ tg('hg.corr.attachment') }}</label>
-      <input id="cr-att" v-model="attachment" type="text" maxlength="255" :aria-invalid="tried && !attachment.trim()" />
-      <span v-if="tried && !attachment.trim()" class="error">{{ tg('hg.required') }}</span>
+      <input id="cr-att" type="file" :accept="ATTACHMENT_TYPES.join(',')" data-test="correction-file" :aria-invalid="!!fileMessage" @change="onFile" />
+      <span v-if="fileMessage" class="error" data-test="correction-file-error">{{ fileMessage }}</span>
     </div>
     <ErrorNotice class="hi-wide" :error="act.error.value" />
     <div class="hi-actions hi-wide">

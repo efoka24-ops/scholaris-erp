@@ -300,7 +300,7 @@ final class YearClosureService
         if ($closure['next_year_id'] === null) {
             return new ClosureStepResult(ClosureStepResult::SKIPPED, 'Aucune année suivante indiquée : aucun passage en classe supérieure.');
         }
-        $providers = $this->providers->promotersFor($this->establishmentType($tenantId, $establishmentId));
+        $providers = $this->providers->promotersFor($tenantId, $establishmentId, $this->establishmentType($tenantId, $establishmentId));
         if ($providers === []) {
             return new ClosureStepResult(ClosureStepResult::UNAVAILABLE, 'Aucun module ne fournit le passage en classe supérieure.');
         }

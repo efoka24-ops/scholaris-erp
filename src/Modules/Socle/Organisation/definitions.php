@@ -20,11 +20,12 @@ use Scholaris\Modules\Socle\Organisation\Infrastructure\PdoModuleAvailability;
 /** Liaisons du module Organisation : contrats publics => implémentations. */
 return [
     EstablishmentDirectory::class => autowire(PdoEstablishmentDirectory::class),
+    \Scholaris\Modules\Socle\Organisation\Contracts\TerritoryDirectory::class => autowire(\Scholaris\Modules\Socle\Organisation\Infrastructure\PdoTerritoryDirectory::class),
     \Scholaris\Modules\Socle\Organisation\Contracts\CurrentPeriod::class => autowire(\Scholaris\Modules\Socle\Organisation\Infrastructure\PdoCurrentPeriod::class),
     EnrolmentGate::class => autowire(PdoEnrolmentGate::class),
     ModuleAvailability::class => autowire(PdoModuleAvailability::class),
     SettingsReader::class => get(SettingsService::class),
-    // Contrats « application » (Supérieur, vague 0) : écriture des structures (D1), autorisations (D2), gardes d'inscription (D3),
+    \Scholaris\Modules\Socle\Organisation\Contracts\TerritorySettings::class => autowire(\Scholaris\Modules\Socle\Organisation\Application\TerritorySettingsService::class),    // Contrats « application » (Supérieur, vague 0) : écriture des structures (D1), autorisations (D2), gardes d'inscription (D3),
     // paramètres par unité (D6), arbre de l'établissement (S15).
     \Scholaris\Modules\Socle\Organisation\Contracts\StructureWriter::class => get(\Scholaris\Modules\Socle\Organisation\Application\StructureWriterService::class),
     \Scholaris\Modules\Socle\Organisation\Contracts\AuthorizationRegistry::class => get(\Scholaris\Modules\Socle\Organisation\Application\AuthorizationRegistryService::class),

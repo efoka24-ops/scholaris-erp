@@ -30,8 +30,11 @@ final class LifecycleService
     ) {
     }
 
-    /** @return array<string, mixed> */
-    public function transition(Principal $principal, string $establishmentId, string $assessmentId, string $target, ?int $expectedVersion = null): array
+    /**
+     * @param string|null $reason motif, obligatoire pour un renvoi à l'enseignant (retour à l'état initial) ; gardé dans l'historique
+     * @return array<string, mixed>
+     */
+    public function transition(Principal $principal, string $establishmentId, string $assessmentId, string $target, ?int $expectedVersion = null, ?string $reason = null): array
     {
         $tenantId = $principal->tenantId;
         $row = $this->assessments->find($tenantId, $establishmentId, $assessmentId);
@@ -43,6 +46,10 @@ final class LifecycleService
             $this->policy->assertReadable($principal, $establishmentId, $row);
 
             throw HttpException::conflict(sprintf('Passage impossible de « %s » à « %s ».', $from, $target));
+        }
+        $reason = $reason === null || trim($reason) === '' ? null : trim($reason);
+        if ($target === $lifecycle->initial() && $from !== $target && $reason === null) {
+            throw HttpException::validation(['reason' => ['Motif obligatoire pour renvoyer la saisie à l\'enseignant.']]);
         }
         if ($expectedVersion !== null && $expectedVersion !== (int) $row['version']) {
             throw HttpException::conflict('L\'évaluation a changé depuis votre lecture : rechargez-la.');
@@ -72,14 +79,14 @@ final class LifecycleService
         }
         $trail = json_decode((string) ($row['status_trail'] ?? '[]'), true);
         $trail = is_array($trail) ? $trail : [];
-        $trail[] = ['from' => $from, 'to' => $target, 'by' => $principal->userId, 'at' => $this->clock->now()];
+        $trail[] = ['from' => $from, 'to' => $target, 'by' => $principal->userId, 'at' => $this->clock->now()] + ($reason === null ? [] : ['reason' => $reason]);
         $updated = $this->store->update(AssessmentService::TABLE, $tenantId, $establishmentId, [
             'status' => $target, 'status_trail' => (string) json_encode($trail), 'version' => (int) $row['version'] + 1, 'updated_at' => $this->clock->now(),
         ], ['id' => $assessmentId, 'version' => (int) $row['version']]);
         if ($updated !== 1) {
             throw HttpException::conflict('L\'évaluation a changé pendant l\'opération : rechargez-la.');
         }
-        $this->policy->audit($principal, 'higher.grades.assessment.' . $target, 'higher_grade_assessment', $assessmentId, ['status' => $from], ['status' => $target]);
+        $this->policy->audit($principal, 'higher.grades.assessment.' . $target, 'higher_grade_assessment', $assessmentId, ['status' => $from], ['status' => $target] + ($reason === null ? [] : ['reason' => $reason]));
 
         return $this->assessments->find($tenantId, $establishmentId, $assessmentId);
     }

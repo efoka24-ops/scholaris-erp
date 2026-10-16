@@ -1,4 +1,5 @@
-// File d'attente hors ligne : appels (POST /attendance-sessions/sync) et notes (POST /grades/sync).
+// File d'attente hors ligne : appels (POST /attendance-sessions/sync), notes (POST /grades/sync) et notes du Supérieur
+// (type « higher-marks », POST /higher/grades/sync).
 // Principes : tout est d'abord écrit sur l'appareil ; l'envoi est idempotent (client_uuid) ; un conflit n'est jamais
 // résolu automatiquement : les deux versions sont conservées jusqu'au choix de la personne.
 import { ApiError, http as defaultHttp, type HttpClient } from '@/api/http';
@@ -6,7 +7,7 @@ import type { Problem, SyncResult } from '@/api/types';
 import { idbAll, idbDelete, idbGet, idbPut } from './db';
 import { ulid } from '@/lib/ulid';
 
-export type QueueKind = 'attendance' | 'grade';
+export type QueueKind = 'attendance' | 'grade' | 'higher-marks';
 export type QueueStatus = 'pending' | 'conflict' | 'error';
 
 export interface QueueItem {
@@ -104,7 +105,7 @@ async function sendChunk(client: HttpClient, chunk: QueueItem[], report: FlushRe
   const first = chunk[0];
   if (!first) return false;
   const attendance = first.kind === 'attendance';
-  const path = attendance ? '/attendance-sessions/sync' : '/grades/sync';
+  const path = attendance ? '/attendance-sessions/sync' : first.kind === 'higher-marks' ? '/higher/grades/sync' : '/grades/sync';
   const body = attendance ? { sessions: chunk.map((c) => c.payload) } : { entries: chunk.map((c) => c.payload) };
 
   let results: SyncResult[];
@@ -169,12 +170,12 @@ export type ConflictChoice = 'keep-server' | 'resend';
 /**
  * Résout un conflit sur décision de la personne.
  * - keep-server : abandonne la version de l'appareil.
- * - resend (notes seulement) : renvoie la version de l'appareil sur la base de la version actuelle du serveur.
+ * - resend (notes seulement, socle et Supérieur) : renvoie la version de l'appareil sur la base de la version actuelle du serveur.
  */
 export async function resolveConflict(uuid: string, choice: ConflictChoice): Promise<void> {
   const item = await idbGet<QueueItem>('queue', uuid);
   if (!item) return;
-  if (choice === 'resend' && item.kind === 'grade') {
+  if (choice === 'resend' && (item.kind === 'grade' || item.kind === 'higher-marks')) {
     const serverVersion = Number((item.server_version as { version?: unknown } | undefined)?.version);
     if (!Number.isFinite(serverVersion)) throw new Error('Version du serveur inconnue');
     const fresh = ulid(); // nouvelle clé : l'ancienne est déjà connue du serveur comme « en conflit »

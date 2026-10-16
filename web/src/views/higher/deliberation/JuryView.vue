@@ -12,6 +12,9 @@ import UnsignedNotice from './UnsignedNotice.vue';
 import { DP } from './access';
 import { dk, dt } from './i18n';
 import { useJurySession } from './useJurySession';
+import { useRouter } from 'vue-router';
+import { useHigherNames } from '../useHigherNames';
+import { useXt } from '../xi18n';
 
 // Fiche d'un jury : composition, présence des membres (quorum), travaux (préparation, rattrapage, documents), signature et publication.
 const props = defineProps<{ id: string }>();
@@ -27,6 +30,10 @@ const writable = computed(() => !higher.readOnly);
 const canPrepare = computed(() => ctx.can(...DP.prepareOrPreside) && writable.value);
 const canSign = computed(() => ctx.can(...DP.sign) && writable.value && !!jury.value?.deliberation_ref);
 const canPublish = computed(() => ctx.can(...DP.publish) && writable.value && jury.value?.status !== 'published');
+// Séance du moteur du socle (ouverture, clôture, réouverture motivée) : écran ../sitting, lien affiché si la route existe.
+const { t: xt } = useXt();
+const hasSitting = useRouter().hasRoute('higher-del-sitting');
+const { name: personName } = useHigherNames(() => (jury.value?.members ?? []).filter((m) => !m.name).map((m) => m.person_id));
 const title = computed(() => (jury.value ? `${higher.groupName(jury.value.structure_id)} · ${jury.value.period_label || jury.value.period_id}` : dt('hdl.jury.title')));
 
 function apply(j: Jury): void {
@@ -73,6 +80,7 @@ onMounted(async () => {
           <router-link class="btn" :to="{ name: 'higher-del-preparation', params: { id } }">{{ dt('hdl.jury.preparation') }}</router-link>
           <router-link v-if="jury.exam_session === 'normal'" class="btn" :to="{ name: 'higher-del-resit', params: { id } }">{{ dt('hdl.jury.resit') }}</router-link>
           <router-link class="btn" :to="{ name: 'higher-del-documents', params: { id } }">{{ dt('hdl.jury.documents') }}</router-link>
+          <router-link v-if="hasSitting" class="btn" :to="{ name: 'higher-del-sitting', params: { id } }" data-test="sitting-link">{{ xt('hx.sit.link') }}</router-link>
         </div>
       </section>
 
@@ -87,7 +95,7 @@ onMounted(async () => {
             <thead><tr><th scope="col">{{ dt('hdl.jury.composition') }}</th><th scope="col">{{ dt('hdl.jury.role.member') }}</th><th scope="col">{{ dt('hdl.jury.present') }}</th><th scope="col">{{ dt('hdl.jury.sign') }}</th></tr></thead>
             <tbody>
               <tr v-for="m in jury.members ?? []" :key="m.person_id">
-                <th scope="row">{{ m.name ?? m.person_id }}</th>
+                <th scope="row">{{ m.name ?? personName(m.person_id) }}</th>
                 <td>{{ dk('hdl.jury.role.', m.member_role) }}</td>
                 <td><label class="check"><input v-model="present" type="checkbox" :value="m.person_id" :disabled="!canPrepare" /> {{ dt('hdl.jury.present') }}</label></td>
                 <td>{{ m.signed ? dt('hdl.jury.signed') : dt('hdl.jury.notSigned') }}</td>

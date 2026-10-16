@@ -7,14 +7,14 @@ export type AppTarget = 'higher' | 'secondary' | 'primary' | 'nursery';
 export type AppStatus = 'available' | 'coming_soon' | 'retired';
 export type AccessRequestStatus = 'pending' | 'info_requested' | 'accepted' | 'rejected';
 export type EntitlementState = 'trial' | 'active' | 'past_due' | 'suspended' | 'closed';
-export type PaymentChannel = 'mtn_momo' | 'orange_money';
-export type PaymentStatus = 'pending' | 'succeeded' | 'failed';
+export type PaymentChannel = 'mtn_momo' | 'orange_money' | 'cash' | 'bank_transfer';
+export type PaymentStatus = 'pending' | 'succeeded' | 'failed' | 'cancelled';
 
 export const APP_TARGETS: AppTarget[] = ['higher', 'secondary', 'primary', 'nursery'];
 export const APP_STATUSES: AppStatus[] = ['available', 'coming_soon', 'retired'];
 export const REQUEST_STATUSES: AccessRequestStatus[] = ['pending', 'info_requested', 'accepted', 'rejected'];
 export const PAYMENT_CHANNELS: PaymentChannel[] = ['mtn_momo', 'orange_money'];
-export const PAYMENT_STATUSES: PaymentStatus[] = ['pending', 'succeeded', 'failed'];
+export const PAYMENT_STATUSES: PaymentStatus[] = ['pending', 'succeeded', 'failed', 'cancelled'];
 export const MAX_MONTHS = 12;
 /** Jeton de suivi d'une demande d'accès : 48 caractères hexadécimaux. */
 export const TRACKING_TOKEN = /^[a-f0-9]{48}$/;
@@ -117,6 +117,8 @@ export interface AccessRequest {
   decided_at: string | null;
   tenant_id: string | null;
   establishment_id: string | null;
+  archived_at?: string | null;
+  archive_reason?: string | null;
   created_at: string;
   updated_at: string;
   /** Présents dans la réponse de l'acceptation. */
@@ -145,14 +147,85 @@ export interface PlatformDashboard {
   health?: Metric;
 }
 
+export type ClientState = 'active' | 'suspended' | 'archived';
+export const CLIENT_STATES: ClientState[] = ['active', 'suspended', 'archived'];
+
+export interface ClientEstablishment {
+  id: string;
+  name: string;
+  type: AppTarget;
+  closed_at: string | null;
+  created_at: string;
+}
+
 export interface Tenant {
   id: string;
   name: string;
   status: string;
+  /** État de la fiche client (absent d'une ancienne réponse : « active »). */
+  state?: ClientState;
+  state_reason?: string | null;
+  suspended_at?: string | null;
+  archived_at?: string | null;
+  contact?: { name: string | null; email: string | null; phone: string | null };
+  city?: string | null;
+  region?: string | null;
+  locale?: string;
   created_at: string;
   applications: Entitlement[];
-  establishments?: Array<{ id: string; name: string; type: string }>;
+  establishments?: ClientEstablishment[];
 }
+
+export interface ClientInput {
+  name: string;
+  contact_name: string;
+  contact_email?: string;
+  contact_phone?: string;
+  city?: string;
+  region?: string;
+  locale?: 'fr' | 'en';
+  establishment_type?: AppTarget;
+}
+
+export type AdministratorStatus = 'pending' | 'active' | 'locked';
+
+export interface Administrator {
+  id: string;
+  person_id: string;
+  first_name: string;
+  last_name: string;
+  email: string | null;
+  phone: string | null;
+  status: AdministratorStatus;
+  two_factor_enabled: boolean;
+  last_login_at: string | null;
+  created_at: string;
+  /** Résultat de l'envoi de l'invitation (sent, blocked…), présent après une invitation. */
+  invitation?: string;
+}
+
+export interface AdministratorInput {
+  first_name: string;
+  last_name: string;
+  email?: string;
+  phone?: string;
+  locale?: 'fr' | 'en';
+}
+
+export interface AuditEntry {
+  id: string;
+  seq: number;
+  occurred_at: string;
+  actor_id: string | null;
+  action: string;
+  object_type: string;
+  object_id: string;
+  details: Record<string, unknown>;
+  ip: string | null;
+}
+
+export type ManualChannel = 'cash' | 'bank_transfer';
+export const MANUAL_CHANNELS: ManualChannel[] = ['cash', 'bank_transfer'];
 
 export interface SubscriptionPayment {
   id: string;
@@ -167,6 +240,9 @@ export interface SubscriptionPayment {
   covered_from: string | null;
   covered_until: string | null;
   paid_at: string | null;
+  note?: string | null;
+  cancelled_at?: string | null;
+  cancel_reason?: string | null;
   created_at: string;
 }
 
@@ -215,13 +291,27 @@ export const fetchPlatformDashboard = async (): Promise<PlatformDashboard> => (a
 
 export const fetchPlatformCatalog = async (): Promise<CatalogApplication[]> => (await http.get<{ data: CatalogApplication[] }>('/platform/applications', undefined, NO_ESTABLISHMENT)).data ?? [];
 
-export const fetchClients = async (): Promise<Tenant[]> => (await http.get<{ data: Tenant[] }>('/platform/clients', undefined, NO_ESTABLISHMENT)).data ?? [];
+export const fetchClients = async (state: ClientState | null = null): Promise<Tenant[]> =>
+  (await http.get<{ data: Tenant[] }>('/platform/clients', state ? { 'filter[state]': state } : undefined, NO_ESTABLISHMENT)).data ?? [];
+
+export const fetchClientEstablishments = async (tenant: string): Promise<ClientEstablishment[]> =>
+  (await http.get<{ data: ClientEstablishment[] }>(`/platform/clients/${encodeURIComponent(tenant)}/establishments`, undefined, NO_ESTABLISHMENT)).data ?? [];
+
+/** Administrateurs d'un client (tenant) ou de la plateforme (tenant null). */
+export const fetchAdministrators = async (tenant: string | null): Promise<Administrator[]> =>
+  (await http.get<{ data: Administrator[] }>(tenant ? `/platform/clients/${encodeURIComponent(tenant)}/administrators` : '/platform/administrators', undefined, NO_ESTABLISHMENT)).data ?? [];
+
+export const fetchPlatformAudit = (filters: { action?: string | null; from?: string | null; to?: string | null }, cursor: string | null = null): Promise<PageOf<AuditEntry>> =>
+  http.page<AuditEntry>('/platform/audit', { 'filter[action]': filters.action || null, 'filter[from]': filters.from || null, 'filter[to]': filters.to || null, cursor, per_page: 50 }, NO_ESTABLISHMENT);
+
+export const fetchPlatformReceipt = async (paymentId: string): Promise<PaymentReceipt & { tenant_name: string }> =>
+  (await http.get<{ data: PaymentReceipt & { tenant_name: string } }>(`/platform/payments/${encodeURIComponent(paymentId)}/receipt`, undefined, NO_ESTABLISHMENT)).data;
 
 export const fetchClient = async (tenant: string): Promise<Tenant> =>
   (await http.get<{ data: Tenant }>(`/platform/clients/${encodeURIComponent(tenant)}`, undefined, NO_ESTABLISHMENT)).data;
 
-export const fetchAccessRequests = (status: AccessRequestStatus | null, cursor: string | null = null): Promise<PageOf<AccessRequest>> =>
-  http.page<AccessRequest>('/platform/access-requests', { 'filter[status]': status, cursor, per_page: 50 }, NO_ESTABLISHMENT);
+export const fetchAccessRequests = (status: AccessRequestStatus | null, cursor: string | null = null, archived = false): Promise<PageOf<AccessRequest>> =>
+  http.page<AccessRequest>('/platform/access-requests', { 'filter[status]': status, 'filter[archived]': archived ? '1' : null, cursor, per_page: 50 }, NO_ESTABLISHMENT);
 
 export const fetchAccessRequest = async (id: string): Promise<AccessRequest> =>
   (await http.get<{ data: AccessRequest }>(`/platform/access-requests/${encodeURIComponent(id)}`, undefined, NO_ESTABLISHMENT)).data;
@@ -231,7 +321,7 @@ export const fetchPlatformPayments = (filters: { status?: PaymentStatus | null; 
 
 // --- Administrateur de plateforme : actions (rejouables après une nouvelle double authentification) ------------------------
 export interface PlatformAction {
-  method: 'POST' | 'PATCH';
+  method: 'POST' | 'PATCH' | 'DELETE';
   path: string;
   body: Record<string, unknown>;
 }
@@ -252,6 +342,39 @@ export const actions = {
   }),
   setPrice: (tenant: string, key: string, price: number | null): PlatformAction => ({ method: 'PATCH', path: `/platform/clients/${seg(tenant)}/applications/${seg(key)}`, body: { monthly_price_xaf: price } }),
   updateCatalog: (key: string, changes: Record<string, unknown>): PlatformAction => ({ method: 'PATCH', path: `/platform/applications/${seg(key)}`, body: changes }),
+  // Back-office : clients, établissements, administrateurs, demandes, paiements manuels.
+  createClient: (input: ClientInput): PlatformAction => ({ method: 'POST', path: '/platform/clients', body: { ...input } }),
+  updateClient: (tenant: string, changes: Record<string, unknown>): PlatformAction => ({ method: 'PATCH', path: `/platform/clients/${seg(tenant)}`, body: changes }),
+  clientState: (tenant: string, kind: 'suspend' | 'reactivate' | 'archive', reason: string | null): PlatformAction => ({
+    method: 'POST',
+    path: `/platform/clients/${seg(tenant)}/${kind}`,
+    body: reason ? { reason } : {},
+  }),
+  createEstablishment: (tenant: string, name: string, type: AppTarget): PlatformAction => ({ method: 'POST', path: `/platform/clients/${seg(tenant)}/establishments`, body: { name, type } }),
+  renameEstablishment: (tenant: string, id: string, name: string): PlatformAction => ({ method: 'PATCH', path: `/platform/clients/${seg(tenant)}/establishments/${seg(id)}`, body: { name } }),
+  establishmentState: (tenant: string, id: string, close: boolean, reason: string | null): PlatformAction => ({
+    method: 'POST',
+    path: `/platform/clients/${seg(tenant)}/establishments/${seg(id)}/${close ? 'close' : 'reopen'}`,
+    body: reason ? { reason } : {},
+  }),
+  inviteAdministrator: (tenant: string | null, input: AdministratorInput): PlatformAction => ({
+    method: 'POST',
+    path: tenant ? `/platform/clients/${seg(tenant)}/administrators` : '/platform/administrators',
+    body: { ...input },
+  }),
+  administrator: (tenant: string | null, user: string, kind: 'resend-invitation' | 'block' | 'unblock' | 'reset-access'): PlatformAction => ({
+    method: 'POST',
+    path: `${tenant ? `/platform/clients/${seg(tenant)}` : '/platform'}/administrators/${seg(user)}/${kind}`,
+    body: {},
+  }),
+  archiveRequest: (id: string, reason: string): PlatformAction => ({ method: 'POST', path: `/platform/access-requests/${seg(id)}/archive`, body: { reason } }),
+  deleteRequest: (id: string): PlatformAction => ({ method: 'DELETE', path: `/platform/access-requests/${seg(id)}`, body: {} }),
+  recordPayment: (input: { tenant_id: string; app_key: string; months: number; channel: ManualChannel; amount_xaf?: number; note?: string }): PlatformAction => ({
+    method: 'POST',
+    path: '/platform/payments',
+    body: { ...input },
+  }),
+  cancelPayment: (id: string, reason: string): PlatformAction => ({ method: 'POST', path: `/platform/payments/${seg(id)}/cancel`, body: { reason } }),
 };
 
 export async function runPlatformAction<T = unknown>(action: PlatformAction): Promise<T> {

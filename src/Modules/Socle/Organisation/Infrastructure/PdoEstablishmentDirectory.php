@@ -16,7 +16,7 @@ final class PdoEstablishmentDirectory implements EstablishmentDirectory
 
     public function forTenant(string $tenantId): array
     {
-        $rows = $this->repositories->explicit('establishments', $tenantId)->all();
+        $rows = array_values(array_filter($this->repositories->explicit('establishments', $tenantId)->all(), self::open(...)));
         usort($rows, static fn (array $a, array $b): int => strcmp((string) $a['name'], (string) $b['name']));
 
         return array_map(EstablishmentMapper::toInfo(...), $rows);
@@ -39,6 +39,16 @@ final class PdoEstablishmentDirectory implements EstablishmentDirectory
     {
         $row = $this->repositories->explicit('establishments', $tenantId)->find($establishmentId);
 
-        return $row === null ? null : EstablishmentMapper::toInfo($row);
+        return $row === null || !self::open($row) ? null : EstablishmentMapper::toInfo($row);
+    }
+
+    /**
+     * Un établissement fermé par la plateforme n'est plus proposé (ses données restent).
+     *
+     * @param array<string, mixed> $row
+     */
+    private static function open(array $row): bool
+    {
+        return ($row['closed_at'] ?? null) === null;
     }
 }

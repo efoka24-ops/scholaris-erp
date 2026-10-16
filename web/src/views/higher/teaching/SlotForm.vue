@@ -4,6 +4,7 @@ import ErrorNotice from '@/components/ErrorNotice.vue';
 import { teaching, TIME, WEEKDAYS, type Assignment, type Room, type SlotCheck, type SlotInput } from '@/api/higher-teaching';
 import { useHigherStore } from '../store';
 import { useHigherAction } from '../useHigherAction';
+import { useHigherNames } from '../useHigherNames';
 import { hk, useHt } from './i18n';
 
 // Création d'un créneau (EX-EDT-02) : vérification préalable des conflits (enseignant, salle, groupe, capacité), puis enregistrement.
@@ -20,6 +21,7 @@ const form = reactive({ assignment_id: '', weekday: 1, start_time: '08:00', end_
 
 const timeBad = computed(() => touched.value && (!TIME.test(form.start_time) || !TIME.test(form.end_time) || form.end_time <= form.start_time));
 const shown = computed(() => assignments.value.filter((a) => !props.groupId || a.group_id === props.groupId));
+const { name: personName } = useHigherNames(() => assignments.value.map((x) => x.person_id));
 
 function body(): SlotInput | null {
   touched.value = true;
@@ -59,7 +61,7 @@ onMounted(async () => {
       <label for="sl-asg">{{ t('ht.tt.assignment') }}</label>
       <select id="sl-asg" v-model="form.assignment_id" :aria-invalid="touched && !form.assignment_id">
         <option value="" disabled>{{ t('ht.tt.assignmentPick') }}</option>
-        <option v-for="a in shown" :key="a.id" :value="a.id">{{ a.element_code }} · {{ t(hk('ht.kind.', a.session_kind)) }} · {{ higher.groupName(a.group_id) }} · {{ a.person_id }}</option>
+        <option v-for="a in shown" :key="a.id" :value="a.id">{{ a.element_code }} · {{ t(hk('ht.kind.', a.session_kind)) }} · {{ higher.groupName(a.group_id) }} · {{ personName(a.person_id) }}</option>
       </select>
       <span v-if="touched && !form.assignment_id" class="error">{{ t('hi.required') }}</span>
     </div>

@@ -184,9 +184,10 @@ final class GradesController
         $input = Input::of($request);
         $to = $input->string('to', 30);
         $version = $input->int('expected_version', 1, PHP_INT_MAX, false);
+        $reason = $input->string('reason', 500, false);
         $input->done();
 
-        return $this->move($request, (string) $to, $version);
+        return $this->json(AssessmentService::resource($this->lifecycle->transition($principal, $establishmentId, self::id($request), (string) $to, $version, $reason)));
     }
 
     public function submit(ServerRequestInterface $request): ResponseInterface
@@ -196,7 +197,12 @@ final class GradesController
 
     public function sendBack(ServerRequestInterface $request): ResponseInterface
     {
-        return $this->move($request, IpesDefaults::DRAFT);
+        [$principal, $establishmentId] = self::context($request);
+        $input = Input::of($request);
+        $reason = $input->string('reason', 500);
+        $input->done();
+
+        return $this->json(AssessmentService::resource($this->lifecycle->transition($principal, $establishmentId, self::id($request), IpesDefaults::DRAFT, null, $reason)));
     }
 
     public function validate(ServerRequestInterface $request): ResponseInterface
@@ -257,18 +263,27 @@ final class GradesController
         return $this->responder->json(['data' => $this->marks->events($principal, $establishmentId, self::id($request))]);
     }
 
-    /** POST /higher/grade-marks/{id}/changes (API-12) : demande de correction motivée avec pièce. */
+    /** POST /higher/grade-marks/{id}/changes (API-12) : demande de correction motivée avec pièce (fichier multipart, ou référence JSON). */
     public function requestCorrection(ServerRequestInterface $request): ResponseInterface
     {
         [$principal, $establishmentId] = self::context($request);
-        $input = Input::of($request);
-        $input->number('score', 0, 100, 0.01, false);
-        $input->string('absence', 12, false);
-        $input->string('reason', 500);
-        $input->string('attachment_ref', 255);
-        $input->reference('query_id', false, true);
+        [$values, $file] = CorrectionUpload::read($request);
 
-        return $this->json($this->corrections->request($principal, $establishmentId, self::id($request), $input->done()), 201);
+        return $this->json($this->corrections->request($principal, $establishmentId, self::id($request), $values, $file), 201);
+    }
+
+    /** GET /higher/grade-corrections/{id}/attachment : pièce téléversée, pour les rôles qui voient la demande. */
+    public function correctionAttachment(ServerRequestInterface $request): ResponseInterface
+    {
+        [$principal, $establishmentId] = self::context($request);
+        $file = $this->corrections->attachment($principal, $establishmentId, self::id($request));
+
+        return $this->responses->createResponse(200)
+            ->withHeader('Content-Type', $file['mime'])
+            ->withHeader('Content-Disposition', 'attachment; filename="' . $file['filename'] . '"')
+            ->withHeader('Cache-Control', 'private, no-store')
+            ->withHeader('X-Content-Type-Options', 'nosniff')
+            ->withBody($this->streams->createStream($file['content']));
     }
 
     public function corrections(ServerRequestInterface $request): ResponseInterface

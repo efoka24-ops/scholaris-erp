@@ -7,6 +7,7 @@ namespace Scholaris\Modules\Socle\Organisation\Application;
 use DI\Container;
 use Scholaris\Modules\Socle\Organisation\Contracts\BalanceCarryOver;
 use Scholaris\Modules\Socle\Organisation\Contracts\ClosureCheck;
+use Scholaris\Modules\Socle\Organisation\Contracts\ConditionalPromotionPlanner;
 use Scholaris\Modules\Socle\Organisation\Contracts\PromotionPlanner;
 use Scholaris\Modules\Socle\Organisation\Contracts\TypedPromotionPlanner;
 
@@ -44,17 +45,20 @@ final class ClosureProviders
     }
 
     /**
-     * Planificateurs applicables à un type d'établissement (D8) : ceux qui visent ce type (TypedPromotionPlanner) remplacent les
-     * génériques ; à défaut, les génériques seuls. Un planificateur typé pour un autre type n'est jamais appelé.
+     * Planificateurs applicables à un établissement donné : ceux qui visent ce type (TypedPromotionPlanner) remplacent les
+     * génériques ; un ConditionalPromotionPlanner n'est retenu que si appliesTo() retourne true.
      *
      * @return list<PromotionPlanner>
      */
-    public function promotersFor(string $establishmentType): array
+    public function promotersFor(string $tenantId, string $establishmentId, string $establishmentType): array
     {
         $typed = [];
         $generic = [];
         foreach ($this->promoters() as $planner) {
             if ($planner instanceof TypedPromotionPlanner) {
+                if ($planner instanceof ConditionalPromotionPlanner && !$planner->appliesTo($tenantId, $establishmentId)) {
+                    continue;
+                }
                 if (in_array($establishmentType, $planner->establishmentTypes(), true)) {
                     $typed[] = $planner;
                 }

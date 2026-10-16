@@ -8,6 +8,7 @@ import PersonPicker from '../PersonPicker.vue';
 import YearField from '../YearField.vue';
 import { useHigherStore } from '../store';
 import { useHigherAction } from '../useHigherAction';
+import { useHigherNames } from '../useHigherNames';
 import ElementField from './ElementField.vue';
 import GroupField from './GroupField.vue';
 import TeachingFrame from './TeachingFrame.vue';
@@ -22,6 +23,7 @@ const list = useHigherAction();
 const act = useHigherAction();
 
 const items = ref<ReplacementExam[]>([]);
+const { label: personLabel } = useHigherNames(() => items.value.map((x) => x.person_id));
 const rooms = ref<Room[]>([]);
 const touched = ref(false);
 const form = reactive({ person_id: null as string | null, curriculum_id: '', element_id: '', group_id: '', academic_year_id: '', absence_date: '', justification_ref: '', reason: '' });
@@ -89,7 +91,7 @@ onMounted(async () => {
         <thead><tr><th scope="col">{{ t('ht.rep.student') }}</th><th scope="col">{{ t('hi.group') }}</th><th scope="col">{{ t('ht.rep.absenceDate') }}</th><th scope="col">{{ t('ht.exam.date') }}</th><th scope="col">{{ t('hi.status') }}</th><th scope="col">{{ t('hi.actions') }}</th></tr></thead>
         <tbody>
           <tr v-for="r in items" :key="r.id">
-            <th scope="row" class="hi-mono">{{ r.person_id }}</th>
+            <th scope="row">{{ personLabel(r.person_id) }}</th>
             <td>{{ higher.groupName(r.group_id) }}</td>
             <td>{{ formatDate(r.absence_date, locale) }}</td>
             <td>{{ r.exam_date ? `${formatDate(r.exam_date, locale)} · ${r.start_time}` : '—' }}</td>
@@ -108,7 +110,7 @@ onMounted(async () => {
     </div>
 
     <section v-if="scheduling" class="card card--strong hi-section hi-form" role="dialog" aria-labelledby="rs-title" data-test="schedule-replacement">
-      <h2 id="rs-title" class="hi-wide">{{ t('ht.rep.schedule') }} · {{ scheduling.person_id }}</h2>
+      <h2 id="rs-title" class="hi-wide">{{ t('ht.rep.schedule') }} · {{ personLabel(scheduling.person_id) }}</h2>
       <div class="field"><label for="rs-date">{{ t('ht.exam.date') }}</label><input id="rs-date" v-model="slot.exam_date" type="date" :aria-invalid="slotTried && !slot.exam_date" /></div>
       <div class="field"><label for="rs-start">{{ t('ht.start') }}</label><input id="rs-start" v-model="slot.start_time" type="time" /></div>
       <div class="field"><label for="rs-end">{{ t('ht.end') }}</label><input id="rs-end" v-model="slot.end_time" type="time" /><span v-if="slotBad" class="error">{{ t('ht.timeBad') }}</span></div>

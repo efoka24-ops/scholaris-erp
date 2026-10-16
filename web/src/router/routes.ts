@@ -3,6 +3,13 @@ import type { MessageKey } from '@/i18n';
 import { higherRoutes } from '@/views/higher/routes';
 import { higherGradesRoutes } from '@/views/higher/grades/routes';
 import { higherTeachingRoutes } from '@/views/higher/teaching/routes';
+import { higherDocumentsRoutes } from '@/views/higher/documents/routes';
+import { higherPortalRoutes } from '@/views/higher/portals/routes';
+import { higherTeachingExtraRoutes } from '@/views/higher/teaching-extra/routes';
+import { higherSittingRoutes } from '@/views/higher/sitting/routes';
+import { higherInternshipsRoutes } from '@/views/higher/internships/routes';
+import { higherVacationsRoutes } from '@/views/higher/vacations/routes';
+import { higherNationalExamsRoutes } from '@/views/higher/national-exams/routes';
 import { higherDeliberationRoutes } from '@/views/higher/deliberation/routes';
 
 declare module 'vue-router' {
@@ -295,9 +302,28 @@ export const routes: RouteRecordRaw[] = [
     component: () => import('@/views/platform/PlatformPaymentsView.vue'),
     meta: { platform: true, titleKey: 'plat.pay.title', nav: { labelKey: 'nav.platform.payments', order: 5 } },
   },
+  {
+    path: '/platform/administrateurs',
+    name: 'platform-admins',
+    component: () => import('@/views/platform/PlatformAdminsView.vue'),
+    meta: { platform: true, titleKey: 'pa.adm.platformTitle', nav: { labelKey: 'pa.nav.admins', order: 6 } },
+  },
+  {
+    path: '/platform/journal',
+    name: 'platform-audit',
+    component: () => import('@/views/platform/PlatformAuditView.vue'),
+    meta: { platform: true, titleKey: 'pa.audit.title', nav: { labelKey: 'pa.nav.audit', order: 7 } },
+  },
   ...higherRoutes,
   ...higherGradesRoutes,
   ...higherTeachingRoutes,
+  ...higherDocumentsRoutes,
+  ...higherPortalRoutes,
+  ...higherTeachingExtraRoutes,
+  ...higherSittingRoutes,
+  ...higherInternshipsRoutes,
+  ...higherVacationsRoutes,
+  ...higherNationalExamsRoutes,
   ...higherDeliberationRoutes,
   { path: '/interdit', name: 'forbidden', component: () => import('@/views/ForbiddenView.vue'), meta: { titleKey: 'forbidden.title' } },
   { path: '/:pathMatch(.*)*', name: 'not-found', component: () => import('@/views/NotFoundView.vue'), meta: { public: true, titleKey: 'notFound.title' } },

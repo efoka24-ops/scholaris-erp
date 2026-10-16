@@ -8,6 +8,7 @@ import PersonPicker from '../PersonPicker.vue';
 import { splitCodes } from '../display';
 import { useHigherStore } from '../store';
 import { useHigherAction } from '../useHigherAction';
+import { useHigherNames } from '../useHigherNames';
 import TeachingFrame from './TeachingFrame.vue';
 import { TP } from './access';
 import { hk, useHt } from './i18n';
@@ -20,6 +21,7 @@ const list = useHigherAction();
 const act = useHigherAction();
 
 const items = ref<Teacher[]>([]);
+const { name: personName } = useHigherNames(() => items.value.map((x) => x.person_id));
 const statusFilter = ref('');
 const editing = ref<string | null>(null);
 const touched = ref(false);
@@ -91,7 +93,7 @@ onMounted(async () => {
         </thead>
         <tbody>
           <tr v-for="x in items" :key="x.id">
-            <th scope="row" class="hi-mono">{{ x.person_id }}</th>
+            <th scope="row">{{ personName(x.person_id) }}</th>
             <td>
               <span class="tag tag--neutral">{{ t(hk('ht.tea.status.', x.teacher_status)) }}</span>
               <span v-if="authMissing(x)" class="tag tag--warning" data-test="auth-missing">{{ t('ht.tea.authMissing') }}</span>

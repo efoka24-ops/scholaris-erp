@@ -153,3 +153,11 @@ Maquette `Releve.html` (comparée au CDC) :
 - M7 Notes d'examen « 11,3 » et « 11,5 » ne sont pas au quart de point (RG-NOT-1).
 - M8 La maquette porte « Admise » (accord de genre) et un parcours « Licence 2 » semestre 3 ; le CDC ne définit pas le genre dans les décisions (variable `gender` à prévoir).
 - M9 Crédits cumulés « 90 / 180 » : le cumul n'apparaît pas dans le corps du relevé du CDC (synthèse : moyenne de semestre, MGP, crédits acquis/possibles, décision, mention).
+
+## Questions ouvertes du CDC : réponses et valeurs par défaut (2026-10-15)
+- **IPES pilote (réponse de l'utilisateur)** : les deux instituts de Garoua, Ouro Mal-Amadou : Institut Supérieur du Septentrion de Garoua (ISSEG, BP 210) et Institut de Formation Professionnelle les Étoiles du Septentrion. Recette E2E : `tests/E2E/IpesSeptentrionJourneyTest.php` (données nominatives fictives). Aucune donnée réelle d'étudiant avant HTTPS.
+- Règlements et grilles de lettres des universités de tutelle : **en attente** ; défaut = règles LMD du CDC (F1 40/60, note éliminatoire 7, compensation, grille de lettres du CDC), paramétrables par filière et par année.
+- Formats des listes BTS/HND du MINESUP : **en attente** ; défaut = export CSV/XLSX par modèle paramétrable, marqué « à confirmer ».
+- Taux de vacation par grade et retenues : **en attente** ; défaut = taux de l'exemple du CDC (assistant 6 000 FCFA/HETD), retenues à 0, paramétrables.
+- Signature électronique : **en attente** ; défaut = signature simple par code de confirmation (2FA récente) et empreinte SHA-256 du PV.
+- Bibliothèque : **en attente** ; défaut = hors version 1.

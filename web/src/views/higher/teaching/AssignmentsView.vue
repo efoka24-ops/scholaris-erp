@@ -6,6 +6,7 @@ import { useContextStore } from '@/stores/context';
 import PersonPicker from '../PersonPicker.vue';
 import { useHigherStore } from '../store';
 import { useHigherAction } from '../useHigherAction';
+import { useHigherNames } from '../useHigherNames';
 import ElementField from './ElementField.vue';
 import GroupField from './GroupField.vue';
 import TeachingFrame from './TeachingFrame.vue';
@@ -20,6 +21,7 @@ const list = useHigherAction();
 const act = useHigherAction();
 
 const items = ref<Assignment[]>([]);
+const { name: personName } = useHigherNames(() => items.value.map((x) => x.person_id));
 const groupFilter = ref('');
 const statusFilter = ref('active');
 const touched = ref(false);
@@ -98,7 +100,7 @@ onMounted(async () => {
             <th scope="row">{{ a.element_code }} · {{ a.element_title }}</th>
             <td>{{ higher.groupName(a.group_id) }}</td>
             <td>{{ t(hk('ht.kind.', a.session_kind)) }}</td>
-            <td class="hi-mono">{{ a.person_id }}</td>
+            <td>{{ personName(a.person_id) }}</td>
             <td class="num">{{ formatMinutes(a.planned_minutes) }}</td>
             <td><span class="tag" :class="a.status === 'active' ? 'tag--success' : 'tag--neutral'">{{ t(hk('ht.asg.state.', a.status)) }}</span></td>
             <td class="hi-actions">

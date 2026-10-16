@@ -10,7 +10,6 @@ use Scholaris\Core\Http\HttpException;
 use Scholaris\Core\Http\JsonResponder;
 use Scholaris\Core\Http\ListQuery;
 use Scholaris\Modules\Socle\Organisation\Contracts\ClientProvisioning;
-use Scholaris\Modules\Socle\Organisation\Contracts\EstablishmentDirectory;
 use Scholaris\Modules\Socle\Platform\Application\Catalog;
 use Scholaris\Modules\Socle\Platform\Application\DashboardService;
 use Scholaris\Modules\Socle\Platform\Application\EntitlementService;
@@ -33,7 +32,6 @@ final class PlatformAdminController
         private readonly EntitlementService $entitlements,
         private readonly SubscriptionPayments $payments,
         private readonly ClientProvisioning $clients,
-        private readonly EstablishmentDirectory $establishments,
         private readonly PlatformAudit $audit,
     ) {
     }
@@ -79,34 +77,6 @@ final class PlatformAdminController
         $this->audit->record(null, $principal->userId, 'platform.catalog_updated', 'platform_application', $key, $changes, PlatformGuard::ip($request));
 
         return $this->responder->json(['data' => $app]);
-    }
-
-    /** GET /platform/clients */
-    public function clients(ServerRequestInterface $request): ResponseInterface
-    {
-        $this->guard->platformAdmin($request, 'platform.clients.read');
-        $items = [];
-        foreach ($this->clients->tenants() as $tenant) {
-            $items[] = $tenant + ['applications' => $this->entitlements->forTenant($tenant['id'])];
-        }
-
-        return $this->responder->json(['data' => $items]);
-    }
-
-    /** GET /platform/clients/{tenant} */
-    public function client(ServerRequestInterface $request): ResponseInterface
-    {
-        $this->guard->platformAdmin($request, 'platform.clients.read');
-        $tenant = $this->tenant($request);
-        $establishments = [];
-        foreach ($this->establishments->forTenant($tenant['id']) as $establishment) {
-            $establishments[] = ['id' => $establishment->id, 'name' => $establishment->name, 'type' => $establishment->type];
-        }
-
-        return $this->responder->json(['data' => $tenant + [
-            'establishments' => $establishments,
-            'applications' => $this->entitlements->forTenant($tenant['id']),
-        ]]);
     }
 
     /** POST /platform/clients/{tenant}/applications */

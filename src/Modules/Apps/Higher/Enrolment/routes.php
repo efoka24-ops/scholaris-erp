@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Scholaris\Modules\Apps\Higher\Enrolment\Http\DirectoryController;
 use Scholaris\Modules\Apps\Higher\Enrolment\Http\EnrolmentController;
 use Scholaris\Modules\Apps\Higher\Enrolment\Http\StudentController;
 use Scholaris\Modules\Apps\Higher\Support\HigherRoutes;
@@ -30,4 +31,7 @@ return static function (HigherRoutes $routes): void {
     $routes->post('/enrolment-derogations', [StudentController::class, 'derogate']);
     $routes->get('/progression-decisions', [StudentController::class, 'decisions']);
     $routes->post('/progression-decisions', [StudentController::class, 'recordDecision']);
+
+    // Noms des personnes rattachées à l'établissement (étudiants, personnel) pour l'affichage (higher.access).
+    $routes->get('/directory/names', [DirectoryController::class, 'names']);
 };

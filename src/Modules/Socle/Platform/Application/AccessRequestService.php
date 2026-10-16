@@ -173,21 +173,24 @@ final class AccessRequestService
     }
 
     /**
+     * Demandes, la plus récente d'abord (une nouvelle demande est toujours en première page). Les demandes archivées
+     * n'apparaissent qu'avec $archived = true.
+     *
      * @return array{0: list<array<string, mixed>>, 1: ?string}
      */
-    public function page(?string $status, ?string $afterId, int $perPage): array
+    public function page(?string $status, ?string $beforeId, int $perPage, bool $archived = false): array
     {
-        $sql = 'SELECT * FROM platform_access_requests WHERE 1 = 1';
+        $sql = 'SELECT * FROM platform_access_requests WHERE ' . ($archived ? 'archived_at IS NOT NULL' : 'archived_at IS NULL');
         $params = [];
         if ($status !== null) {
             $sql .= ' AND status = ?';
             $params[] = $status;
         }
-        if ($afterId !== null) {
-            $sql .= ' AND id > ?';
-            $params[] = $afterId;
+        if ($beforeId !== null) {
+            $sql .= ' AND id < ?';
+            $params[] = $beforeId;
         }
-        $rows = $this->db->all($sql . ' ORDER BY id LIMIT ' . ($perPage + 1), $params);
+        $rows = $this->db->all($sql . ' ORDER BY id DESC LIMIT ' . ($perPage + 1), $params);
         $next = null;
         if (count($rows) > $perPage) {
             $rows = array_slice($rows, 0, $perPage);
@@ -325,7 +328,46 @@ final class AccessRequestService
 
     public function pendingCount(): int
     {
-        return (int) $this->db->scalar('SELECT COUNT(*) FROM platform_access_requests WHERE status IN (?, ?)', [self::PENDING, self::INFO_REQUESTED]);
+        return (int) $this->db->scalar('SELECT COUNT(*) FROM platform_access_requests WHERE archived_at IS NULL AND status IN (?, ?)', [self::PENDING, self::INFO_REQUESTED]);
+    }
+
+    /**
+     * Archive une demande refusée, ou une demande de test non traitée : retirée des files, conservée et tracée.
+     * Une demande acceptée (un client existe) ne s'archive pas.
+     *
+     * @return array<string, mixed>
+     */
+    public function archive(string $id, string $reason, string $actorId, ?string $ip): array
+    {
+        $row = $this->findOrFail($id);
+        if ($row['archived_at'] !== null) {
+            throw HttpException::conflict('Cette demande est déjà archivée.');
+        }
+        if ($row['status'] === self::ACCEPTED) {
+            throw HttpException::conflict('Une demande acceptée ne s\'archive pas : gérez le client correspondant.');
+        }
+        $now = $this->clock->iso();
+        $this->db->update('platform_access_requests', ['archived_at' => $now, 'archived_by' => $actorId, 'archive_reason' => $reason, 'updated_at' => $now], ['id' => $id]);
+        $this->audit->record(null, $actorId, 'platform.access_request_archived', 'access_request', $id, ['status' => $row['status'], 'reason' => $reason], $ip);
+
+        return $this->show($id);
+    }
+
+    /**
+     * Supprime définitivement une demande ARCHIVÉE qui n'a créé aucun client (demande de test, données personnelles du
+     * demandeur effacées). La suppression est journalisée avec la référence et le nom de l'institution.
+     */
+    public function delete(string $id, string $actorId, ?string $ip): void
+    {
+        $row = $this->findOrFail($id);
+        if ($row['archived_at'] === null || $row['tenant_id'] !== null) {
+            throw HttpException::conflict('Seule une demande archivée, sans client créé, peut être supprimée.');
+        }
+        $this->db->pdo()->prepare('DELETE FROM platform_access_requests WHERE id = ? AND archived_at IS NOT NULL AND tenant_id IS NULL')->execute([$id]);
+        $this->audit->record(null, $actorId, 'platform.access_request_deleted', 'access_request', $id, [
+            'reference' => substr($id, -8), 'institution_name' => (string) $row['institution_name'], 'status' => (string) $row['status'],
+            'archive_reason' => $row['archive_reason'],
+        ], $ip);
     }
 
     /**
@@ -364,6 +406,8 @@ final class AccessRequestService
             'decided_at' => $row['decided_at'],
             'tenant_id' => $row['tenant_id'],
             'establishment_id' => $row['establishment_id'],
+            'archived_at' => $row['archived_at'] ?? null,
+            'archive_reason' => $row['archive_reason'] ?? null,
             'created_at' => (string) $row['created_at'],
             'updated_at' => (string) $row['updated_at'],
         ];
@@ -389,7 +433,7 @@ final class AccessRequestService
     /** @param array<string, mixed> $row */
     private function assertOpen(array $row): void
     {
-        if (!in_array($row['status'], [self::PENDING, self::INFO_REQUESTED], true)) {
+        if (($row['archived_at'] ?? null) !== null || !in_array($row['status'], [self::PENDING, self::INFO_REQUESTED], true)) {
             throw HttpException::conflict('Cette demande a déjà été traitée.');
         }
     }
@@ -408,6 +452,8 @@ final class AccessRequestService
             'contact_phone' => $row['contact_phone'] === null ? null : (string) $row['contact_phone'],
             'locale' => (string) $row['locale'],
             'access_request_id' => (string) $row['id'],
+            'city' => (string) $row['city'],
+            'region' => (string) $row['region'],
             'created_at' => $now,
             'updated_at' => $now,
         ]);

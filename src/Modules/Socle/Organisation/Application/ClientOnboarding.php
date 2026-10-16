@@ -75,6 +75,71 @@ final class ClientOnboarding implements ClientProvisioning, ModuleActivator
         return (string) $this->establishments->create($tenantId, trim($name), $kind)['id'];
     }
 
+    public function renameTenant(string $tenantId, string $name): void
+    {
+        $name = trim($name);
+        if ($name === '' || mb_strlen($name) > 160) {
+            throw HttpException::validation(['name' => ['Nom de client invalide.']]);
+        }
+        $this->updateTenant($tenantId, 'name', $name);
+    }
+
+    public function setTenantStatus(string $tenantId, string $status): void
+    {
+        if (!in_array($status, ['active', 'suspended', 'archived'], true)) {
+            throw HttpException::validation(['status' => ['État de client inconnu.']]);
+        }
+        $this->updateTenant($tenantId, 'status', $status);
+    }
+
+    public function establishmentsOf(string $tenantId): array
+    {
+        if (!$this->tenantExists($tenantId)) {
+            throw HttpException::notFound('Client introuvable.');
+        }
+        $rows = [];
+        foreach ($this->repositories->explicit('establishments', $tenantId)->all() as $row) {
+            $rows[] = [
+                'id' => (string) $row['id'],
+                'name' => (string) $row['name'],
+                'type' => (string) $row['type'],
+                'closed_at' => isset($row['closed_at']) ? (string) $row['closed_at'] : null,
+                'created_at' => (string) $row['created_at'],
+            ];
+        }
+        usort($rows, static fn (array $a, array $b): int => strcmp($a['name'], $b['name']));
+
+        return $rows;
+    }
+
+    public function renameEstablishment(string $tenantId, string $establishmentId, string $name): void
+    {
+        $name = trim($name);
+        if (mb_strlen($name) < 2 || mb_strlen($name) > 160) {
+            throw HttpException::validation(['name' => ['Nom d\'établissement invalide (2 à 160 caractères).']]);
+        }
+        $this->repositories->explicit('establishments', $tenantId)->findOrFail($establishmentId);
+        $this->establishments->rename($tenantId, $establishmentId, $name);
+    }
+
+    public function setEstablishmentClosed(string $tenantId, string $establishmentId, bool $closed): void
+    {
+        $this->repositories->explicit('establishments', $tenantId)->findOrFail($establishmentId);
+        $now = $this->clock->now();
+        $this->connections->pdo()
+            ->prepare('UPDATE establishments SET closed_at = ?, updated_at = ? WHERE tenant_id = ? AND id = ?')
+            ->execute([$closed ? $now : null, $now, $tenantId, $establishmentId]);
+    }
+
+    private function updateTenant(string $tenantId, string $column, string $value): void
+    {
+        if (!$this->tenantExists($tenantId)) {
+            throw HttpException::notFound('Client introuvable.');
+        }
+        $sql = $column === 'name' ? 'UPDATE tenants SET name = ?, updated_at = ? WHERE id = ?' : 'UPDATE tenants SET status = ?, updated_at = ? WHERE id = ?';
+        $this->connections->pdo()->prepare($sql)->execute([$value, $this->clock->now(), $tenantId]);
+    }
+
     public function enable(string $tenantId, string $establishmentId, array $modules): void
     {
         $row = $this->repositories->explicit('establishments', $tenantId)->findOrFail($establishmentId);

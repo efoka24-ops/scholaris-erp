@@ -6,8 +6,11 @@ use function DI\autowire;
 use function DI\factory;
 
 use Scholaris\Core\Config\Config;
+use Scholaris\Modules\Socle\People\Application\BirthDateWriterService;
 use Scholaris\Modules\Socle\People\Application\EnrollmentWriterService;
 use Scholaris\Modules\Socle\People\Application\YearPromotion;
+use Scholaris\Modules\Socle\People\Contracts\AttachmentStore;
+use Scholaris\Modules\Socle\People\Contracts\BirthDateWriter;
 use Scholaris\Modules\Socle\People\Contracts\BirthInfo;
 use Scholaris\Modules\Socle\People\Contracts\ConsentChecker;
 use Scholaris\Modules\Socle\People\Contracts\EnrollmentDirectory;
@@ -16,6 +19,7 @@ use Scholaris\Modules\Socle\People\Contracts\FileScanner;
 use Scholaris\Modules\Socle\People\Contracts\PersonDirectory;
 use Scholaris\Modules\Socle\People\Contracts\TeachingScope;
 use Scholaris\Modules\Socle\People\Domain\UrlSigner;
+use Scholaris\Modules\Socle\People\Infrastructure\FileAttachmentStore;
 use Scholaris\Modules\Socle\People\Infrastructure\FileStorage;
 use Scholaris\Modules\Socle\People\Infrastructure\HealthCipher;
 use Scholaris\Modules\Socle\People\Infrastructure\HeuristicFileScanner;
@@ -34,10 +38,12 @@ return [
     PersonDirectory::class => autowire(PdoPersonDirectory::class),
     EnrollmentDirectory::class => autowire(PdoEnrollmentDirectory::class),
     EnrollmentWriter::class => autowire(EnrollmentWriterService::class),
+    BirthDateWriter::class => autowire(BirthDateWriterService::class),
     ConsentChecker::class => autowire(PdoConsentChecker::class),
     BirthInfo::class => autowire(PdoBirthInfo::class),
     TeachingScope::class => autowire(StaffTeachingScope::class),
     FileScanner::class => autowire(HeuristicFileScanner::class),
+    AttachmentStore::class => autowire(FileAttachmentStore::class),
 
     HealthCipher::class => factory(static fn (Config $config): HealthCipher => new HealthCipher(Secrets::key($config))),
     UrlSigner::class => factory(static fn (Config $config): UrlSigner => new UrlSigner(Secrets::key($config))),

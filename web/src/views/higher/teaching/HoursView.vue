@@ -6,6 +6,7 @@ import { useContextStore } from '@/stores/context';
 import { formatDate } from '@/lib/format';
 import { useHigherStore } from '../store';
 import { useHigherAction } from '../useHigherAction';
+import { useHigherNames } from '../useHigherNames';
 import TeachingFrame from './TeachingFrame.vue';
 import { TP } from './access';
 import { hk, useHt } from './i18n';
@@ -21,6 +22,7 @@ const act = useHigherAction();
 const month = ref(new Date().toISOString().slice(0, 7));
 const rows = ref<HoursRow[]>([]);
 const history = ref<HoursValidation[]>([]);
+const { name: personName } = useHigherNames(() => [...rows.value.map((x) => x.person_id), ...history.value.map((x) => x.person_id)]);
 const pending = ref<number | null>(null);
 const canValidate = computed(() => ctx.can(...TP.hoursValidate) && !higher.readOnly);
 const monthBad = computed(() => !/^\d{4}-(0[1-9]|1[0-2])$/.test(month.value));
@@ -63,7 +65,7 @@ onMounted(async () => {
         <thead><tr><th scope="col">{{ t('ht.teacher') }}</th><th scope="col" class="num">{{ t('ht.hrs.logs') }}</th><th v-for="k in KINDS" :key="k" scope="col" class="num">{{ t(hk('ht.kind.', k)) }}</th><th scope="col" class="num">{{ t('ht.hrs.hetd') }}</th><th scope="col">{{ t('hi.status') }}</th><th scope="col">{{ t('hi.actions') }}</th></tr></thead>
         <tbody>
           <tr v-for="r in rows" :key="r.person_id">
-            <th scope="row" class="hi-mono">{{ r.person_id }}</th>
+            <th scope="row">{{ personName(r.person_id) }}</th>
             <td class="num">{{ r.logs }}</td>
             <td v-for="k in KINDS" :key="k" class="num">{{ formatMinutes(r.minutes[k]) }}</td>
             <td class="num">{{ hetd(r.hetd_milli) }}</td>
@@ -78,7 +80,7 @@ onMounted(async () => {
     <section class="hi-section">
       <h2>{{ t('ht.hrs.history') }}</h2>
       <ul v-if="history.length" class="hi-list">
-        <li v-for="v in history" :key="v.id"><span class="hi-mono">{{ v.person_id }}</span> · {{ v.log_count }} {{ t('ht.hrs.logs').toLowerCase() }} · {{ formatMinutes(v.minutes_total) }} · {{ t('ht.hrs.validatedAt') }} {{ formatDate(v.validated_at, locale) }}</li>
+        <li v-for="v in history" :key="v.id"><span>{{ personName(v.person_id) }}</span> · {{ v.log_count }} {{ t('ht.hrs.logs').toLowerCase() }} · {{ formatMinutes(v.minutes_total) }} · {{ t('ht.hrs.validatedAt') }} {{ formatDate(v.validated_at, locale) }}</li>
       </ul>
       <p v-else class="muted">{{ t('hi.none') }}</p>
     </section>

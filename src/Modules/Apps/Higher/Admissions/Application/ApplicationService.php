@@ -18,6 +18,7 @@ use Scholaris\Modules\Socle\Billing\Contracts\PaymentOrder;
 use Scholaris\Modules\Socle\Billing\Contracts\PaymentOutcome;
 use Scholaris\Modules\Socle\Billing\Contracts\PaymentRequester;
 use Scholaris\Modules\Socle\Identity\Contracts\AccountProvisioner;
+use Scholaris\Modules\Socle\People\Contracts\BirthDateWriter;
 use Scholaris\Modules\Socle\Identity\Contracts\UserPersonLink;
 
 /**
@@ -39,6 +40,7 @@ final class ApplicationService
         private readonly AdmissionsAccess $access,
         private readonly CampaignService $campaigns,
         private readonly AccountProvisioner $accounts,
+        private readonly BirthDateWriter $births,
         private readonly UserPersonLink $links,
         private readonly InvoiceIssuer $invoices,
         private readonly PaymentRequester $payments,
@@ -48,7 +50,7 @@ final class ApplicationService
     }
 
     /**
-     * @param array{campaign_id: string, person_id: ?string, identity: ?array{first_name: string, last_name: string, phone: ?string, email: ?string, locale: string},
+     * @param array{campaign_id: string, person_id: ?string, identity: ?array{first_name: string, last_name: string, phone: ?string, email: ?string, locale: string, birth_date?: ?string, birth_place?: ?string},
      *              application_kind: string, origin_institution: ?string, diploma: string, diploma_series: ?string, diploma_year: ?int, diploma_mention: ?string} $input
      * @return array<string, mixed>
      */
@@ -64,6 +66,10 @@ final class ApplicationService
             if ($personId === null) {
                 $identity = $input['identity'] ?? throw HttpException::validation(['person_id' => ['Fiche du candidat (person_id) ou identité (identity) attendue.']]);
                 $personId = $this->accounts->provision($tenantId, $identity['first_name'], $identity['last_name'], $identity['phone'], $identity['email'], $identity['locale'])['person_id'];
+                if (($identity['birth_date'] ?? null) !== null) {
+                    // Majorité connue dès la candidature : l'inscription au socle n'exigera pas de garant pour un majeur (D-03).
+                    $this->births->record($tenantId, $personId, (string) $identity['birth_date'], $identity['birth_place'] ?? null);
+                }
             }
         } else {
             $this->access->require($principal, $establishmentId, [AdmissionPermissions::SUBMIT]);

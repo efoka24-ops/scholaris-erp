@@ -62,11 +62,34 @@ export interface MarkEvent {
 export interface Correction {
   id: string; mark_id: string; assessment_id: string; element_code: string | null; assessment_label: string | null; person_id: string;
   old: MarkValueRef; new: MarkValueRef; reason: string; attachment_ref: string; query_id: string | null; requested_by: string;
+  /** Pièce téléversée (null pour une ancienne demande à référence papier). */
+  attachment?: { mime: string; size: number; download_path: string } | null;
   status: CorrectionStatus; approval_step: number; next_step: { label: string; role: string; require_recent_2fa: boolean } | null;
   steps: string[]; approval_trail: Array<{ step: number; label: string; decision: 'approved' | 'rejected'; by: string; at: string; reason?: string }>;
   decided_at: string | null; created_at: string;
 }
 export interface CorrectionInput { score?: number | null; absence?: string | null; reason: string; attachment_ref: string; query_id?: string | null }
+/** Demande avec pièce téléversée (multipart, champ `attachment`). */
+export interface CorrectionUploadInput { score?: number | null; absence?: string | null; reason: string; file: File | Blob; query_id?: string | null }
+
+/** Pièce acceptée par le serveur (AttachmentStore du socle) : contrôle préalable côté écran, le serveur relit le type réel. */
+export const ATTACHMENT_MAX_BYTES = 5 * 1024 * 1024;
+export const ATTACHMENT_TYPES = ['application/pdf', 'image/jpeg', 'image/png'];
+export function attachmentProblem(file: { size: number; type: string } | null): 'missing' | 'size' | 'type' | null {
+  if (!file) return 'missing';
+  if (file.size === 0 || file.size > ATTACHMENT_MAX_BYTES) return 'size';
+  return ATTACHMENT_TYPES.includes(file.type) ? null : 'type';
+}
+
+function correctionForm(body: CorrectionUploadInput): FormData {
+  const form = new FormData();
+  if (body.absence) form.append('absence', body.absence);
+  else if (body.score !== null && body.score !== undefined) form.append('score', String(body.score));
+  form.append('reason', body.reason);
+  if (body.query_id) form.append('query_id', body.query_id);
+  form.append('attachment', body.file);
+  return form;
+}
 
 export interface GradeQuery {
   id: string; mark_id: string; assessment_id: string; element_code: string | null; assessment_label: string | null; person_id: string;
@@ -120,6 +143,9 @@ export const grades = {
   progress: (q: Q = {}): Promise<Progress> => unwrap(http.get(`${H}/grades/progress`, q)),
   markEvents: (markId: string): Promise<MarkEvent[]> => unwrap(http.get(`${H}/grade-marks/${seg(markId)}/events`)),
   requestCorrection: (markId: string, body: CorrectionInput): Promise<Correction> => unwrap(http.post(`${H}/grade-marks/${seg(markId)}/changes`, body)),
+  requestCorrectionWithFile: (markId: string, body: CorrectionUploadInput): Promise<Correction> =>
+    unwrap(http.post(`${H}/grade-marks/${seg(markId)}/changes`, undefined, { form: correctionForm(body) })),
+  correctionAttachment: (id: string): Promise<Blob> => http.get<Blob>(`${H}/grade-corrections/${seg(id)}/attachment`, undefined, { expect: 'blob' }),
   corrections: (q: Q = {}): Promise<Correction[]> => unwrap(http.get(`${H}/grade-corrections`, q)),
   correction: (id: string): Promise<Correction> => unwrap(http.get(`${H}/grade-corrections/${seg(id)}`)),
   approveCorrection: (id: string): Promise<Correction> => unwrap(http.post(`${H}/grade-corrections/${seg(id)}/approve`)),

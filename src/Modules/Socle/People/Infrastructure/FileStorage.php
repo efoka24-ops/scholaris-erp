@@ -20,7 +20,13 @@ final class FileStorage
     /** @return string chemin relatif à la racine */
     public function put(string $tenantId, string $personId, string $extension, string $content): string
     {
-        foreach ([$tenantId, $personId] as $segment) {
+        return $this->putIn($tenantId, 'people', $personId, $extension, $content);
+    }
+
+    /** @return string chemin relatif à la racine : <client>/<domaine>/<propriétaire>/<ulid>.<ext> */
+    public function putIn(string $tenantId, string $area, string $ownerId, string $extension, string $content): string
+    {
+        foreach ([$tenantId, $area, $ownerId] as $segment) {
             if (preg_match('/^[A-Za-z0-9_-]{1,40}$/', $segment) !== 1) {
                 throw new RuntimeException('Segment de chemin invalide.');
             }
@@ -28,7 +34,7 @@ final class FileStorage
         if (preg_match('/^[a-z]{2,4}$/', $extension) !== 1) {
             throw new RuntimeException('Extension invalide.');
         }
-        $relative = $tenantId . '/people/' . $personId . '/' . new Ulid() . '.' . $extension;
+        $relative = $tenantId . '/' . $area . '/' . $ownerId . '/' . new Ulid() . '.' . $extension;
         $absolute = $this->root . '/' . $relative;
         if (!is_dir(dirname($absolute)) && !mkdir(dirname($absolute), 0750, true) && !is_dir(dirname($absolute))) {
             throw new RuntimeException('Impossible de créer le dossier de stockage.');

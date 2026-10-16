@@ -95,6 +95,8 @@ final class HigherPayabilityCheck implements VacationPayabilityCheck
         $tenantId = $hour->tenantId;
         $establishmentId = $hour->establishmentId;
         $log = $this->store->select(SessionLogService::TABLE, $tenantId, $establishmentId, ['vacation_hour_id' => $hour->id], 'id', 1)[0] ?? null;
+        // Heure présentée par l'état des vacations IPES : identifiant de la séance elle-même (séance sans créneau ni heure du socle).
+        $log ??= $this->store->find(SessionLogService::TABLE, $tenantId, $establishmentId, $hour->id);
         if ($log === null && $hour->slotId !== null) {
             $log = $this->store->select(SessionLogService::TABLE, $tenantId, $establishmentId, ['slot_id' => $hour->slotId, 'held_on' => $hour->heldOn], 'id', 1)[0] ?? null;
         }

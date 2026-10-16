@@ -1,10 +1,14 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
 import ErrorNotice from '@/components/ErrorNotice.vue';
-import { PAYMENT_STATUSES, fetchClients, fetchPlatformPayments, type PaymentStatus, type SubscriptionPayment, type Tenant } from '@/api/platform';
+import { PAYMENT_STATUSES, actions, fetchClients, fetchPlatformPayments, type PaymentStatus, type SubscriptionPayment, type Tenant } from '@/api/platform';
 import { useI18n } from '@/i18n';
 import { formatDate, formatDateTime, formatXaf } from '@/lib/format';
 import { channelKey, paymentStatusKey, paymentTone } from './display';
+import { useSensitiveAction } from './useSensitiveAction';
+import ManualPaymentForm from './ManualPaymentForm.vue';
+import TwoFactorPrompt from './TwoFactorPrompt.vue';
+import ReplayNotice from './ReplayNotice.vue';
 
 // Paiements d'abonnement de tous les clients — design : Frais.html / Dashboard.html (tableau à filet noir, montants alignés à droite).
 const { t, locale } = useI18n();
@@ -34,6 +38,19 @@ async function load(more = false): Promise<void> {
   }
 }
 
+const recording = ref(false);
+const cancel = useSensitiveAction();
+const cancelled = ref<string | null>(null);
+
+async function cancelPayment(p: SubscriptionPayment): Promise<void> {
+  const reason = window.prompt(t('pa.pay.cancelReason', { reference: p.reference }))?.trim();
+  if (!reason) return;
+  const res = await cancel.run<SubscriptionPayment>(actions.cancelPayment(p.id, reason), `${t('pa.pay.cancel')} · ${p.reference}`);
+  if (!res) return;
+  cancelled.value = t('pa.done');
+  await load();
+}
+
 watch([status, tenantId], () => load());
 onMounted(async () => {
   void load();
@@ -47,11 +64,19 @@ onMounted(async () => {
 
 <template>
   <div class="page">
-    <header class="page-head">
-      <p class="eyebrow">{{ t('plat.eyebrow') }}</p>
-      <h1>{{ t('plat.pay.title') }}</h1>
-      <p class="lede">{{ t('plat.pay.lede') }}</p>
+    <header class="page-head row row--between">
+      <div>
+        <p class="eyebrow">{{ t('plat.eyebrow') }}</p>
+        <h1>{{ t('plat.pay.title') }}</h1>
+        <p class="lede">{{ t('plat.pay.lede') }}</p>
+      </div>
+      <button type="button" class="btn btn--primary" :aria-expanded="recording" @click="recording = !recording">{{ t('pa.pay.record') }}</button>
     </header>
+    <ReplayNotice @done="load()" />
+    <ManualPaymentForm v-if="recording" :clients="clients" @recorded="load()" />
+    <p v-if="cancelled" class="notice notice--success" role="status">{{ cancelled }}</p>
+    <TwoFactorPrompt :pending="cancel.needsTwoFactor.value" @revalidate="cancel.revalidate" @dismiss="cancel.dismiss" />
+    <ErrorNotice :error="cancel.error.value" />
 
     <div class="row filters">
       <div class="field">
@@ -88,6 +113,7 @@ onMounted(async () => {
             <th scope="col">{{ t('plat.col.period') }}</th>
             <th scope="col">{{ t('plat.col.paidAt') }}</th>
             <th scope="col">{{ t('plat.col.receipt') }}</th>
+            <th scope="col"><span class="sr-only">{{ t('common.actions') }}</span></th>
           </tr>
         </thead>
         <tbody>
@@ -101,7 +127,10 @@ onMounted(async () => {
             <td><span class="tag" :class="paymentTone(p.status) ? `tag--${paymentTone(p.status)}` : ''">{{ t(paymentStatusKey(p.status)) }}</span></td>
             <td>{{ p.covered_from && p.covered_until ? t('apps.periodRange', { from: formatDate(p.covered_from, locale), to: formatDate(p.covered_until, locale) }) : '—' }}</td>
             <td>{{ p.paid_at ? formatDateTime(p.paid_at, locale) : '—' }}</td>
-            <td>{{ p.receipt_number ?? '—' }}</td>
+            <td>{{ p.receipt_number ?? '—' }}<span v-if="p.cancel_reason" class="muted small"><br />{{ p.cancel_reason }}</span></td>
+            <td>
+              <button v-if="p.status === 'pending' || p.status === 'succeeded'" type="button" class="btn btn--quiet" :disabled="cancel.busy.value" @click="cancelPayment(p)">{{ t('pa.pay.cancel') }}</button>
+            </td>
           </tr>
         </tbody>
       </table>

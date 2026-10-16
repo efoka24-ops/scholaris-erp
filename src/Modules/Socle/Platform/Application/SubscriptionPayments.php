@@ -167,11 +167,12 @@ final class SubscriptionPayments
                 $params[] = $value;
             }
         }
+        // Le plus récent d'abord : le curseur désigne le dernier paiement de la page précédente.
         if ($afterId !== null) {
-            $sql .= ' AND id > ?';
+            $sql .= ' AND id < ?';
             $params[] = $afterId;
         }
-        $rows = $this->db->all($sql . ' ORDER BY id LIMIT ' . ($perPage + 1), $params);
+        $rows = $this->db->all($sql . ' ORDER BY id DESC LIMIT ' . ($perPage + 1), $params);
         $next = null;
         if (count($rows) > $perPage) {
             $rows = array_slice($rows, 0, $perPage);
@@ -246,7 +247,7 @@ final class SubscriptionPayments
     }
 
     /** @param array<string, mixed> $payment */
-    private function sendReceipt(array $payment): void
+    public function sendReceipt(array $payment): void
     {
         $tenantId = (string) $payment['tenant_id'];
         $entitlement = $this->entitlements->present($this->entitlements->rowOrFail($tenantId, (string) $payment['app_key']));
@@ -260,7 +261,7 @@ final class SubscriptionPayments
     }
 
     /** @return array<string, mixed> */
-    private function findOrFail(string $tenantId, string $id): array
+    public function findOrFail(string $tenantId, string $id): array
     {
         return $this->db->one('SELECT * FROM platform_payments WHERE tenant_id = ? AND id = ?', [$tenantId, $id]) ?? throw HttpException::notFound('Paiement introuvable.');
     }
@@ -269,7 +270,7 @@ final class SubscriptionPayments
      * @param array<string, mixed> $row
      * @return array<string, mixed>
      */
-    private function present(array $row): array
+    public function present(array $row): array
     {
         return [
             'id' => (string) $row['id'],
@@ -284,6 +285,9 @@ final class SubscriptionPayments
             'covered_from' => $row['covered_from'],
             'covered_until' => $row['covered_until'],
             'paid_at' => $row['paid_at'],
+            'note' => $row['payment_note'] ?? null,
+            'cancelled_at' => $row['cancelled_at'] ?? null,
+            'cancel_reason' => $row['cancel_reason'] ?? null,
             'created_at' => (string) $row['created_at'],
         ];
     }

@@ -88,6 +88,8 @@ async function copyCodes(): Promise<void> {
             <li>{{ t('twofa.step1') }}</li>
             <li>
               {{ t('twofa.step2') }}
+              <img v-if="setup.qr_data_uri" class="qr" :src="setup.qr_data_uri" width="200" height="200" :alt="t('twofa.qrAlt')">
+              <p v-if="setup.qr_data_uri" class="hint">{{ t('twofa.qrHint') }}</p>
               <p class="secret" aria-label="Clé secrète"><code>{{ setup.secret_grouped }}</code></p>
               <a class="btn btn--quiet" :href="setup.otpauth_uri">{{ t('twofa.openApp') }}</a>
             </li>
@@ -152,6 +154,16 @@ async function copyCodes(): Promise<void> {
 .how li {
   margin-bottom: 0.75rem;
 }
+.qr {
+  display: block;
+  width: 200px;
+  height: 200px;
+  margin: 0.75rem 0;
+  background: #fff;
+  border-radius: 8px;
+  image-rendering: pixelated;
+}
+
 .secret {
   font-size: 20px;
   letter-spacing: 0.08em;

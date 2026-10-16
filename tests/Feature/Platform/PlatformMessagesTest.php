@@ -42,7 +42,7 @@ final class PlatformMessagesTest extends TestCase
         $notifier = $this->kernel->container()->get(DirectNotifier::class);
         $rows = $this->kernel->container()->get(ConnectionFactory::class)->pdo()
             ->query("SELECT DISTINCT template_key, locale FROM message_templates WHERE tenant_id = 'platform' AND template_key LIKE 'platform_%'")->fetchAll();
-        self::assertCount(16, $rows, '8 modèles en français et en anglais.');
+        self::assertCount(18, $rows, '9 modèles en français et en anglais (dont l\'invitation d\'un administrateur).');
 
         $variables = [
             'first_name' => 'Awa', 'label' => 'IPES', 'establishment_name' => 'Institut', 'reference' => 'AB12CD34', 'link' => 'https://x.test',

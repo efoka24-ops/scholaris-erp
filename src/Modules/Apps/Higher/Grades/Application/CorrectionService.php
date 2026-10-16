@@ -11,6 +11,7 @@ use Scholaris\Modules\Apps\Higher\Academic\Infrastructure\Store;
 use Scholaris\Modules\Apps\Higher\Grades\Domain\IpesDefaults;
 use Scholaris\Modules\Apps\Higher\Grades\Domain\MarkValue;
 use Scholaris\Modules\Socle\Assessment\Contracts\RecentSecondFactor;
+use Scholaris\Modules\Socle\People\Contracts\AttachmentStore;
 
 /**
  * Correction d'une note verrouillée (EX-NOT-06, RG-NOT-2, API-12) : demande motivée avec pièce par l'enseignant affecté, puis chaîne
@@ -21,8 +22,10 @@ use Scholaris\Modules\Socle\Assessment\Contracts\RecentSecondFactor;
 final class CorrectionService
 {
     public const TABLE = 'hi_grade_corrections';
+    public const ATTACHMENT_AREA = 'higher-grades';
 
     public function __construct(
+        private readonly AttachmentStore $attachments,
         private readonly Store $store,
         private readonly MarkPolicy $policy,
         private readonly AssessmentService $assessments,
@@ -34,10 +37,11 @@ final class CorrectionService
     }
 
     /**
-     * @param array<string, mixed> $v score|absence, reason, attachment_ref, query_id?
+     * @param array<string, mixed> $v score|absence, reason, attachment_ref (nom affiché ou référence papier), query_id?
+     * @param string|null $file contenu de la pièce téléversée (contrôlée et stockée par AttachmentStore), sinon null
      * @return array<string, mixed>
      */
-    public function request(Principal $principal, string $establishmentId, string $markId, array $v): array
+    public function request(Principal $principal, string $establishmentId, string $markId, array $v, ?string $file = null): array
     {
         $tenantId = $principal->tenantId;
         $mark = $this->store->findOrFail(AssessmentService::MARKS, $tenantId, $establishmentId, $markId, 'Note introuvable.');
@@ -61,15 +65,38 @@ final class CorrectionService
         }
         $now = $this->clock->now();
         $id = (string) new Ulid();
-        $this->store->insert(self::TABLE, $tenantId, $establishmentId, [
-            'id' => $id, 'mark_id' => $markId, 'assessment_id' => $row['id'], 'person_id' => $mark['person_id'],
-            'school_id' => $row['school_id'], 'department_id' => $row['department_id'], 'program_id' => $row['program_id'],
-            'old_score' => $mark['score'], 'old_absence' => $mark['absence_code'], 'new_score' => $value->score, 'new_absence' => $value->absence,
-            'reason' => (string) $v['reason'], 'attachment_ref' => (string) $v['attachment_ref'], 'query_id' => $v['query_id'] ?? null,
-            'requested_by' => $principal->userId, 'status' => 'pending', 'approval_step' => 0, 'approval_trail' => '[]', 'decided_at' => null, 'created_at' => $now,
-        ]);
+        $stored = null;
+        if ($file !== null) {
+            try {
+                $stored = $this->attachments->store($tenantId, self::ATTACHMENT_AREA, $id, $file);
+            } catch (\InvalidArgumentException $e) {
+                throw HttpException::validation(['attachment' => [$e->getMessage()]]);
+            }
+        }
+        $reference = trim((string) ($v['attachment_ref'] ?? ''));
+        if ($stored !== null && $reference === '') {
+            $reference = 'piece-' . strtolower($id) . '.' . $stored->extension;
+        }
+        try {
+            $this->store->insert(self::TABLE, $tenantId, $establishmentId, [
+                'id' => $id, 'mark_id' => $markId, 'assessment_id' => $row['id'], 'person_id' => $mark['person_id'],
+                'school_id' => $row['school_id'], 'department_id' => $row['department_id'], 'program_id' => $row['program_id'],
+                'old_score' => $mark['score'], 'old_absence' => $mark['absence_code'], 'new_score' => $value->score, 'new_absence' => $value->absence,
+                'reason' => (string) $v['reason'], 'attachment_ref' => $reference, 'query_id' => $v['query_id'] ?? null,
+                'attachment_path' => $stored?->path, 'attachment_mime' => $stored?->mime, 'attachment_size' => $stored?->size,
+                'requested_by' => $principal->userId, 'status' => 'pending', 'approval_step' => 0, 'approval_trail' => '[]', 'decided_at' => null, 'created_at' => $now,
+            ]);
+        } catch (\Throwable $e) {
+            if ($stored !== null) {
+                $this->attachments->delete($tenantId, $stored->path);
+            }
+
+            throw $e;
+        }
+        $v['attachment_ref'] = $reference;
         $this->policy->audit($principal, 'higher.grades.correction.requested', 'higher_grade_correction', $id, ['score' => $mark['score'], 'absence' => $mark['absence_code']], [
             'score' => $value->score, 'absence' => $value->absence, 'reason' => $v['reason'], 'attachment_ref' => $v['attachment_ref'],
+            'attachment' => $stored === null ? null : ['mime' => $stored->mime, 'size' => $stored->size],
         ]);
 
         return $this->show($tenantId, $establishmentId, $id);
@@ -135,13 +162,37 @@ final class CorrectionService
     /** @return array<string, mixed> */
     public function find(Principal $principal, string $establishmentId, string $id): array
     {
+        return $this->resource($principal->tenantId, $establishmentId, $this->visibleRow($principal, $establishmentId, $id));
+    }
+
+    /**
+     * Pièce téléversée d'une demande, pour les seuls rôles qui voient la demande (sinon 404, comme pour un autre client).
+     *
+     * @return array{content: string, mime: string, filename: string}
+     */
+    public function attachment(Principal $principal, string $establishmentId, string $id): array
+    {
+        $row = $this->visibleRow($principal, $establishmentId, $id);
+        $path = $row['attachment_path'] ?? null;
+        $content = is_string($path) && $path !== '' ? $this->attachments->read($principal->tenantId, $path) : null;
+        if ($content === null) {
+            throw HttpException::notFound('Aucune pièce téléversée pour cette demande.');
+        }
+        $this->policy->audit($principal, 'higher.grades.correction.attachment_downloaded', 'higher_grade_correction', $id, null, null);
+
+        return ['content' => $content, 'mime' => (string) $row['attachment_mime'], 'filename' => 'correction-' . strtolower($id) . '.' . pathinfo((string) $path, PATHINFO_EXTENSION)];
+    }
+
+    /** @return array<string, mixed> demande visible : demandeur, validateur ou lecteur des notes dans le périmètre, sinon 404 */
+    private function visibleRow(Principal $principal, string $establishmentId, string $id): array
+    {
         $row = $this->store->findOrFail(self::TABLE, $principal->tenantId, $establishmentId, $id, 'Demande de correction introuvable.');
         if ($row['requested_by'] !== $principal->userId && !$this->policy->covers($principal, $establishmentId, $row, MarkPolicy::CORRECTION_APPROVE)
             && !$this->policy->covers($principal, $establishmentId, $row, MarkPolicy::READ[0])) {
             throw HttpException::notFound('Demande de correction introuvable.');
         }
 
-        return $this->resource($principal->tenantId, $establishmentId, $row);
+        return $row;
     }
 
     /**
@@ -210,6 +261,10 @@ final class CorrectionService
             'old' => ['score' => $row['old_score'] === null ? null : (float) $row['old_score'], 'absence' => $row['old_absence']],
             'new' => ['score' => $row['new_score'] === null ? null : (float) $row['new_score'], 'absence' => $row['new_absence']],
             'reason' => (string) $row['reason'], 'attachment_ref' => (string) $row['attachment_ref'], 'query_id' => $row['query_id'],
+            'attachment' => ($row['attachment_path'] ?? null) === null ? null : [
+                'mime' => (string) $row['attachment_mime'], 'size' => (int) $row['attachment_size'],
+                'download_path' => '/higher/grade-corrections/' . $row['id'] . '/attachment',
+            ],
             'requested_by' => (string) $row['requested_by'], 'status' => (string) $row['status'], 'approval_step' => $step,
             'next_step' => $row['status'] === 'pending' && isset($chain[$step]) ? ['label' => $chain[$step]['label'], 'role' => $chain[$step]['role'], 'require_recent_2fa' => $chain[$step]['require_recent_2fa']] : null,
             'steps' => array_map(static fn (array $s): string => $s['label'], $chain),
