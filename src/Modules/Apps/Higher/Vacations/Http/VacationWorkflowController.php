@@ -59,6 +59,11 @@ final class VacationWorkflowController
         return $this->responder->json(VacationResources::statement($this->workflow->pay($principal, $establishmentId, VacationController::arg($request), (string) $method, (string) $reference, $paidOn)));
     }
 
+    public function contract(ServerRequestInterface $request): ResponseInterface
+    {
+        return $this->responder->json($this->documents->contract(VacationAccess::principal($request), VacationAccess::establishmentId($request), VacationController::arg($request)), 201);
+    }
+
     public function statementDocument(ServerRequestInterface $request): ResponseInterface
     {
         return $this->responder->json($this->documents->statement(VacationAccess::principal($request), VacationAccess::establishmentId($request), VacationController::arg($request)), 201);

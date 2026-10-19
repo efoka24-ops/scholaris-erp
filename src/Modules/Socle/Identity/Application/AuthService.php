@@ -11,6 +11,7 @@ use Scholaris\Modules\Socle\Identity\Domain\Exception\AccountLocked;
 use Scholaris\Modules\Socle\Identity\Domain\Exception\InvalidCredentials;
 use Scholaris\Modules\Socle\Identity\Domain\Exception\LockedOut;
 use Scholaris\Modules\Socle\Identity\Domain\Identifier;
+use Scholaris\Modules\Socle\Identity\Domain\Role;
 use Scholaris\Modules\Socle\Identity\Domain\User;
 use Scholaris\Modules\Socle\Identity\Infrastructure\PdoAccessTokenRepository;
 use Scholaris\Modules\Socle\Identity\Infrastructure\PdoDeviceRepository;
@@ -39,6 +40,7 @@ final class AuthService
         private readonly AuditLog $audit,
         private readonly Moment $moment,
         private readonly TwoFactorPolicy $twoFactorPolicy,
+        private readonly TotpMatcher $totp,
     ) {
     }
 
@@ -48,6 +50,52 @@ final class AuthService
      * @throws AccountLocked compte bloqué par « Ce n'est pas moi »
      */
     public function login(string $rawIdentifier, string $password, bool $remember, ClientInfo $client): LoginResult
+    {
+        return $this->authenticate(
+            $rawIdentifier,
+            $remember,
+            $client,
+            false,
+            static fn (User $u): bool => $u->passwordHash !== null,
+            fn (User $u): bool => $this->hasher->verify($password, (string) $u->passwordHash),
+            $password,
+        );
+    }
+
+    /**
+     * Connexion de l'administrateur de la plateforme par application d'authentification (Google/Microsoft Authenticator) :
+     * identifiant + code à 6 chiffres, sans mot de passe. Réservée aux comptes du client technique `platform` dont la double
+     * authentification est activée ; le mot de passe reste le recours pour l'enrôlement et la réinitialisation. Un code ne sert
+     * qu'une fois (pas TOTP consommé), mêmes verrouillages que le mot de passe.
+     *
+     * @throws InvalidCredentials identifiant inconnu, compte non éligible ou code faux (même réponse)
+     * @throws LockedOut trop d'échecs récents
+     * @throws AccountLocked compte bloqué par « Ce n'est pas moi »
+     */
+    public function loginWithAuthenticator(string $rawIdentifier, string $code, bool $remember, ClientInfo $client): LoginResult
+    {
+        return $this->authenticate(
+            $rawIdentifier,
+            $remember,
+            $client,
+            true,
+            fn (User $u): bool => $u->tenantId === Role::PLATFORM_TENANT && $u->hasTwoFactor() && $u->status !== User::PENDING
+                && $this->resolver->isPlatformAdmin($u->tenantId, $u->personId),
+            function (User $u) use ($code): bool {
+                $step = $this->totp->matchingStep($u, $code);
+
+                return $step !== null && $this->users->consumeTwoFactorStep($u->tenantId, $u->id, $step);
+            },
+            $code,
+        );
+    }
+
+    /**
+     * @param \Closure(User): bool $eligible comptes pouvant se connecter par cette voie
+     * @param \Closure(User): bool $matches preuve fournie (mot de passe ou code)
+     * @param string $burn valeur passée au hachage factice quand aucun compte n'est éligible (temps de réponse uniforme)
+     */
+    private function authenticate(string $rawIdentifier, bool $remember, ClientInfo $client, bool $passwordless, \Closure $eligible, \Closure $matches, string $burn): LoginResult
     {
         $identifier = Identifier::fromInput($rawIdentifier);
         $key = $identifier->key();
@@ -62,16 +110,16 @@ final class AuthService
             $state['failed_count'] = 0;
         }
 
-        $candidates = array_values(array_filter($this->users->findByIdentifier($identifier), static fn (User $u): bool => $u->passwordHash !== null));
+        $candidates = array_values(array_filter($this->users->findByIdentifier($identifier), $eligible));
         $matched = null;
         foreach ($candidates as $candidate) {
-            if ($this->hasher->verify($password, (string) $candidate->passwordHash)) {
+            if ($matches($candidate)) {
                 $matched = $candidate;
                 break;
             }
         }
         if ($candidates === []) {
-            $this->hasher->burn($password);
+            $this->hasher->burn($burn);
         }
 
         if ($matched === null) {
@@ -113,10 +161,11 @@ final class AuthService
         $sensitive = $this->resolver->hasSensitiveRole($matched->tenantId, $matched->personId);
         $platformAdmin = $this->resolver->isPlatformAdmin($matched->tenantId, $matched->personId);
         // L'administrateur de plateforme n'a jamais de dispense d'appareil de confiance.
-        $needsTwoFactor = $this->twoFactorPolicy->requiredFor($sensitive, $platformAdmin) && ($platformAdmin || !($matched->hasTwoFactor() && $trusted));
+        // Connexion par code d'authentification : la preuve est déjà le second facteur, la session s'ouvre vérifiée.
+        $needsTwoFactor = !$passwordless && $this->twoFactorPolicy->requiredFor($sensitive, $platformAdmin) && ($platformAdmin || !($matched->hasTwoFactor() && $trusted));
         $issued = $this->tokenService->issue($matched->tenantId, $matched->id, $deviceId, $remember, $needsTwoFactor);
         $this->users->touchLogin($matched->tenantId, $matched->id, $now);
-        $this->audit->append($matched->tenantId, $matched->id, 'identity.login', 'user', $matched->id, null, ['new_device' => $newDevice], $client->ip, $client->deviceName());
+        $this->audit->append($matched->tenantId, $matched->id, 'identity.login', 'user', $matched->id, null, ['new_device' => $newDevice, 'method' => $passwordless ? 'authenticator' : 'password'], $client->ip, $client->deviceName());
 
         if ($newDevice) {
             $this->notifier->newDevice($matched, $client->deviceName(), $client->location, $now);

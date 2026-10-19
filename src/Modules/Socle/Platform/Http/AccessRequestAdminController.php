@@ -9,6 +9,7 @@ use Psr\Http\Message\ServerRequestInterface;
 use Scholaris\Core\Http\JsonResponder;
 use Scholaris\Core\Http\ListQuery;
 use Scholaris\Modules\Socle\Platform\Application\AccessRequestService;
+use Scholaris\Modules\Socle\Platform\Application\UserAccessCodes;
 
 /** Traitement des demandes d'accès par l'administrateur de plateforme : liste, détail, accepter, refuser, demander un complément. */
 final class AccessRequestAdminController
@@ -17,6 +18,7 @@ final class AccessRequestAdminController
         private readonly JsonResponder $responder,
         private readonly PlatformGuard $guard,
         private readonly AccessRequestService $requests,
+        private readonly UserAccessCodes $codes,
     ) {
     }
 
@@ -50,13 +52,22 @@ final class AccessRequestAdminController
     public function accept(ServerRequestInterface $request): ResponseInterface
     {
         $principal = $this->guard->platformAdmin($request, 'platform.requests.decide', true);
-        $input = Input::of($request, ['tenant_id', 'force_reason']);
+        $input = Input::of($request, ['tenant_id', 'force_reason', 'share_send']);
         $tenantId = $input->text('tenant_id', 1, 40, false, '/^[A-Za-z0-9_\-]+$/');
         // F2 : motif obligatoire pour forcer l'ouverture d'une application à venir ou retirée (tracé dans l'audit).
         $forceReason = $input->longText('force_reason', 1000);
+        // Partage de l'accès de l'administrateur invité : code d'activation rendu une fois, envoyé si demandé.
+        $send = $input->choice('share_send', UserAccessCodes::SEND, false) ?? 'none';
         $input->validate();
 
-        return $this->responder->json(['data' => $this->requests->accept(PlatformGuard::param($request, 'id'), $tenantId, $principal->userId, PlatformGuard::ip($request), $forceReason)]);
+        $ip = PlatformGuard::ip($request);
+        $accepted = $this->requests->accept(PlatformGuard::param($request, 'id'), $tenantId, $principal->userId, $ip, $forceReason);
+        $administrator = $accepted['administrator'] ?? null;
+        $accepted['access'] = is_array($administrator) && is_string($accepted['tenant_id'] ?? null)
+            ? $this->codes->issue($accepted['tenant_id'], (string) $accepted['institution_name'], (string) $administrator['user_id'], $send, $principal->userId, $ip, false)
+            : null;
+
+        return $this->responder->json(['data' => $accepted])->withHeader('Cache-Control', 'no-store');
     }
 
     /** POST /platform/access-requests/{id}/reject { reason } (motif obligatoire, transmis au demandeur) */

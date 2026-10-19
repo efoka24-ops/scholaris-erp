@@ -18,6 +18,7 @@ use Scholaris\Modules\Socle\Identity\Domain\User;
 use Scholaris\Modules\Socle\Identity\Infrastructure\PdoAccessTokenRepository;
 use Scholaris\Modules\Socle\Identity\Infrastructure\PdoDeviceRepository;
 use Scholaris\Modules\Socle\Identity\Infrastructure\PdoRoleAssignmentRepository;
+use Scholaris\Modules\Socle\Identity\Infrastructure\PdoUserRepository;
 
 /** Comptes d'administration gérés par la plateforme (super_admin d'un client, platform_admin). Voir le contrat. */
 final class AccountAdministrationService implements AccountAdministration
@@ -32,6 +33,8 @@ final class AccountAdministrationService implements AccountAdministration
         private readonly PdoDeviceRepository $devices,
         private readonly AuditLog $audit,
         private readonly Moment $moment,
+        private readonly PdoUserRepository $users,
+        private readonly AccessCodeIssuer $issuer,
     ) {
     }
 
@@ -114,6 +117,68 @@ final class AccountAdministrationService implements AccountAdministration
         $this->tokens->revokeForUser($tenantId, $userId, $now);
         $this->devices->revokeAll($tenantId, $userId, $now);
         $this->audit->append($tenantId, $actorId, 'identity.access_reset', 'user', $userId, ['status' => $holder['status']], ['status' => User::PENDING, 'by' => 'platform']);
+    }
+
+    public function users(string $tenantId): array
+    {
+        if ($tenantId === Role::PLATFORM_TENANT) {
+            throw HttpException::notFound();
+        }
+        $pdo = $this->connections->pdo();
+        $statement = $pdo->prepare(
+            'SELECT u.id AS user_id, u.person_id, p.first_name, p.last_name, u.phone, u.email, u.locale, u.status, u.two_factor_confirmed_at, u.last_login_at'
+            . ' FROM users u JOIN people p ON p.tenant_id = u.tenant_id AND p.id = u.person_id'
+            . ' WHERE u.tenant_id = ? ORDER BY p.last_name, p.first_name, u.id',
+        );
+        $statement->execute([$tenantId]);
+        $roles = $pdo->prepare('SELECT DISTINCT person_id, role FROM role_assignments WHERE tenant_id = ? AND (ends_at IS NULL OR ends_at > ?) ORDER BY role');
+        $roles->execute([$tenantId, $this->moment->iso()]);
+        $byPerson = [];
+        foreach ($roles->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $byPerson[(string) $row['person_id']][] = (string) $row['role'];
+        }
+
+        return array_map(static fn (array $row): array => [
+            'user_id' => (string) $row['user_id'],
+            'person_id' => (string) $row['person_id'],
+            'first_name' => (string) $row['first_name'],
+            'last_name' => (string) $row['last_name'],
+            'phone' => $row['phone'] === null ? null : (string) $row['phone'],
+            'email' => $row['email'] === null ? null : (string) $row['email'],
+            'locale' => (string) $row['locale'],
+            'status' => (string) $row['status'],
+            'roles' => array_values(array_unique($byPerson[(string) $row['person_id']] ?? [])),
+            'two_factor_enabled' => $row['two_factor_confirmed_at'] !== null,
+            'last_login_at' => $row['last_login_at'] === null ? null : (string) $row['last_login_at'],
+        ], array_values($statement->fetchAll(PDO::FETCH_ASSOC)));
+    }
+
+    public function issueAccessCode(string $tenantId, string $userId, string $actorId): array
+    {
+        if ($tenantId === Role::PLATFORM_TENANT && $userId === $actorId) {
+            throw HttpException::conflict('Vous ne pouvez pas créer de code d\'accès pour votre propre compte.');
+        }
+
+        return $this->issuer->issue($this->account($tenantId, $userId), $actorId);
+    }
+
+    public function isOpenAccessCode(string $tenantId, string $userId, string $code): bool
+    {
+        return preg_match('/^\d{6}$/', $code) === 1 && $this->issuer->isOpen($this->account($tenantId, $userId), $code);
+    }
+
+    /** Compte du client désigné (sur la plateforme : administrateur de plateforme seulement), sinon 404. */
+    private function account(string $tenantId, string $userId): User
+    {
+        $user = $this->users->find($tenantId, $userId);
+        if ($user === null) {
+            throw HttpException::notFound('Utilisateur introuvable dans ce client.');
+        }
+        if ($tenantId === Role::PLATFORM_TENANT) {
+            $this->holder($tenantId, Role::PLATFORM_ADMIN, $userId);
+        }
+
+        return $user;
     }
 
     private function assertRole(string $tenantId, string $role): void

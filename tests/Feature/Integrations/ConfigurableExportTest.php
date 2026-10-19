@@ -28,6 +28,8 @@ final class ConfigurableExportTest extends AppTestCase
         $this->settings = new ArraySettings();
         $this->boot([
             SettingsReader::class => $this->settings,
+            // Les types de test portent les clés des types réels de Higher\NationalExams : on neutralise ceux-ci.
+            'integrations.export_types.higher_nationalexams' => [],
             'integrations.export_types.higher' => [
                 new ConfiguredExportType('minesup.bts', 'Liste MINESUP BTS', self::FIELDS, [
                     'Matricule' => 'matricule', 'Nom' => 'last_name', 'Prénoms' => 'first_names', 'Naissance' => 'birth_date',

@@ -358,8 +358,8 @@ paths:
           description: "Demande non archivée ou ayant créé un client"
   /api/v1/platform/access-requests/{id}/accept:
     post:
-      summary: "Accepte ({ tenant_id?, force_reason? } ; tenant_id pour rattacher à un client existant) : crée client et établissement, ouvre l'application en essai de 90 jours, invite le premier administrateur (activation par code) (2FA récente)"
-      description: "Une application à venir (coming_soon) ou retirée n'est pas ouverte en essai : refus 422 sur app_key, sauf si l'administrateur force explicitement avec un motif force_reason (tracé dans l'audit)."
+      summary: "Accepte ({ tenant_id?, force_reason?, share_send?: none|email|sms } ; tenant_id pour rattacher à un client existant) : crée client et établissement, ouvre l'application en essai de 90 jours, invite le premier administrateur (activation par code) (2FA récente)"
+      description: "Une application à venir (coming_soon) ou retirée n'est pas ouverte en essai : refus 422 sur app_key, sauf si l'administrateur force explicitement avec un motif force_reason (tracé dans l'audit). Pour un nouveau client, la réponse porte data.access : code d'activation de l'administrateur invité (rendu une seule fois, Cache-Control no-store) et récapitulatif à partager (même forme que POST /platform/clients/{tenant}/users/{user}/access-code) ; share_send l'envoie aussitôt (canal indisponible signalé delivery.status = unavailable, échec = failed, sans annuler l'acceptation)."
       security:
         - bearer: []
       parameters:
@@ -369,7 +369,7 @@ paths:
           schema: {type: string}
       responses:
         '200':
-          description: "Demande acceptée, droit d'usage et administrateur invité"
+          description: "Demande acceptée, droit d'usage, administrateur invité et data.access (ou null si rattachement à un client existant)"
         '403':
           description: "Refusé ou 2FA récente requise"
         '404':
@@ -1034,3 +1034,117 @@ paths:
           description: "Réservé à l'administrateur de plateforme"
         '422':
           description: "Filtre invalide"
+  /api/v1/platform/clients/{tenant}/users:
+    get:
+      summary: "Comptes du client, en lecture seule, pour dépanner leur accès : identité, e-mail, téléphone, statut, rôles, 2FA, dernière connexion (aucune donnée métier)"
+      security:
+        - bearer: []
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Comptes ({ data: [{ id, person_id, first_name, last_name, email, phone, status, roles, two_factor_enabled, last_login_at }] })"
+        '403':
+          description: "Réservé à l'administrateur de plateforme"
+        '404':
+          description: "Client introuvable (le client technique platform n'est pas listé)"
+  /api/v1/platform/clients/{tenant}/users/{user}/access-code:
+    post:
+      summary: "Crée un code d'accès à usage unique pour un compte du client ({ send?: none|email|sms }, none par défaut) : activation si le compte est en attente, réinitialisation s'il est actif ; même mécanisme que /auth/activation (le code se saisit tel quel sur /activation ou /mot-de-passe-oublie) ; codes précédents invalidés ; code en clair rendu une seule fois (Cache-Control no-store), jamais stocké ni journalisé ; 5 par heure et par compte (2FA récente)"
+      description: "Réponse { data: { code, purpose: activation|reset, expires_at, expires_in, login, delivery: { channel: none|email|sms, status: not_sent|sent|failed, masked_to }, share: { establishment_name, login, login_url, activation_url, locale, channels, message: { subject, text, sms } } } }. Le message (FR/EN selon la langue du compte) est prêt à copier ; le SMS (≤ 480 caractères) n'est proposé que pour un mobile camerounais (+237 6…). Un envoi en échec n'annule pas le code."
+      security:
+        - bearer: []
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema: {type: string}
+        - name: user
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '201':
+          description: "Code créé, récapitulatif et résultat de l'envoi"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Client ou compte introuvable (un compte d'un autre client est introuvable)"
+        '409':
+          description: "Compte bloqué, ou client archivé"
+        '422':
+          description: "Canal inconnu, ou compte sans mobile camerounais (sms) ou sans e-mail (email)"
+        '429':
+          description: "Trop de codes pour ce compte (Retry-After)"
+  /api/v1/platform/clients/{tenant}/users/{user}/access-code/send:
+    post:
+      summary: "Renvoie le code encore ouvert du compte, sans le régénérer ({ channel: email|sms, code }) : même message prêt que la création (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema: {type: string}
+        - name: user
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "{ data: { delivery: { channel, status: sent|failed, masked_to } } }"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Client ou compte introuvable"
+        '409':
+          description: "Client archivé"
+        '422':
+          description: "Canal indisponible pour ce compte, ou code expiré ou remplacé"
+  /api/v1/platform/administrators/{user}/access-code:
+    post:
+      summary: "Crée un code d'accès à usage unique pour un autre administrateur de plateforme ({ send?: none|email|sms }) ; jamais pour son propre compte ; mêmes règles et même réponse que pour un compte de client (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - name: user
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '201':
+          description: "Code créé (même forme que pour un compte de client)"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Administrateur de plateforme introuvable"
+        '409':
+          description: "Son propre compte, ou compte bloqué"
+        '422':
+          description: "Canal inconnu ou contact manquant"
+        '429':
+          description: "Trop de codes pour ce compte (Retry-After)"
+  /api/v1/platform/administrators/{user}/access-code/send:
+    post:
+      summary: "Renvoie le code encore ouvert d'un autre administrateur de plateforme ({ channel: email|sms, code }) (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - name: user
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Résultat de l'envoi"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Administrateur de plateforme introuvable"
+        '409':
+          description: "Son propre compte"
+        '422':
+          description: "Canal indisponible, ou code expiré ou remplacé"

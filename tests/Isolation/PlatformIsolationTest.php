@@ -92,8 +92,8 @@ final class PlatformIsolationTest extends PlatformTestCase
         self::assertSame(403, $this->api('GET', '/me/applications', self::ROOT)[0]->getStatusCode());
 
         $detail = $this->api('GET', '/platform/clients/' . $this->a['tenant'], self::ROOT)[1]['data'];
-        self::assertSame(['id', 'name', 'status', 'created_at', 'establishments', 'applications'], array_keys($detail), 'Identité, établissements et abonnements seulement.');
-        self::assertSame(['id', 'name', 'type'], array_keys($detail['establishments'][0]));
+        self::assertSame(['id', 'name', 'status', 'state', 'state_reason', 'suspended_at', 'archived_at', 'contact', 'city', 'region', 'locale', 'access_request_id', 'created_at', 'establishments', 'applications'], array_keys($detail), 'Identité, contact, état, établissements et abonnements seulement (aucune donnée métier).');
+        self::assertSame(['id', 'name', 'type', 'closed_at', 'created_at'], array_keys($detail['establishments'][0]));
     }
 
     public function testUnClientNeVoitNiNePaieLesAbonnementsDUnAutre(): void

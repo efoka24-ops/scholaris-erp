@@ -11,7 +11,9 @@ import { higherExtraFr } from './higher-extra-fr';
 import { higherInternshipsFr } from './higher-internships-fr';
 import { higherVacationsFr } from './higher-vacations-fr';
 import { higherNationalExamsFr } from './higher-nationalexams-fr';
+import { higherHelpFr } from './higher-help-fr';
 import { higherDeliberationFr } from './higher-deliberation-fr';
+import { higherDashboardsFr } from './higher-dashboards-fr';
 
 export const fr = {
   ...adminFr,
@@ -25,7 +27,9 @@ export const fr = {
   ...higherInternshipsFr,
   ...higherVacationsFr,
   ...higherNationalExamsFr,
+  ...higherHelpFr,
   ...higherDeliberationFr,
+  ...higherDashboardsFr,
   'nav.reportcards': "Bulletins",
   'reportcards.eyebrow': "Résultats",
   'reportcards.title': "Bulletins de notes",
@@ -379,6 +383,13 @@ export const fr = {
   'twofa.step1': "Installez une application d'authentification sur votre téléphone.",
   'twofa.step2': 'Saisissez cette clé dans l\'application, ou ouvrez-la directement :',
   'twofa.step3': "Saisissez ci-dessous le code à 6 chiffres que l'application affiche.",
+  'login.authCode': "Code de l'application d'authentification",
+  'login.authCodeRequired': 'Saisissez le code à 6 chiffres affiché par votre application.',
+  'login.authCodeHint': 'Ouvrez Google Authenticator ou Microsoft Authenticator : le code change toutes les 30 secondes.',
+  'login.authText': 'Administrateur de la plateforme ?',
+  'login.authUse': "Me connecter avec l'application d'authentification",
+  'login.authBackText': 'Vous préférez le mot de passe ?',
+  'login.authBack': 'Utiliser mon mot de passe',
   'twofa.qrAlt': "Code QR à scanner avec votre application d'authentification",
   'twofa.qrHint': 'Scannez ce code QR avec votre application (Google Authenticator, Microsoft Authenticator…). Sinon, saisissez la clé ci-dessous.',
   'twofa.openApp': "Ouvrir dans l'application",

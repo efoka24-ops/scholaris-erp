@@ -21,6 +21,7 @@ return static function (RouteRegistry $routes): void {
     $beforeTwoFactor = ['tenant' => false, 'pre_2fa' => true];
 
     $routes->add('POST', '/auth/login', [AuthController::class, 'login'], $public);
+    $routes->add('POST', '/auth/login-authenticator', [AuthController::class, 'loginAuthenticator'], $public);
     $routes->add('POST', '/auth/activation/request', [ActivationController::class, 'request'], $public);
     $routes->add('POST', '/auth/activation/verify', [ActivationController::class, 'verify'], $public);
     $routes->add('POST', '/auth/activation/password', [ActivationController::class, 'password'], $public);

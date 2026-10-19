@@ -284,7 +284,7 @@ final class AccessRequestService
 
         return $this->show($id) + [
             'entitlement' => $entitlement,
-            'administrator' => $administrator === null ? null : ['person_id' => $administrator['person_id'], 'login' => $administrator['login'], 'status' => 'pending_activation'],
+            'administrator' => $administrator === null ? null : ['person_id' => $administrator['person_id'], 'user_id' => $administrator['user_id'], 'login' => $administrator['login'], 'status' => 'pending_activation'],
         ];
     }
 

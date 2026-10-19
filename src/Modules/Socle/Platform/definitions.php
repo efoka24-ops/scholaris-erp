@@ -6,6 +6,7 @@ use function DI\autowire;
 
 use Scholaris\Modules\Socle\Platform\Console\AdminCreateCommand;
 use Scholaris\Modules\Socle\Platform\Console\BillingRunCommand;
+use Scholaris\Modules\Socle\Platform\Console\ClientCreateCommand;
 use Scholaris\Modules\Socle\Platform\Contracts\ApplicationAccess;
 use Scholaris\Modules\Socle\Platform\Infrastructure\PdoApplicationAccess;
 
@@ -19,4 +20,5 @@ return [
 
     'console.command.platform:admin-create' => autowire(AdminCreateCommand::class),
     'console.command.platform:billing-run' => autowire(BillingRunCommand::class),
+    'console.command.' . ClientCreateCommand::NAME => autowire(ClientCreateCommand::class),
 ];

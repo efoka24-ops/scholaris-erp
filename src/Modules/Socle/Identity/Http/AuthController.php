@@ -14,6 +14,7 @@ use Scholaris\Modules\Socle\Identity\Application\TokenService;
 use Scholaris\Modules\Socle\Identity\Domain\Exception\AccountLocked;
 use Scholaris\Modules\Socle\Identity\Domain\Exception\InvalidCredentials;
 use Scholaris\Modules\Socle\Identity\Domain\Exception\LockedOut;
+use Scholaris\Modules\Socle\Identity\Http\Requests\AuthenticatorLoginRequest;
 use Scholaris\Modules\Socle\Identity\Http\Requests\LoginRequest;
 use Scholaris\Modules\Socle\Identity\Http\Resources\IdentityResource;
 use Scholaris\Modules\Socle\Identity\Infrastructure\PdoPeopleRepository;
@@ -69,6 +70,49 @@ final class AuthController
             );
         }
 
+        return $this->loginResponse($result, $input->web);
+    }
+
+    /**
+     * POST /auth/login-authenticator : connexion de l'administrateur de la plateforme par identifiant + code de l'application
+     * d'authentification (sans mot de passe). Mêmes verrouillages et réponses que la connexion par mot de passe.
+     */
+    public function loginAuthenticator(ServerRequestInterface $request): ResponseInterface
+    {
+        $input = AuthenticatorLoginRequest::from($request);
+        try {
+            $result = $this->auth->loginWithAuthenticator($input->identifier, $input->code, $input->remember, ClientInfo::fromRequest($request, $input->deviceId));
+        } catch (InvalidCredentials $e) {
+            $left = $e->attemptsLeft;
+
+            return $this->problems->build(
+                $request,
+                401,
+                'Identifiants incorrects',
+                sprintf('Identifiant ou code incorrect. Il vous reste %d %s avant un verrouillage de 15 minutes.', $left, $left > 1 ? 'essais' : 'essai'),
+                'invalid-credentials',
+                ['attempts_left' => $left],
+                ['WWW-Authenticate' => 'Bearer'],
+            );
+        } catch (LockedOut $e) {
+            return $this->problems->build(
+                $request,
+                423,
+                'Compte verrouillé',
+                'Trop d\'échecs de connexion. Votre compte est verrouillé pendant 15 minutes.',
+                'locked',
+                ['attempts_left' => 0, 'locked_until' => $e->lockedUntil],
+                ['Retry-After' => (string) max(1, $e->retryAfter)],
+            );
+        } catch (AccountLocked) {
+            return $this->problems->build($request, 423, 'Compte bloqué', 'Votre compte est bloqué. Réinitialisez votre mot de passe pour le rouvrir.', 'account-locked');
+        }
+
+        return $this->loginResponse($result, $input->web);
+    }
+
+    private function loginResponse(\Scholaris\Modules\Socle\Identity\Application\LoginResult $result, bool $web): ResponseInterface
+    {
         $person = $this->people->find($result->user->tenantId, $result->user->personId);
         $payload = [
             'token_type' => 'Bearer',
@@ -78,7 +122,7 @@ final class AuthController
             'two_factor_setup_required' => $result->twoFactorSetupRequired,
             'user' => IdentityResource::user($result->user, $person),
         ];
-        if (!$input->web) {
+        if (!$web) {
             $payload['token'] = $result->token;
 
             return $this->responder->json($payload);

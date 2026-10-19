@@ -78,7 +78,7 @@ final class InternshipFakes implements StudentDirectory, UserPersonLink, PersonD
 
     public function enrolledIn(string $tenantId, string $establishmentId, string $structureId, string $academicYearId): array
     {
-        return [];
+        return array_values(array_filter($this->enrolments, static fn (EnrolmentInfo $e): bool => $e->academicYearId === $academicYearId && ($e->groupId === $structureId || ($e->groupId === null && $e->levelId === $structureId))));
     }
 
     public function sharesWithGuarantor(string $tenantId, string $establishmentId, string $personId): bool

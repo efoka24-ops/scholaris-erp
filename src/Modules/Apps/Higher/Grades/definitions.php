@@ -8,6 +8,7 @@ use function DI\get;
 use Scholaris\Modules\Apps\Higher\Grades\Application\GradesClock;
 use Scholaris\Modules\Apps\Higher\Grades\Console\GradingRemindersCommand;
 use Scholaris\Modules\Apps\Higher\Grades\Contracts\GradeBook;
+use Scholaris\Modules\Apps\Higher\Grades\Documents\GradeQueryDocumentTypes;
 use Scholaris\Modules\Apps\Higher\Grades\Domain\IpesDefaults;
 use Scholaris\Modules\Apps\Higher\Grades\Infrastructure\GradesMarkSource;
 use Scholaris\Modules\Apps\Higher\Grades\Infrastructure\PdoGradeBook;
@@ -25,6 +26,7 @@ return [
     GradesClock::class => autowire(),
     'higher.curriculum.grade_probes.grades' => [PdoGradeBook::class],
     'higher.deliberation.mark_sources.grades' => [GradesMarkSource::class],
+    'higher.document_types.grades' => [GradeQueryDocumentTypes::class],
     'higher.grades.assessment_settings' => IpesDefaults::SETTINGS,
     'console.command.' . GradingRemindersCommand::NAME => autowire(GradingRemindersCommand::class),
 ];

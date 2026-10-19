@@ -20,6 +20,7 @@ return static function (HigherRoutes $routes): void {
     $routes->post('/vacations/statements/{id}/approve', [VacationWorkflowController::class, 'approve']);
     $routes->post('/vacations/statements/{id}/reject', [VacationWorkflowController::class, 'reject']);
     $routes->post('/vacations/statements/{id}/pay', [VacationWorkflowController::class, 'pay']);
+    $routes->post('/vacations/statements/{id}/contract', [VacationWorkflowController::class, 'contract']);
     $routes->post('/vacations/statements/{id}/statement-document', [VacationWorkflowController::class, 'statementDocument']);
     $routes->post('/vacations/statements/{id}/payslip', [VacationWorkflowController::class, 'payslip']);
 };

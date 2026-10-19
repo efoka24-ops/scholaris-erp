@@ -22,9 +22,19 @@ final class VacationDocuments
     }
 
     /** @return array<string, mixed> document émis */
-    public function statement(Principal $principal, string $establishmentId, string $id): array
+    public function contract(Principal $principal, string $establishmentId, string $id): array
     {
-        $row = $this->workflow->writable($principal, $establishmentId, $id, VacationPermissions::STATEMENT_DOCUMENT, [VacationStatus::DRAFT, VacationStatus::SCHOOL_VALIDATED, VacationStatus::APPROVED, VacationStatus::PAID]);
+        $row = $this->workflow->writable($principal, $establishmentId, $id, VacationPermissions::STATEMENT_DOCUMENT, [VacationStatus::APPROVED, VacationStatus::PAID]);
+
+        return $this->issue($principal, $establishmentId, $row, VacationDocumentTypes::CONTRACT, 'contract_document_id', [
+            'hours_summary' => $this->summary($row),
+            'hourly_rate' => $row['hourly_rate'] === null ? 'variable' : VacationNotices::amount((int) $row['hourly_rate']),
+        ]);
+    }
+
+    /** @param array<string, mixed> $row */
+    private function summary(array $row): string
+    {
         $kinds = [];
         foreach (['cm' => 'CM', 'td' => 'TD', 'tp' => 'TP', 'other' => 'Autre'] as $kind => $label) {
             if ((int) $row[$kind . '_minutes'] > 0) {
@@ -32,8 +42,16 @@ final class VacationDocuments
             }
         }
 
+        return implode(' ; ', $kinds);
+    }
+
+    /** @return array<string, mixed> document émis */
+    public function statement(Principal $principal, string $establishmentId, string $id): array
+    {
+        $row = $this->workflow->writable($principal, $establishmentId, $id, VacationPermissions::STATEMENT_DOCUMENT, [VacationStatus::DRAFT, VacationStatus::SCHOOL_VALIDATED, VacationStatus::APPROVED, VacationStatus::PAID]);
+
         return $this->issue($principal, $establishmentId, $row, VacationDocumentTypes::STATEMENT, 'statement_document_id', [
-            'hours_summary' => implode(' ; ', $kinds),
+            'hours_summary' => $this->summary($row),
             'hourly_rate' => $row['hourly_rate'] === null ? 'variable' : VacationNotices::amount((int) $row['hourly_rate']),
         ]);
     }

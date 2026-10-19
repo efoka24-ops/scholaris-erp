@@ -15,6 +15,7 @@ return [
     AttendanceSummaryProvider::class => get(PdoAttendanceDirectory::class),
     PdoAttendanceDirectory::class => autowire(),
     \Scholaris\Modules\Socle\Attendance\Contracts\AttendanceTotals::class => get(PdoAttendanceDirectory::class),
+    \Scholaris\Modules\Socle\Attendance\Contracts\UnitAttendanceTotals::class => \DI\autowire(\Scholaris\Modules\Socle\Attendance\Infrastructure\PdoUnitAttendanceTotals::class),
     // Contrat IPES (D19, D20) : assiduité par élément constitutif.
     \Scholaris\Modules\Socle\Attendance\Contracts\UnitAttendanceSummaryProvider::class => get(\Scholaris\Modules\Socle\Attendance\Application\UnitAssiduity::class),
 

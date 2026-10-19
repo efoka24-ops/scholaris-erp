@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Scholaris\Core\Http\RouteRegistry;
+use Scholaris\Modules\Socle\Platform\Http\AccessCodeAdminController;
 use Scholaris\Modules\Socle\Platform\Http\AccessRequestAdminController;
 use Scholaris\Modules\Socle\Platform\Http\AdministratorsAdminController;
 use Scholaris\Modules\Socle\Platform\Http\AuditAdminController;
@@ -50,6 +51,11 @@ return static function (RouteRegistry $routes): void {
     $routes->add('POST', '/platform/clients/{tenant}/administrators/{user}/block', [AdministratorsAdminController::class, 'block'], $platform);
     $routes->add('POST', '/platform/clients/{tenant}/administrators/{user}/unblock', [AdministratorsAdminController::class, 'unblock'], $platform);
     $routes->add('POST', '/platform/clients/{tenant}/administrators/{user}/reset-access', [AdministratorsAdminController::class, 'reset'], $platform);
+    $routes->add('GET', '/platform/clients/{tenant}/users', [AccessCodeAdminController::class, 'users'], $platform);
+    $routes->add('POST', '/platform/clients/{tenant}/users/{user}/access-code', [AccessCodeAdminController::class, 'issue'], $platform);
+    $routes->add('POST', '/platform/clients/{tenant}/users/{user}/access-code/send', [AccessCodeAdminController::class, 'send'], $platform);
+    $routes->add('POST', '/platform/administrators/{user}/access-code', [AccessCodeAdminController::class, 'issue'], $platform);
+    $routes->add('POST', '/platform/administrators/{user}/access-code/send', [AccessCodeAdminController::class, 'send'], $platform);
     $routes->add('GET', '/platform/administrators', [AdministratorsAdminController::class, 'index'], $platform);
     $routes->add('POST', '/platform/administrators', [AdministratorsAdminController::class, 'store'], $platform);
     $routes->add('POST', '/platform/administrators/{user}/resend-invitation', [AdministratorsAdminController::class, 'resend'], $platform);

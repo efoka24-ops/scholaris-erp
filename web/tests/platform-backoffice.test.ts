@@ -196,3 +196,101 @@ describe('back-office de la plateforme', () => {
     expect(calls.at(-1)?.query['filter[action]']).toBe('platform.client');
   });
 });
+
+// --- Code d'accès à usage unique (dépannage et partage de l'accès) -----------------------------------------------------
+const problem403 = () =>
+  new Response(JSON.stringify({ type: 'https://api.scholaris.cm/errors/two-factor-recent-required', title: 'Erreur', status: 403, detail: 'Validez à nouveau votre double authentification pour cette action.', trace_id: 'TR' }), {
+    status: 403,
+    headers: { 'Content-Type': 'application/problem+json' },
+  });
+
+const accessCode = (over: Record<string, unknown> = {}) => ({
+  code: '482915', purpose: 'activation', expires_at: '2026-10-19T10:05:00+01:00', expires_in: 300, login: 'paul@foka.test',
+  delivery: { channel: 'none', status: 'not_sent', masked_to: null },
+  share: {
+    establishment_name: 'ETS FOKA', login: 'paul@foka.test', login_url: 'https://app.scholaris.cm/connexion', activation_url: 'https://app.scholaris.cm/activation', locale: 'fr',
+    channels: ['email', 'sms'], message: { subject: 'SCHOLARIS : votre accès à ETS FOKA', text: 'Bonjour Paul, code 482915 sur https://app.scholaris.cm/activation', sms: 'SCHOLARIS ETS FOKA : code 482915' },
+  },
+  ...over,
+});
+
+const clientUser = { id: 'U7', person_id: 'P7', first_name: 'Awa', last_name: 'Ngo', email: 'awa@foka.test', phone: '+237690123456', status: 'active', roles: ['teacher'], two_factor_enabled: false, last_login_at: null };
+
+describe('back-office : code d\'accès', () => {
+  it('fiche client : 2FA récente exigée (jamais mise de côté), puis code affiché, copié, envoi SMS en échec signalé, renvoi par e-mail', async () => {
+    signInPlatform();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    let attempts = 0;
+    const calls = mockApi({
+      'GET /platform/clients/T1': { data: client() },
+      'GET /platform/applications': { data: [] },
+      'GET /platform/clients/T1/administrators': { data: [] },
+      'GET /platform/clients/T1/users': { data: [clientUser] },
+      'POST /platform/clients/T1/users/U7/access-code': () => (++attempts === 1 ? problem403() : { data: accessCode({ purpose: 'reset', delivery: { channel: 'sms', status: 'failed', masked_to: '+2376••••3456' } }) }),
+      'POST /platform/clients/T1/users/U7/access-code/send': { data: { delivery: { channel: 'email', status: 'sent', masked_to: 'a•••@foka.test' } } },
+    });
+    const { wrapper } = await mountView(PlatformClientView, { tenant: 'T1' }, '/platform/clients/T1');
+    expect(wrapper.text()).toContain('Awa Ngo');
+    expect(wrapper.text()).toContain('teacher');
+
+    await wrapper.get('[data-test="user-access-code"]').trigger('click');
+    await wrapper.findAll('input[type="radio"]').find((i) => (i.element as HTMLInputElement).value === 'sms')!.setValue(true);
+    await wrapper.findAll('form').at(-1)!.trigger('submit');
+    await flushPromises();
+    expect(wrapper.text()).toContain('double authentification');
+    expect(sessionStorage.getItem('scholaris.platform.pending-action')).toBeNull();
+
+    await wrapper.findAll('form').at(-1)!.trigger('submit');
+    await flushPromises();
+    expect(calls.filter((c) => c.path === '/platform/clients/T1/users/U7/access-code').at(-1)?.body).toEqual({ send: 'sms' });
+    expect(wrapper.get('[data-test="access-code"]').text()).toBe('482915');
+    expect(wrapper.text()).toContain('Code de réinitialisation du mot de passe');
+    expect(wrapper.get('[data-test="delivery"]').text()).toContain('a échoué');
+    expect(wrapper.text()).toContain('https://app.scholaris.cm/connexion');
+
+    await wrapper.get('[data-test="copy-code"]').trigger('click');
+    await flushPromises();
+    expect(writeText).toHaveBeenCalledWith('482915');
+    expect(wrapper.text()).toContain('Copié dans le presse-papiers.');
+    await wrapper.get('[data-test="copy-message"]').trigger('click');
+    await flushPromises();
+    expect(writeText).toHaveBeenLastCalledWith('Bonjour Paul, code 482915 sur https://app.scholaris.cm/activation');
+
+    await wrapper.get('[data-test="send-email"]').trigger('click');
+    await flushPromises();
+    expect(calls.find((c) => c.path.endsWith('/access-code/send'))?.body).toEqual({ channel: 'email', code: '482915' });
+    expect(wrapper.get('[data-test="delivery"]').text()).toContain('a•••@foka.test');
+  });
+
+  it('copie : repli par sélection quand l\'API Clipboard est absente', async () => {
+    Object.defineProperty(navigator, 'clipboard', { value: undefined, configurable: true });
+    const exec = vi.fn().mockReturnValue(true);
+    Object.defineProperty(document, 'execCommand', { value: exec, configurable: true });
+    const { copyText } = await import('@/views/platform/clipboard');
+    expect(await copyText('482915')).toBe(true);
+    expect(exec).toHaveBeenCalledWith('copy');
+  });
+
+  it('acceptation d\'une demande : envoi automatique coché, récapitulatif et code affichés', async () => {
+    signInPlatform();
+    const calls = mockApi({
+      'GET /platform/access-requests/AR9': { data: request({ contact: { first_name: 'Emmanuel', last_name: 'Foka', email: 'emm@foka.test', phone: '+237690000001', position: null } }) },
+      'GET /platform/clients': { data: [] },
+      'POST /platform/access-requests/AR9/accept': {
+        data: request({ status: 'accepted', tenant_id: 'T1', administrator: { person_id: 'P1', user_id: 'U1', login: 'emm@foka.test', status: 'pending_activation' }, access: accessCode({ delivery: { channel: 'email', status: 'sent', masked_to: 'e•••@foka.test' } }) }),
+      },
+    });
+    const { wrapper } = await mountView(PlatformRequestView, { id: 'AR9' }, '/platform/demandes/AR9');
+    await wrapper.findAll('button').find((b) => b.text() === 'Accepter')!.trigger('click');
+    await flushPromises();
+    expect((wrapper.get('[data-test="auto-send"]').element as HTMLInputElement).checked).toBe(true);
+    await wrapper.get('#rq-tenant').element.closest('form')!.dispatchEvent(new Event('submit'));
+    await flushPromises();
+    expect(calls.find((c) => c.path.endsWith('/accept'))?.body).toEqual({ share_send: 'email' });
+    expect(wrapper.get('[data-test="access-code"]').text()).toBe('482915');
+    expect(wrapper.text()).toContain('ETS FOKA');
+    expect(wrapper.get('[data-test="delivery"]').text()).toContain('e•••@foka.test');
+    expect(wrapper.find('[data-test="send-sms"]').exists()).toBe(true);
+  });
+});

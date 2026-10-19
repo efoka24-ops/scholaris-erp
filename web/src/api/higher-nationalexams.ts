@@ -69,17 +69,22 @@ export interface DiplomaFile {
   university_name: string; decision_code: string; status: DiplomaFileStatus; status_note: string | null; transmitted_at: string; status_changed_at: string | null; created_by: string;
 }
 
+export interface PortalRecord {
+  matricule: string | null; last_name: string | null; first_names: string | null; gender: string | null; program_code: string; program_name: string;
+  level_code: string | null; academic_year: string; enrolment_status: string; attempt_number: number; university_name: string;
+}
+export interface Consultation { id: string; user_id: string; program_id: string; academic_year_id: string; resource_kind: string; rows_count: number; created_at: string }
 const S = `${H}/national-sessions`;
 const C = `${H}/national-candidates`;
 const T = `${H}/tutelage`;
 
 export const nationalExams = {
   sessions: (q: Q = {}): Promise<NationalSession[]> => unwrap(http.get(S, q)),
-  session: (id: string): Promise<NationalSession> => unwrap(http.get(`${S}/${seg(id)}`)),
-  create: (body: SessionInput): Promise<NationalSession> => unwrap(http.post(S, body)),
-  close: (id: string): Promise<NationalSession> => unwrap(http.patch(`${S}/${seg(id)}`, { status: 'closed' })),
+  session: (id: string): Promise<NationalSession> => http.get(`${S}/${seg(id)}`),
+  create: (body: SessionInput): Promise<NationalSession> => http.post(S, body),
+  close: (id: string): Promise<NationalSession> => http.patch(`${S}/${seg(id)}`, { status: 'closed' }),
   candidates: (id: string, q: Q = {}): Promise<Candidate[]> => unwrap(http.get(`${S}/${seg(id)}/candidates`, q)),
-  add: (id: string, personId: string): Promise<Candidate> => unwrap(http.post(`${S}/${seg(id)}/candidates`, { person_id: personId })),
+  add: (id: string, personId: string): Promise<Candidate> => http.post(`${S}/${seg(id)}/candidates`, { person_id: personId }),
   generate: (id: string): Promise<{ added: number; already_listed: number }> => http.post(`${S}/${seg(id)}/candidates/generate`),
   exportList: (id: string, format: 'csv' | 'xlsx'): Promise<ExportResult> => http.post(`${S}/${seg(id)}/candidates/export`, { format }),
   convene: (id: string, examCentre: string, numberPrefix: string): Promise<{ convened: number }> =>
@@ -103,6 +108,9 @@ export const tutelage = {
   transmitDiplomaFile: (personId: string, programId: string, academicYearId: string): Promise<DiplomaFile> =>
     http.post(`${T}/diploma-files`, { person_id: personId, program_id: programId, academic_year_id: academicYearId }),
   moveDiplomaFile: (id: string, status: DiplomaFileStatus, note?: string): Promise<DiplomaFile> => http.patch(`${T}/diploma-files/${seg(id)}`, { status, note }),
+  portalEnrolments: (programId: string, academicYearId: string): Promise<{ convention: Convention; data: PortalRecord[] }> =>
+    http.get(`${T}/portal/enrolments`, { program_id: programId, academic_year_id: academicYearId }),
+  consultations: (q: Q = {}): Promise<Consultation[]> => unwrap(http.get(`${T}/consultations`, q)),
 };
 
 /** 422 RG-EXN-1 : étudiant non inscrit en année de sortie de la spécialité (TST-09). */

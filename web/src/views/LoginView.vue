@@ -14,6 +14,10 @@ const route = useRoute();
 
 const identifier = ref('');
 const password = ref('');
+/** Mode « application d'authentification » : identifiant + code à 6 chiffres, réservé à l'administrateur de la plateforme. */
+const authenticatorMode = ref(false);
+const code = ref('');
+const codeInvalid = ref(false);
 const remember = ref(false);
 const loading = ref(false);
 const error = ref<unknown>(null);
@@ -47,12 +51,16 @@ onBeforeUnmount(() => {
 async function submit(): Promise<void> {
   error.value = null;
   identifierInvalid.value = identifier.value.trim() === '';
-  passwordInvalid.value = password.value === '';
-  if (identifierInvalid.value || passwordInvalid.value) return;
+  passwordInvalid.value = !authenticatorMode.value && password.value === '';
+  codeInvalid.value = authenticatorMode.value && !/^\d{6}$/.test(code.value.replace(/\s+/g, ''));
+  if (identifierInvalid.value || passwordInvalid.value || codeInvalid.value) return;
   loading.value = true;
   try {
-    const res = await auth.login({ identifier: identifier.value, password: password.value, remember: remember.value });
+    const res = authenticatorMode.value
+      ? await auth.loginWithAuthenticator({ identifier: identifier.value, code: code.value, remember: remember.value })
+      : await auth.login({ identifier: identifier.value, password: password.value, remember: remember.value });
     password.value = '';
+    code.value = '';
     if (res.two_factor_setup_required) {
       await router.replace({ name: 'twofactor-setup' });
     } else if (res.two_factor_required) {
@@ -114,7 +122,24 @@ async function submit(): Promise<void> {
             />
             <span v-if="identifierInvalid" id="identifier-error" class="error">{{ t('login.identifierRequired') }}</span>
           </div>
-          <div class="field">
+          <div v-if="authenticatorMode" class="field">
+            <label for="authenticator-code">{{ t('login.authCode') }}</label>
+            <input
+              id="authenticator-code"
+              v-model="code"
+              type="text"
+              inputmode="numeric"
+              autocomplete="one-time-code"
+              maxlength="7"
+              placeholder="000 000"
+              required
+              :aria-invalid="codeInvalid"
+              :aria-describedby="codeInvalid ? 'authenticator-code-error' : undefined"
+            />
+            <span v-if="codeInvalid" id="authenticator-code-error" class="error">{{ t('login.authCodeRequired') }}</span>
+            <span class="hint">{{ t('login.authCodeHint') }}</span>
+          </div>
+          <div v-else class="field">
             <div class="row row--between pw-head">
               <label for="password">{{ t('login.password') }}</label>
               <router-link :to="{ name: 'reset' }" class="small-link">{{ t('login.forgot') }}</router-link>
@@ -142,6 +167,12 @@ async function submit(): Promise<void> {
             {{ loading ? t('common.loading') : t('login.submit') }}
           </button>
 
+          <div class="first">
+            <span>{{ authenticatorMode ? t('login.authBackText') : t('login.authText') }}</span>
+            <button type="button" class="btn" @click="authenticatorMode = !authenticatorMode">
+              {{ authenticatorMode ? t('login.authBack') : t('login.authUse') }}
+            </button>
+          </div>
           <div class="first">
             <span>{{ t('login.firstTime') }}</span>
             <router-link class="btn" :to="{ name: 'activation' }">{{ t('login.activate') }}</router-link>

@@ -67,7 +67,7 @@ final class RoleMatrix
             'code' => 'higher_dir_ecole', 'new' => true, 'level' => 'establishment', 'sensitive' => true,
             'label_fr' => 'Directeur d\'école', 'label_en' => 'School director', 'scopes' => ['org_unit'], 'external' => false, 'max_days' => null,
             'permissions' => [
-                'higher.access', 'organisation.read', 'assessment.read', 'higher.settings.read', 'higher.settings.manage', 'higher.admission.read',
+                'higher.access', 'higher.migration.manage', 'organisation.read', 'assessment.read', 'higher.settings.read', 'higher.settings.manage', 'higher.admission.read',
                 'higher.admission.decide', 'higher.enrolment.read', 'higher.enrolment.validate', 'higher.enrolment.derogate',
                 'higher.curriculum.read', 'higher.curriculum.manage', 'higher.timetable.read', 'higher.timetable.validate',
                 'higher.session_log.read', 'higher.attendance.read', 'higher.grades.read', 'assessment.correction.approve',
@@ -99,7 +99,7 @@ final class RoleMatrix
             'code' => 'higher_scolarite', 'new' => true, 'level' => 'establishment', 'sensitive' => false,
             'label_fr' => 'Service de la scolarité', 'label_en' => 'Registrar', 'scopes' => ['org_unit'], 'external' => false, 'max_days' => null,
             'permissions' => [
-                'higher.access', 'higher.internship.read', 'organisation.read', 'people.read', 'people.manage', 'higher.settings.read', 'higher.admission.read',
+                'higher.access', 'higher.migration.manage', 'higher.internship.read', 'organisation.read', 'people.read', 'people.manage', 'higher.settings.read', 'higher.admission.read',
                 'higher.application.manage', 'higher.enrolment.read', 'higher.enrol', 'higher.curriculum.read', 'scheduling.read',
                 'scheduling.manage', 'higher.timetable.read', 'higher.session_log.read', 'higher.attendance.read', 'attendance.justify',
                 'higher.grades.read', 'higher.grades.publish', 'higher.deliberation.read', 'higher.deliberation.prepare', 'higher.billing.read', 'documents.read',
@@ -132,7 +132,7 @@ final class RoleMatrix
             'code' => 'higher_discipline', 'new' => true, 'level' => 'establishment', 'sensitive' => false,
             'label_fr' => 'Responsable de la discipline', 'label_en' => 'Discipline officer', 'scopes' => ['org_unit'], 'external' => false, 'max_days' => null,
             'permissions' => [
-                'higher.access', 'organisation.read', 'attendance.read', 'attendance.discipline.manage', 'higher.council.manage',
+                'higher.access', 'higher.dashboard.read', 'organisation.read', 'attendance.read', 'attendance.discipline.manage', 'higher.council.manage',
                 'higher.attendance.read',
             ],
         ],

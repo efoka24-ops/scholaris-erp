@@ -32,6 +32,19 @@ export const useAuthStore = defineStore('auth', () => {
     return res;
   }
 
+  /** Administrateur de la plateforme : identifiant + code à 6 chiffres de l'application d'authentification (sans mot de passe). */
+  async function loginWithAuthenticator(input: { identifier: string; code: string; remember: boolean }): Promise<LoginResponse> {
+    const res = await http.post<LoginResponse>('/auth/login-authenticator', {
+      identifier: input.identifier.trim(),
+      code: input.code.replace(/\s+/g, ''),
+      remember: input.remember,
+      client: 'web',
+    });
+    lastLogin.value = res;
+    await loadMe(true);
+    return res;
+  }
+
   /** Charge le profil. Retourne null (sans erreur) si la personne n'est pas connectée. */
   async function loadMe(force = false): Promise<Me | null> {
     if (loaded.value && !force) return me.value;
@@ -65,5 +78,5 @@ export const useAuthStore = defineStore('auth', () => {
     loaded.value = true;
   }
 
-  return { me, loaded, lastLogin, isAuthenticated, displayName, twoFactorPending, twoFactorSetupNeeded, login, loadMe, logout, clear };
+  return { me, loaded, lastLogin, isAuthenticated, displayName, twoFactorPending, twoFactorSetupNeeded, login, loginWithAuthenticator, loadMe, logout, clear };
 });

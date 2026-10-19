@@ -71,7 +71,7 @@ onMounted(async () => {
             <td>{{ higher.yearName(s.academic_year_id) }}</td>
             <td class="num">{{ s.export_count }}</td>
             <td><span class="tag tag--neutral">{{ tx(xk('hx.sessionState.', s.status)) }}</span></td>
-            <td>{{ s.last_exported_at ?? '—' }}</td>
+            <td><router-link class="btn btn--quiet" :to="{ name: 'higher-national-exam', params: { id: s.id } }" data-test="open-session">{{ tx('hx.open') }} →</router-link></td>
           </tr>
           <tr v-if="items.length === 0"><td colspan="6" class="muted">{{ tx('hx.none') }}</td></tr>
         </tbody>

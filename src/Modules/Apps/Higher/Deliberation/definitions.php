@@ -10,6 +10,7 @@ use Scholaris\Modules\Apps\Higher\Deliberation\Application\Strategies\HigherBtsH
 use Scholaris\Modules\Apps\Higher\Deliberation\Application\Strategies\HigherLmdStrategy;
 use Scholaris\Modules\Apps\Higher\Deliberation\Contracts\DeliberationRecords;
 use Scholaris\Modules\Apps\Higher\Deliberation\Documents\DeliberationDocumentTypes;
+use Scholaris\Modules\Apps\Higher\Deliberation\Documents\SuccessCertificateType;
 use Scholaris\Modules\Apps\Higher\Deliberation\Infrastructure\HigherRuleScopes;
 use Scholaris\Modules\Apps\Higher\Deliberation\Infrastructure\PdoDeliberationRecords;
 
@@ -25,5 +26,5 @@ return [
     'assessment.rule_scopes.higher_deliberation' => [HigherRuleScopes::class],
     'assessment.deliberation_guards.higher_deliberation' => [HigherDeliberationGuard::class],
     'documents.issuance_guards.higher_deliberation' => [SignedMinutesIssuanceGuard::class],
-    'higher.document_types.deliberation' => [DeliberationDocumentTypes::class],
+    'higher.document_types.deliberation' => [DeliberationDocumentTypes::class, SuccessCertificateType::class],
 ];

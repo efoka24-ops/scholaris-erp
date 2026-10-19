@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue';
 import ErrorNotice from '@/components/ErrorNotice.vue';
-import { actions, fetchAdministrators, normalizePhone, type Administrator } from '@/api/platform';
+import { accessChannels, actions, fetchAdministrators, normalizePhone, type Administrator } from '@/api/platform';
 import { useI18n, type MessageKey } from '@/i18n';
 import { formatDateTime } from '@/lib/format';
 import { useSensitiveAction } from './useSensitiveAction';
 import TwoFactorPrompt from './TwoFactorPrompt.vue';
+import AccessCodePanel from './AccessCodePanel.vue';
 
 // Administrateurs d'un client (tenant) ou de la plateforme (tenant null) : lister, inviter, renvoyer l'invitation,
 // bloquer, débloquer, réinitialiser l'accès. Chaque action exige une double authentification récente.
@@ -19,6 +20,8 @@ const inviting = ref(false);
 const form = reactive({ first_name: '', last_name: '', email: '', phone: '' });
 const errors = ref<Record<string, string>>({});
 const action = useSensitiveAction();
+/** Compte dont le panneau « Code d'accès » est ouvert. */
+const codeFor = ref<Administrator | null>(null);
 
 type Kind = 'resend-invitation' | 'block' | 'unblock' | 'reset-access';
 const statusKey = (s: string): MessageKey => `pa.adm.status.${s}` as MessageKey;
@@ -118,6 +121,15 @@ onMounted(load);
       <button type="submit" class="btn btn--primary" :disabled="action.busy.value">{{ action.busy.value ? t('common.loading') : t('pa.adm.sendInvite') }}</button>
     </form>
 
+    <AccessCodePanel
+      v-if="codeFor"
+      :key="codeFor.id"
+      :tenant="tenant"
+      :user-id="codeFor.id"
+      :name="`${codeFor.first_name} ${codeFor.last_name}`"
+      :channels="accessChannels(codeFor.email, codeFor.phone)"
+      @close="codeFor = null"
+    />
     <p v-if="loaded && !loadError && items.length === 0" class="card muted">{{ t('pa.adm.empty') }}</p>
     <div v-if="items.length > 0" class="table-wrap">
       <table>
@@ -141,6 +153,7 @@ onMounted(load);
             <td>{{ a.last_login_at ? formatDateTime(a.last_login_at, locale) : '—' }}</td>
             <td>
               <div class="row actions">
+                <button v-if="!readonly && a.status !== 'locked'" type="button" class="btn btn--quiet" data-test="access-code-action" @click="codeFor = a">{{ t('pa.code.action') }}</button>
                 <button v-for="k in kinds(a)" :key="k" type="button" class="btn btn--quiet" :disabled="action.busy.value" @click="act(a, k)">{{ kindLabel(k) }}</button>
               </div>
             </td>

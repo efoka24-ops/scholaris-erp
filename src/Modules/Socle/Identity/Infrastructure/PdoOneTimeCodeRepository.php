@@ -53,6 +53,35 @@ final class PdoOneTimeCodeRepository extends PdoRepository
         ];
     }
 
+    /**
+     * Invalide tous les codes encore ouverts d'un utilisateur pour les usages donnés.
+     *
+     * @param list<string> $purposes
+     */
+    public function consumeOpen(string $tenantId, string $userId, array $purposes, string $now): void
+    {
+        $marks = implode(', ', array_fill(0, count($purposes), '?'));
+        $this->run(
+            'UPDATE one_time_codes SET consumed_at = ? WHERE tenant_id = ? AND user_id = ? AND purpose IN (' . $marks . ') AND consumed_at IS NULL',
+            [$now, $tenantId, $userId, ...$purposes],
+        );
+    }
+
+    /**
+     * Nombre de codes créés pour un utilisateur par un canal donné depuis l'instant indiqué, et le plus ancien d'entre eux.
+     *
+     * @return array{count: int, oldest: ?string}
+     */
+    public function issuedSince(string $tenantId, string $userId, string $channel, string $since): array
+    {
+        $row = $this->one(
+            'SELECT COUNT(*) AS n, MIN(created_at) AS oldest FROM one_time_codes WHERE tenant_id = ? AND user_id = ? AND channel = ? AND created_at > ?',
+            [$tenantId, $userId, $channel, $since],
+        );
+
+        return ['count' => $row === null ? 0 : (int) $row['n'], 'oldest' => $row === null || $row['oldest'] === null ? null : (string) $row['oldest']];
+    }
+
     public function incrementAttempts(string $tenantId, string $id): void
     {
         $this->run('UPDATE one_time_codes SET attempts = attempts + 1 WHERE tenant_id = ? AND id = ?', [$tenantId, $id]);

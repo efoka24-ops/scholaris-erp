@@ -16,6 +16,8 @@ export interface PendingAction extends PlatformAction {
   /** Page où l'action a été demandée ; la reprise n'est proposée que sur cette page. */
   returnTo: string;
   savedAt: number;
+  /** Faux : jamais mise de côté ni rejouée (voir `run`). */
+  replayable?: boolean;
 }
 
 export function savePending(action: PendingAction): void {
@@ -57,7 +59,11 @@ export function useSensitiveAction() {
   /** Action refusée faute de double authentification récente (proposition de ressaisir le code). */
   const needsTwoFactor = ref<PendingAction | null>(null);
 
-  async function run<T>(action: PlatformAction, label: string): Promise<T | undefined> {
+  /**
+   * `replayable` faux : l'action n'est jamais mise de côté (sa réponse doit être affichée, ex. un code d'accès, ou son
+   * corps contient un secret) ; après la double authentification, la personne relance l'action elle-même.
+   */
+  async function run<T>(action: PlatformAction, label: string, replayable = true): Promise<T | undefined> {
     busy.value = true;
     error.value = null;
     needsTwoFactor.value = null;
@@ -65,7 +71,7 @@ export function useSensitiveAction() {
       return await runPlatformAction<T>(action);
     } catch (e) {
       if (isRecentTwoFactorRequired(e)) {
-        needsTwoFactor.value = { ...action, label, returnTo: route.fullPath, savedAt: Date.now() };
+        needsTwoFactor.value = { ...action, body: replayable ? action.body : {}, label, returnTo: route.fullPath, savedAt: Date.now(), replayable };
       } else {
         error.value = e;
       }
@@ -78,7 +84,7 @@ export function useSensitiveAction() {
   async function revalidate(): Promise<void> {
     const pending = needsTwoFactor.value;
     if (!pending) return;
-    savePending({ ...pending, savedAt: Date.now() });
+    if (pending.replayable !== false) savePending({ ...pending, savedAt: Date.now() });
     await router.push({ name: 'twofactor', query: { redirect: pending.returnTo } });
   }
 

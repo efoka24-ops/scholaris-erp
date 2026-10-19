@@ -41,6 +41,7 @@ return [
     BirthDateWriter::class => autowire(BirthDateWriterService::class),
     ConsentChecker::class => autowire(PdoConsentChecker::class),
     BirthInfo::class => autowire(PdoBirthInfo::class),
+    \Scholaris\Modules\Socle\People\Contracts\PersonDemographics::class => autowire(\Scholaris\Modules\Socle\People\Infrastructure\PdoPersonDemographics::class),
     TeachingScope::class => autowire(StaffTeachingScope::class),
     FileScanner::class => autowire(HeuristicFileScanner::class),
     AttachmentStore::class => autowire(FileAttachmentStore::class),

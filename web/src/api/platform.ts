@@ -123,7 +123,54 @@ export interface AccessRequest {
   updated_at: string;
   /** Présents dans la réponse de l'acceptation. */
   entitlement?: Entitlement;
-  administrator?: { person_id: string; login: string; status: string } | null;
+  administrator?: { person_id: string; user_id?: string; login: string; status: string } | null;
+  /** Code d'activation de l'administrateur invité et récapitulatif à partager (rendu une seule fois). */
+  access?: AccessCode | null;
+}
+
+// --- Code d'accès à usage unique (dépannage et partage de l'accès d'un compte) --------------------------------------------
+export type AccessSend = 'none' | 'email' | 'sms';
+export type AccessChannel = 'email' | 'sms';
+
+export interface AccessDelivery {
+  channel: AccessSend;
+  /** not_sent (afficher seulement), sent, failed (fournisseur en échec), unavailable (pas de contact pour ce canal). */
+  status: 'not_sent' | 'sent' | 'failed' | 'unavailable';
+  masked_to: string | null;
+}
+
+export interface AccessShare {
+  establishment_name: string;
+  login: string;
+  login_url: string;
+  activation_url: string;
+  locale: 'fr' | 'en';
+  channels: AccessChannel[];
+  message: { subject: string; text: string; sms: string };
+}
+
+export interface AccessCode {
+  code: string;
+  purpose: 'activation' | 'reset';
+  expires_at: string;
+  expires_in: number;
+  login: string;
+  delivery: AccessDelivery;
+  share: AccessShare;
+}
+
+/** Compte d'un client, en lecture seule (aucune donnée métier). */
+export interface ClientUser {
+  id: string;
+  person_id: string;
+  first_name: string;
+  last_name: string;
+  email: string | null;
+  phone: string | null;
+  status: AdministratorStatus;
+  roles: string[];
+  two_factor_enabled: boolean;
+  last_login_at: string | null;
 }
 
 /** Indicateur du tableau de bord : un indicateur sans source est rendu available:false avec la raison, jamais estimé. */
@@ -301,6 +348,9 @@ export const fetchClientEstablishments = async (tenant: string): Promise<ClientE
 export const fetchAdministrators = async (tenant: string | null): Promise<Administrator[]> =>
   (await http.get<{ data: Administrator[] }>(tenant ? `/platform/clients/${encodeURIComponent(tenant)}/administrators` : '/platform/administrators', undefined, NO_ESTABLISHMENT)).data ?? [];
 
+export const fetchClientUsers = async (tenant: string): Promise<ClientUser[]> =>
+  (await http.get<{ data: ClientUser[] }>(`/platform/clients/${encodeURIComponent(tenant)}/users`, undefined, NO_ESTABLISHMENT)).data ?? [];
+
 export const fetchPlatformAudit = (filters: { action?: string | null; from?: string | null; to?: string | null }, cursor: string | null = null): Promise<PageOf<AuditEntry>> =>
   http.page<AuditEntry>('/platform/audit', { 'filter[action]': filters.action || null, 'filter[from]': filters.from || null, 'filter[to]': filters.to || null, cursor, per_page: 50 }, NO_ESTABLISHMENT);
 
@@ -329,7 +379,11 @@ export interface PlatformAction {
 const seg = (v: string): string => encodeURIComponent(v);
 
 export const actions = {
-  acceptRequest: (id: string, tenantId: string | null): PlatformAction => ({ method: 'POST', path: `/platform/access-requests/${seg(id)}/accept`, body: tenantId ? { tenant_id: tenantId } : {} }),
+  acceptRequest: (id: string, tenantId: string | null, shareSend: AccessSend = 'none'): PlatformAction => ({
+    method: 'POST',
+    path: `/platform/access-requests/${seg(id)}/accept`,
+    body: { ...(tenantId ? { tenant_id: tenantId } : {}), ...(shareSend !== 'none' ? { share_send: shareSend } : {}) },
+  }),
   rejectRequest: (id: string, reason: string): PlatformAction => ({ method: 'POST', path: `/platform/access-requests/${seg(id)}/reject`, body: { reason } }),
   requestInfo: (id: string, message: string): PlatformAction => ({ method: 'POST', path: `/platform/access-requests/${seg(id)}/request-info`, body: { message } }),
   openForClient: (tenant: string, appKey: string): PlatformAction => ({ method: 'POST', path: `/platform/clients/${seg(tenant)}/applications`, body: { app_key: appKey } }),
@@ -366,6 +420,16 @@ export const actions = {
     method: 'POST',
     path: `${tenant ? `/platform/clients/${seg(tenant)}` : '/platform'}/administrators/${seg(user)}/${kind}`,
     body: {},
+  }),
+  issueAccessCode: (tenant: string | null, user: string, send: AccessSend): PlatformAction => ({
+    method: 'POST',
+    path: `${tenant ? `/platform/clients/${seg(tenant)}/users` : '/platform/administrators'}/${seg(user)}/access-code`,
+    body: { send },
+  }),
+  sendAccessCode: (tenant: string | null, user: string, channel: AccessChannel, code: string): PlatformAction => ({
+    method: 'POST',
+    path: `${tenant ? `/platform/clients/${seg(tenant)}/users` : '/platform/administrators'}/${seg(user)}/access-code/send`,
+    body: { channel, code },
   }),
   archiveRequest: (id: string, reason: string): PlatformAction => ({ method: 'POST', path: `/platform/access-requests/${seg(id)}/archive`, body: { reason } }),
   deleteRequest: (id: string): PlatformAction => ({ method: 'DELETE', path: `/platform/access-requests/${seg(id)}`, body: {} }),
@@ -409,4 +473,12 @@ export const fetchReceipt = async (paymentId: string): Promise<PaymentReceipt> =
 export function normalizePhone(raw: string): string | null {
   const clean = raw.replace(/[\s.\-()]/g, '');
   return /^\+?[0-9]{8,15}$/.test(clean) ? clean : null;
+}
+
+/** Canaux d'envoi d'un code d'accès : e-mail si présent, SMS pour un mobile camerounais (+237 6…) seulement. */
+export function accessChannels(email: string | null | undefined, phone: string | null | undefined): AccessChannel[] {
+  const out: AccessChannel[] = [];
+  if (email) out.push('email');
+  if (phone && /^\+2376\d{8}$/.test(phone)) out.push('sms');
+  return out;
 }

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import ErrorNotice from '@/components/ErrorNotice.vue';
-import { actions, fetchAccessRequest, fetchClients, type AccessRequest, type Tenant } from '@/api/platform';
+import { accessChannels, actions, fetchAccessRequest, fetchClients, type AccessChannel, type AccessRequest, type Tenant } from '@/api/platform';
 import { useI18n } from '@/i18n';
 import { formatDate, formatDateTime } from '@/lib/format';
 import { requestStatusKey, requestTone, targetKey } from './display';
@@ -9,6 +9,7 @@ import { useSensitiveAction } from './useSensitiveAction';
 import TwoFactorPrompt from './TwoFactorPrompt.vue';
 import ReplayNotice from './ReplayNotice.vue';
 import RequestArchivePanel from './RequestArchivePanel.vue';
+import AccessCodePanel from './AccessCodePanel.vue';
 
 // Détail d'une demande d'accès et décision : accepter (client existant facultatif), refuser avec motif, demander un complément.
 // Design : Inscription.html (sections), Fondations.html (champs, boutons). Accepter et refuser exigent une 2FA récente.
@@ -26,6 +27,10 @@ const fieldError = ref<string | null>(null);
 const success = ref<string | null>(null);
 const acceptResult = ref<AccessRequest | null>(null);
 const action = useSensitiveAction();
+/** Partage de l'accès de l'administrateur invité : envoi automatique (coché si un contact existe) et canal. */
+const autoSend = ref(true);
+const sendChannel = ref<AccessChannel>('email');
+const requestChannels = computed<AccessChannel[]>(() => (request.value ? accessChannels(request.value.contact.email, request.value.contact.phone) : []));
 
 const open = computed(() => !request.value?.archived_at && (request.value?.status === 'pending' || request.value?.status === 'info_requested'));
 
@@ -43,6 +48,10 @@ async function choose(next: 'accept' | 'reject' | 'info'): Promise<void> {
   fieldError.value = null;
   success.value = null;
   action.dismiss();
+  if (next === 'accept') {
+    autoSend.value = requestChannels.value.length > 0;
+    sendChannel.value = requestChannels.value[0] ?? 'email';
+  }
   if (next === 'accept' && clients.value.length === 0) {
     try {
       clients.value = await fetchClients();
@@ -54,7 +63,7 @@ async function choose(next: 'accept' | 'reject' | 'info'): Promise<void> {
 
 async function accept(): Promise<void> {
   if (!request.value) return;
-  const res = await action.run<AccessRequest>(actions.acceptRequest(request.value.id, tenantId.value || null), t('plat.act.accept', { ref: request.value.reference }));
+  const res = await action.run<AccessRequest>(actions.acceptRequest(request.value.id, tenantId.value || null, autoSend.value && !tenantId.value ? sendChannel.value : 'none'), t('plat.act.accept', { ref: request.value.reference }));
   if (!res) return;
   acceptResult.value = res;
   request.value = { ...request.value, ...res };
@@ -116,6 +125,15 @@ onMounted(load);
         <template v-if="acceptResult">
           <p v-if="acceptResult.entitlement">{{ t('plat.req.acceptedTrial', { date: formatDate(acceptResult.entitlement.trial_ends_on, locale) }) }}</p>
           <p v-if="acceptResult.administrator">{{ t('plat.req.acceptedAdmin', { login: acceptResult.administrator.login }) }}</p>
+          <AccessCodePanel
+            v-if="acceptResult.access && acceptResult.tenant_id && acceptResult.administrator?.user_id"
+            :tenant="acceptResult.tenant_id"
+            :user-id="acceptResult.administrator.user_id"
+            :name="`${request.contact.first_name} ${request.contact.last_name}`"
+            :channels="acceptResult.access.share.channels"
+            :initial="acceptResult.access"
+            @close="acceptResult = { ...acceptResult, access: null }"
+          />
           <router-link v-if="acceptResult.tenant_id" class="btn" :to="{ name: 'platform-client', params: { tenant: acceptResult.tenant_id } }">{{ t('plat.req.seeClient') }} →</router-link>
         </template>
       </div>
@@ -181,6 +199,13 @@ onMounted(load);
                     <option v-for="c in clients" :key="c.id" :value="c.id">{{ c.name }} ({{ c.id }})</option>
                   </select>
                   <span id="rq-tenant-hint" class="hint">{{ t('plat.req.tenantHint') }}</span>
+                </div>
+                <div v-if="requestChannels.length > 0 && !tenantId" class="field">
+                  <label class="choice"><input v-model="autoSend" type="checkbox" data-test="auto-send" /> {{ t('pa.code.autoSend') }}</label>
+                  <label v-if="autoSend" for="rq-send">{{ t('pa.code.autoSendChannel') }}</label>
+                  <select v-if="autoSend" id="rq-send" v-model="sendChannel">
+                    <option v-for="c in requestChannels" :key="c" :value="c">{{ t(c === 'sms' ? 'pa.code.sendSms' : 'pa.code.sendEmail') }}</option>
+                  </select>
                 </div>
                 <button type="submit" class="btn btn--primary" :disabled="action.busy.value">{{ action.busy.value ? t('common.loading') : t('plat.req.confirmAccept') }}</button>
               </form>

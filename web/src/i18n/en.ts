@@ -12,7 +12,9 @@ import { higherExtraEn } from './higher-extra-en';
 import { higherInternshipsEn } from './higher-internships-en';
 import { higherVacationsEn } from './higher-vacations-en';
 import { higherNationalExamsEn } from './higher-nationalexams-en';
+import { higherHelpEn } from './higher-help-en';
 import { higherDeliberationEn } from './higher-deliberation-en';
+import { higherDashboardsEn } from './higher-dashboards-en';
 
 export const en: Record<keyof typeof fr, string> = {
   ...adminEn,
@@ -26,7 +28,9 @@ export const en: Record<keyof typeof fr, string> = {
   ...higherInternshipsEn,
   ...higherVacationsEn,
   ...higherNationalExamsEn,
+  ...higherHelpEn,
   ...higherDeliberationEn,
+  ...higherDashboardsEn,
   'nav.reportcards': "Report cards",
   'reportcards.eyebrow': "Results",
   'reportcards.title': "Report cards",
@@ -379,6 +383,13 @@ export const en: Record<keyof typeof fr, string> = {
   'twofa.step1': 'Install an authenticator app on your phone.',
   'twofa.step2': 'Enter this key in the app, or open it directly:',
   'twofa.step3': 'Enter below the 6-digit code shown by the app.',
+  'login.authCode': 'Authenticator app code',
+  'login.authCodeRequired': 'Enter the 6-digit code shown by your app.',
+  'login.authCodeHint': 'Open Google Authenticator or Microsoft Authenticator: the code changes every 30 seconds.',
+  'login.authText': 'Platform administrator?',
+  'login.authUse': 'Sign in with the authenticator app',
+  'login.authBackText': 'Prefer your password?',
+  'login.authBack': 'Use my password',
   'twofa.qrAlt': 'QR code to scan with your authenticator app',
   'twofa.qrHint': 'Scan this QR code with your authenticator app (Google Authenticator, Microsoft Authenticator…). Otherwise, type the key below.',
   'twofa.openApp': 'Open in the app',

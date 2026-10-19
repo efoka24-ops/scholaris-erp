@@ -10,6 +10,9 @@ import { higherSittingRoutes } from '@/views/higher/sitting/routes';
 import { higherInternshipsRoutes } from '@/views/higher/internships/routes';
 import { higherVacationsRoutes } from '@/views/higher/vacations/routes';
 import { higherNationalExamsRoutes } from '@/views/higher/national-exams/routes';
+import { higherDashboardsRoutes } from '@/views/higher/dashboards/routes';
+import { higherHelpRoutes } from '@/views/higher/help/routes';
+import { higherTutelageRoutes } from '@/views/higher/tutelage/routes';
 import { higherDeliberationRoutes } from '@/views/higher/deliberation/routes';
 
 declare module 'vue-router' {
@@ -324,6 +327,9 @@ export const routes: RouteRecordRaw[] = [
   ...higherInternshipsRoutes,
   ...higherVacationsRoutes,
   ...higherNationalExamsRoutes,
+  ...higherDashboardsRoutes,
+  ...higherHelpRoutes,
+  ...higherTutelageRoutes,
   ...higherDeliberationRoutes,
   { path: '/interdit', name: 'forbidden', component: () => import('@/views/ForbiddenView.vue'), meta: { titleKey: 'forbidden.title' } },
   { path: '/:pathMatch(.*)*', name: 'not-found', component: () => import('@/views/NotFoundView.vue'), meta: { public: true, titleKey: 'notFound.title' } },

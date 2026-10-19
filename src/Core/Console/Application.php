@@ -85,6 +85,7 @@ final class Application
 ';
         echo "  admin:create <client> <prénom> <nom> <téléphone|e-mail>  crée le premier super administrateur\n";
         echo "  platform:admin-create <e-mail|téléphone> <prénom> <nom...>  crée un administrateur de plateforme (2FA obligatoire)\n";
+        echo "  platform:client-create <application> <type> <e-mail|tel> <prenom> <nom> <etablissement...> [--ville=] [--region=] [--dry-run]  met un client en service\n";
         echo "  platform:billing-run [AAAA-MM-JJ]  relances, impayés et suspensions des abonnements (une fois par jour)\n";
 
         return 0;

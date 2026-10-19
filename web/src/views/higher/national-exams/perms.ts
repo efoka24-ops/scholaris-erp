@@ -8,4 +8,5 @@ export const X = {
 
 export const T = {
   internal: ['higher.tutelage.manage', 'higher.tutelage.transmit'],
+  external: ['higher.tutelage.read'],
 } as const;

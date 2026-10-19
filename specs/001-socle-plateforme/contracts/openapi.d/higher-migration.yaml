@@ -1,0 +1,99 @@
+# Contrat OpenAPI 3.1 de la reprise de données de l'application Supérieur (lot I4) : étudiants en cours, UE capitalisées et dettes,
+# soldes d'ouverture, personnel et affectations, notes de l'année en cours. Permission : higher.migration.manage (périmètre école,
+# département ou filière : une ligne hors périmètre est une erreur de simulation). SIMULATION OBLIGATOIRE D'ABORD : POST /batches
+# n'écrit jamais ; apply et revert exigent une double authentification récente (403, type second-factor-required) et sont journalisés.
+# Erreurs RFC 9457 ; WriteGate (423 suspendue).
+paths:
+  /api/v1/higher/migration/kinds:
+    get:
+      summary: "Jeux de données repris : code, libellé, colonnes et colonnes obligatoires"
+      responses:
+        '200': {description: "Succès"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Application fermée"}
+  /api/v1/higher/migration/templates/{kind}:
+    get:
+      summary: "Modèle de fichier téléchargeable (en-têtes et lignes d'exemple fictives) ; ?format=csv (UTF-8, séparateur ;) ou xlsx"
+      parameters:
+        - {name: kind, in: path, required: true, schema: {type: string, enum: [students, credits, balances, staff, marks]}}
+        - {name: format, in: query, required: false, schema: {type: string, enum: [csv, xlsx]}}
+      responses:
+        '200': {description: "Fichier"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Jeu inconnu ou application fermée"}
+        '422': {description: "Format invalide"}
+  /api/v1/higher/migration/batches:
+    get:
+      summary: "Lots de reprise de l'établissement, du plus récent au plus ancien ; filtre ?kind="
+      responses:
+        '200': {description: "Succès"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Application fermée"}
+    post:
+      summary: "SIMULATION : lit le fichier et rend le rapport ligne par ligne (erreurs, doublons, avertissements) sans rien écrire"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [kind, academic_year_id]
+              properties:
+                kind: {type: string, enum: [students, credits, balances, staff, marks]}
+                academic_year_id: {type: string, description: "Année académique en cours à laquelle se rattachent les inscriptions"}
+                format: {type: string, enum: [csv, xlsx], default: csv}
+                content: {type: string, description: "Contenu CSV UTF-8 (séparateur ;)"}
+                content_base64: {type: string, description: "Fichier encodé en base64 (CSV ou XLSX)"}
+                file_name: {type: string}
+                dry_run: {type: boolean, enum: [true], default: true, description: "Toujours vrai : la simulation précède l'application"}
+      responses:
+        '201': {description: "Lot simulé (status simulated) : counts, applicable, lines des lignes non ok"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Application fermée"}
+        '422': {description: "Fichier illisible, colonne obligatoire absente, non UTF-8, trop de lignes ou dry_run faux"}
+        '423': {description: "Application suspendue (écriture refusée)"}
+  /api/v1/higher/migration/batches/{id}:
+    get:
+      summary: "Rapport d'un lot ; ?status=error|warning|duplicate|applied|ok pour filtrer les lignes"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+        - {name: status, in: query, required: false, schema: {type: string}}
+      responses:
+        '200': {description: "Succès"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Lot introuvable (ou d'un autre client)"}
+  /api/v1/higher/migration/batches/{id}/apply:
+    post:
+      summary: "APPLIQUE un lot simulé sans erreur : une transaction, idempotent (lignes déjà reprises ignorées), double authentification récente"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Lot appliqué (status applied, counts.applied)"}
+        '403': {description: "Permission absente ou double authentification requise"}
+        '404': {description: "Lot introuvable"}
+        '409': {description: "Lot non simulé, déjà appliqué, simulation avec erreurs ou périmée : rien n'est écrit"}
+        '422': {description: "Une écriture est refusée par la règle du module concerné (ligne indiquée) : rien n'est écrit"}
+        '423': {description: "Application suspendue (écriture refusée)"}
+  /api/v1/higher/migration/batches/{id}/revert:
+    post:
+      summary: "ANNULE un lot appliqué tant qu'aucune donnée dépendante n'existe ; motif obligatoire ; double authentification récente. Les soldes d'ouverture ne s'annulent pas"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [reason]
+              properties:
+                reason: {type: string, minLength: 5, maxLength: 500}
+      responses:
+        '200': {description: "Lot annulé (status reverted)"}
+        '403': {description: "Permission absente ou double authentification requise"}
+        '404': {description: "Lot introuvable"}
+        '409': {description: "Lot non appliqué, jeu non annulable (soldes) ou donnée dépendante (lot dépendant, note publiée, créneau d'emploi du temps…)"}
+        '422': {description: "Motif manquant ou trop court"}
+        '423': {description: "Application suspendue (écriture refusée)"}

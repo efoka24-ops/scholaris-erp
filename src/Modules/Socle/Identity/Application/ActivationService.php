@@ -33,8 +33,8 @@ final class ActivationService
     public const MAX_REQUESTS_PER_HOUR = 5;
     public const TICKET_TTL = 600;
 
-    private const ACTIVATION = 'activation';
-    private const RESET = 'reset';
+    public const ACTIVATION = 'activation';
+    public const RESET = 'reset';
 
     public function __construct(
         private readonly PdoUserRepository $users,

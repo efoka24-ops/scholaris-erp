@@ -129,6 +129,18 @@ paths:
         '409': {description: "État non approuvé ou solde retenu"}
         '422': {description: "Données invalides"}
         '423': {description: "Application suspendue"}
+  /api/v1/higher/vacations/statements/{id}/contract:
+    post:
+      summary: "Émettre le contrat de vacation (DOC-24) d'un état approuvé (payable) ou payé"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '201': {description: "Document émis"}
+        '403': {description: "Permission absente ou hors périmètre"}
+        '404': {description: "Introuvable"}
+        '409': {description: "État non approuvé"}
+        '422': {description: "Profil d'école ou modèle absent"}
+        '423': {description: "Application suspendue"}
   /api/v1/higher/vacations/statements/{id}/statement-document:
     post:
       summary: "Émettre l'état mensuel des vacations (DOC-25)"

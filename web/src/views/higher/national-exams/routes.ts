@@ -1,6 +1,5 @@
 // Routes « Examens nationaux » de l'application IPES (module EXN) : réservées aux établissements higher, gardées par higherGuard.
-// À relier dans router/routes.ts (…higherNationalExamsRoutes). titleKey reste 'nav.higher' tant que les clés hx.* ne sont pas
-// fusionnées dans fr.ts / en.ts (MessageKey).
+// Reliées dans router/routes.ts (…higherNationalExamsRoutes). Les clés hx.* sont fusionnées dans fr.ts / en.ts.
 import type { RouteRecordRaw } from 'vue-router';
 import { higherGuard } from '../access';
 import { X } from './perms';
@@ -13,6 +12,14 @@ export const higherNationalExamsRoutes: RouteRecordRaw[] = [
     name: 'higher-national-exams',
     component: () => import('./SessionsView.vue'),
     beforeEnter: higherGuard,
-    meta: { ...higherOnly, perms: [...X.read], titleKey: 'nav.higher' },
+    meta: { ...higherOnly, perms: [...X.read], titleKey: 'nav.higherNationalExams' },
+  },
+  {
+    path: '/superieur/examens-nationaux/:id',
+    name: 'higher-national-exam',
+    component: () => import('./SessionView.vue'),
+    props: true,
+    beforeEnter: higherGuard,
+    meta: { ...higherOnly, perms: [...X.read], titleKey: 'nav.higherNationalExams' },
   },
 ];

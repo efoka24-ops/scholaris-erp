@@ -148,6 +148,37 @@ describe('pages publiques', () => {
     expect(wrapper.findAll('a').some((a) => a.attributes('href') === '/decouvrir')).toBe(true);
   });
 
+  it("connexion : l'administrateur de la plateforme se connecte avec le code de l'application d'authentification, sans mot de passe", async () => {
+    const calls = mockApi({
+      'POST /auth/login-authenticator': { token_type: 'Bearer', expires_at: '2026-10-17T00:00:00+01:00', new_device: false, two_factor_required: false, two_factor_setup_required: false, user: { id: 'UP' } },
+      'GET /me': { data: platformMe },
+    });
+    const { wrapper } = await mountView(LoginView, {}, '/connexion');
+    expect(wrapper.find('#password').exists()).toBe(true);
+    await wrapper.findAll('button').find((b) => b.text().includes("application d'authentification"))?.trigger('click');
+    await flushPromises();
+    expect(wrapper.find('#password').exists()).toBe(false);
+    await wrapper.get('#identifier').setValue('plateforme@scholaris.test');
+    await wrapper.get('#authenticator-code').setValue('123 456');
+    await wrapper.get('form').trigger('submit');
+    await flushPromises();
+    const post = calls.find((c) => c.path === '/auth/login-authenticator');
+    expect(post?.body).toMatchObject({ identifier: 'plateforme@scholaris.test', code: '123456', client: 'web' });
+    expect(post?.body).not.toHaveProperty('password');
+  });
+
+  it("connexion : un code mal formé n'est pas envoyé", async () => {
+    const calls = mockApi({});
+    const { wrapper } = await mountView(LoginView, {}, '/connexion');
+    await wrapper.findAll('button').find((b) => b.text().includes("application d'authentification"))?.trigger('click');
+    await wrapper.get('#identifier').setValue('plateforme@scholaris.test');
+    await wrapper.get('#authenticator-code').setValue('12');
+    await wrapper.get('form').trigger('submit');
+    await flushPromises();
+    expect(calls.some((c) => c.path === '/auth/login-authenticator')).toBe(false);
+    expect(wrapper.text()).toContain('code à 6 chiffres');
+  });
+
   it('accueil public : appels à l\'action vers la demande d\'accès et le catalogue', async () => {
     mockApi({});
     const { wrapper } = await mountView(PublicHomeView, {}, '/decouvrir');

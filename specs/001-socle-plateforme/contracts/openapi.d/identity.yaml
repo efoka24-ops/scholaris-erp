@@ -26,6 +26,32 @@ paths:
           description: "Champs manquants"
         '423':
           description: "Compte verrouillé 15 minutes (locked_until, Retry-After) ou bloqué par « Ce n'est pas moi »"
+  /api/v1/auth/login-authenticator:
+    post:
+      summary: "Connexion de l'administrateur de la plateforme par application d'authentification : identifiant + code à 6 chiffres, sans mot de passe (comptes du client technique platform avec 2FA activée ; code à usage unique)"
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [identifier, code]
+              properties:
+                identifier: {type: string}
+                code: {type: string, pattern: '^[0-9]{6}$'}
+                remember: {type: boolean}
+                device_id: {type: string}
+                client: {type: string, enum: [web, mobile]}
+      responses:
+        '200':
+          description: "Connecté, session déjà vérifiée (le code est le second facteur)"
+        '401':
+          description: "Identifiant ou code incorrect, compte non éligible ou code déjà utilisé (réponse identique) ; attempts_left donne les essais restants"
+        '422':
+          description: "Champs manquants ou code mal formé"
+        '423':
+          description: "Compte verrouillé 15 minutes (locked_until, Retry-After) ou bloqué par « Ce n'est pas moi »"
   /api/v1/auth/logout:
     post:
       summary: "Ferme la session courante"

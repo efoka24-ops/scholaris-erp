@@ -9,16 +9,34 @@ use Scholaris\Modules\Apps\Higher\Documents\Contracts\HigherDocumentType;
 
 /**
  * Documents des vacations (tableau des documents du CDC) : DOC-25 état mensuel des vacations (chef de département, directeur d'école),
- * DOC-26 bulletin de paiement de vacation (comptable). Sans QR ni blocage pour impayé. DOC-24 (contrat, Should) : non livré ici.
+ * DOC-26 bulletin de paiement de vacation (comptable). Sans QR ni blocage pour impayé. DOC-24 contrat de vacation (Should ; directeur d'école ; QR ; jamais bloqué) : émis depuis l'état payable.
  */
 final class VacationDocumentTypes implements DocumentTypeProvider
 {
+    public const CONTRACT = 'DOC-24';
     public const STATEMENT = 'DOC-25';
     public const PAYSLIP = 'DOC-26';
 
     public function types(): array
     {
         return [
+            new HigherDocumentType(
+                self::CONTRACT,
+                'CVA',
+                'Contrat de vacation',
+                'Teaching hours contract',
+                'vacations',
+                'higher_dir_ecole',
+                true,
+                false,
+                ['period_month', 'hours_summary', 'hetd_total', 'hourly_rate', 'gross_amount'],
+                [
+                    'fr' => '<p>Contrat de vacation conclu avec <strong>{{holder_name}}</strong> pour la période {{period_month}}.</p><p>Enseignements confiés : {{hours_summary}}.</p><p>Volume : {{hetd_total}} HETD au taux de {{hourly_rate}} FCFA, soit {{gross_amount}} FCFA bruts avant retenues.</p><p>Le directeur d\'école. Le vacataire.</p>',
+                    'en' => '<p>Teaching hours contract with <strong>{{holder_name}}</strong> for the period {{period_month}}.</p><p>Assigned teaching: {{hours_summary}}.</p><p>Volume: {{hetd_total}} TD-equivalent hours at {{hourly_rate}} XAF, i.e. {{gross_amount}} XAF gross before deductions.</p><p>School director. Part-time lecturer.</p>',
+                ],
+                'other',
+                typeLetter: 'V',
+            ),
             new HigherDocumentType(
                 self::STATEMENT,
                 'ETV',

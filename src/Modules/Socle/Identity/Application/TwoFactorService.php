@@ -28,7 +28,6 @@ final class TwoFactorService
     public const SMS_TTL = 300;
     public const SMS_RESEND_AFTER = 60;
     private const BACKUP_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    private const PERIOD = 30;
     private const PURPOSE = 'two_factor';
 
     public function __construct(
@@ -37,6 +36,7 @@ final class TwoFactorService
         private readonly PdoBackupCodeRepository $backupCodes,
         private readonly PdoOneTimeCodeRepository $codes,
         private readonly SecretCipher $cipher,
+        private readonly TotpMatcher $totp,
         private readonly SecurityNotifier $notifier,
         private readonly AuthService $auth,
         private readonly AuditLog $audit,
@@ -199,27 +199,10 @@ final class TwoFactorService
         throw new TwoFactorRejected($left);
     }
 
-    /** Pas TOTP (période de 30 s, tolérance d'un pas de chaque côté) correspondant au code, ou null. */
+    /** Pas TOTP correspondant au code, ou null (voir TotpMatcher). */
     private function matchingStep(User $user, string $code): ?int
     {
-        $code = trim($code);
-        if ($user->twoFactorSecret === null || preg_match('/^\d{6}$/', $code) !== 1) {
-            return null;
-        }
-        $secret = $this->cipher->decrypt($user->twoFactorSecret);
-        if ($secret === '') {
-            return null;
-        }
-        $totp = TOTP::createFromSecret($secret);
-        $current = intdiv($this->moment->timestamp(), self::PERIOD);
-        $found = null;
-        foreach ([0, -1, 1] as $offset) {
-            if (hash_equals($totp->at(max(0, ($current + $offset) * self::PERIOD)), $code)) {
-                $found ??= $current + $offset;
-            }
-        }
-
-        return $found;
+        return $this->totp->matchingStep($user, $code);
     }
 
     /** @return list<string> */
