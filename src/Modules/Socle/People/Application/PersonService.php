@@ -8,8 +8,10 @@ use PDOException;
 use Scholaris\Core\Http\HttpException;
 use Scholaris\Core\Http\ListQuery;
 use Scholaris\Core\Support\Ulid;
+use Scholaris\Modules\Socle\People\Contracts\DuplicateCriteriaProvider;
 use Scholaris\Modules\Socle\People\Domain\DuplicateMatcher;
 use Scholaris\Modules\Socle\People\Domain\Names;
+use Scholaris\Modules\Socle\People\Infrastructure\ListProviders;
 use Scholaris\Modules\Socle\People\Infrastructure\PdoActorDirectory;
 use Scholaris\Modules\Socle\People\Infrastructure\PdoStore;
 
@@ -20,6 +22,7 @@ final class PersonService
         private readonly PdoStore $store,
         private readonly PeopleClock $clock,
         private readonly PdoActorDirectory $actors,
+        private readonly ListProviders $providers,
     ) {
     }
 
@@ -121,6 +124,12 @@ final class PersonService
      */
     public function duplicates(string $tenantId, array $values, ?string $excludeId = null): array
     {
+        $providers = $this->providers->all(DuplicateCriteriaProvider::PREFIX, DuplicateCriteriaProvider::class);
+        $extraIds = [];
+        foreach ($providers as $provider) {
+            array_push($extraIds, ...$provider->candidateIds($tenantId, $values));
+        }
+        $extraIds = array_values(array_unique($extraIds));
         $clauses = [];
         $params = [$tenantId];
         if (isset($values['birth_date']) && is_string($values['birth_date'])) {
@@ -132,16 +141,32 @@ final class PersonService
             $clauses[] = 'phone LIKE ?';
             $params[] = '%' . substr($phone, -9);
         }
-        if ($clauses === []) {
+        if ($clauses === [] && $extraIds === []) {
             return [];
         }
 
+        $rows = $clauses === []
+            ? []
+            : $this->store->rows('SELECT * FROM people WHERE tenant_id = ? AND (' . implode(' OR ', $clauses) . ') ORDER BY id LIMIT 200', $params);
+        $missing = array_values(array_diff($extraIds, array_map(static fn (array $row): string => (string) $row['id'], $rows)));
+        if ($missing !== []) {
+            $rows = [...$rows, ...$this->store->rows(
+                'SELECT * FROM people WHERE tenant_id = ? AND id IN (' . implode(', ', array_fill(0, count($missing), '?')) . ') ORDER BY id',
+                [$tenantId, ...$missing],
+            )];
+        }
+        $rows = $this->restrictToScope($tenantId, $rows, $providers);
+
         $found = [];
-        foreach ($this->store->rows('SELECT * FROM people WHERE tenant_id = ? AND (' . implode(' OR ', $clauses) . ') ORDER BY id LIMIT 200', $params) as $row) {
+        foreach ($rows as $row) {
             if ($excludeId !== null && $row['id'] === $excludeId) {
                 continue;
             }
-            $criteria = DuplicateMatcher::criteria($values, $row);
+            $extra = [];
+            foreach ($providers as $provider) {
+                array_push($extra, ...$provider->extraCriteria($tenantId, $values, $row));
+            }
+            $criteria = DuplicateMatcher::criteria($values, $row, $extra);
             if ($criteria !== []) {
                 $found[] = ['person' => $row, 'criteria' => $criteria, 'history' => $this->historySummary($tenantId, (string) $row['id'], $criteria)];
             }
@@ -149,6 +174,39 @@ final class PersonService
         usort($found, static fn (array $a, array $b): int => count($b['criteria']) <=> count($a['criteria']));
 
         return $found;
+    }
+
+    /**
+     * Restriction facultative des candidats aux personnes inscrites dans les établissements désignés par les fournisseurs.
+     *
+     * @param list<array<string, mixed>> $rows
+     * @param list<DuplicateCriteriaProvider> $providers
+     * @return list<array<string, mixed>>
+     */
+    private function restrictToScope(string $tenantId, array $rows, array $providers): array
+    {
+        $scope = null;
+        foreach ($providers as $provider) {
+            $own = $provider->establishmentScope($tenantId);
+            if ($own !== null) {
+                $scope = array_values(array_unique([...($scope ?? []), ...$own]));
+            }
+        }
+        if ($scope === null) {
+            return $rows;
+        }
+        if ($scope === [] || $rows === []) {
+            return [];
+        }
+        $personIds = array_map(static fn (array $row): string => (string) $row['id'], $rows);
+        $enrolled = $this->store->rows(
+            'SELECT DISTINCT person_id FROM enrollments WHERE tenant_id = ? AND establishment_id IN (' . implode(', ', array_fill(0, count($scope), '?')) . ') '
+            . 'AND person_id IN (' . implode(', ', array_fill(0, count($personIds), '?')) . ')',
+            [$tenantId, ...$scope, ...$personIds],
+        );
+        $allowed = array_flip(array_map(static fn (array $row): string => (string) $row['person_id'], $enrolled));
+
+        return array_values(array_filter($rows, static fn (array $row): bool => isset($allowed[(string) $row['id']])));
     }
 
     /**

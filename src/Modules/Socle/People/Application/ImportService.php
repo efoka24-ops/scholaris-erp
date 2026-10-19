@@ -73,7 +73,7 @@ final class ImportService
                         $lineErrors[] = ['line' => $line, 'field' => null, 'message' => sprintf(
                             'Une fiche existe déjà (%d critères sur %d, fiche %s). Ajoutez confirm_different=oui si ce sont deux personnes.',
                             count($existing[0]['criteria']),
-                            DuplicateMatcher::TOTAL,
+                            max(DuplicateMatcher::TOTAL, count($existing[0]['criteria'])),
                             $existing[0]['person']['id'],
                         )];
                     }

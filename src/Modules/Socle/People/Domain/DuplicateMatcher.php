@@ -15,9 +15,10 @@ final class DuplicateMatcher
     /**
      * @param array<string, mixed> $input
      * @param array<string, mixed> $existing
-     * @return list<string> critères concordants parmi name, birth_date, phone ; vide s'il n'y a pas de doublon probable
+     * @param list<string> $extra critères supplémentaires déjà jugés concordants par une application (aucun par défaut)
+     * @return list<string> critères concordants parmi name, birth_date, phone (puis `extra`) ; vide s'il n'y a pas de doublon probable
      */
-    public static function criteria(array $input, array $existing): array
+    public static function criteria(array $input, array $existing, array $extra = []): array
     {
         $matched = [];
         if (Names::key((string) ($input['first_name'] ?? ''), (string) ($input['last_name'] ?? ''))
@@ -31,6 +32,11 @@ final class DuplicateMatcher
         $phone = Names::phoneKey(isset($input['phone']) ? (string) $input['phone'] : null);
         if ($phone !== null && $phone === Names::phoneKey(isset($existing['phone']) ? (string) $existing['phone'] : null)) {
             $matched[] = 'phone';
+        }
+        foreach ($extra as $criterion) {
+            if (!in_array($criterion, $matched, true)) {
+                $matched[] = $criterion;
+            }
         }
 
         return in_array('name', $matched, true) && count($matched) >= 2 ? $matched : [];

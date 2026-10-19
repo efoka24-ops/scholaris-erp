@@ -176,8 +176,8 @@ final class PeopleController extends BaseController
             'person' => $this->resource->toArray($d['person']),
             'criteria' => $d['criteria'],
             'criteria_matched' => count($d['criteria']),
-            'criteria_total' => DuplicateMatcher::TOTAL,
-            'label' => sprintf('%d critères sur %d', count($d['criteria']), DuplicateMatcher::TOTAL),
+            'criteria_total' => max(DuplicateMatcher::TOTAL, count($d['criteria'])),
+            'label' => sprintf('%d critères sur %d', count($d['criteria']), max(DuplicateMatcher::TOTAL, count($d['criteria']))),
             'history' => $d['history'],
         ], $duplicates);
     }
