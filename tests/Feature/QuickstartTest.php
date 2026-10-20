@@ -35,7 +35,7 @@ final class QuickstartTest extends IdentityTestCase
     /** @var array<string, string> */
     private array $tokens = [];
 
-    protected function boot(): void
+    protected function boot(array $overrides = []): void
     {
         $this->clock = new TestClock();
         $this->sms = new RecordingSms();
