@@ -8,6 +8,7 @@ use PDOException;
 use Scholaris\Core\Http\HttpException;
 use Scholaris\Core\Security\Principal;
 use Scholaris\Core\Support\Ulid;
+use Scholaris\Modules\Socle\Attendance\Contracts\AttendanceCodes;
 use Scholaris\Modules\Socle\Attendance\Infrastructure\AttendanceRepository;
 use Scholaris\Modules\Socle\Attendance\Infrastructure\Db;
 use Scholaris\Modules\Socle\Attendance\Infrastructure\JustificationRepository;
@@ -22,6 +23,8 @@ use Scholaris\Modules\Socle\Scheduling\Contracts\TimetableDirectory;
  */
 final class SessionService
 {
+    private const DAY_PART_LABELS = ['morning' => 'Matin', 'afternoon' => 'Après-midi', 'full_day' => 'Journée complète'];
+
     public function __construct(
         private readonly Db $db,
         private readonly AttendanceRepository $repository,
@@ -91,6 +94,78 @@ final class SessionService
                 return [$this->detail($raced), false];
             }
             throw new SessionConflict('Un appel existe déjà pour ce créneau et ce jour.', $this->detail($this->repository->sessionBySlotDay($tenantId, $slotId, $date) ?? []), $clientVersion);
+        }
+
+        return [$this->detail($this->mustFind($tenantId, $establishmentId, $id)), true];
+    }
+
+    /**
+     * Mode day_part (PP17) : crée l'appel d'une classe pour un moment de la journée, sans créneau. La séance garde la clé
+     * déterministe `dp:<structure_id>:<moment>` dans slot_id (une seule séance par classe, moment et jour : un doublon est un
+     * conflit 409) ; le preneur d'appel est l'enseignant qui la crée. Pas d'horaire, donc aucune heure enseignée signalée.
+     *
+     * @return array{0: array<string, mixed>, 1: bool} séance et indicateur de création
+     */
+    public function openDayPart(Principal $principal, string $establishmentId, string $structureId, string $dayPart, string $date, string $clientUuid): array
+    {
+        $tenantId = $principal->tenantId;
+        $key = AttendanceCodes::DAY_PART_KEY_PREFIX . $structureId . ':' . $dayPart;
+        $clientVersion = ['client_uuid' => $clientUuid, 'structure_id' => $structureId, 'day_part' => $dayPart, 'date' => $date];
+
+        $existing = $this->repository->sessionByClient($tenantId, $establishmentId, $clientUuid);
+        if ($existing !== null) {
+            if ($existing['slot_id'] !== $key || $existing['session_date'] !== $date) {
+                throw new SessionConflict('Ce client_uuid identifie déjà un autre appel. Générez un nouvel identifiant sur l\'appareil.', $this->detail($existing), $clientVersion);
+            }
+
+            return [$this->detail($existing), false];
+        }
+
+        if ($this->settings->mode($tenantId, $establishmentId) !== AttendanceCodes::MODE_DAY_PART) {
+            throw HttpException::validation(['day_part' => ['L\'appel par moment de la journée n\'est pas activé pour cet établissement (attendance.mode = day_part).']]);
+        }
+        if (mb_strlen($key) > 40) {
+            throw HttpException::validation(['structure_id' => ['Identifiant de classe trop long pour un appel par moment de la journée.']]);
+        }
+        if ($date > $this->clock->today()) {
+            throw HttpException::validation(['date' => ['L\'appel ne peut pas être fait pour un jour à venir.']]);
+        }
+        $inEstablishment = array_flip($this->enrollments->personIdsInEstablishment($tenantId, $establishmentId));
+        $expected = array_values(array_filter($this->expected($tenantId, $structureId), static fn (string $id): bool => isset($inEstablishment[$id])));
+        if ($expected === []) {
+            throw HttpException::notFound('Classe introuvable dans cet établissement ou sans élève inscrit.');
+        }
+        $actor = $this->access->personIdOf($principal);
+        if ($actor === null) {
+            throw HttpException::forbidden('Seul un enseignant identifié peut faire l\'appel d\'une classe.');
+        }
+
+        $sameSlot = $this->repository->sessionBySlotDay($tenantId, $key, $date);
+        if ($sameSlot !== null) {
+            throw new SessionConflict('Un appel existe déjà pour cette classe, ce moment de la journée et ce jour. Rejoignez-le ou attendez sa validation.', $this->detail($sameSlot), $clientVersion);
+        }
+
+        $now = $this->clock->now();
+        $id = (string) new Ulid();
+        try {
+            $this->repository->insert('attendance_sessions', [
+                'id' => $id, 'tenant_id' => $tenantId, 'establishment_id' => $establishmentId, 'slot_id' => $key,
+                'structure_id' => $structureId, 'course_unit_id' => null,
+                'teacher_person_id' => $actor, 'subject_label' => self::DAY_PART_LABELS[$dayPart] ?? $dayPart,
+                'session_date' => $date, 'start_time' => '00:00', 'end_time' => '00:00', 'status' => 'open',
+                'client_uuid' => $clientUuid, 'expected_count' => count($expected),
+                'taken_by' => $principal->userId, 'validated_by' => null, 'validated_at' => null, 'synced_at' => null,
+                'qr_token_hash' => null, 'qr_expires_at' => null, 'created_at' => $now, 'updated_at' => $now,
+            ]);
+        } catch (PDOException $e) {
+            if (!$this->db->isUniqueViolation($e)) {
+                throw $e;
+            }
+            $raced = $this->repository->sessionByClient($tenantId, $establishmentId, $clientUuid);
+            if ($raced !== null && $raced['slot_id'] === $key && $raced['session_date'] === $date) {
+                return [$this->detail($raced), false];
+            }
+            throw new SessionConflict('Un appel existe déjà pour cette classe, ce moment de la journée et ce jour.', $this->detail($this->repository->sessionBySlotDay($tenantId, $key, $date) ?? []), $clientVersion);
         }
 
         return [$this->detail($this->mustFind($tenantId, $establishmentId, $id)), true];
@@ -219,12 +294,16 @@ final class SessionService
     /**
      * Un appel complet en un envoi : création (idempotente), lignes, puis validation si demandée.
      *
-     * @param array<string, mixed> $item client_uuid, slot_id, date, records, validate
+     * @param array<string, mixed> $item client_uuid, slot_id (ou structure_id et day_part), date, records, validate
      * @return array{0: array<string, mixed>, 1: bool}
      */
     public function process(Principal $principal, string $establishmentId, array $item): array
     {
-        [$session, $created] = $this->open($principal, $establishmentId, (string) $item['slot_id'], (string) $item['date'], (string) $item['client_uuid']);
+        if (isset($item['day_part'])) {
+            [$session, $created] = $this->openDayPart($principal, $establishmentId, (string) $item['structure_id'], (string) $item['day_part'], (string) $item['date'], (string) $item['client_uuid']);
+        } else {
+            [$session, $created] = $this->open($principal, $establishmentId, (string) $item['slot_id'], (string) $item['date'], (string) $item['client_uuid']);
+        }
         $sessionId = (string) $session['id'];
         if (($item['records'] ?? []) !== []) {
             $session = $this->saveRecords($principal, $establishmentId, $sessionId, $item['records']);

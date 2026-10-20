@@ -6,8 +6,10 @@ namespace Scholaris\Modules\Socle\Identity\Application;
 
 use Scholaris\Modules\Socle\Identity\Domain\Role;
 use Scholaris\Modules\Socle\Identity\Domain\RoleAssignment;
+use Scholaris\Modules\Socle\Identity\Domain\ScopeType;
 use Scholaris\Modules\Socle\Identity\Infrastructure\PdoRoleAssignmentRepository;
 use Scholaris\Modules\Socle\Identity\Infrastructure\PdoRoleCatalog;
+use Scholaris\Modules\Socle\Organisation\Contracts\TerritoryDirectory;
 
 /**
  * Déduit ce qu'une personne peut faire dans un contexte (client, établissement) à partir de ses affectations
@@ -18,6 +20,7 @@ final class PermissionResolver
     public function __construct(
         private readonly PdoRoleAssignmentRepository $assignments,
         private readonly PdoRoleCatalog $roles,
+        private readonly TerritoryDirectory $territories,
         private readonly Moment $moment,
     ) {
     }
@@ -37,7 +40,7 @@ final class PermissionResolver
     {
         $codes = [];
         foreach ($this->activeAssignments($tenantId, $personId) as $assignment) {
-            if ($assignment->appliesTo($establishmentId)) {
+            if ($this->appliesTo($tenantId, $assignment, $establishmentId)) {
                 $codes[$assignment->role] = $assignment->role;
             }
         }
@@ -122,5 +125,25 @@ final class PermissionResolver
         }
 
         return $result;
+    }
+
+    private function appliesTo(string $tenantId, RoleAssignment $assignment, ?string $establishmentId): bool
+    {
+        if ($assignment->isTenantWide()) {
+            return true;
+        }
+        if ($establishmentId === null) {
+            return false;
+        }
+        if ($assignment->scopeType === ScopeType::Territory) {
+            $territoryId = $assignment->scopeId;
+            if ($territoryId === null || $territoryId === '') {
+                return false;
+            }
+
+            return in_array($establishmentId, $this->territories->establishmentsIn($tenantId, $territoryId, $this->moment->iso()), true);
+        }
+
+        return $assignment->appliesTo($establishmentId);
     }
 }

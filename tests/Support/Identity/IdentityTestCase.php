@@ -40,7 +40,8 @@ abstract class IdentityTestCase extends TestCase
     protected RecordingMail $mail;
     protected InMemoryEstablishmentDirectory $directory;
 
-    protected function boot(): void
+    /** @param array<string, mixed> $overrides */
+    protected function boot(array $overrides = []): void
     {
         $this->clock = new TestClock();
         $this->sms = new RecordingSms();
@@ -53,12 +54,12 @@ abstract class IdentityTestCase extends TestCase
             'api' => ['cors_origins' => [], 'idempotent_paths' => [], 'rate_limits' => []],
             'identity' => ['argon_memory' => 1024, 'argon_time' => 1, 'secret_key' => 'cle-de-test-identity'],
         ]);
-        $this->kernel = Kernel::boot(dirname(__DIR__, 3), $config, [
+        $this->kernel = Kernel::boot(dirname(__DIR__, 3), $config, array_merge([
             Clock::class => $this->clock,
             SmsGateway::class => $this->sms,
             MailGateway::class => $this->mail,
             EstablishmentDirectory::class => $this->directory,
-        ]);
+        ], $overrides));
         $this->kernel->container()->get(Migrator::class)->migrate();
     }
 

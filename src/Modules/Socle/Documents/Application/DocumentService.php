@@ -10,10 +10,12 @@ use Scholaris\Core\Numbering\SequenceService;
 use Scholaris\Core\Support\Ulid;
 use Scholaris\Modules\Socle\Audit\Contracts\AuditLog;
 use Scholaris\Modules\Socle\Billing\Contracts\DebtorDirectory;
+use Scholaris\Modules\Socle\Documents\Contracts\DocumentReissuer;
 use Scholaris\Modules\Socle\Documents\Contracts\ExtendedDocumentIssuer;
 use Scholaris\Modules\Socle\Documents\Contracts\IssuanceContext;
 use Scholaris\Modules\Socle\Documents\Contracts\IssuedDocument;
 use Scholaris\Modules\Socle\Documents\Contracts\IssueOptions;
+use Scholaris\Modules\Socle\Documents\Domain\LightPdfProfile;
 use Scholaris\Modules\Socle\Documents\Domain\NameMask;
 use Scholaris\Modules\Socle\Documents\Domain\NumberPattern;
 use Scholaris\Modules\Socle\Documents\Domain\QrCodeGenerator;
@@ -37,7 +39,7 @@ use Scholaris\Modules\Socle\People\Contracts\PersonDirectory;
  * la transaction est annulée et le numéro n'est pas consommé. Le contenu rendu est figé à l'émission
  * (version de modèle conservée) et son empreinte SHA-256 est enregistrée.
  */
-final class DocumentService implements ExtendedDocumentIssuer
+final class DocumentService implements ExtendedDocumentIssuer, DocumentReissuer
 {
     public const LOCALES = ['fr', 'en'];
     public const BLOCKED_REASON = 'Pension impayée : blocage financier paramétré pour les documents.';
@@ -89,6 +91,7 @@ final class DocumentService implements ExtendedDocumentIssuer
     /**
      * @param array<string, scalar|null> $data
      * @param (callable(string): void)|null $within exécuté dans la transaction d'émission (reçoit l'identifiant du document)
+     * @param array{number: string, revision: int, of: string, reason: string}|null $reissue réédition : numéro conservé, pas de nouveau numéro de séquence
      */
     public function issueVia(
         string $tenantId,
@@ -101,6 +104,7 @@ final class DocumentService implements ExtendedDocumentIssuer
         string $via,
         ?callable $within = null,
         ?IssueOptions $options = null,
+        ?array $reissue = null,
     ): IssuedDocument {
         if (!in_array($locale, self::LOCALES, true)) {
             throw HttpException::validation(['locale' => ['Langue non prise en charge : fr ou en.']]);
@@ -173,16 +177,21 @@ final class DocumentService implements ExtendedDocumentIssuer
             $locale,
             $school,
             $extra,
+            $reissue,
         ): array {
-            $counter = $this->sequences->next($tenantId, $establishmentId, $kind, $year);
-            $number = NumberPattern::format(
-                $pattern,
-                NumberPattern::establishmentCode($establishment->name),
-                $year,
-                (string) $definition['type_letter'],
-                $counter,
-                $school,
-            );
+            if ($reissue === null) {
+                $counter = $this->sequences->next($tenantId, $establishmentId, $kind, $year);
+                $number = NumberPattern::format(
+                    $pattern,
+                    NumberPattern::establishmentCode($establishment->name),
+                    $year,
+                    (string) $definition['type_letter'],
+                    $counter,
+                    $school,
+                );
+            } else {
+                $number = $reissue['number'];
+            }
 
             $html = (string) $template['html'];
             [$safe, $signedAt] = $this->safeFragments($html, $definition['qr_enabled'] === true, $url, $seal, $issuedAt, $locale);
@@ -194,7 +203,10 @@ final class DocumentService implements ExtendedDocumentIssuer
                 'issued_on' => $this->clock->moment()->format($locale === 'fr' ? 'd/m/Y' : 'Y-m-d'),
                 'year' => (string) $year,
             ], $safe);
-
+            if ($reissue !== null) {
+                $content = self::withRectificatif($content, $locale, $reissue['reason'], $this->clock->moment());
+                $extra += ['revision' => $reissue['revision'], 'reissue_of' => $reissue['of']];
+            }
             $this->documents->insert([
                 'id' => $id,
                 'tenant_id' => $tenantId,
@@ -266,6 +278,56 @@ final class DocumentService implements ExtendedDocumentIssuer
         );
     }
 
+    public function reissue(string $tenantId, string $establishmentId, string $documentId, array $data, string $reason, string $reissuedBy): IssuedDocument
+    {
+        $reason = trim($reason);
+        if ($reason === '' || mb_strlen($reason) > 500) {
+            throw HttpException::validation(['reason' => ['Un motif de 1 à 500 caractères est obligatoire pour rectifier un document.']]);
+        }
+        $old = $this->documents->find($tenantId, $documentId, $establishmentId) ?? throw HttpException::notFound('Document introuvable.');
+        if ($old['status'] !== IssuedDocument::VALID) {
+            throw HttpException::conflict('Seul un document valide peut être rectifié.');
+        }
+        $stored = json_decode((string) $old['data_json'], true);
+        $values = $data === [] ? (is_array($stored) ? $stored : []) : $data;
+        $at = $this->clock->now();
+
+        $issued = $this->issueVia(
+            $tenantId,
+            $establishmentId,
+            (string) $old['type_code'],
+            (string) $old['subject_person_id'],
+            $values,
+            $reissuedBy,
+            (string) $old['locale'],
+            'reissue',
+            function (string $newId) use ($tenantId, $documentId, $reason, $reissuedBy, $at): void {
+                if ($this->documents->markRevoked($tenantId, $documentId, $reason, $reissuedBy, $at, $newId) === 0) {
+                    throw HttpException::conflict('Ce document a déjà été rectifié ou révoqué.');
+                }
+            },
+            null,
+            ['number' => (string) $old['number'], 'revision' => (int) $old['revision'] + 1, 'of' => $documentId, 'reason' => $reason],
+        );
+        $this->audit->append($tenantId, $reissuedBy, 'document.reissued', 'document', $issued->id, ['status' => IssuedDocument::VALID, 'replaces' => $documentId], [
+            'number' => $issued->number, 'revision' => (int) $old['revision'] + 1, 'reason' => $reason,
+        ]);
+
+        return $issued;
+    }
+
+    private static function withRectificatif(string $html, string $locale, string $reason, \DateTimeImmutable $moment): string
+    {
+        $banner = $locale === 'en'
+            ? 'Corrected version — issued on ' . $moment->format('Y-m-d') . ' (reason: ' . $reason . ')'
+            : 'Rectificatif — émis le ' . $moment->format('d/m/Y') . ' (motif : ' . $reason . ')';
+        $notice = '<p class="rectificatif"><strong>' . htmlspecialchars($banner, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</strong></p>';
+        $count = 0;
+        $withBanner = (string) preg_replace('/(<body\b[^>]*>)/i', '$1' . $notice, $html, 1, $count);
+
+        return $count === 1 ? $withBanner : $notice . $html;
+    }
+
     /** @return string HTML du duplicata : contenu et numéro d'origine, version de modèle de l'émission, mention et date de réimpression */
     public function duplicate(string $tenantId, string $establishmentId, string $id, string $by): string
     {
@@ -295,17 +357,23 @@ final class DocumentService implements ExtendedDocumentIssuer
         return (string) $document['content'];
     }
 
-    public function pdf(string $html): string
+    /** @param string $profile standard ou light (PP15 : polices de base, grandes images retirées, PDF parent < 200 Ko) */
+    public function pdf(string $html, string $profile = LightPdfProfile::STANDARD): string
     {
+        if ($profile === LightPdfProfile::LIGHT) {
+            return $this->pdf->render(LightPdfProfile::apply($this->withPrintStyle($html, LightPdfProfile::STYLE)));
+        }
+
         return $this->pdf->render($this->withPrintStyle($html));
     }
 
     /** Feuille de style d'impression minimale (marges, titres centrés, code QR) injectée au début du corps. */
-    private function withPrintStyle(string $html): string
+    private function withPrintStyle(string $html, ?string $style = null): string
     {
-        $style = '<style>@page{margin:2cm}body{font-family:"DejaVu Sans",sans-serif;font-size:12px;line-height:1.5;color:#111}'
+        $style ??= '<style>@page{margin:2cm}body{font-family:"DejaVu Sans",sans-serif;font-size:12px;line-height:1.5;color:#111}'
             . 'h1{text-align:center;font-size:20px;border-bottom:1px solid #444;padding-bottom:6px}h2{text-align:center;font-size:16px}'
-            . '.qr{margin:12px 0}.qr figcaption{font-size:9px;color:#555}.duplicata{text-align:center;color:#a00}</style>';
+            . '.qr{margin:12px 0}.qr figcaption{font-size:9px;color:#555}.duplicata{text-align:center;color:#a00}.rectificatif{text-align:center;color:#a00}'
+            . '.page-break{page-break-after:always}</style>';
         $count = 0;
         $styled = (string) preg_replace('/(<body\b[^>]*>)/i', '$1' . $style, $html, 1, $count);
 

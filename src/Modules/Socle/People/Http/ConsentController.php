@@ -45,12 +45,13 @@ final class ConsentController extends BaseController
     {
         $data = Input::validate(
             Input::body($request),
-            ['person_id' => Input::ref(), 'purpose' => Input::enum(ConsentService::PURPOSES)],
+            ['person_id' => Input::ref(), 'purpose' => Input::enum(ConsentService::PURPOSES), 'evidence_ref' => Input::ref()],
             ['person_id', 'purpose'],
+            ['evidence_ref'],
         );
         $personId = (string) $data['person_id'];
         $this->authorizeFor($request, $personId);
-        $row = $this->consents->grant($this->context->tenantId(), $personId, (string) $data['purpose'], $this->principal($request)->userId);
+        $row = $this->consents->grant($this->context->tenantId(), $personId, (string) $data['purpose'], $this->principal($request)->userId, $data['evidence_ref'] ?? null);
         $out = SimpleResources::consent()->toArray($row);
         $this->context->audit($request, 'consent.granted', 'consent', (string) $row['id'], null, $out);
 

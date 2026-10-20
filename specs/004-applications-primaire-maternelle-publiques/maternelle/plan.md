@@ -20,7 +20,7 @@ src/Modules/Apps/PublicNursery/
 ├── Development/               # DEV : référentiel, observations, carnet, cahier de vie, besoins
 ├── Transition/                # TRA : décisions, fiche de liaison, planificateur (PM7)
 ├── Documents/                 # fournisseur DOC-18 à DOC-21, gabarits Dompdf FR/EN
-├── Notifications/             # NOT-06, NOT-07, codes ; appelle SafetyMessenger (PM3) et Messenger
+├── Notifications/             # NOT-06, NOT-07, codes ; appelle Messenger en catégorie `essential` (T614), façade SafetyMessenger (PM3) au plus
 └── Portal/                    # sections du portail parent : autorisés, carnet, cahier de vie, allergies
 ```
 Chaque sous-module : `Application/ Domain/ Infrastructure/ Http/ Database/Migrations/ routes.php definitions.php` ; pas de `Contracts/` exposé aux autres applications (la fiche de liaison circule comme document émis, lu par `DocumentCatalog`).
@@ -62,14 +62,14 @@ Repli si le commun est en retard : garde d'écriture et horaires portés localem
 | `public_nursery.dev.discouraged_terms` | liste vide (à fournir par l'Inspection générale) | Q-10 |
 | `public_nursery.lifebook.retention` | `end_of_next_school_year` | RG-DEV-3 contre « un an » (Q-07) |
 | `public_nursery.transition.auto_promote` | true | CDC |
-| `messaging.safety_templates` | `pn.not06.*`, `pn.not07.*` (posé par la migration de modèles) | RG-COM-2, PM3 |
+| `messaging.safety_templates` | supprimé : NOT-06 et NOT-07 passent par la catégorie `essential` (T614, PP10), sans paramètre ni colonne `safety` | RG-COM-2, PM3 |
 
 ## 7. Mode hors ligne du contrôle de sortie (RG-SOR-3)
 1. **Paquet du matin** `GET /public-nursery/sections/{id}/pickup-package?date=` (R11/R12 de la section) : enfants de la section, absents connus (PM8), autorisés valables ce jour avec vignette photo réduite (≤ 15 Ko, signée), restrictions actives (nom et nature seulement), empreintes HMAC des codes du jour, numéro du directeur, `generated_at`, empreinte du paquet. Taille cible < 300 Ko pour 40 enfants.
-2. **Stockage** : IndexedDB chiffrée par la PWA (mécanisme commun, A9) ; effacée au changement d'utilisateur ; aucune donnée de restriction affichée hors de l'écran de sortie.
+2. **Stockage** : IndexedDB chiffrée par la PWA (mécanisme commun, A9, T645) ; effacée au changement d'utilisateur ; aucune donnée de restriction affichée hors de l'écran de sortie.
 3. **Décision hors ligne** : remise seulement à une autorisation du paquet ou à un code dont l'empreinte correspond ; restriction → refus ; sinon refus. Chaque décision a un `client_uuid` et `occurred_at`.
 4. **Refus hors ligne** : l'écran propose `tel:` (directeur) et `sms:` prérempli vers les parents ; NOT-07 serveur part à la synchronisation.
-5. **Synchronisation** `POST /public-nursery/sync/pickups` (lot signé par la session ; si le point commun API-04 existe, enregistrement d'un gestionnaire à la place) : idempotent par `client_uuid` (`pn_sync_batches`, index uniques) ; remise citant une autorisation révoquée entre-temps → acceptée mais `stale_authorization = 1` + alerte directeur ; jamais d'écrasement d'un événement serveur (409 renvoyé à l'appareil pour affichage).
+5. **Synchronisation** : ni route `/public-nursery/sync/pickups` ni `SyncService`/`SyncController` propres. Un gestionnaire `sync.handlers.public_nursery.pickup` (`PN/Pickup/Application/PickupSyncHandler.php`) est branché sur `So/Sync` (T609 du Primaire, `POST /sync/batches`, point d'extension unique : lots signés par l'appareil, appareil révoqué refusé) : idempotent par `client_uuid` (`pn_sync_batches`, index uniques) ; remise citant une autorisation révoquée entre-temps → acceptée mais `stale_authorization = 1` + alerte directeur ; jamais d'écrasement d'un événement serveur (409 par élément, renvoyé à l'appareil pour affichage). Dépendances : T725 dépend de T609 ; T735 dépend aussi de T645.
 6. **Paquet périmé** : au-delà de `offline_max_age_days`, l'écran passe en mode « doute » : aucune remise sans appel au directeur (RG-SOR-1).
 7. Le hors ligne ne couvre **pas** la veille des 30 minutes (serveur) : un appareil hors ligne affiche toutefois, à H+30, la liste locale des enfants non sortis.
 

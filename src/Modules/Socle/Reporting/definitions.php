@@ -27,6 +27,7 @@ return [
     IdentityTodoProvider::class => get(TodoAggregator::class),
     TileIndicators::class => autowire(ReportingTileIndicators::class),
     PendingApprovalLister::class => autowire(AuditPendingApprovals::class),
+    \Scholaris\Modules\Socle\Reporting\Contracts\ApprovalWorkflow::class => autowire(\Scholaris\Modules\Socle\Reporting\Infrastructure\PdoApprovalWorkflow::class),
 
     'reporting.indicators.reporting' => [
         PeopleIndicators::class,
@@ -39,5 +40,11 @@ return [
     'reporting.todo.reporting' => [ApprovalTodoProvider::class],
     // Tableaux de bord déclarés par les applications (S21) : clé de liste `reporting.dashboards.<application>`.
     'reporting.dashboards.socle' => [],
+    // Agrégats par territoire (PP4, T613) : fournisseurs `reporting.territory_aggregates.<application>`, seuil de masquage paramétré.
+    'reporting.disclosure.minimum_cell_size' => 5,
+    \Scholaris\Modules\Socle\Reporting\Contracts\DisclosurePolicy::class => autowire(\Scholaris\Modules\Socle\Reporting\Application\ThresholdDisclosurePolicy::class),
+    \Scholaris\Modules\Socle\Reporting\Application\TerritoryAggregateReader::class => autowire()->constructorParameter('minimumCellSize', get('reporting.disclosure.minimum_cell_size')),
+    'reporting.territory_aggregates.socle' => [],
+    'console.command.' . \Scholaris\Modules\Socle\Reporting\Console\AggregateTerritoriesCommand::NAME => autowire(\Scholaris\Modules\Socle\Reporting\Console\AggregateTerritoriesCommand::class),
     'privacy.tenant_data_source.reporting' => \DI\autowire(\Scholaris\Modules\Socle\Reporting\Infrastructure\PrivacyExportSource::class),
 ];

@@ -1,0 +1,210 @@
+# Contrat OpenAPI 3.1 du Primaire public (application public_primary, registre des écoles). Fusionné avec openapi.yaml par le test de contrat.
+# Erreurs au format RFC 9457. Toutes les routes exigent l'authentification (401) et X-Establishment-Id.
+paths:
+  /api/v1/public-primary/registry/profile:
+    get:
+      summary: 'GET /public-primary/registry/profile'
+      security:
+        -
+          bearer: {  }
+      parameters:
+        -
+          $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        200:
+          description: 'Succès : enveloppe JSON {data}'
+        400:
+          description: 'Requête invalide (en-tête X-Establishment-Id manquant, JSON illisible)'
+        403:
+          description: 'Accès refusé (permission, application suspendue ou fermée)'
+        404:
+          description: 'Ressource introuvable ou hors périmètre'
+        422:
+          description: 'Données invalides ou refus métier (RFC 9457)'
+    put:
+      summary: 'PUT /public-primary/registry/profile'
+      security:
+        -
+          bearer: {  }
+      parameters:
+        -
+          $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        200:
+          description: 'Succès : enveloppe JSON {data}'
+        400:
+          description: 'Requête invalide (en-tête X-Establishment-Id manquant, JSON illisible)'
+        403:
+          description: 'Accès refusé (permission, application suspendue ou fermée)'
+        404:
+          description: 'Ressource introuvable ou hors périmètre'
+        422:
+          description: 'Données invalides ou refus métier (RFC 9457)'
+  '/api/v1/public-primary/registry/territories/{id}/lineage':
+    get:
+      summary: 'GET /public-primary/registry/territories/{id}/lineage'
+      security:
+        -
+          bearer: {  }
+      parameters:
+        -
+          $ref: '#/components/parameters/EstablishmentId'
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: 'Succès : enveloppe JSON {data}'
+        400:
+          description: 'Requête invalide (en-tête X-Establishment-Id manquant, JSON illisible)'
+        403:
+          description: 'Accès refusé (permission, application suspendue ou fermée)'
+        404:
+          description: 'Ressource introuvable ou hors périmètre'
+        422:
+          description: 'Données invalides ou refus métier (RFC 9457)'
+  /api/v1/public-primary/registry/infrastructure:
+    get:
+      summary: 'GET /public-primary/registry/infrastructure'
+      security:
+        -
+          bearer: {  }
+      parameters:
+        -
+          $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        200:
+          description: 'Succès : enveloppe JSON {data}'
+        400:
+          description: 'Requête invalide (en-tête X-Establishment-Id manquant, JSON illisible)'
+        403:
+          description: 'Accès refusé (permission, application suspendue ou fermée)'
+        404:
+          description: 'Ressource introuvable ou hors périmètre'
+        422:
+          description: 'Données invalides ou refus métier (RFC 9457)'
+    post:
+      summary: 'POST /public-primary/registry/infrastructure'
+      security:
+        -
+          bearer: {  }
+      parameters:
+        -
+          $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        201:
+          description: 'Succès : enveloppe JSON {data}'
+        400:
+          description: 'Requête invalide (en-tête X-Establishment-Id manquant, JSON illisible)'
+        403:
+          description: 'Accès refusé (permission, application suspendue ou fermée)'
+        404:
+          description: 'Ressource introuvable ou hors périmètre'
+        422:
+          description: 'Données invalides ou refus métier (RFC 9457)'
+  '/api/v1/public-primary/registry/infrastructure/{id}':
+    get:
+      summary: 'GET /public-primary/registry/infrastructure/{id}'
+      security:
+        -
+          bearer: {  }
+      parameters:
+        -
+          $ref: '#/components/parameters/EstablishmentId'
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: 'Succès : enveloppe JSON {data}'
+        400:
+          description: 'Requête invalide (en-tête X-Establishment-Id manquant, JSON illisible)'
+        403:
+          description: 'Accès refusé (permission, application suspendue ou fermée)'
+        404:
+          description: 'Ressource introuvable ou hors périmètre'
+        422:
+          description: 'Données invalides ou refus métier (RFC 9457)'
+    patch:
+      summary: 'PATCH /public-primary/registry/infrastructure/{id}'
+      security:
+        -
+          bearer: {  }
+      parameters:
+        -
+          $ref: '#/components/parameters/EstablishmentId'
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: 'Succès : enveloppe JSON {data}'
+        400:
+          description: 'Requête invalide (en-tête X-Establishment-Id manquant, JSON illisible)'
+        403:
+          description: 'Accès refusé (permission, application suspendue ou fermée)'
+        404:
+          description: 'Ressource introuvable ou hors périmètre'
+        422:
+          description: 'Données invalides ou refus métier (RFC 9457)'
+  '/api/v1/public-primary/registry/infrastructure/{id}/corrections':
+    post:
+      summary: 'POST /public-primary/registry/infrastructure/{id}/corrections'
+      security:
+        -
+          bearer: {  }
+      parameters:
+        -
+          $ref: '#/components/parameters/EstablishmentId'
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        201:
+          description: 'Succès : enveloppe JSON {data}'
+        400:
+          description: 'Requête invalide (en-tête X-Establishment-Id manquant, JSON illisible)'
+        403:
+          description: 'Accès refusé (permission, application suspendue ou fermée)'
+        404:
+          description: 'Ressource introuvable ou hors périmètre'
+        422:
+          description: 'Données invalides ou refus métier (RFC 9457)'
+  '/api/v1/public-primary/registry/infrastructure/{id}/close':
+    post:
+      summary: 'POST /public-primary/registry/infrastructure/{id}/close'
+      security:
+        -
+          bearer: {  }
+      parameters:
+        -
+          $ref: '#/components/parameters/EstablishmentId'
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        201:
+          description: 'Succès : enveloppe JSON {data}'
+        400:
+          description: 'Requête invalide (en-tête X-Establishment-Id manquant, JSON illisible)'
+        403:
+          description: 'Accès refusé (permission, application suspendue ou fermée)'
+        404:
+          description: 'Ressource introuvable ou hors périmètre'
+        422:
+          description: 'Données invalides ou refus métier (RFC 9457)'

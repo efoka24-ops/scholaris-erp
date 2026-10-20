@@ -7,7 +7,11 @@ namespace Scholaris\Modules\Socle\Identity\Infrastructure;
 use Scholaris\Core\Security\EstablishmentAccess;
 use Scholaris\Core\Security\PermissionChecker;
 use Scholaris\Core\Security\Principal;
+use Scholaris\Modules\Socle\Identity\Application\Moment;
 use Scholaris\Modules\Socle\Identity\Application\PermissionResolver;
+use Scholaris\Modules\Socle\Identity\Domain\RoleAssignment;
+use Scholaris\Modules\Socle\Identity\Domain\ScopeType;
+use Scholaris\Modules\Socle\Organisation\Contracts\TerritoryDirectory;
 
 /**
  * Implémente les interfaces du noyau à partir des affectations de rôle :
@@ -22,6 +26,8 @@ final class RoleBasedAccess implements EstablishmentAccess, PermissionChecker
         private readonly PdoServiceAccountRepository $scopes,
         private readonly PermissionResolver $resolver,
         private readonly LazyEstablishmentDirectory $directory,
+        private readonly TerritoryDirectory $territories,
+        private readonly Moment $moment,
     ) {
     }
 
@@ -38,7 +44,7 @@ final class RoleBasedAccess implements EstablishmentAccess, PermissionChecker
             return false;
         }
         foreach ($this->resolver->activeAssignments($user->tenantId, $user->personId) as $assignment) {
-            if ($assignment->appliesTo($establishmentId)) {
+            if ($this->appliesTo($user->tenantId, $assignment, $establishmentId)) {
                 return true;
             }
         }
@@ -57,5 +63,22 @@ final class RoleBasedAccess implements EstablishmentAccess, PermissionChecker
         }
 
         return $this->resolver->can($user->tenantId, $user->personId, $permission, $establishmentId);
+    }
+
+    private function appliesTo(string $tenantId, RoleAssignment $assignment, string $establishmentId): bool
+    {
+        if ($assignment->isTenantWide()) {
+            return true;
+        }
+        if ($assignment->scopeType === ScopeType::Territory) {
+            $territoryId = $assignment->scopeId;
+            if ($territoryId === null || $territoryId === '') {
+                return false;
+            }
+
+            return in_array($establishmentId, $this->territories->establishmentsIn($tenantId, $territoryId, $this->moment->iso()), true);
+        }
+
+        return $assignment->appliesTo($establishmentId);
     }
 }

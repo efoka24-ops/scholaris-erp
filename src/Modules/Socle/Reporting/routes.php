@@ -11,6 +11,7 @@ use Scholaris\Modules\Socle\Reporting\Http\DashboardController;
  */
 return static function (RouteRegistry $routes): void {
     $routes->add('GET', '/dashboards/{kind}', [DashboardController::class, 'show'], ['tenant' => false]);
+    $routes->add('GET', '/dashboards/territories/{territory}', [\Scholaris\Modules\Socle\Reporting\Http\TerritoryAggregateController::class, 'show'], ['tenant' => false]);
 
     (require __DIR__ . '/routes_schedules.php')($routes);
 };

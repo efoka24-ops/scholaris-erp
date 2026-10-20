@@ -10,10 +10,11 @@ final class Channel
     public const SMS = 'sms';
     public const EMAIL = 'email';
     public const PUSH = 'push';
+    public const VOICE = 'voice';
 
     /** @return list<string> */
     public static function all(): array
     {
-        return [self::SMS, self::EMAIL, self::PUSH];
+        return [self::SMS, self::EMAIL, self::PUSH, self::VOICE];
     }
 }

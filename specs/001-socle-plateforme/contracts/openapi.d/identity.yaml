@@ -338,7 +338,7 @@ paths:
         '403':
           description: "Accès refusé"
     post:
-      summary: "Attribue un rôle à une personne dans un périmètre (tenant, establishment, org_unit, class, structure), avec dates de validité"
+      summary: "Attribue un rôle à une personne dans un périmètre (tenant, establishment, org_unit, class, structure, territory), avec dates de validité. Un périmètre territory ne porte pas d'establishment_id (422) et exige un administrateur du client (403 sinon) ; scope_id doit désigner un territoire actif du client (422)."
       security:
         - bearer: []
       parameters:
@@ -350,6 +350,32 @@ paths:
           description: "Accès refusé"
         '422':
           description: "Données invalides"
+  /api/v1/audit/named-access:
+    get:
+      summary: "PP3 (T607) : consultations nominatives de l'établissement actif (qui, quoi, finalité, date), des plus récentes aux plus anciennes ; permission identity.named_access.read (directeur) ; pagination par curseur"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: cursor
+          in: query
+          required: false
+          schema: {type: string}
+        - name: per_page
+          in: query
+          required: false
+          schema: {type: integer, minimum: 1, maximum: 200, default: 50}
+      responses:
+        '200':
+          description: "Page {data: [{id, actor_id, record_type, record_id, purpose, accessed_at}], meta: {next_cursor}}"
+        '400':
+          description: "En-tête X-Establishment-Id manquant"
+        '401':
+          description: "Non authentifié"
+        '403':
+          description: "Accès refusé"
+        '422':
+          description: "Curseur ou per_page invalide"
   /api/v1/role-assignments/delegations:
     post:
       summary: "Délègue temporairement à une autre personne un rôle que l'on exerce (date de fin obligatoire, 90 jours au plus)"

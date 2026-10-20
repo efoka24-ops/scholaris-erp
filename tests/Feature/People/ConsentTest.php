@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\People;
 
 use Scholaris\Modules\Socle\People\Contracts\ConsentChecker;
+use Scholaris\Modules\Socle\People\Contracts\ConsentRecorder;
 use Tests\Support\People\PeopleTestCase;
 
 /** Consentements horodatés, révocables, jamais supprimés ; le majeur contrôle l'accès de ses parents. */
@@ -18,6 +19,11 @@ final class ConsentTest extends PeopleTestCase
     private function checker(): ConsentChecker
     {
         return $this->kernel->container()->get(ConsentChecker::class);
+    }
+
+    private function recorder(): ConsentRecorder
+    {
+        return $this->kernel->container()->get(ConsentRecorder::class);
     }
 
     public function testDonnerPuisRevoquerConserveLHistorique(): void
@@ -88,5 +94,27 @@ final class ConsentTest extends PeopleTestCase
         $this->account('parent-user', (string) $parent['id']);
 
         self::assertSame(404, $this->code('POST', '/consents', 'parent-user', body: ['person_id' => $student['id'], 'purpose' => 'parent_access']));
+    }
+
+    public function testLeConsentementEcritExigeUnePreuveEtLaRevoquationANnule(): void
+    {
+        $person = $this->person('Mina', 'Tchameni');
+
+        self::assertFalse($this->recorder()->hasWrittenConsent('t1', (string) $person['id'], ConsentChecker::PHOTO));
+
+        $plain = $this->recorder()->grant('t1', (string) $person['id'], ConsentChecker::PHOTO, 'admin');
+        self::assertNull($plain['evidence_ref']);
+        self::assertTrue($this->checker()->hasConsent('t1', (string) $person['id'], ConsentChecker::PHOTO));
+        self::assertFalse($this->recorder()->hasWrittenConsent('t1', (string) $person['id'], ConsentChecker::PHOTO));
+
+        $this->recorder()->revoke('t1', (string) $plain['id'], 'admin');
+        self::assertFalse($this->recorder()->hasWrittenConsent('t1', (string) $person['id'], ConsentChecker::PHOTO));
+
+        $written = $this->recorder()->grant('t1', (string) $person['id'], ConsentChecker::PHOTO, 'admin', 'scan-2026-10-16');
+        self::assertSame('scan-2026-10-16', $written['evidence_ref']);
+        self::assertTrue($this->recorder()->hasWrittenConsent('t1', (string) $person['id'], ConsentChecker::PHOTO));
+
+        $this->recorder()->revoke('t1', (string) $written['id'], 'admin');
+        self::assertFalse($this->recorder()->hasWrittenConsent('t1', (string) $person['id'], ConsentChecker::PHOTO));
     }
 }

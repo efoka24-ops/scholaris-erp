@@ -9,11 +9,13 @@ use Scholaris\Modules\Socle\Identity\Contracts\TileIndicators;
 use Scholaris\Modules\Socle\Identity\Domain\AccessToken;
 use Scholaris\Modules\Socle\Identity\Domain\Role;
 use Scholaris\Modules\Socle\Identity\Domain\RoleAssignment;
+use Scholaris\Modules\Socle\Identity\Domain\ScopeType;
 use Scholaris\Modules\Socle\Identity\Domain\User;
 use Scholaris\Modules\Socle\Identity\Infrastructure\LazyCurrentPeriod;
 use Scholaris\Modules\Socle\Identity\Infrastructure\LazyEstablishmentDirectory;
 use Scholaris\Modules\Socle\Identity\Infrastructure\PdoAccessTokenRepository;
 use Scholaris\Modules\Socle\Identity\Infrastructure\PdoRoleCatalog;
+use Scholaris\Modules\Socle\Organisation\Contracts\TerritoryDirectory;
 
 /**
  * Lanceur « Mes établissements » : établissements accessibles à la personne (annuaire de l'Organisation) avec ses rôles,
@@ -27,6 +29,7 @@ final class ContextService
         private readonly PermissionResolver $resolver,
         private readonly PdoRoleCatalog $roles,
         private readonly LazyEstablishmentDirectory $directory,
+        private readonly TerritoryDirectory $territories,
         private readonly PdoAccessTokenRepository $tokens,
         private readonly TileIndicators $indicators,
         private readonly LazyCurrentPeriod $periods,
@@ -53,6 +56,15 @@ final class ContextService
             foreach ($assignments as $assignment) {
                 if ($assignment->establishmentId !== null) {
                     $ids[$assignment->establishmentId] = $assignment->establishmentId;
+                    continue;
+                }
+                if ($assignment->scopeType === ScopeType::Territory) {
+                    $territoryId = $assignment->scopeId;
+                    if ($territoryId !== null && $territoryId !== '') {
+                        foreach ($this->territories->establishmentsIn($user->tenantId, $territoryId, $this->moment->iso()) as $establishmentId) {
+                            $ids[$establishmentId] = $establishmentId;
+                        }
+                    }
                 }
             }
             $infos = $ids === [] ? [] : $this->directory->findMany($user->tenantId, array_values($ids));
@@ -62,7 +74,7 @@ final class ContextService
         foreach ($infos as $info) {
             $codes = [];
             foreach ($assignments as $assignment) {
-                if ($assignment->appliesTo($info->id)) {
+                if ($this->appliesTo($user->tenantId, $assignment, $info->id)) {
                     $codes[$assignment->role] = $assignment->role;
                 }
             }
@@ -107,6 +119,23 @@ final class ContextService
         }
 
         return $tiles;
+    }
+
+    private function appliesTo(string $tenantId, RoleAssignment $assignment, string $establishmentId): bool
+    {
+        if ($assignment->isTenantWide()) {
+            return true;
+        }
+        if ($assignment->scopeType === ScopeType::Territory) {
+            $territoryId = $assignment->scopeId;
+            if ($territoryId === null || $territoryId === '') {
+                return false;
+            }
+
+            return in_array($establishmentId, $this->territories->establishmentsIn($tenantId, $territoryId, $this->moment->iso()), true);
+        }
+
+        return $assignment->appliesTo($establishmentId);
     }
 
     /**

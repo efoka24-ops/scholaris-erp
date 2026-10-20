@@ -15,6 +15,7 @@ use Scholaris\Modules\Socle\Identity\Application\ClientAdministratorService;
 use Scholaris\Modules\Socle\Identity\Application\Moment;
 use Scholaris\Modules\Socle\Identity\Application\PasswordHasher;
 use Scholaris\Modules\Socle\Identity\Application\PlatformAdministratorService;
+use Scholaris\Modules\Socle\Identity\Application\ScopedAccessAudit;
 use Scholaris\Modules\Socle\Identity\Application\SecretCipher;
 use Scholaris\Modules\Socle\Identity\Contracts\AccessibleEstablishments;
 use Scholaris\Modules\Socle\Identity\Contracts\AccountProvisioner;
@@ -45,6 +46,8 @@ return [
     EstablishmentAccess::class => get(RoleBasedAccess::class),
     PermissionChecker::class => get(RoleBasedAccess::class),
     AccountProvisioner::class => get(AccountProvisioningService::class),
+    ScopedAccessAudit::class => autowire(ScopedAccessAudit::class),
+    \Scholaris\Modules\Socle\Identity\Contracts\NamedAccessJournal::class => get(ScopedAccessAudit::class),
     TodoProvider::class => autowire(EmptyTodoProvider::class),
     TileIndicators::class => autowire(NoTileIndicators::class),
     UserPersonLink::class => autowire(PdoUserPersonLink::class),

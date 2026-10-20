@@ -42,6 +42,8 @@ return static function (RouteRegistry $routes): void {
 
     $routes->add('GET', '/document-batches', [BatchController::class, 'index']);
     $routes->add('GET', '/document-batches/export', [BatchController::class, 'export']);
+    // PP15 : lot d'impression multi-établissements d'un territoire (sans établissement imposé).
+    $routes->add('GET', '/document-batches/territory-print', [\Scholaris\Modules\Socle\Documents\Http\Controllers\TerritoryPrintController::class, 'print'], ['tenant' => false]);
     $routes->add('POST', '/document-batches', [BatchController::class, 'store']);
     $routes->add('GET', '/document-batches/{id}', [BatchController::class, 'show']);
     $routes->add('GET', '/document-batches/{id}/excluded', [BatchController::class, 'excluded']);

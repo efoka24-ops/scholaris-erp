@@ -24,6 +24,7 @@ final class VerificationService
     public const STATE_CANCELLED = 'cancelled';
     public const STATE_REPLACED = 'replaced';
     public const NOT_FOUND = 'Ce document n\'a pas été émis par SCHOLARIS.';
+    public const RECTIFIED_REASON = 'Remplacé par un rectificatif sous le même numéro.';
 
     public function __construct(
         private readonly DocumentRepository $documents,
@@ -69,8 +70,10 @@ final class VerificationService
         ];
         if ($revoked) {
             $out['revoked_on'] = substr((string) $document['revoked_at'], 0, 10);
-            $out['revoke_reason'] = (string) $document['revoke_reason'];
             $replacement = $document['replaced_by'] !== null ? $this->documents->find($tenantId, (string) $document['replaced_by']) : null;
+            // RG-DOC-2 : le motif d'un rectificatif (PP15) peut citer une mention ; la page publique n'en donne que la nature.
+            $rectified = $replacement !== null && ($replacement['reissue_of'] ?? null) === $document['id'];
+            $out['revoke_reason'] = $rectified ? self::RECTIFIED_REASON : (string) $document['revoke_reason'];
             $out['replaced_by_number'] = $replacement !== null ? (string) $replacement['number'] : null;
         }
 

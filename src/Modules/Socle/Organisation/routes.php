@@ -11,6 +11,7 @@ use Scholaris\Modules\Socle\Organisation\Http\Controllers\PeriodController;
 use Scholaris\Modules\Socle\Organisation\Http\Controllers\RoomController;
 use Scholaris\Modules\Socle\Organisation\Http\Controllers\SettingsController;
 use Scholaris\Modules\Socle\Organisation\Http\Controllers\StructureController;
+use Scholaris\Modules\Socle\Organisation\Http\Controllers\TerritoryController;
 use Scholaris\Modules\Socle\Organisation\Http\Controllers\VocabularyController;
 use Scholaris\Modules\Socle\Organisation\Http\Controllers\YearClosureController;
 
@@ -32,6 +33,16 @@ return static function (RouteRegistry $routes): void {
     $routes->add('PUT', '/establishments/{id}/modules', [EstablishmentController::class, 'updateModules'], $noEstablishment);
 
     $routes->add('GET', '/vocabulary', [VocabularyController::class, 'show'], $noEstablishment);
+
+    // Hiérarchie territoriale versionnée : les droits restent bornés au tenant/établissement résolu.
+    $routes->add('GET', '/territories', [TerritoryController::class, 'index']);
+    $routes->add('POST', '/territories', [TerritoryController::class, 'store']);
+    $routes->add('POST', '/territories/{id}/versions', [TerritoryController::class, 'version']);
+    // PP1 : rattachement daté d'établissements, droit de niveau client (aucun établissement actif requis).
+    $routes->add('PUT', '/territories/{id}/establishments', [TerritoryController::class, 'assignEstablishments'], $noEstablishment);
+    $routes->add('GET', '/territories/{id}/lineage', [TerritoryController::class, 'lineage']);
+    $routes->add('GET', '/territories/{id}/descendants', [TerritoryController::class, 'descendants']);
+    $routes->add('GET', '/territories/{id}', [TerritoryController::class, 'show']);
 
     // Routes statiques avant les routes à paramètre (exigence de FastRoute).
     $routes->add('GET', '/authorizations/expiring', [AuthorizationController::class, 'expiring']);

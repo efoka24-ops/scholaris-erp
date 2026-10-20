@@ -27,7 +27,8 @@ final class PdoRoleCatalog extends PdoRepository
 
     /**
      * @param list<string> $roleCodes
-     * @return list<string> permissions distinctes portées par ces rôles
+     * @return list<string> permissions distinctes portées par ces rôles ; un rôle à agrégats seuls (PP2) ne porte aucune
+     *                      permission nominative `*.named.*`
      */
     public function permissionsOf(array $roleCodes): array
     {
@@ -35,7 +36,12 @@ final class PdoRoleCatalog extends PdoRepository
             return [];
         }
         $marks = implode(', ', array_fill(0, count($roleCodes), '?'));
-        $rows = $this->rows('SELECT DISTINCT permission FROM role_permissions WHERE role IN (' . $marks . ') ORDER BY permission', $roleCodes);
+        $rows = $this->rows(
+            'SELECT DISTINCT rp.permission FROM role_permissions rp LEFT JOIN roles r ON r.code = rp.role '
+            . 'WHERE rp.role IN (' . $marks . ") AND (COALESCE(r.aggregate_only, 0) = 0 OR rp.permission NOT LIKE '%.named.%') "
+            . 'ORDER BY rp.permission',
+            $roleCodes,
+        );
 
         return array_map(static fn (array $row): string => (string) $row['permission'], $rows);
     }
@@ -50,6 +56,7 @@ final class PdoRoleCatalog extends PdoRepository
                 (int) $row['is_sensitive'] === 1,
                 (string) $row['label_fr'],
                 (string) $row['label_en'],
+                (int) ($row['aggregate_only'] ?? 0) === 1,
             ),
             $this->rows('SELECT * FROM roles ORDER BY code', []),
         );

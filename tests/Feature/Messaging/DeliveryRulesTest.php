@@ -226,6 +226,21 @@ final class DeliveryRulesTest extends MessagingTestCase
         self::assertSame(['email' => 'sent', 'push' => 'delivered'], $statuses);
     }
 
+    public function testLeCanalVoixTombeSurSmsQuandLaPasserelleEstDesactivee(): void
+    {
+        $result = $this->messenger()->send('t1', 'e1', 'p1', 'payment_receipt', ['receipt_number' => 'R-VOICE-1', 'amount' => 1234], ['voice']);
+
+        self::assertSame(DeliveryResult::SENT, $result->status);
+        self::assertSame('voice_unavailable', $result->reason);
+        self::assertCount(1, $this->sms->sent);
+        self::assertSame('+237670000001', $this->sms->sent[0]['to']);
+        self::assertStringContainsString('R-VOICE-1', $this->sms->sent[0]['message']);
+        $row = $this->connections()->pdo()->query("SELECT channel, status, reason FROM message_deliveries WHERE recipient_id = 'p1' ORDER BY id DESC LIMIT 1")->fetch();
+        self::assertSame('voice', $row['channel']);
+        self::assertSame('sent', $row['status']);
+        self::assertSame('voice_unavailable', $row['reason']);
+    }
+
     public function testComptageDesSmsParEtablissementEtParMois(): void
     {
         $this->receipt();

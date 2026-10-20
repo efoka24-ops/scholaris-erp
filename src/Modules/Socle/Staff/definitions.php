@@ -19,6 +19,8 @@ return [
     // (D16) se déclarent sous les clés `staff.vacation.payability_checks.*` (voir VacationPayabilityCheck::REGISTRY_PREFIX).
     \Scholaris\Modules\Socle\Staff\Contracts\VacationCalculator::class => get(\Scholaris\Modules\Socle\Staff\Application\VacationCalculatorService::class),
     \Scholaris\Modules\Socle\Staff\Contracts\AssignmentWriter::class => autowire(\Scholaris\Modules\Socle\Staff\Application\AssignmentWriterService::class),
+    // PP19 : mutation du personnel entre établissements d'un même client.
+    \Scholaris\Modules\Socle\Staff\Contracts\StaffMover::class => autowire(\Scholaris\Modules\Socle\Staff\Application\StaffMoverService::class),
 
     // Export complet du client (tenant:export) : liste blanche de colonnes, aucun secret.
     'privacy.tenant_data_source.staff' => \DI\autowire(\Scholaris\Modules\Socle\Staff\Infrastructure\PrivacyExportSource::class),

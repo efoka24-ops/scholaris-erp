@@ -77,6 +77,15 @@ final class TemplateRepository
         return $row === false ? null : $row;
     }
 
+    /** Vrai si le modèle de PLATEFORME de cette clé est de catégorie « essential » (RG-COM-2) ; un modèle d'établissement ne le devient jamais. */
+    public function isEssential(string $key): bool
+    {
+        $statement = $this->connections->pdo()->prepare("SELECT 1 FROM message_templates WHERE tenant_id = ? AND template_key = ? AND category = 'essential' LIMIT 1");
+        $statement->execute([self::PLATFORM, $key]);
+
+        return $statement->fetchColumn() !== false;
+    }
+
     /** @return list<string> canaux pour lesquels un modèle existe sous cette clé */
     public function channelsOf(string $tenantId, string $establishmentId, string $key): array
     {

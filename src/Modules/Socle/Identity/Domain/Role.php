@@ -20,6 +20,8 @@ final class Role
         public readonly bool $sensitive,
         public readonly string $labelFr,
         public readonly string $labelEn,
+        /** PP2 : rôle de supervision à agrégats seuls, jamais porteur d'une permission nominative `*.named.*` */
+        public readonly bool $aggregateOnly = false,
     ) {
     }
 

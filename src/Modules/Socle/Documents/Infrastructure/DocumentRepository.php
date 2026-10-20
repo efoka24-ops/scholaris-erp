@@ -80,6 +80,29 @@ final class DocumentRepository
         return (int) ($this->db->row('SELECT COUNT(*) AS n FROM documents WHERE ' . $where, $params)['n'] ?? 0);
     }
 
+    /**
+     * Documents valides d'un type dans plusieurs établissements du client (lot d'impression territorial, PP15), triés par
+     * établissement puis numéro ; contenu rendu inclus.
+     *
+     * @param list<string> $establishmentIds
+     * @return list<array<string, mixed>>
+     */
+    public function validForPrint(string $tenantId, array $establishmentIds, string $typeCode, ?string $issuedFrom, int $limit): array
+    {
+        if ($establishmentIds === []) {
+            return [];
+        }
+        $params = array_merge([$tenantId, $typeCode], $establishmentIds);
+        $sql = "SELECT id, establishment_id, number, content FROM documents WHERE tenant_id = ? AND type_code = ? AND status = 'valid' AND establishment_id IN ("
+            . implode(', ', array_fill(0, count($establishmentIds), '?')) . ')';
+        if ($issuedFrom !== null) {
+            $sql .= ' AND issued_at >= ?';
+            $params[] = $issuedFrom;
+        }
+
+        return $this->db->rows($sql . sprintf(' ORDER BY establishment_id, number LIMIT %d', $limit), $params);
+    }
+
     public function markRevoked(string $tenantId, string $id, string $reason, string $by, string $at, ?string $replacedBy): int
     {
         return $this->db->exec(

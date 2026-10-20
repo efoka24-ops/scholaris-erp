@@ -6,6 +6,7 @@ use Scholaris\Core\Http\RouteRegistry;
 use Scholaris\Modules\Socle\Identity\Http\ActivationController;
 use Scholaris\Modules\Socle\Identity\Http\AuthController;
 use Scholaris\Modules\Socle\Identity\Http\MeController;
+use Scholaris\Modules\Socle\Identity\Http\NamedAccessController;
 use Scholaris\Modules\Socle\Identity\Http\RoleAssignmentController;
 use Scholaris\Modules\Socle\Identity\Http\TwoFactorController;
 use Scholaris\Modules\Socle\Identity\Http\UserController;
@@ -49,4 +50,7 @@ return static function (RouteRegistry $routes): void {
     $routes->add('DELETE', '/role-assignments/{id}', [RoleAssignmentController::class, 'destroy']);
 
     $routes->add('POST', '/users', [UserController::class, 'store']);
+
+    // PP3 (T607) : journal des consultations nominatives de l'établissement actif (directeur).
+    $routes->add('GET', '/audit/named-access', [NamedAccessController::class, 'index']);
 };

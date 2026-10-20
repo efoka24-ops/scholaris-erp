@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\People;
 
+use Scholaris\Modules\Socle\People\Contracts\FoodAllergies;
 use Tests\Support\People\PeopleTestCase;
 
 /** Données de santé : chiffrées en base, visibles des seuls rôles autorisés. */
@@ -50,6 +51,25 @@ final class HealthRecordTest extends PeopleTestCase
         self::assertSame(403, $this->code('GET', $path, 'secretaire'));
         self::assertSame(403, $this->code('PUT', $path, 'secretaire', body: ['allergies' => 'x']));
         self::assertSame(422, $this->code('PUT', $path, body: ['inconnu' => 'x']));
+    }
+
+    public function testLeContratAllergiesNeToucheQueLeChampAllergies(): void
+    {
+        $first = $this->person('Amina', 'Foka');
+        $second = $this->person('Bilal', 'Foka');
+        $allergies = $this->kernel->container()->get(FoodAllergies::class);
+
+        $allergies->declare('t1', (string) $first['id'], 'arachides', 'admin');
+        $allergies->declare('t1', (string) $second['id'], null, 'admin');
+
+        self::assertSame([
+            (string) $first['id'] => 'arachides',
+            (string) $second['id'] => null,
+        ], $allergies->forLearners('t1', [(string) $first['id'], (string) $second['id']]));
+
+        $firstHealth = $this->api('GET', '/people/' . $first['id'] . '/health')[1]['data'];
+        self::assertSame('arachides', $firstHealth['allergies']);
+        self::assertSame(null, $this->api('GET', '/people/' . $second['id'] . '/health')[1]['data']['allergies']);
     }
 
     public function testSansCleDeChiffrementRienNEstEcritEnClair(): void

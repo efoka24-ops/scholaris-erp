@@ -5,11 +5,12 @@ declare(strict_types=1);
 namespace Scholaris\Modules\Socle\People\Application;
 
 use Scholaris\Core\Support\Ulid;
+use Scholaris\Modules\Socle\People\Contracts\FoodAllergies;
 use Scholaris\Modules\Socle\People\Infrastructure\HealthCipher;
 use Scholaris\Modules\Socle\People\Infrastructure\PdoStore;
 
 /** Dossier de santé : un seul bloc JSON chiffré par personne ; aucune valeur lisible n'est écrite en base. */
-final class HealthService
+final class HealthService implements FoodAllergies
 {
     public const FIELDS = ['blood_group', 'allergies', 'conditions', 'medications', 'doctor_name', 'doctor_phone', 'notes'];
 
@@ -31,6 +32,27 @@ final class HealthService
         $data = json_decode($this->cipher->decrypt((string) $row['payload_enc']), true);
 
         return is_array($data) ? array_intersect_key($data + $empty, $empty) : $empty;
+    }
+
+    /**
+     * @param list<string> $learnerIds
+     * @return array<string, string|null>
+     */
+    public function forLearners(string $tenantId, array $learnerIds): array
+    {
+        $out = [];
+        foreach ($learnerIds as $learnerId) {
+            $out[$learnerId] = $this->read($tenantId, $learnerId)['allergies'];
+        }
+
+        return $out;
+    }
+
+    public function declare(string $tenantId, string $learnerId, ?string $text, string $actorId): void
+    {
+        $current = $this->read($tenantId, $learnerId);
+        $current['allergies'] = $text;
+        $this->write($tenantId, $learnerId, $current, $actorId);
     }
 
     /**

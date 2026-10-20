@@ -11,6 +11,8 @@ use Scholaris\Modules\Socle\Integrations\Contracts\SmsGateway;
 use Scholaris\Modules\Socle\Messaging\Domain\Channel;
 use Scholaris\Modules\Socle\Messaging\Domain\TemplateException;
 use Scholaris\Modules\Socle\Messaging\Domain\TemplateRenderer;
+use Scholaris\Modules\Socle\Messaging\Contracts\VoiceGateway;
+use Scholaris\Modules\Socle\Messaging\Contracts\OptOutRegistry;
 use Scholaris\Modules\Socle\Messaging\Infrastructure\DeliveryRepository;
 use Scholaris\Modules\Socle\Messaging\Infrastructure\SmsUsageRepository;
 use Scholaris\Modules\Socle\Messaging\Infrastructure\TemplateRepository;
@@ -38,12 +40,14 @@ final class DeliveryProcessor
         private readonly PersonDirectory $persons,
         private readonly ConsentChecker $consents,
         private readonly EstablishmentDirectory $establishments,
+        private readonly VoiceGateway $voice,
         private readonly SmsGateway $sms,
         private readonly MailGateway $mail,
         private readonly SmsUsageRepository $usage,
         private readonly MessagingSettings $settings,
         private readonly MessagingClock $clock,
         private readonly LoggerInterface $logger,
+        private readonly OptOutRegistry $optOuts,
     ) {
     }
 
@@ -61,7 +65,7 @@ final class DeliveryProcessor
 
         $outcome = $this->decide($delivery, $message, $tenantId, $establishmentId, $channel, $now);
 
-        $values = ['status' => $outcome['status'], 'reason' => $outcome['reason'], 'updated_at' => $this->clock->iso($now)];
+        $values = ['status' => $outcome['status'], 'reason' => $outcome['reason'], 'updated_at' => $this->clock->iso($now), 'category' => $this->isEssential($message) ? 'essential' : 'standard'];
         if ($outcome['status'] === self::QUEUED) {
             $values['not_before'] = $outcome['not_before'] ?? null;
         } else {
@@ -101,8 +105,16 @@ final class DeliveryProcessor
     private function decide(array $delivery, array $message, string $tenantId, string $establishmentId, string $channel, \DateTimeImmutable $now): array
     {
         $personId = (string) $delivery['recipient_id'];
-        if (!$this->consents->hasConsent($tenantId, $personId, ConsentChecker::COMMUNICATION)) {
+        // RG-COM-2 : un message essentiel (modèle de plateforme de catégorie « essential ») ignore consentement et désinscription.
+        $essential = $this->isEssential($message);
+        if (!$essential && !$this->consents->hasConsent($tenantId, $personId, ConsentChecker::COMMUNICATION)) {
             return ['status' => self::BLOCKED, 'reason' => 'consent_missing'];
+        }
+        if (!$essential && $this->optOuts->isOptedOut($tenantId, $personId, $channel)) {
+            return ['status' => self::BLOCKED, 'reason' => 'opted_out'];
+        }
+        if (!$essential && $channel === Channel::SMS && $this->capReached($tenantId, $establishmentId, $personId, $now)) {
+            return ['status' => self::BLOCKED, 'reason' => 'sms_cap_reached'];
         }
         $person = $this->persons->find($tenantId, $personId);
         if ($person === null) {
@@ -111,6 +123,7 @@ final class DeliveryProcessor
         $address = match ($channel) {
             Channel::SMS => $person->phone,
             Channel::EMAIL => $person->email,
+            Channel::VOICE => $person->phone,
             default => $personId,
         };
         if ($address === null || $address === '') {
@@ -140,13 +153,41 @@ final class DeliveryProcessor
             return match ($channel) {
                 Channel::SMS => ['status' => self::SENT, 'reason' => null, 'reference' => $this->sms->send($address, $text)],
                 Channel::EMAIL => ['status' => self::SENT, 'reason' => null, 'reference' => $this->mail->send($address, $subject, $text)],
+                Channel::VOICE => ['status' => self::SENT, 'reason' => null, 'reference' => $this->voice->send($address, $text)],
                 default => ['status' => self::DELIVERED, 'reason' => null, 'reference' => 'inapp-' . new Ulid()],
             };
         } catch (Throwable $e) {
+            if ($channel === Channel::VOICE) {
+                try {
+                    return ['status' => self::SENT, 'reason' => 'voice_unavailable', 'reference' => $this->sms->send($address, $text)];
+                } catch (Throwable $smsFailure) {
+                    $e = $smsFailure;
+                }
+            }
             $this->logger->warning('Échec du fournisseur', ['delivery' => $delivery['id'], 'channel' => $channel, 'error' => $e::class]);
 
             return ['status' => self::FAILED, 'reason' => 'gateway_error'];
         }
+    }
+
+    /** @param array<string, mixed> $message */
+    private function isEssential(array $message): bool
+    {
+        $key = $message['template_key'] ?? null;
+
+        return is_string($key) && $key !== '' && $this->templates->isEssential($key);
+    }
+
+    /** PP11 : plafond annuel de SMS standard, multiplié par le nombre d'élèves dont le destinataire est garant. */
+    private function capReached(string $tenantId, string $establishmentId, string $personId, \DateTimeImmutable $now): bool
+    {
+        $cap = $this->settings->smsCapPerLearnerYear($tenantId, $establishmentId);
+        if ($cap === 0) {
+            return false;
+        }
+        $limit = $cap * max(1, count($this->persons->learnersOf($tenantId, $personId)));
+
+        return $this->deliveries->countStandardSms($tenantId, $personId, $now->format('Y') . '-01-01T00:00:00') >= $limit;
     }
 
     /**
@@ -156,12 +197,13 @@ final class DeliveryProcessor
      */
     private function content(array $message, string $tenantId, string $establishmentId, string $channel, string $locale, array $variables): array
     {
+        $templateChannel = $channel === Channel::VOICE ? Channel::SMS : $channel;
         $key = $message['template_key'] ?? null;
         if (!is_string($key) || $key === '') {
             return ['Message', TemplateRenderer::render((string) $message['body'], $variables)];
         }
         foreach (array_unique([$locale, 'fr']) as $language) {
-            $template = $this->templates->resolve($tenantId, $establishmentId, $key, $language, $channel);
+            $template = $this->templates->resolve($tenantId, $establishmentId, $key, $language, $templateChannel);
             if ($template !== null) {
                 $subject = is_string($template['subject'] ?? null) && $template['subject'] !== '' ? $template['subject'] : $key;
 

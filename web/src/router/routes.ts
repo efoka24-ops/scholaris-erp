@@ -57,6 +57,12 @@ export const routes: RouteRecordRaw[] = [
     meta: { perms: ['reporting.read', 'reporting.group.read'], titleKey: 'dashboard.title', nav: { labelKey: 'nav.dashboard', order: 10 } },
   },
   {
+    path: '/public-primary/registry',
+    name: 'public-primary-registry',
+    component: () => import('@/apps/public-primary/registry/RegistryView.vue'),
+    meta: { perms: ['public_primary.registry.read', 'public_primary.registry.manage'], needsEstablishment: true },
+  },
+  {
     path: '/appel',
     name: 'attendance',
     component: () => import('@/views/AttendanceView.vue'),

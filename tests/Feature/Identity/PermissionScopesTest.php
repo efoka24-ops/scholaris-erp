@@ -26,7 +26,10 @@ final class PermissionScopesTest extends IdentityTestCase
         return $this->kernel->container()->get(PermissionScopes::class);
     }
 
-    /** @param list<Scope> $scopes @return list<string> */
+    /**
+     * @param list<Scope> $scopes
+     * @return list<string>
+     */
     private static function flat(array $scopes): array
     {
         $out = array_map(static fn (Scope $s): string => $s->type . ':' . $s->id, $scopes);
@@ -118,5 +121,76 @@ final class PermissionScopesTest extends IdentityTestCase
         ]);
         self::assertSame(422, $bad->getStatusCode());
         self::assertStringContainsString('structure', (string) $bad->getBody());
+    }
+
+    public function testAffectationTerritorialeEstValideePuisRendueBorneeAuTenantEtLEtablissement(): void
+    {
+        // T606 : seul un administrateur du tenant attribue un rôle territorial (un directeur d'école reçoit 403).
+        $this->createUser('t1', 'Diane', '+237691000108', [['super_admin', 'tenant', null]]);
+        $teacher = $this->createUser('t1', 'Paul', '+237691000109');
+        $token = (string) $this->json($this->login('+237691000108'))['token'];
+        $setup = $this->json($this->call('POST', '/api/v1/auth/2fa/setup', $this->auth($token)));
+        $this->call('POST', '/api/v1/auth/2fa/confirm', $this->auth($token), ['code' => $this->totp((string) $setup['secret'])]);
+        $territoryId = '01J9Z6Q0A1B2C3D4E5F6G7H8J6';
+        $this->addTerritory('t1', $territoryId);
+        $this->linkEstablishment('t1', 'e1', $territoryId);
+
+        $response = $this->call('POST', '/api/v1/role-assignments', $this->auth($token, 'e1') + ['Content-Type' => 'application/json'], [
+            'person_id' => $teacher['person_id'], 'role' => 'enseignant', 'scope_type' => 'territory', 'scope_id' => $territoryId,
+        ]);
+
+        self::assertSame(201, $response->getStatusCode(), (string) $response->getBody());
+        self::assertSame('territory', $this->json($response)['data']['scope_type']);
+        $scopes = $this->scopes()->scopesFor(new Principal($teacher['user_id'], 't1'), 'grades.enter', 'e1');
+        self::assertSame(['territory:' . $territoryId], self::flat($scopes));
+        self::assertSame('t1', $scopes[0]->tenantId);
+        self::assertSame('e1', $scopes[0]->establishmentId);
+        self::assertTrue($scopes[0]->isTerritory());
+        self::assertSame([], $this->scopes()->scopesFor(new Principal($teacher['user_id'], 't1'), 'grades.enter', 'e2'));
+        self::assertSame([], $this->scopes()->scopesFor(new Principal($teacher['user_id'], 't2'), 'grades.enter', 'x1'));
+
+        $this->pdo()->prepare('UPDATE organisation_territory_versions SET valid_to = ? WHERE tenant_id = ? AND territory_id = ?')
+            ->execute(['2020-01-02T00:00:00+00:00', 't1', $territoryId]);
+        self::assertSame([], $this->scopes()->scopesFor(new Principal($teacher['user_id'], 't1'), 'grades.enter', 'e1'), 'Un territoire inactif ne produit plus de scope.');
+    }
+
+    public function testAffectationTerritorialeInvalideOuHorsTenantEstRefusee(): void
+    {
+        $this->createUser('t1', 'Diane', '+237691000110', [['directeur', 'establishment', 'e1']]);
+        $teacher = $this->createUser('t1', 'Paul', '+237691000111');
+        $token = (string) $this->json($this->login('+237691000110'))['token'];
+        $setup = $this->json($this->call('POST', '/api/v1/auth/2fa/setup', $this->auth($token)));
+        $this->call('POST', '/api/v1/auth/2fa/confirm', $this->auth($token), ['code' => $this->totp((string) $setup['secret'])]);
+        $foreignTerritoryId = '01J9Z6Q0A1B2C3D4E5F6G7H8J7';
+        $this->addTerritory('t2', $foreignTerritoryId);
+
+        $foreign = $this->call('POST', '/api/v1/role-assignments', $this->auth($token, 'e1') + ['Content-Type' => 'application/json'], [
+            'person_id' => $teacher['person_id'], 'role' => 'enseignant', 'scope_type' => 'territory', 'scope_id' => $foreignTerritoryId,
+        ]);
+        $unknown = $this->call('POST', '/api/v1/role-assignments', $this->auth($token, 'e1') + ['Content-Type' => 'application/json'], [
+            'person_id' => $teacher['person_id'], 'role' => 'enseignant', 'scope_type' => 'territory', 'scope_id' => '01J9Z6Q0A1B2C3D4E5F6G7H8J8',
+        ]);
+
+        self::assertSame(422, $foreign->getStatusCode());
+        self::assertSame(422, $unknown->getStatusCode());
+        self::assertStringContainsString('scope_id', (string) $foreign->getBody());
+        self::assertStringContainsString('scope_id', (string) $unknown->getBody());
+    }
+
+    private function linkEstablishment(string $tenantId, string $establishmentId, string $territoryId): void
+    {
+        $this->pdo()->prepare(
+            'INSERT INTO organisation_establishment_territories (id, tenant_id, establishment_id, territory_id, valid_from, valid_to, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        )->execute(['01J9Z6Q0A1B2C3D4E5F6G7H8K1', $tenantId, $establishmentId, $territoryId, '2020-01-01T00:00:00+00:00', null, '2026-10-14T09:00:00+01:00']);
+    }
+
+    private function addTerritory(string $tenantId, string $territoryId): void
+    {
+        $this->pdo()->prepare(
+            'INSERT INTO organisation_territory_versions (id, tenant_id, territory_id, version, territory_type, code, label_fr, label_en, parent_id, valid_from, valid_to, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        )->execute([
+            '01J9Z6Q0A1B2C3D4E5F6G7H8J9', $tenantId, $territoryId, 1, 'arrondissement', 'SYN-SCOPE-01', 'Arrondissement SYN', 'SYN District', null,
+            '2020-01-01T00:00:00+00:00', null, '2026-10-14T09:00:00+01:00',
+        ]);
     }
 }

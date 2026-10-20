@@ -9,6 +9,7 @@ enum ScopeType: string
 {
     case Tenant = 'tenant';
     case Establishment = 'establishment';
+    case Territory = 'territory';
     case OrgUnit = 'org_unit';
     case ClassGroup = 'class';
     /** structure pédagogique, ex. une filière du supérieur (S15) */

@@ -7,23 +7,29 @@ use function DI\factory;
 
 use Scholaris\Core\Config\Config;
 use Scholaris\Modules\Socle\People\Application\BirthDateWriterService;
+use Scholaris\Modules\Socle\People\Application\HealthService;
+use Scholaris\Modules\Socle\People\Application\ConsentService;
 use Scholaris\Modules\Socle\People\Application\EnrollmentWriterService;
 use Scholaris\Modules\Socle\People\Application\LearnerNumberingService;
 use Scholaris\Modules\Socle\People\Application\LearnerWriterService;
 use Scholaris\Modules\Socle\People\Application\YearPromotion;
 use Scholaris\Modules\Socle\People\Contracts\AttachmentStore;
+use Scholaris\Modules\Socle\People\Contracts\ConsentRecorder;
 use Scholaris\Modules\Socle\People\Contracts\BirthDateWriter;
 use Scholaris\Modules\Socle\People\Contracts\BirthInfo;
+use Scholaris\Modules\Socle\People\Contracts\FoodAllergies;
 use Scholaris\Modules\Socle\People\Contracts\ConsentChecker;
 use Scholaris\Modules\Socle\People\Contracts\EnrollmentDirectory;
 use Scholaris\Modules\Socle\People\Contracts\EnrollmentWriter;
 use Scholaris\Modules\Socle\People\Contracts\FileScanner;
 use Scholaris\Modules\Socle\People\Contracts\LearnerNumbering;
 use Scholaris\Modules\Socle\People\Contracts\LearnerWriter;
+use Scholaris\Modules\Socle\People\Contracts\MediaStore;
 use Scholaris\Modules\Socle\People\Contracts\PersonDirectory;
 use Scholaris\Modules\Socle\People\Contracts\TeachingScope;
 use Scholaris\Modules\Socle\People\Domain\UrlSigner;
 use Scholaris\Modules\Socle\People\Infrastructure\FileAttachmentStore;
+use Scholaris\Modules\Socle\People\Infrastructure\FileMediaStore;
 use Scholaris\Modules\Socle\People\Infrastructure\FileStorage;
 use Scholaris\Modules\Socle\People\Infrastructure\HealthCipher;
 use Scholaris\Modules\Socle\People\Infrastructure\HeuristicFileScanner;
@@ -45,12 +51,16 @@ return [
     BirthDateWriter::class => autowire(BirthDateWriterService::class),
     LearnerNumbering::class => autowire(LearnerNumberingService::class),
     LearnerWriter::class => autowire(LearnerWriterService::class),
+    ConsentRecorder::class => autowire(ConsentService::class),
     ConsentChecker::class => autowire(PdoConsentChecker::class),
+    FoodAllergies::class => autowire(HealthService::class),
     BirthInfo::class => autowire(PdoBirthInfo::class),
     \Scholaris\Modules\Socle\People\Contracts\PersonDemographics::class => autowire(\Scholaris\Modules\Socle\People\Infrastructure\PdoPersonDemographics::class),
     TeachingScope::class => autowire(StaffTeachingScope::class),
     FileScanner::class => autowire(HeuristicFileScanner::class),
     AttachmentStore::class => autowire(FileAttachmentStore::class),
+    // PM2 (Maternelle publique) : médias d'application, par composition sur AttachmentStore (réglage facultatif `people.media.max_bytes`, 2 Mo).
+    MediaStore::class => autowire(FileMediaStore::class),
 
     HealthCipher::class => factory(static fn (Config $config): HealthCipher => new HealthCipher(Secrets::key($config))),
     UrlSigner::class => factory(static fn (Config $config): UrlSigner => new UrlSigner(Secrets::key($config))),

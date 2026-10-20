@@ -17,7 +17,7 @@ final class PdoStore
 {
     private const TABLES = [
         'staff_members', 'staff_qualifications', 'staff_assignments', 'vacation_rates',
-        'vacation_contracts', 'vacation_hours', 'vacation_statements',
+        'vacation_contracts', 'vacation_hours', 'vacation_statements', 'staff_moves',
     ];
     private const IDENTIFIER = '/^[a-z_][a-z0-9_]*$/';
 

@@ -85,7 +85,7 @@ final class MessengerImpl implements Messenger
         }
 
         if (array_intersect($statuses, [DeliveryProcessor::SENT, DeliveryProcessor::DELIVERED]) !== []) {
-            return new DeliveryResult(DeliveryResult::SENT, $id);
+            return new DeliveryResult(DeliveryResult::SENT, $id, $reasons[0] ?? null);
         }
         if (in_array(DeliveryProcessor::QUEUED, $statuses, true)) {
             $this->store->update('messages', $tenantId, $establishmentId, $id, ['status' => MessageService::SCHEDULED, 'updated_at' => $this->clock->iso()]);

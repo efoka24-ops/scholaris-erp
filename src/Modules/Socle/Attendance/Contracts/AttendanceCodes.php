@@ -24,6 +24,14 @@ final class AttendanceCodes
     public const BASE_HELD = 'held';
     public const BASE_PLANNED = 'planned';
 
+    /** Mode d'appel (paramètre attendance.mode) : par créneau de l'emploi du temps (défaut) ou par moment de la journée, sans créneau. */
+    public const MODE_SLOT = 'slot';
+    public const MODE_DAY_PART = 'day_part';
+
+    /** Moments d'un appel en mode day_part ; la séance porte la clé déterministe `dp:<structure_id>:<moment>` dans slot_id. */
+    public const DAY_PARTS = ['morning', 'afternoon', 'full_day'];
+    public const DAY_PART_KEY_PREFIX = 'dp:';
+
     private function __construct()
     {
     }

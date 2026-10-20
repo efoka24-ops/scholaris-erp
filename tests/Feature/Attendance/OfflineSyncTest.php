@@ -110,11 +110,16 @@ final class OfflineSyncTest extends AttendanceTestCase
     public function testUnClientUuidReutilisePourUnAutreAppelEstUnConflit(): void
     {
         $uuid = self::ulid();
-        $this->openSession('teacher', $uuid);
+        $original = $this->openSession('teacher', $uuid);
 
-        [$response] = $this->api('POST', '/attendance-sessions', 'teacher', ['client_uuid' => $uuid, 'slot_id' => 'slot1', 'date' => '2026-10-01']);
+        [$response, $conflict] = $this->api('POST', '/attendance-sessions', 'teacher', ['client_uuid' => $uuid, 'slot_id' => 'slot1', 'date' => '2026-10-01']);
 
         self::assertSame(409, $response->getStatusCode());
+        self::assertSame($original['id'], $conflict['server_version']['id']);
+        self::assertSame(self::DAY, $conflict['server_version']['session_date']);
+        self::assertSame('2026-10-01', $conflict['client_version']['date']);
+        self::assertSame(1, count($this->rows('SELECT id FROM attendance_sessions')));
+        self::assertSame(self::DAY, $this->rows('SELECT session_date FROM attendance_sessions')[0]['session_date']);
     }
 
     public function testLaSynchronisationIsoleLesErreursParAppel(): void

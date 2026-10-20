@@ -304,6 +304,11 @@ paths:
           required: true
           schema:
             type: string
+        - name: profile
+          in: query
+          required: false
+          description: "Profil PDF : standard (défaut) ou light (PP15 : polices de base, grandes images retirées, PDF parent < 200 Ko)"
+          schema: {type: string, enum: [standard, light], default: standard}
       responses:
         '200':
           description: "PDF"
@@ -311,6 +316,8 @@ paths:
           description: "Accès refusé"
         '404':
           description: "Introuvable"
+        '422':
+          description: "Profil inconnu"
   /api/v1/documents/{id}/duplicate:
     post:
       summary: "Duplicata PDF : numéro et version de modèle d'origine, mention et date de réimpression"
@@ -491,6 +498,43 @@ paths:
           description: "Introuvable"
         '409':
           description: "Déjà traitée"
+  /api/v1/document-batches/territory-print:
+    get:
+      summary: "Lot d'impression multi-établissements (PP15) : un PDF réunissant les documents valides d'un type émis par les écoles d'un territoire (une page par document, 500 au plus). Sans X-Establishment-Id ; exige documents.read dans chacun des établissements du territoire. Aucun document n'est émis ni modifié ; l'impression est journalisée."
+      security:
+        - bearer: []
+      parameters:
+        - name: territory_id
+          in: query
+          required: true
+          schema: {type: string}
+        - name: type
+          in: query
+          required: true
+          schema: {type: string}
+        - name: issued_from
+          in: query
+          required: false
+          description: "Date d'émission minimale AAAA-MM-JJ"
+          schema: {type: string, format: date}
+        - name: profile
+          in: query
+          required: false
+          schema: {type: string, enum: [standard, light], default: light}
+      responses:
+        '200':
+          description: "PDF (en-tête X-Document-Count)"
+          content:
+            application/pdf:
+              schema: {type: string, format: binary}
+        '401':
+          description: "Authentification requise"
+        '403':
+          description: "Territoire hors du périmètre"
+        '404':
+          description: "Territoire inconnu ou aucun document valide"
+        '422':
+          description: "Paramètre invalide ou plus de 500 documents"
   /api/v1/document-batches/export:
     get:
       summary: "Export CSV / Excel des lots de génération de documents : mêmes droits que GET /document-batches, plafonné à 5 000 lignes"

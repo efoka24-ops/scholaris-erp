@@ -87,7 +87,7 @@ final class DeliveryRepository
     /** @param array<string, scalar|null> $values */
     public function update(string $tenantId, string $id, array $values): void
     {
-        $allowed = ['status', 'reason', 'provider_reference', 'not_before', 'attempts', 'sent_at', 'delivered_at', 'updated_at'];
+        $allowed = ['status', 'reason', 'provider_reference', 'not_before', 'attempts', 'sent_at', 'delivered_at', 'updated_at', 'category'];
         $sets = [];
         foreach (array_keys($values) as $column) {
             if (!in_array($column, $allowed, true)) {
@@ -98,6 +98,18 @@ final class DeliveryRepository
         $this->connections->pdo()
             ->prepare('UPDATE message_deliveries SET ' . implode(', ', $sets) . ' WHERE tenant_id = ? AND id = ?')
             ->execute([...array_values($values), $tenantId, $id]);
+    }
+
+    /** SMS standard déjà envoyés à ce destinataire depuis `$since` (instant ISO) : base du plafond annuel (PP11). */
+    public function countStandardSms(string $tenantId, string $recipientId, string $since): int
+    {
+        $statement = $this->connections->pdo()->prepare(
+            "SELECT COUNT(*) FROM message_deliveries WHERE tenant_id = ? AND recipient_id = ? AND channel = 'sms' AND category = 'standard' "
+            . "AND status IN ('sent', 'delivered') AND sent_at >= ?",
+        );
+        $statement->execute([$tenantId, $recipientId, $since]);
+
+        return (int) $statement->fetchColumn();
     }
 
     /** Accusé de réception du fournisseur. @return int nombre de livraisons marquées */

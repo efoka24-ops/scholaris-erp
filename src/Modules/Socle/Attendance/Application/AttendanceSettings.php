@@ -54,6 +54,28 @@ final class AttendanceSettings
         return $value === AttendanceCodes::BASE_PLANNED ? AttendanceCodes::BASE_PLANNED : AttendanceCodes::BASE_HELD;
     }
 
+    /**
+     * Mode d'appel (PP17) : `slot` (défaut, l'appel suit un créneau de l'emploi du temps) ou `day_part` (appel par classe et par
+     * moment de la journée, sans créneau). Toute autre valeur donne `slot`.
+     */
+    public function mode(string $tenantId, string $establishmentId): string
+    {
+        $value = $this->settings->value($tenantId, $establishmentId, 'attendance.mode', AttendanceCodes::MODE_SLOT);
+
+        return $value === AttendanceCodes::MODE_DAY_PART ? AttendanceCodes::MODE_DAY_PART : AttendanceCodes::MODE_SLOT;
+    }
+
+    /**
+     * Heure (HH:MM) à partir de laquelle un créneau compte pour l'après-midi dans DailyPresence : `attendance.afternoon_starts_at`,
+     * 12:00 par défaut (valeur à confirmer). Toute valeur qui n'est pas une heure valide donne le défaut.
+     */
+    public function afternoonStartsAt(string $tenantId, string $establishmentId): string
+    {
+        $value = $this->settings->value($tenantId, $establishmentId, 'attendance.afternoon_starts_at', '12:00');
+
+        return is_string($value) && preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $value) === 1 ? $value : '12:00';
+    }
+
     /** @return list<string> barème des sanctions de l'établissement */
     public function sanctionScale(string $tenantId, string $establishmentId): array
     {

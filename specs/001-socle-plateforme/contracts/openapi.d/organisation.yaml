@@ -138,6 +138,189 @@ paths:
           description: "Introuvable"
         '422':
           description: "Module inconnu"
+  /api/v1/territories:
+    get:
+      summary: "Territoires du client valides à la date `at` (ISO 8601, maintenant par défaut) ; arbre région > département > arrondissement versionné ; pagination par curseur (meta.next_cursor)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: at
+          in: query
+          required: false
+          schema: {type: string}
+        - name: cursor
+          in: query
+          required: false
+          schema: {type: string}
+        - name: per_page
+          in: query
+          required: false
+          schema: {type: integer, minimum: 1, maximum: 200, default: 50}
+      responses:
+        '200':
+          description: "Page de territoires valides à la date demandée : {data, meta: {next_cursor, at}}"
+        '400':
+          description: "Paramètre at invalide"
+        '403':
+          description: "Accès refusé"
+        '422':
+          description: "Curseur ou per_page invalide"
+    post:
+      summary: "Crée un territoire (version 1) : type, code, libellés FR/EN, parent facultatif, date de début"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '201':
+          description: "Territoire créé"
+        '400':
+          description: "Corps illisible"
+        '403':
+          description: "Accès refusé"
+        '422':
+          description: "Données invalides ou parent introuvable"
+  /api/v1/territories/{id}:
+    get:
+      summary: "Version du territoire valide à la date `at`"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: at
+          in: query
+          required: false
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Territoire"
+        '400':
+          description: "Paramètre at invalide"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+  /api/v1/territories/{id}/versions:
+    post:
+      summary: "Ajoute une version du territoire à partir d'une date ; l'ancienne version est close, jamais réécrite"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '201':
+          description: "Version créée"
+        '400':
+          description: "Corps illisible"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '409':
+          description: "Chevauchement d'une période close"
+        '422':
+          description: "Données invalides, cycle ou date antérieure à la version courante"
+  /api/v1/territories/{id}/lineage:
+    get:
+      summary: "Lignée du territoire (lui-même puis ses parents jusqu'à la racine) à la date `at`"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: at
+          in: query
+          required: false
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Lignée"
+        '400':
+          description: "Paramètre at invalide"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+  /api/v1/territories/{id}/descendants:
+    get:
+      summary: "Territoire et descendants à la date `at`"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: at
+          in: query
+          required: false
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Territoire et descendants"
+        '400':
+          description: "Paramètre at invalide"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+  /api/v1/territories/{id}/establishments:
+    put:
+      summary: "Rattache des établissements au territoire à une date d'effet (RG-TER-4) : l'ancien lien est clos à cette date, jamais réécrit ; répéter un rattachement ouvert ne change rien. Permission organisation.territories.manage de niveau client ; aucun établissement actif requis"
+      security:
+        - bearer: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: "Identifiant ULID du territoire du client"
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [establishment_ids, valid_from]
+              properties:
+                establishment_ids:
+                  type: array
+                  minItems: 1
+                  maxItems: 500
+                  items: {type: string, maxLength: 40}
+                valid_from:
+                  type: string
+                  description: "Date d'effet ISO 8601 avec fuseau, normalisée en UTC"
+      responses:
+        '200':
+          description: "Rattachement enregistré : territory_id, valid_from (UTC) et establishment_ids"
+        '403':
+          description: "Permission de niveau client manquante"
+        '404':
+          description: "Territoire ou établissement introuvable dans ce client"
+        '409':
+          description: "La date d'effet réécrirait le passé ou chevaucherait une période close"
+        '422':
+          description: "Liste d'établissements ou date invalide"
   /api/v1/vocabulary:
     get:
       summary: "Vocabulaire de l'interface par type d'établissement (paramètre type)"

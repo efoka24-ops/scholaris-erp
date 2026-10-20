@@ -15,7 +15,7 @@ paths:
         '422':
           description: "Données invalides"
     post:
-      summary: "Crée l'appel d'un créneau pour un jour (client_uuid idempotent, lignes et validation facultatives) ; 200 si rejoué, 409 avec les deux versions en cas de conflit"
+      summary: "Crée l'appel d'un créneau pour un jour (client_uuid idempotent, lignes et validation facultatives) ; 200 si rejoué, 409 avec les deux versions en cas de conflit. Mode attendance.mode = day_part (PP17) : au lieu de slot_id, structure_id + day_part (morning, afternoon, full_day) sans créneau ; une séance par classe, moment et jour (slot_id = dp:<structure_id>:<moment>), 422 si le mode n'est pas activé"
       security:
         - bearer: []
       parameters:
@@ -35,7 +35,7 @@ paths:
           description: "Données invalides"
   /api/v1/attendance-sessions/sync:
     post:
-      summary: "Synchronise par lot les appels enregistrés hors ligne ; un résultat par appel (synced, conflict, error)"
+      summary: "Synchronise par lot les appels enregistrés hors ligne ; un résultat par appel (synced, conflict, error). Chaque appel porte slot_id ou, en mode day_part, structure_id + day_part"
       security:
         - bearer: []
       parameters:

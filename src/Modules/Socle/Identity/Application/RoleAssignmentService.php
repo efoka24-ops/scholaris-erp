@@ -18,6 +18,7 @@ use Scholaris\Modules\Socle\Identity\Infrastructure\PdoPeopleRepository;
 use Scholaris\Modules\Socle\Identity\Infrastructure\PdoRoleAssignmentRepository;
 use Scholaris\Modules\Socle\Identity\Infrastructure\PdoRoleCatalog;
 use Scholaris\Modules\Socle\Identity\Infrastructure\PdoUserRepository;
+use Scholaris\Modules\Socle\Organisation\Contracts\TerritoryDirectory;
 
 /**
  * Affectation, délégation et retrait de rôles. Les droits de l'acteur sont contrôlés ici (refus par défaut) :
@@ -37,6 +38,7 @@ final class RoleAssignmentService
         private readonly PdoAccessTokenRepository $tokens,
         private readonly PermissionResolver $resolver,
         private readonly LazyEstablishmentDirectory $directory,
+        private readonly TerritoryDirectory $territories,
         private readonly AuditLog $audit,
         private readonly Moment $moment,
     ) {
@@ -148,7 +150,7 @@ final class RoleAssignmentService
      */
     private function scope(string $tenantId, Role $role, array $input): array
     {
-        $type = ScopeType::tryFrom($input['scope_type']) ?? throw HttpException::validation(['scope_type' => ['Périmètre inconnu (tenant, establishment, org_unit, class ou structure).']]);
+        $type = ScopeType::tryFrom($input['scope_type']) ?? throw HttpException::validation(['scope_type' => ['Périmètre inconnu (tenant, establishment, territory, org_unit, class ou structure).']]);
 
         if ($role->isTenantLevel()) {
             if ($type !== ScopeType::Tenant) {
@@ -158,7 +160,22 @@ final class RoleAssignmentService
             return [$type, null, null];
         }
         if ($type === ScopeType::Tenant) {
-            throw HttpException::validation(['scope_type' => ['Ce rôle s\'exerce dans un établissement : indiquez un périmètre « establishment », « org_unit », « class » ou « structure ».']]);
+            throw HttpException::validation(['scope_type' => ['Ce rôle s\'exerce dans un établissement : indiquez un périmètre « establishment », « territory », « org_unit », « class » ou « structure ».']]);
+        }
+
+        if ($type === ScopeType::Territory) {
+            $territoryId = $input['scope_id'];
+            if ($territoryId === null || $territoryId === '') {
+                throw HttpException::validation(['scope_id' => ['Le territoire est obligatoire pour ce périmètre.']]);
+            }
+            if (($input['establishment_id'] ?? null) !== null) {
+                throw HttpException::validation(['establishment_id' => ['Le périmètre territorial ne porte pas d\'établissement.']]);
+            }
+            if ($this->territories->find($tenantId, $territoryId, $this->moment->iso()) === null) {
+                throw HttpException::validation(['scope_id' => ['Territoire introuvable ou inactif dans votre client.']]);
+            }
+
+            return [$type, $territoryId, null];
         }
 
         $establishmentId = $type === ScopeType::Establishment ? $input['scope_id'] : $input['establishment_id'];

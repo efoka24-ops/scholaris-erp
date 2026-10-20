@@ -22,7 +22,7 @@ Sortie : contrats PM1, PM2, PM3, PM8 et repli PM4 disponibles ; squelette vert. 
 | M1-a Autorisés, restrictions, remise | `PN/Pickup/{Application,Domain,Http}` (hors Sync/Watch), `PN/Portal/Http/PortalPickupController.php` | T720, T721, T722, T723, T724 |
 | M1-b Documents SOR | `PN/Documents/**`, `PN/Pickup/Console/DailyRegisterCommand.php`, `PickupAuditCommand.php` | T727, T728, T729 (après T723 : démarre sur les gabarits) |
 | M1-c Notifications | `PN/Notifications/**` | adaptateurs NOT-06/NOT-07 utilisés par T723 et T726 |
-Tour 2 (créneaux libérés) : M1-d Hors ligne et veille (`PN/Pickup/Application/{MorningPackageService,SyncService,LateWatchService}.php`, `Http/SyncController.php`, `Console/PickupWatchCommand.php`) → T725, T726 ; puis T730 (OpenAPI).
+Tour 2 (créneaux libérés) : M1-d Hors ligne et veille (`PN/Pickup/Application/{MorningPackageService,PickupSyncHandler,LateWatchService}.php` ; gestionnaire `sync.handlers.public_nursery.pickup` sur `So/Sync` (T609), sans `SyncService` ni `SyncController` ; `Console/PickupWatchCommand.php`) → T725, T726 ; puis T730 (OpenAPI).
 
 ## Vague M2 · Écrans SOR et recette P1
 | Agent | Dossiers | Tâches |
