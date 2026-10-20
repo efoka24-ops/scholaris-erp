@@ -6,6 +6,8 @@ import HigherFrame from './HigherFrame.vue';
 import { P } from './access';
 import { useHigherStore } from './store';
 import { useRouter } from 'vue-router';
+import { useApplyI18n } from './apply/i18n';
+import type { HigherApplyKey } from '@/i18n/higher-apply-fr';
 
 // Accueil de l'application IPES (maquette Dashboard.html : cartes à bordure, liens d'action) : rubriques ouvertes selon les permissions.
 const { t } = useI18n();
@@ -44,6 +46,16 @@ const cards: Array<{ name: string; title: MessageKey; text: MessageKey; perms?: 
   { name: 'higher-portal-guarantor', title: 'nav.higher.portalGuarantor', text: 'hi.por.lede', roles: ['parent'] },
 ];
 
+// Candidature en ligne : textes du dictionnaire propre au module (higher-apply-*.ts).
+const { ta } = useApplyI18n();
+const applyCards: Array<{ name: string; title: HigherApplyKey; text: HigherApplyKey; perms?: readonly string[]; roles?: string[] }> = [
+  { name: 'higher-my-application', title: 'ha.my.title', text: 'ha.my.lede', roles: ['apprenant'] },
+  { name: 'higher-apply-link', title: 'ha.link.title', text: 'ha.link.lede', perms: P.applicationManage },
+];
+const visibleApplyCards = computed(() =>
+  applyCards.filter((c) => router.hasRoute(c.name) && (c.perms ? ctx.can(...c.perms) : true) && (c.roles ? c.roles.includes(ctx.activeRole ?? '') : true)),
+);
+
 const visibleCards = computed(() =>
   cards.filter((c) => router.hasRoute(c.name) && ((c.perms ?? (router.resolve({ name: c.name }).meta.perms as string[] | undefined)) ? ctx.can(...(c.perms ?? (router.resolve({ name: c.name }).meta.perms as string[]))) : true) && (c.roles ? c.roles.includes(ctx.activeRole ?? '') : true)),
 );
@@ -59,13 +71,20 @@ onMounted(() => void higher.ensure());
       <router-link class="btn" :to="{ name: 'applications' }">{{ t('hi.unavailable.cta') }} →</router-link>
     </section>
     <template v-else>
-      <p v-if="visibleCards.length === 0" class="notice">{{ t('hi.noRole') }}</p>
+      <p v-if="visibleCards.length === 0 && visibleApplyCards.length === 0" class="notice">{{ t('hi.noRole') }}</p>
       <ul class="grid grid--tiles hi-cards">
         <li v-for="c in visibleCards" :key="c.name">
           <article class="card hi-card">
             <h2>{{ t(c.title) }}</h2>
             <p class="muted">{{ t(c.text) }}</p>
             <router-link class="btn btn--quiet" :to="{ name: c.name }" :aria-label="`${t('hi.home.open')} : ${t(c.title)}`">{{ t('hi.home.open') }} →</router-link>
+          </article>
+        </li>
+        <li v-for="c in visibleApplyCards" :key="c.name">
+          <article class="card hi-card">
+            <h2>{{ ta(c.title) }}</h2>
+            <p class="muted">{{ ta(c.text) }}</p>
+            <router-link class="btn btn--quiet" :to="{ name: c.name }" :aria-label="`${t('hi.home.open')} : ${ta(c.title)}`">{{ t('hi.home.open') }} →</router-link>
           </article>
         </li>
       </ul>

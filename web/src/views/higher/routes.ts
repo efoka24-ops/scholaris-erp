@@ -4,6 +4,7 @@
 import type { RouteRecordRaw } from 'vue-router';
 import type { MessageKey } from '@/i18n';
 import { higherGuard, P } from './access';
+import { higherApplyRoutes } from './apply/routes';
 
 type Screen = [path: string, name: string, view: () => Promise<unknown>, perms: readonly string[], titleKey: MessageKey, withProps?: boolean];
 
@@ -46,4 +47,5 @@ export const higherRoutes: RouteRecordRaw[] = [
     beforeEnter: higherGuard,
     meta: { ...higherOnly, perms: [...perms], titleKey },
   })),
+  ...higherApplyRoutes,
 ];
