@@ -47,6 +47,8 @@ final class AllRoutesContractTest extends SharedFixtureTestCase
         // Usages élève légitimes : pointage par QR de séance, justificatif, consentements, emploi du temps, calendrier.
         'POST /api/v1/attendance-sessions/{id}/scan', 'POST /api/v1/absence-justifications', 'GET /api/v1/consents', 'POST /api/v1/consents',
         'GET /api/v1/timetable', 'GET /api/v1/me/applications',
+        // Mot de passe de la personne connectée (C-001) : changement et confirmation récente, ouverts à tout compte.
+        'POST /api/v1/auth/change-password', 'POST /api/v1/auth/reconfirm',
         // Paiement en libre-service (D2) : sa référence famille et un paiement mobile money de SES factures, contrôle d'objet
         // strict (tests/Feature/Billing/SelfServicePaymentTest) ; les lectures GET restent soumises au contrôle ci-dessous.
         'POST /api/v1/payment-references', 'POST /api/v1/payments',

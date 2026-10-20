@@ -120,6 +120,8 @@ final class AuthController
             'new_device' => $result->newDevice,
             'two_factor_required' => $result->twoFactorRequired,
             'two_factor_setup_required' => $result->twoFactorSetupRequired,
+            // Mot de passe provisoire : la session ne sert qu'à POST /auth/change-password tant qu'il n'est pas remplacé.
+            'password_change_required' => $result->passwordChangeRequired,
             'user' => IdentityResource::user($result->user, $person),
         ];
         if (!$web) {

@@ -19,12 +19,13 @@ final class PdoAccessTokenRepository extends PdoRepository
         string $expiresAt,
         bool $needsTwoFactor,
         string $now,
+        ?string $passwordConfirmedAt = null,
     ): string {
         $id = (string) new Ulid();
         $this->run(
-            'INSERT INTO access_tokens (id, tenant_id, user_id, device_id, token_hash, remember, expires_at, needs_two_factor, two_factor_attempts, created_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?)',
-            [$id, $tenantId, $userId, $deviceId, $tokenHash, $remember ? 1 : 0, $expiresAt, $needsTwoFactor ? 1 : 0, $now],
+            'INSERT INTO access_tokens (id, tenant_id, user_id, device_id, token_hash, remember, expires_at, needs_two_factor, two_factor_attempts, password_confirmed_at, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)',
+            [$id, $tenantId, $userId, $deviceId, $tokenHash, $remember ? 1 : 0, $expiresAt, $needsTwoFactor ? 1 : 0, $passwordConfirmedAt, $now],
         );
 
         return $id;
@@ -90,6 +91,12 @@ final class PdoAccessTokenRepository extends PdoRepository
         );
     }
 
+    /** Enregistre la saisie du mot de passe sur la session (preuve de confirmation récente pour qui n'a pas de 2FA). */
+    public function markPasswordConfirmed(string $tenantId, string $id, string $now): void
+    {
+        $this->run('UPDATE access_tokens SET password_confirmed_at = ? WHERE tenant_id = ? AND id = ?', [$now, $tenantId, $id]);
+    }
+
     /** @return int nombre d'échecs de double authentification sur ce jeton, après incrément */
     public function incrementTwoFactorAttempts(string $tenantId, string $id): int
     {
@@ -124,6 +131,7 @@ final class PdoAccessTokenRepository extends PdoRepository
             self::nullableString($row['active_role']),
             self::nullableString($row['last_used_at']),
             self::nullableString($row['revoked_at']),
+            self::nullableString($row['password_confirmed_at'] ?? null),
         );
     }
 }

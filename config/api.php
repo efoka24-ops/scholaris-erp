@@ -19,6 +19,10 @@ return [
     'rate_limits' => [
         ['POST', '#^/api/v1/auth/login$#', 10, 60],
         ['POST', '#^/api/v1/auth/(activation|password|2fa)#', 20, 3600],
+        // Mot de passe de la personne connectée : changement et confirmation (en plus du verrouillage à 5 échecs).
+        ['POST', '#^/api/v1/auth/(change-password|reconfirm)$#', 10, 600],
+        // Création de comptes à mot de passe provisoire et ré-émission (en plus de 5 ré-émissions par heure et par compte).
+        ['POST', '#^/api/v1/users(/[^/]+/provisional-password)?$#', 120, 3600],
         ['POST', '#^/api/v1/(payments|cash/receipts)$#', 60, 60],
         ['*', '#^/api/v1/public/#', 30, 60],
         ['POST', '#^/api/v1/messages(/[^/]+/send)?$#', 30, 60],

@@ -21,6 +21,8 @@ final class AccessToken
         public readonly ?string $activeRole,
         public readonly ?string $lastUsedAt,
         public readonly ?string $revokedAt,
+        /** Dernière saisie du mot de passe sur cette session (connexion ou confirmation) : preuve de « confirmation récente ». */
+        public readonly ?string $passwordConfirmedAt = null,
     ) {
     }
 

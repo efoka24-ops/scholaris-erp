@@ -25,12 +25,16 @@ final class TokenService
         return hash('sha256', $plain);
     }
 
-    /** @return array{token: string, expires_at: string, id: string} le jeton en clair n'existe que dans cette réponse */
-    public function issue(string $tenantId, string $userId, string $deviceId, bool $remember, bool $needsTwoFactor): array
+    /**
+     * `passwordConfirmed` : la session s'ouvre par saisie du mot de passe, ce qui vaut confirmation récente (PdoRecentSecondFactor).
+     *
+     * @return array{token: string, expires_at: string, id: string} le jeton en clair n'existe que dans cette réponse
+     */
+    public function issue(string $tenantId, string $userId, string $deviceId, bool $remember, bool $needsTwoFactor, bool $passwordConfirmed = false): array
     {
         $plain = self::PREFIX . rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');
         $expiresAt = $this->moment->in($remember ? self::TTL_REMEMBER : self::TTL_DEFAULT);
-        $id = $this->tokens->insert($tenantId, $userId, $deviceId, self::hash($plain), $remember, $expiresAt, $needsTwoFactor, $this->moment->iso());
+        $id = $this->tokens->insert($tenantId, $userId, $deviceId, self::hash($plain), $remember, $expiresAt, $needsTwoFactor, $this->moment->iso(), $passwordConfirmed ? $this->moment->iso() : null);
 
         return ['token' => $plain, 'expires_at' => $expiresAt, 'id' => $id];
     }

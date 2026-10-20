@@ -23,6 +23,8 @@ final class User
         public readonly ?string $twoFactorSecret,
         public readonly ?string $twoFactorConfirmedAt,
         public readonly int $twoFactorLastStep,
+        /** Mot de passe provisoire émis par l'administrateur : à remplacer à la première connexion. */
+        public readonly bool $mustChangePassword = false,
     ) {
     }
 

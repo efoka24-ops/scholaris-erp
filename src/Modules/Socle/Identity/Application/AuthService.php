@@ -163,9 +163,9 @@ final class AuthService
         // L'administrateur de plateforme n'a jamais de dispense d'appareil de confiance.
         // Connexion par code d'authentification : la preuve est déjà le second facteur, la session s'ouvre vérifiée.
         $needsTwoFactor = !$passwordless && $this->twoFactorPolicy->requiredFor($sensitive, $platformAdmin) && ($platformAdmin || !($matched->hasTwoFactor() && $trusted));
-        $issued = $this->tokenService->issue($matched->tenantId, $matched->id, $deviceId, $remember, $needsTwoFactor);
+        $issued = $this->tokenService->issue($matched->tenantId, $matched->id, $deviceId, $remember, $needsTwoFactor, !$passwordless);
         $this->users->touchLogin($matched->tenantId, $matched->id, $now);
-        $this->audit->append($matched->tenantId, $matched->id, 'identity.login', 'user', $matched->id, null, ['new_device' => $newDevice, 'method' => $passwordless ? 'authenticator' : 'password'], $client->ip, $client->deviceName());
+        $this->audit->append($matched->tenantId, $matched->id, 'identity.login', 'user', $matched->id, null, ['new_device' => $newDevice, 'method' => $passwordless ? 'authenticator' : 'password', 'password_change_required' => $matched->mustChangePassword], $client->ip, $client->deviceName());
 
         if ($newDevice) {
             $this->notifier->newDevice($matched, $client->deviceName(), $client->location, $now);
@@ -179,6 +179,7 @@ final class AuthService
             $needsTwoFactor,
             $needsTwoFactor && !$matched->hasTwoFactor(),
             $remember,
+            $matched->mustChangePassword,
         );
     }
 

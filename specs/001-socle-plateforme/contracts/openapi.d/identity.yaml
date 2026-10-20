@@ -2,7 +2,11 @@
 paths:
   /api/v1/auth/login:
     post:
-      summary: "Connexion par téléphone ou e-mail et mot de passe (option remember, client web = cookie HttpOnly). Réponse : token, new_device, two_factor_required, two_factor_setup_required"
+      summary: "Connexion par e-mail (ou téléphone) et mot de passe (option remember, client web = cookie HttpOnly). Réponse : token, new_device, two_factor_required, two_factor_setup_required, password_change_required"
+      description: >-
+        `password_change_required` vrai : le mot de passe est provisoire (émis par l'administrateur) et la session ne sert qu'à
+        POST /auth/change-password, GET /me et la déconnexion. La double authentification n'est exigée que si le réglage
+        d'exploitation l'impose ; l'administrateur de plateforme y est toujours soumis.
       security: []
       requestBody:
         required: true
@@ -416,13 +420,33 @@ paths:
         Fiche unique par client (FR-006) : le compte est rattaché à la fiche `person_id` si elle est fournie (sans compte),
         sinon à l'unique fiche sans compte de même téléphone ou e-mail et de mêmes prénom et nom ; une nouvelle fiche
         n'est créée qu'à défaut. La réponse indique `person_linked`.
+
+        Avec `provisional_password: true` (connexion simple), le compte est directement actif avec un mot de passe provisoire
+        généré (12 caractères non ambigus, haché Argon2id) rendu UNE fois dans `provisional_password`
+        (Cache-Control: no-store, jamais journalisé) ; la personne doit le remplacer à sa première connexion
+        (`must_change_password`).
       security:
         - bearer: []
       parameters:
         - $ref: '#/components/parameters/EstablishmentId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [first_name, last_name]
+              properties:
+                first_name: {type: string}
+                last_name: {type: string}
+                phone: {type: string}
+                email: {type: string}
+                locale: {type: string, enum: [fr, en]}
+                person_id: {type: string}
+                provisional_password: {type: boolean}
       responses:
         '201':
-          description: "Compte créé (person_id, user_id, person_linked, status pending)"
+          description: "Compte créé (person_id, user_id, person_linked, status pending ; avec provisional_password : status active, login, must_change_password, provisional_password)"
         '403':
           description: "Accès refusé"
         '404':
@@ -431,3 +455,94 @@ paths:
           description: "Téléphone ou e-mail déjà utilisé, ou la fiche désignée a déjà un compte"
         '422':
           description: "Données invalides"
+  /api/v1/auth/change-password:
+    post:
+      summary: "Change le mot de passe de la personne connectée (obligatoire après un mot de passe provisoire)"
+      description: >-
+        Le mot de passe actuel (ou provisoire) est exigé. Tant que le mot de passe provisoire n'est pas remplacé, la session
+        ne sert qu'à cette route, à GET /me et à la déconnexion (403 `password-change-required` ailleurs). Les autres sessions
+        du compte sont fermées. Mêmes compteurs d'échecs et même verrouillage que la connexion.
+      security:
+        - bearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [current_password, new_password]
+              properties:
+                current_password: {type: string}
+                new_password: {type: string, description: "10 caractères au moins, ni courant ni contenant l'identifiant ou le nom"}
+                new_password_confirmation: {type: string}
+      responses:
+        '200':
+          description: "Mot de passe remplacé (changed, password_change_required false)"
+        '422':
+          description: "Mot de passe actuel incorrect (type invalid-password, attempts_left) ou nouveau mot de passe refusé (errors.new_password)"
+        '423':
+          description: "Verrouillé 15 minutes (locked_until, Retry-After)"
+  /api/v1/auth/reconfirm:
+    post:
+      summary: "Confirmation récente par mot de passe (10 minutes) pour les actions sensibles d'une personne sans double authentification"
+      description: >-
+        Preuve enregistrée sur la session. Réservée aux comptes SANS double authentification : les autres confirment par leur
+        code (`/auth/2fa/verify`), et l'administrateur de plateforme n'y a jamais droit (409 `second-factor-required`).
+        Mêmes compteurs et verrouillage que la connexion.
+      security:
+        - bearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                password: {type: string}
+      responses:
+        '200':
+          description: "Confirmé (confirmed, confirmed_at, valid_for en secondes)"
+        '409':
+          description: "Le compte utilise la double authentification (type second-factor-required)"
+        '422':
+          description: "Mot de passe incorrect (type invalid-password, attempts_left)"
+        '423':
+          description: "Verrouillé 15 minutes (locked_until, Retry-After)"
+  /api/v1/users/{id}/provisional-password:
+    post:
+      summary: "Ré-émet un mot de passe provisoire pour un compte de l'établissement (permission identity.manage)"
+      description: >-
+        Remplace « Réinitialiser l'accès » pour le personnel. Le mot de passe en clair (12 caractères) n'est rendu qu'ici, une
+        seule fois (Cache-Control: no-store), jamais journalisé. L'ancien mot de passe, les sessions et les codes ouverts sont
+        invalidés ; changement obligatoire à la prochaine connexion. `reset_two_factor` efface aussi l'authentificateur.
+        Refus : son propre compte (409), compte bloqué (409), compte d'administration du client sans être super administrateur
+        (403), personne sans rôle dans cet établissement (404). 5 ré-émissions par heure et par compte (429).
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          description: "Identifiant du compte, ou de la personne à laquelle il est rattaché"
+          schema: {type: string}
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reset_two_factor: {type: boolean}
+      responses:
+        '200':
+          description: "user_id, login, status, must_change_password, provisional_password"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Compte introuvable dans ce client ou hors de cet établissement"
+        '409':
+          description: "Son propre compte, ou compte bloqué"
+        '429':
+          description: "Trop de ré-émissions pour ce compte (Retry-After)"

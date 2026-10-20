@@ -7,6 +7,7 @@ use Scholaris\Modules\Socle\Identity\Http\ActivationController;
 use Scholaris\Modules\Socle\Identity\Http\AuthController;
 use Scholaris\Modules\Socle\Identity\Http\MeController;
 use Scholaris\Modules\Socle\Identity\Http\NamedAccessController;
+use Scholaris\Modules\Socle\Identity\Http\PasswordController;
 use Scholaris\Modules\Socle\Identity\Http\RoleAssignmentController;
 use Scholaris\Modules\Socle\Identity\Http\TwoFactorController;
 use Scholaris\Modules\Socle\Identity\Http\UserController;
@@ -28,7 +29,11 @@ return static function (RouteRegistry $routes): void {
     $routes->add('POST', '/auth/activation/password', [ActivationController::class, 'password'], $public);
     $routes->add('POST', '/auth/password/forgot', [ActivationController::class, 'forgot'], $public);
 
-    $routes->add('POST', '/auth/logout', [AuthController::class, 'logout'], $beforeTwoFactor);
+    // Compte à mot de passe provisoire (`pwd_change`) : seules ces routes (profil, déconnexion, changement) lui restent ouvertes.
+    $beforePassword = ['tenant' => false, 'pre_2fa' => true, 'pwd_change' => true];
+    $routes->add('POST', '/auth/change-password', [PasswordController::class, 'change'], $beforePassword);
+    $routes->add('POST', '/auth/reconfirm', [PasswordController::class, 'reconfirm'], $session);
+    $routes->add('POST', '/auth/logout', [AuthController::class, 'logout'], $beforePassword);
     $routes->add('POST', '/auth/not-me', [AuthController::class, 'notMe'], $beforeTwoFactor);
     $routes->add('POST', '/auth/2fa/verify', [TwoFactorController::class, 'verify'], $beforeTwoFactor);
     $routes->add('POST', '/auth/2fa/sms', [TwoFactorController::class, 'sms'], $beforeTwoFactor);
@@ -36,7 +41,7 @@ return static function (RouteRegistry $routes): void {
     $routes->add('POST', '/auth/2fa/setup', [TwoFactorController::class, 'setup'], $beforeTwoFactor);
     $routes->add('POST', '/auth/2fa/confirm', [TwoFactorController::class, 'confirm'], $beforeTwoFactor);
 
-    $routes->add('GET', '/me', [MeController::class, 'show'], $beforeTwoFactor);
+    $routes->add('GET', '/me', [MeController::class, 'show'], $beforePassword);
     $routes->add('GET', '/me/contexts', [MeController::class, 'contexts'], $session);
     $routes->add('POST', '/me/context', [MeController::class, 'switchContext'], $session);
     $routes->add('GET', '/me/todo', [MeController::class, 'todo'], $session);
@@ -50,6 +55,7 @@ return static function (RouteRegistry $routes): void {
     $routes->add('DELETE', '/role-assignments/{id}', [RoleAssignmentController::class, 'destroy']);
 
     $routes->add('POST', '/users', [UserController::class, 'store']);
+    $routes->add('POST', '/users/{id}/provisional-password', [UserController::class, 'provisionalPassword']);
 
     // PP3 (T607) : journal des consultations nominatives de l'établissement actif (directeur).
     $routes->add('GET', '/audit/named-access', [NamedAccessController::class, 'index']);

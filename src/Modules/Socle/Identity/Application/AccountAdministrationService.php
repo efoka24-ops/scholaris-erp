@@ -35,6 +35,7 @@ final class AccountAdministrationService implements AccountAdministration
         private readonly Moment $moment,
         private readonly PdoUserRepository $users,
         private readonly AccessCodeIssuer $issuer,
+        private readonly ProvisionalPasswordService $provisional,
     ) {
     }
 
@@ -112,7 +113,7 @@ final class AccountAdministrationService implements AccountAdministration
         $holder = $this->holder($tenantId, $role, $userId);
         $now = $this->moment->iso();
         $this->connections->pdo()->prepare(
-            'UPDATE users SET password_hash = NULL, two_factor_secret = NULL, two_factor_confirmed_at = NULL, status = ?, updated_at = ? WHERE tenant_id = ? AND id = ?',
+            'UPDATE users SET password_hash = NULL, must_change_password = 0, two_factor_secret = NULL, two_factor_confirmed_at = NULL, status = ?, updated_at = ? WHERE tenant_id = ? AND id = ?',
         )->execute([User::PENDING, $now, $tenantId, $userId]);
         $this->tokens->revokeForUser($tenantId, $userId, $now);
         $this->devices->revokeAll($tenantId, $userId, $now);
@@ -165,6 +166,16 @@ final class AccountAdministrationService implements AccountAdministration
     public function isOpenAccessCode(string $tenantId, string $userId, string $code): bool
     {
         return preg_match('/^\d{6}$/', $code) === 1 && $this->issuer->isOpen($this->account($tenantId, $userId), $code);
+    }
+
+    public function createWithProvisionalPassword(string $tenantId, string $firstName, string $lastName, ?string $phone, ?string $email, string $locale, string $actorId, ?string $personId = null): array
+    {
+        return $this->provisional->create($tenantId, $firstName, $lastName, $phone, $email, $locale, $actorId, $personId);
+    }
+
+    public function reissueProvisionalPassword(string $tenantId, string $userId, string $actorId, ?string $establishmentId = null, bool $resetTwoFactor = false): array
+    {
+        return $this->provisional->reissue($tenantId, $userId, $actorId, $establishmentId, $resetTwoFactor);
     }
 
     /** Compte du client désigné (sur la plateforme : administrateur de plateforme seulement), sinon 404. */

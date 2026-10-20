@@ -15,6 +15,7 @@ use Scholaris\Modules\Socle\Identity\Application\TokenService;
 /**
  * Identifie l'appelant : jeton opaque en-tête `Authorization: Bearer` (mobile) ou cookie HttpOnly (web), ou clé de compte de service.
  * Un jeton dont la double authentification est exigée mais pas encore franchie n'ouvre que les routes marquées `pre_2fa`.
+ * Un compte à mot de passe provisoire n'ouvre que les routes marquées `pwd_change` tant qu'il ne l'a pas remplacé.
  */
 final class TokenAuthenticator implements Authenticator
 {
@@ -65,6 +66,15 @@ final class TokenAuthenticator implements Authenticator
             return null;
         }
         $options = (array) $request->getAttribute('route_options', []);
+        // Mot de passe provisoire : la session ne sert qu'à le remplacer (routes marquées `pwd_change`), à lire son profil et à se déconnecter.
+        if ($user->mustChangePassword && ($options['pwd_change'] ?? false) !== true) {
+            throw new HttpException(
+                403,
+                'Changement de mot de passe requis',
+                'Remplacez votre mot de passe provisoire avant de continuer.',
+                'https://api.scholaris.cm/errors/password-change-required',
+            );
+        }
         if ($token->isPendingTwoFactor() && ($options['pre_2fa'] ?? false) !== true) {
             throw new HttpException(
                 403,

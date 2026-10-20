@@ -38,6 +38,7 @@ final class MeController
             'greeting' => $person['first_name'] ?? null,
             // Le front s'en sert pour n'afficher que les écrans de plateforme à ce compte ; le serveur refuse de toute façon.
             'platform_admin' => $this->resolver->isPlatformAdmin($user->tenantId, $user->personId),
+            'password_change_required' => $user->mustChangePassword,
             'two_factor' => [
                 'enabled' => $user->hasTwoFactor(),
                 'required' => $this->twoFactorPolicy->requiredFor($this->resolver->hasSensitiveRole($user->tenantId, $user->personId), $this->resolver->isPlatformAdmin($user->tenantId, $user->personId)),

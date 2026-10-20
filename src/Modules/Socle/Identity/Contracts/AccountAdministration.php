@@ -60,4 +60,27 @@ interface AccountAdministration
 
     /** Vrai si `code` est le code d'accès ouvert et non expiré du compte (renvoi du même code sans le régénérer). */
     public function isOpenAccessCode(string $tenantId, string $userId, string $code): bool;
+
+    /**
+     * Connexion simple (C-001) : crée la personne (ou rattache la fiche désignée) ET son compte directement utilisable, avec un
+     * mot de passe provisoire généré (12 caractères non ambigus, haché Argon2id). Le mot de passe en clair n'est rendu qu'ici,
+     * une seule fois : l'appelant le remet à la personne (écran « Nouveau compte », ligne d'un import) et ne le conserve ni ne le
+     * journalise. La personne doit le remplacer à sa première connexion. Refus : 409 téléphone ou e-mail déjà utilisé, 422
+     * données invalides, 404 fiche inconnue. Audité (`identity.provisional_password_issued`), sans le mot de passe.
+     *
+     * @return array{person_id: string, user_id: string, person_linked: bool, login: string, status: string, must_change_password: bool, provisional_password: string}
+     */
+    public function createWithProvisionalPassword(string $tenantId, string $firstName, string $lastName, ?string $phone, ?string $email, string $locale, string $actorId, ?string $personId = null): array;
+
+    /**
+     * Ré-émet un mot de passe provisoire pour un compte du client (mot de passe perdu ; remplace « Réinitialiser l'accès » pour
+     * le personnel de l'établissement). L'ancien mot de passe, les sessions et les codes ouverts sont invalidés ; changement
+     * obligatoire à la prochaine connexion ; `resetTwoFactor` efface aussi l'authentificateur. Refus : son propre compte (409),
+     * compte bloqué (409), compte d'administration du client sans être super administrateur (403), personne sans rôle dans
+     * `establishmentId` (404), 5 ré-émissions par heure et par compte (429). Jamais sur le client technique `platform`.
+     * `userId` peut aussi être l'identifiant de la PERSONNE (le compte du client qui lui est rattaché).
+     *
+     * @return array{user_id: string, login: string, status: string, must_change_password: bool, provisional_password: string}
+     */
+    public function reissueProvisionalPassword(string $tenantId, string $userId, string $actorId, ?string $establishmentId = null, bool $resetTwoFactor = false): array;
 }

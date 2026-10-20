@@ -84,6 +84,37 @@ abstract class IdentityTestCase extends TestCase
     }
 
     /**
+     * Première colonne de la première ligne (ou faux).
+     *
+     * @param list<mixed> $params
+     */
+    protected function scalar(string $sql, array $params = []): mixed
+    {
+        $statement = $this->pdo()->prepare($sql);
+        $statement->execute($params);
+
+        return $statement->fetchColumn();
+    }
+
+    /**
+     * @param list<mixed> $params
+     * @return list<array<string, mixed>>
+     */
+    protected function rows(string $sql, array $params = []): array
+    {
+        $statement = $this->pdo()->prepare($sql);
+        $statement->execute($params);
+
+        return array_values($statement->fetchAll(PDO::FETCH_ASSOC));
+    }
+
+    /** Identifiant du compte (users.id) portant cet e-mail. */
+    protected function userIdOf(string $email): string
+    {
+        return (string) $this->scalar('SELECT id FROM users WHERE email = ?', [$email]);
+    }
+
+    /**
      * Crée une personne avec compte actif et mot de passe, et ses rôles.
      *
      * @param list<array{0: string, 1: string, 2: ?string}> $roles [rôle, périmètre, identifiant de périmètre]

@@ -67,8 +67,35 @@ final class PdoUserRepository extends PdoRepository
     public function setPassword(string $tenantId, string $userId, string $hash, string $now): void
     {
         $this->run(
-            'UPDATE users SET password_hash = ?, status = ?, updated_at = ? WHERE tenant_id = ? AND id = ?',
+            'UPDATE users SET password_hash = ?, status = ?, must_change_password = 0, updated_at = ? WHERE tenant_id = ? AND id = ?',
             [$hash, User::ACTIVE, $now, $tenantId, $userId],
+        );
+    }
+
+    /** Mot de passe provisoire (haché) : compte actif, changement obligatoire à la première connexion. */
+    public function setProvisionalPassword(string $tenantId, string $userId, string $hash, string $now): void
+    {
+        $this->run(
+            'UPDATE users SET password_hash = ?, status = ?, must_change_password = 1, updated_at = ? WHERE tenant_id = ? AND id = ?',
+            [$hash, User::ACTIVE, $now, $tenantId, $userId],
+        );
+    }
+
+    /** Mot de passe choisi par la personne elle-même : le statut ne change pas. */
+    public function changePassword(string $tenantId, string $userId, string $hash, string $now): void
+    {
+        $this->run(
+            'UPDATE users SET password_hash = ?, must_change_password = 0, updated_at = ? WHERE tenant_id = ? AND id = ?',
+            [$hash, $now, $tenantId, $userId],
+        );
+    }
+
+    /** Efface l'authentificateur du compte (la personne en enrôle un nouveau à sa prochaine connexion si son rôle l'exige). */
+    public function clearTwoFactor(string $tenantId, string $userId, string $now): void
+    {
+        $this->run(
+            'UPDATE users SET two_factor_secret = NULL, two_factor_confirmed_at = NULL, two_factor_last_step = 0, updated_at = ? WHERE tenant_id = ? AND id = ?',
+            [$now, $tenantId, $userId],
         );
     }
 
@@ -122,6 +149,7 @@ final class PdoUserRepository extends PdoRepository
             self::nullableString($row['two_factor_secret']),
             self::nullableString($row['two_factor_confirmed_at']),
             (int) $row['two_factor_last_step'],
+            (int) ($row['must_change_password'] ?? 0) === 1,
         );
     }
 }
