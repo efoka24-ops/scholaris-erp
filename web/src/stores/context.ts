@@ -32,6 +32,9 @@ export const useContextStore = defineStore('context', () => {
     const given = activeTile.value?.permissions;
     if (given && given.length > 0) return new Set(given);
     const base = permissionsForRoles(activeRole.value ? [activeRole.value] : []);
+    // Permissions du rôle actif fournies par le serveur (rôles des applications compris), ajoutées au miroir local.
+    const fromServer = activeTile.value?.roles.find((r) => r.code === activeRole.value)?.permissions ?? [];
+    for (const p of fromServer) base.add(p);
     if (base.size === 0 && tenantAdmin.value) {
       // Sans établissement actif, seuls les écrans d'administration du client sont ouverts.
       return new Set([...permissionsForRoles(['super_admin'])].filter((p) => /^(organisation|settings|identity)\./.test(p)));

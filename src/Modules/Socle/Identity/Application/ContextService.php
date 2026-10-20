@@ -38,7 +38,7 @@ final class ContextService
     }
 
     /**
-     * @return list<array{kind: string, id: string, name: string, type?: string, accent?: string, logo?: string|null, roles: list<array{code: string, label: string}>, period?: array{id: string, kind: string, ordinal: int, starts_on: string, ends_on: string, academic_year: string|null}, indicators?: list<array{key: string, label: string, value: int|float, unit: string}>}>
+     * @return list<array{kind: string, id: string, name: string, type?: string, accent?: string, logo?: string|null, roles: list<array{code: string, label: string, permissions: list<string>}>, period?: array{id: string, kind: string, ordinal: int, starts_on: string, ends_on: string, academic_year: string|null}, indicators?: list<array{key: string, label: string, value: int|float, unit: string}>}>
      */
     public function contexts(User $user, string $locale, bool $withIndicators = false): array
     {
@@ -47,6 +47,8 @@ final class ContextService
             return [];
         }
         $catalog = $this->roles->all();
+        // Permissions de chaque rôle : le front adapte menus et gardes au rôle actif sans copie locale des rôles des applications.
+        $granted = $this->roles->permissionsByRole(array_values(array_unique(array_map(static fn (RoleAssignment $a): string => $a->role, $assignments))));
 
         $tenantWide = array_values(array_filter($assignments, static fn (RoleAssignment $a): bool => $a->isTenantWide()));
         if ($tenantWide !== []) {
@@ -85,7 +87,7 @@ final class ContextService
                 'type' => $info->type,
                 'accent' => $info->accent,
                 'logo' => $info->logoPath,
-                'roles' => self::roleList(array_values($codes), $catalog, $locale),
+                'roles' => self::roleList(array_values($codes), $catalog, $locale, $granted),
             ];
             // Indicateurs et période en cours ne sont calculés que pour le lanceur ; la période est omise quand elle est inconnue.
             if ($withIndicators) {
@@ -114,7 +116,7 @@ final class ContextService
                 'kind' => 'group',
                 'id' => self::GROUP_ID,
                 'name' => $locale === 'en' ? 'Whole group' : 'Tout le groupe',
-                'roles' => self::roleList([Role::GROUP_DIRECTION], $catalog, $locale),
+                'roles' => self::roleList([Role::GROUP_DIRECTION], $catalog, $locale, $granted),
             ]);
         }
 
@@ -172,12 +174,17 @@ final class ContextService
     /**
      * @param list<string> $codes
      * @param array<string, Role> $catalog
-     * @return list<array{code: string, label: string}>
+     * @param array<string, list<string>> $granted permissions par rôle
+     * @return list<array{code: string, label: string, permissions: list<string>}>
      */
-    private static function roleList(array $codes, array $catalog, string $locale): array
+    private static function roleList(array $codes, array $catalog, string $locale, array $granted): array
     {
         return array_map(
-            static fn (string $code): array => ['code' => $code, 'label' => isset($catalog[$code]) ? $catalog[$code]->label($locale) : $code],
+            static fn (string $code): array => [
+                'code' => $code,
+                'label' => isset($catalog[$code]) ? $catalog[$code]->label($locale) : $code,
+                'permissions' => $granted[$code] ?? [],
+            ],
             $codes,
         );
     }

@@ -23,7 +23,7 @@ const cards: Array<{ name: string; title: MessageKey; text: MessageKey; perms?: 
   { name: 'higher-accounts', title: 'nav.higher.finance', text: 'hi.fin.accountsLede', perms: P.billingRead },
   { name: 'higher-documents', title: 'nav.higher.documents', text: 'hi.doc.lede', perms: P.documentRead },
   { name: 'higher-timetable', title: 'nav.higher.teaching', text: 'ht.tt.lede' },
-  { name: 'higher-assiduity', title: 'nav.higher.attendance', text: 'ht.ass.lede' },
+  { name: 'higher-assiduity', title: 'nav.higher.attendance', text: 'ht.ass.ledeShort' },
   { name: 'higher-group-delegates', title: 'hx.del.title', text: 'hx.del.lede' },
   { name: 'higher-timetable-print', title: 'hx.print.title', text: 'hx.print.lede' },
   { name: 'higher-grades', title: 'nav.higherGrades', text: 'hg.lede' },

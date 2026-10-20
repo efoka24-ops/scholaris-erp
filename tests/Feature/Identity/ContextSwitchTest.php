@@ -33,7 +33,10 @@ final class ContextSwitchTest extends IdentityTestCase
         self::assertSame('primary', $tiles[1]['type']);
         self::assertSame('#1D8AF2', $tiles[1]['accent']);
         self::assertSame('logos/beta.png', $tiles[0]['logo']);
-        self::assertSame([['code' => 'enseignant', 'label' => 'Enseignant']], $tiles[0]['roles']);
+        self::assertSame(['code' => 'enseignant', 'label' => 'Enseignant'], array_diff_key($tiles[0]['roles'][0], ['permissions' => true]));
+        self::assertCount(1, $tiles[0]['roles']);
+        // Les permissions du rôle accompagnent la tuile : le front n'a plus à recopier les rôles des applications.
+        self::assertContains('assessment.enter', $tiles[0]['roles'][0]['permissions']);
         self::assertNotContains('group', array_column($tiles, 'kind'));
     }
 

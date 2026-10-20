@@ -48,6 +48,8 @@ export interface Me extends UserSummary {
 export interface RoleRef {
   code: string;
   label: string;
+  /** Permissions portées par ce rôle (GET /me/contexts) ; absentes des réponses plus anciennes. */
+  permissions?: string[];
 }
 
 export interface ContextTile {
