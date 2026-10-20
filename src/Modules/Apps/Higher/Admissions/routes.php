@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use Scholaris\Modules\Apps\Higher\Admissions\Http\ApplicationController;
 use Scholaris\Modules\Apps\Higher\Admissions\Http\CampaignController;
+use Scholaris\Modules\Apps\Higher\Admissions\Http\CandidateController;
+use Scholaris\Modules\Apps\Higher\Admissions\Http\PublicLinkController;
 use Scholaris\Modules\Apps\Higher\Support\HigherRoutes;
 
 /**
@@ -25,10 +27,17 @@ return static function (HigherRoutes $routes): void {
     $routes->post('/admissions/campaigns/{id}/contest-sessions', [CampaignController::class, 'createSession']);
     $routes->post('/admissions/contest-sessions/{id}/convocations', [CampaignController::class, 'convoke']);
 
+    $routes->get('/admissions/public-link', [PublicLinkController::class, 'show']);
+    $routes->put('/admissions/public-link', [PublicLinkController::class, 'update']);
+    $routes->get('/admissions/open-campaigns', [CandidateController::class, 'openCampaigns']);
+    $routes->get('/admissions/my-applications', [CandidateController::class, 'mine']);
+    $routes->get('/admissions/applications/{id}/follow-up', [CandidateController::class, 'followUp']);
     $routes->get('/admissions/applications', [ApplicationController::class, 'index']);
     $routes->post('/admissions/applications', [ApplicationController::class, 'create']);
     $routes->get('/admissions/applications/{id}', [ApplicationController::class, 'show']);
     $routes->post('/admissions/applications/{id}/documents', [ApplicationController::class, 'attachDocument']);
+    $routes->post('/admissions/applications/{id}/documents/{documentId}/file', [ApplicationController::class, 'uploadDocument']);
+    $routes->get('/admissions/applications/{id}/documents/{documentId}/file', [ApplicationController::class, 'downloadDocument']);
     $routes->post('/admissions/applications/{id}/documents/{documentId}/verify', [ApplicationController::class, 'verifyDocument']);
     $routes->post('/admissions/applications/{id}/documents/{documentId}/reject', [ApplicationController::class, 'rejectDocument']);
     $routes->post('/admissions/applications/{id}/submit', [ApplicationController::class, 'submit']);

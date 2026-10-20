@@ -301,3 +301,61 @@ paths:
       responses:
         '200': {description: "Candidature avec ses équivalences"}
         '409': {description: "Pas un transfert, ou déjà inscrite"}
+  /api/v1/higher/admissions/public-link:
+    get:
+      summary: "Lien public « Candidater » de l'établissement (higher.application.manage) : existe, actif, jeton et chemin partageable"
+      responses:
+        '200': {description: "État du lien (exists, enabled, slug, path)"}
+        '404': {description: "Application Supérieur fermée ou jamais ouverte au client"}
+    put:
+      summary: "Créer, activer, désactiver (enabled) ou renouveler (rotate) le lien ; l'ancien jeton cesse aussitôt de répondre"
+      requestBody:
+        content:
+          application/json:
+            schema: {type: object, properties: {enabled: {type: boolean}, rotate: {type: boolean}}}
+      responses:
+        '200': {description: "État du lien"}
+  /api/v1/higher/admissions/open-campaigns:
+    get:
+      summary: "Campagnes ouvertes aujourd'hui, pour le candidat connecté (higher.application.submit) : filière, niveau, dates, places, frais, pièces demandées"
+      responses:
+        '200': {description: "Campagnes ouvertes (liste bornée)"}
+        '404': {description: "Application Supérieur fermée ou jamais ouverte au client"}
+        '403': {description: "Droit de candidature absent"}
+  /api/v1/higher/admissions/my-applications:
+    get:
+      summary: "Mes candidatures avec leur suivi (statut, frais, pièces, résultat, convocation) ; jamais celles d'un autre candidat"
+      responses:
+        '200': {description: "Page de suivis, curseur opaque"}
+        '404': {description: "Application Supérieur fermée ou jamais ouverte au client"}
+  /api/v1/higher/admissions/applications/{id}/follow-up:
+    get:
+      summary: "Suivi d'une candidature pour son candidat ou la scolarité : sans note ni rang de classement ; motif des pièces refusées, résultat, convocation au concours"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Suivi du dossier"}
+        '404': {description: "Candidature d'un autre candidat ou inconnue"}
+  /api/v1/higher/admissions/applications/{id}/documents/{documentId}/file:
+    post:
+      summary: "Téléverser la pièce (multipart, champ file) : PDF, JPG ou PNG lus dans le contenu, 5 Mo au plus ; remplace la pièce précédente"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+        - {name: documentId, in: path, required: true, schema: {type: string}}
+      requestBody:
+        content:
+          multipart/form-data:
+            schema: {type: object, required: [file], properties: {file: {type: string, format: binary}}}
+      responses:
+        '200': {description: "Candidature avec la pièce déposée"}
+        '404': {description: "Candidature d'un autre candidat"}
+        '409': {description: "Candidature close"}
+        '422': {description: "Type, taille ou contenu refusé"}
+    get:
+      summary: "Télécharger le fichier d'une pièce (candidat propriétaire ou périmètre de lecture ; accès de la scolarité journalisé)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+        - {name: documentId, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Fichier (Content-Disposition: attachment)"}
+        '404': {description: "Aucun fichier ou hors périmètre"}

@@ -6,6 +6,9 @@ namespace Scholaris\Modules\Apps\Higher\Admissions\Http;
 
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
+use Psr\Http\Message\StreamFactoryInterface;
+use Psr\Http\Message\UploadedFileInterface;
+use Scholaris\Core\Http\HttpException;
 use Scholaris\Core\Http\JsonResponder;
 use Scholaris\Modules\Apps\Higher\Admissions\Application\AdmissionsAccess;
 use Scholaris\Modules\Apps\Higher\Admissions\Application\ApplicationService;
@@ -13,6 +16,7 @@ use Scholaris\Modules\Apps\Higher\Admissions\Application\ContestService;
 use Scholaris\Modules\Apps\Higher\Admissions\Application\DecisionService;
 use Scholaris\Modules\Apps\Higher\Admissions\Domain\ApplicationStatus;
 use Scholaris\Modules\Apps\Higher\Admissions\Domain\Prerequisites;
+use Scholaris\Modules\Socle\People\Contracts\AttachmentStore;
 
 /** Candidatures (EX-ADM-02 à 07) : dépôt, pièces, frais de dossier, note, décision motivée, retrait, équivalences de transfert. */
 final class ApplicationController
@@ -24,6 +28,7 @@ final class ApplicationController
         private readonly ApplicationService $applications,
         private readonly DecisionService $decisions,
         private readonly ContestService $contests,
+        private readonly StreamFactoryInterface $streams,
     ) {
     }
 
@@ -99,6 +104,40 @@ final class ApplicationController
         $body->done();
 
         return $this->json($this->applications->attachDocument(AdmissionsAccess::principal($request), AdmissionsAccess::establishmentId($request), self::id($request), $code, $reference));
+    }
+
+    public function uploadDocument(ServerRequestInterface $request): ResponseInterface
+    {
+        $file = $request->getUploadedFiles()['file'] ?? null;
+        $tooBig = 'Le fichier dépasse 5 Mo. Réduisez-le puis réessayez.';
+        if (!$file instanceof UploadedFileInterface || $file->getError() !== UPLOAD_ERR_OK) {
+            $big = $file instanceof UploadedFileInterface && in_array($file->getError(), [UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE], true);
+
+            throw HttpException::validation(['file' => [$big ? $tooBig : 'Joignez un fichier (champ « file », PDF, JPG ou PNG, 5 Mo au plus).']]);
+        }
+        if (($file->getSize() ?? 0) > AttachmentStore::MAX_BYTES) {
+            throw HttpException::validation(['file' => [$tooBig]]);
+        }
+
+        return $this->json($this->applications->uploadDocument(
+            AdmissionsAccess::principal($request),
+            AdmissionsAccess::establishmentId($request),
+            self::id($request),
+            self::id($request, 'documentId'),
+            (string) $file->getStream(),
+        ));
+    }
+
+    public function downloadDocument(ServerRequestInterface $request): ResponseInterface
+    {
+        $file = $this->applications->documentFile(AdmissionsAccess::principal($request), AdmissionsAccess::establishmentId($request), self::id($request), self::id($request, 'documentId'));
+
+        return $this->responder->json([], 200)
+            ->withHeader('Content-Type', $file['mime'])
+            ->withHeader('Content-Disposition', 'attachment; filename="piece.' . $file['extension'] . '"')
+            ->withHeader('Cache-Control', 'private, no-store')
+            ->withHeader('X-Content-Type-Options', 'nosniff')
+            ->withBody($this->streams->createStream($file['content']));
     }
 
     public function verifyDocument(ServerRequestInterface $request): ResponseInterface

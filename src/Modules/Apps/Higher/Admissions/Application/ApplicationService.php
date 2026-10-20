@@ -18,8 +18,9 @@ use Scholaris\Modules\Socle\Billing\Contracts\PaymentOrder;
 use Scholaris\Modules\Socle\Billing\Contracts\PaymentOutcome;
 use Scholaris\Modules\Socle\Billing\Contracts\PaymentRequester;
 use Scholaris\Modules\Socle\Identity\Contracts\AccountProvisioner;
-use Scholaris\Modules\Socle\People\Contracts\BirthDateWriter;
 use Scholaris\Modules\Socle\Identity\Contracts\UserPersonLink;
+use Scholaris\Modules\Socle\People\Contracts\AttachmentStore;
+use Scholaris\Modules\Socle\People\Contracts\BirthDateWriter;
 
 /**
  * Candidatures (EX-ADM-02, EX-ADM-03) : dépôt en ligne par le candidat (R12, sa seule candidature) ou au guichet par la scolarité
@@ -31,6 +32,7 @@ final class ApplicationService
 {
     public const TABLE = 'hi_applications';
     public const DOCUMENTS = 'hi_application_documents';
+    public const ATTACHMENT_AREA = 'higher-admissions';
     public const CHANNELS = ['orange_money', 'mtn_momo', 'cash', 'transfer', 'card'];
     /** Encaissement au guichet (caissier, R14). */
     private const CASH = 'billing.cash';
@@ -46,6 +48,7 @@ final class ApplicationService
         private readonly PaymentRequester $payments,
         private readonly CandidateMessages $messages,
         private readonly AdmissionsClock $clock,
+        private readonly AttachmentStore $attachments,
     ) {
     }
 
@@ -157,6 +160,146 @@ final class ApplicationService
         $this->refreshCompleteness($principal->tenantId, $establishmentId, $id, $principal->userId);
 
         return $this->get($principal->tenantId, $establishmentId, $id);
+    }
+
+    /**
+     * Téléversement d'une pièce par le candidat (ou la scolarité) : type réel (PDF, JPG, PNG), 5 Mo au plus, stockage privé du socle.
+     * Remplace la pièce précédente (la vérification est perdue, l'ancien fichier est supprimé).
+     *
+     * @return array<string, mixed>
+     */
+    public function uploadDocument(Principal $principal, string $establishmentId, string $id, string $documentId, string $content): array
+    {
+        $tenantId = $principal->tenantId;
+        $application = $this->ownedOrManaged($principal, $establishmentId, $id);
+        if (!in_array($application['status'], [ApplicationStatus::DRAFT, ApplicationStatus::SUBMITTED, ApplicationStatus::COMPLETE, ApplicationStatus::CONDITIONAL, ApplicationStatus::WAITLISTED], true)) {
+            throw HttpException::conflict('Candidature close : aucune pièce ne peut être déposée.');
+        }
+        $document = $this->document($tenantId, $establishmentId, $id, ['id' => $documentId]);
+        try {
+            $stored = $this->attachments->store($tenantId, self::ATTACHMENT_AREA, $id, $content);
+        } catch (\InvalidArgumentException $e) {
+            throw HttpException::validation(['file' => [$e->getMessage()]]);
+        }
+        try {
+            $this->store->update(self::DOCUMENTS, $tenantId, $establishmentId, [
+                'document_ref' => substr('piece-' . $document['requirement_code'] . '.' . $stored->extension, 0, 80), 'file_path' => $stored->path,
+                'file_mime' => $stored->mime, 'file_size' => $stored->size, 'status' => 'uploaded', 'rejection_reason' => null,
+                'verified_by' => null, 'verified_at' => null, 'updated_at' => $this->clock->now(),
+            ], ['id' => $documentId]);
+        } catch (\Throwable $e) {
+            $this->attachments->delete($tenantId, $stored->path);
+
+            throw $e;
+        }
+        if (is_string($document['file_path'] ?? null) && $document['file_path'] !== '') {
+            $this->attachments->delete($tenantId, $document['file_path']);
+        }
+        $this->access->audit($tenantId, $principal->userId, 'higher.application.document_uploaded', 'hi_application', $id, null, [
+            'requirement_code' => $document['requirement_code'], 'mime' => $stored->mime, 'size' => $stored->size,
+        ]);
+        $this->refreshCompleteness($tenantId, $establishmentId, $id, $principal->userId);
+
+        return $this->get($tenantId, $establishmentId, $id);
+    }
+
+    /**
+     * Fichier d'une pièce : candidat propriétaire ou périmètre de lecture (404 sinon).
+     *
+     * @return array{content: string, mime: string, extension: string}
+     */
+    public function documentFile(Principal $principal, string $establishmentId, string $id, string $documentId): array
+    {
+        $application = $this->readable($principal, $establishmentId, $id);
+        $document = $this->document($principal->tenantId, $establishmentId, $id, ['id' => $documentId]);
+        $path = $document['file_path'] ?? null;
+        $content = is_string($path) && $path !== '' ? $this->attachments->read($principal->tenantId, $path) : null;
+        if ($content === null) {
+            throw HttpException::notFound('Aucun fichier téléversé pour cette pièce.');
+        }
+        if (!$this->isOwner($principal, $establishmentId, $application)) {
+            $this->access->audit($principal->tenantId, $principal->userId, 'higher.application.document_read', 'hi_application', $id, null, ['requirement_code' => $document['requirement_code']]);
+        }
+
+        return ['content' => $content, 'mime' => (string) $document['file_mime'], 'extension' => pathinfo($path, PATHINFO_EXTENSION)];
+    }
+
+    /**
+     * Suivi du dossier par le candidat (ou la scolarité) : sans note ni rang de classement, sans identité du décideur.
+     *
+     * @return array<string, mixed>
+     */
+    public function followUp(Principal $principal, string $establishmentId, string $id): array
+    {
+        return $this->followUpOf($this->readable($principal, $establishmentId, $id));
+    }
+
+    /**
+     * Candidatures du candidat connecté (la personne liée à son compte), suivi complet.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function mine(Principal $principal, string $establishmentId, int $limit, int $offset): array
+    {
+        $this->access->require($principal, $establishmentId, [AdmissionPermissions::SUBMIT]);
+        $personId = $this->links->personIdForUser($principal->tenantId, $principal->userId);
+        if ($personId === null) {
+            return [];
+        }
+        $rows = $this->store->select(self::TABLE, $principal->tenantId, $establishmentId, ['person_id' => $personId], 'created_at DESC, id', $limit, '1 = 1', [], $offset);
+
+        return array_map(fn (array $row): array => $this->followUpOf($this->get($principal->tenantId, $establishmentId, (string) $row['id'])), $rows);
+    }
+
+    /**
+     * @param array<string, mixed> $application candidature avec ses pièces et ses décisions
+     * @return array<string, mixed>
+     */
+    private function followUpOf(array $application): array
+    {
+        $tenantId = (string) $application['tenant_id'];
+        $establishmentId = (string) $application['establishment_id'];
+        $campaign = $this->campaigns->get($tenantId, $establishmentId, (string) $application['campaign_id']);
+        $convocation = null;
+        foreach ($this->store->select(ContestService::SEATS, $tenantId, $establishmentId, ['application_id' => $application['id']], 'id', 1) as $seat) {
+            $session = $this->store->find(ContestService::SESSIONS, $tenantId, $establishmentId, (string) $seat['session_id']);
+            if ($session !== null) {
+                $convocation = [
+                    'contest_date' => $session['contest_date'], 'center_name' => $session['center_name'], 'room_name' => $session['room_name'],
+                    'seat_number' => $seat['seat_number'], 'document_id' => $seat['convocation_document_id'],
+                ];
+            }
+        }
+        $decided = in_array($application['status'], [...ApplicationStatus::DECISIONS, ApplicationStatus::ENROLLED], true);
+        $documents = array_map(static fn (array $d): array => [
+            'id' => $d['id'], 'requirement_code' => $d['requirement_code'], 'label' => $d['label'], 'blocking' => (int) $d['blocking'] === 1,
+            'status' => $d['status'], 'rejection_reason' => $d['status'] === 'rejected' ? $d['rejection_reason'] : null,
+            'has_file' => is_string($d['file_path'] ?? null) && $d['file_path'] !== '', 'mime' => $d['file_mime'] ?? null,
+            'size' => isset($d['file_size']) ? (int) $d['file_size'] : null,
+        ], $application['documents']);
+
+        return [
+            'id' => $application['id'], 'reference' => $application['reference'], 'channel' => $application['channel'], 'status' => $application['status'],
+            'campaign' => [
+                'id' => $campaign['id'], 'title' => $campaign['title'], 'closes_on' => $campaign['closes_on'], 'selection_mode' => $campaign['selection_mode'],
+            ],
+            'application_kind' => $application['application_kind'], 'origin_institution' => $application['origin_institution'],
+            'diploma' => $application['diploma'], 'diploma_series' => $application['diploma_series'],
+            'diploma_year' => $application['diploma_year'] === null ? null : (int) $application['diploma_year'], 'diploma_mention' => $application['diploma_mention'],
+            'submitted_at' => $application['submitted_at'], 'completed_at' => $application['completed_at'],
+            'fee' => [
+                'status' => $application['fee_status'], 'amount_xaf' => (int) $campaign['application_fee_xaf'], 'receipt_number' => $application['fee_receipt_number'],
+            ],
+            'documents' => $documents,
+            'missing_documents' => count(array_filter($documents, static fn (array $d): bool => in_array($d['status'], ['missing', 'rejected'], true))),
+            'result' => $decided ? [
+                'decision' => $application['status'], 'reason' => $application['decision_reason'], 'conditional_until' => $application['conditional_until'],
+                'waitlist_rank' => $application['status'] === ApplicationStatus::WAITLISTED && $application['rank_position'] !== null ? (int) $application['rank_position'] : null,
+                'decided_at' => $application['decided_at'],
+            ] : null,
+            'convocation' => $convocation,
+            'created_at' => $application['created_at'],
+        ];
     }
 
     /**
@@ -282,7 +425,7 @@ final class ApplicationService
                 $invoice->id,
                 $invoice->balanceXaf,
                 $channel,
-                'hi-adm-' . $id . '-' . $channel . '-' . ($externalReference ?? substr((string) new Ulid(), 10)),
+                'hi-adm-' . $id . '-' . $channel . '-' . ($externalReference ?? substr(sha1((string) ($application['fee_payment_id'] ?? 'first')), 0, 12)),
                 $payerPhone,
                 $externalReference,
             ));

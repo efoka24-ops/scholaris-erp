@@ -29,6 +29,8 @@ final class AllRoutesContractTest extends SharedFixtureTestCase
         // Ajoutées par le chantier Plateforme en cours (catalogue public, demandes d'accès, webhook de facturation plateforme).
         'GET /api/v1/public/applications', 'POST /api/v1/public/access-requests', 'GET /api/v1/public/access-requests/{token}',
         'POST /api/v1/public/access-requests/{token}/complement', 'POST /api/v1/platform/payments/webhook',
+        // Page publique « Candidater » de l'application Supérieur (lien partageable, inscription du candidat).
+        'GET /api/v1/public/admissions/{slug}', 'POST /api/v1/public/admissions/{slug}/register',
     ];
 
     /** Routes qui ferment la session ou réinitialisent la 2FA de l'appelant : exclues des appels authentifiés génériques. */
