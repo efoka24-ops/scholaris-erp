@@ -23,7 +23,7 @@ final class AllRoutesContractTest extends SharedFixtureTestCase
     /** Routes publiques attendues (sans authentification). */
     private const PUBLIC = [
         'GET /api/v1/health', 'POST /api/v1/webhooks/payments/{provider}', 'GET /api/v1/public/verify/{token}',
-        'POST /api/v1/auth/login', 'POST /api/v1/auth/activation/request', 'POST /api/v1/auth/activation/verify',
+        'POST /api/v1/auth/login', 'POST /api/v1/auth/login-authenticator', 'POST /api/v1/auth/activation/request', 'POST /api/v1/auth/activation/verify',
         'POST /api/v1/auth/activation/password', 'POST /api/v1/auth/password/forgot',
         'GET /api/v1/people/{id}/documents/{docId}/download',
         // Ajoutées par le chantier Plateforme en cours (catalogue public, demandes d'accès, webhook de facturation plateforme).
