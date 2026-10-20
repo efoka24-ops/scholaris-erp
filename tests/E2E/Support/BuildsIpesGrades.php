@@ -120,13 +120,17 @@ trait BuildsIpesGrades
         $this->as($ctx, 'prof', 'POST', '/higher/grade-assessments/' . $id . '/submit');
         $this->as($ctx, 'chef', 'POST', '/higher/grade-assessments/' . $id . '/validate');
 
-        // Verrouillage : 2FA récente exigée.
+        // Verrouillage : confirmation récente exigée. Le chef vient de se connecter avec son mot de passe : c'est déjà une
+        // confirmation récente (connexion simple). Si elle est périmée (403), il s'enrôle en 2FA et recommence.
         [$status, $problem] = $this->try($ctx, 'chef', 'POST', '/higher/grade-assessments/' . $id . '/lock');
         if ($status === 403) {
             self::assertStringContainsString('factor', (string) ($problem['type'] ?? ''), (string) json_encode($problem));
             $this->enrol2fa($ctx, 'chef');
+            $locked = $this->res($ctx, 'chef', 'POST', '/higher/grade-assessments/' . $id . '/lock');
+        } else {
+            self::assertSame(200, $status, (string) json_encode($problem));
+            $locked = isset($problem['data']) && is_array($problem['data']) ? $problem['data'] : $problem;
         }
-        $locked = $this->res($ctx, 'chef', 'POST', '/higher/grade-assessments/' . $id . '/lock');
         self::assertSame('locked', $locked['status'] ?? null, (string) json_encode($locked));
 
         // TST-06 : note verrouillée modifiée sans procédure de correction -> refus.
