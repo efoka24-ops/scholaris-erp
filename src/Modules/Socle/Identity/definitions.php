@@ -46,6 +46,7 @@ return [
     EstablishmentAccess::class => get(RoleBasedAccess::class),
     PermissionChecker::class => get(RoleBasedAccess::class),
     AccountProvisioner::class => get(AccountProvisioningService::class),
+    \Scholaris\Modules\Socle\Identity\Contracts\ApplicantRegistration::class => autowire(\Scholaris\Modules\Socle\Identity\Application\ApplicantRegistrationService::class),
     ScopedAccessAudit::class => autowire(ScopedAccessAudit::class),
     \Scholaris\Modules\Socle\Identity\Contracts\NamedAccessJournal::class => get(ScopedAccessAudit::class),
     TodoProvider::class => autowire(EmptyTodoProvider::class),

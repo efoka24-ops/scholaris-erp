@@ -52,11 +52,12 @@ final class ActivationService
     }
 
     /**
-     * Envoie un code d'activation (compte en attente) ou de réinitialisation (compte existant).
+     * Envoie un code d'activation (compte en attente) ou de réinitialisation (compte existant). $tenantId restreint la recherche
+     * du compte à un client (inscription publique d'un candidat) ; la réponse reste identique que le compte existe ou non.
      *
      * @return array{channel: string, masked_to: string, expires_in: int, resend_in: int}
      */
-    public function request(Identifier $identifier, ?string $channel, bool $reset): array
+    public function request(Identifier $identifier, ?string $channel, bool $reset, ?string $tenantId = null): array
     {
         $key = $identifier->key();
         $state = $this->throttle->state($key);
@@ -80,7 +81,7 @@ final class ActivationService
         $state['otp_attempts'] = 0;
         $this->throttle->save($key, $state, $now);
 
-        $target = $this->eligibleUser($identifier, $reset);
+        $target = $this->eligibleUser($identifier, $reset, $tenantId);
         if ($target === null) {
             $channel = $channel ?? ($identifier->isEmail ? 'email' : 'sms');
 
@@ -222,9 +223,13 @@ final class ActivationService
         return hash_hmac('sha256', trim($code), $codeId);
     }
 
-    private function eligibleUser(Identifier $identifier, bool $reset): ?User
+    /** Un client précis peut être exigé (inscription publique d'un candidat) : un même numéro peut exister dans plusieurs clients. */
+    private function eligibleUser(Identifier $identifier, bool $reset, ?string $tenantId = null): ?User
     {
         foreach ($this->users->findByIdentifier($identifier) as $user) {
+            if ($tenantId !== null && $user->tenantId !== $tenantId) {
+                continue;
+            }
             if ($reset || $user->status === User::PENDING) {
                 return $user;
             }
