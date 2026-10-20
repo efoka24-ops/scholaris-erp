@@ -35,12 +35,15 @@ export interface LoginResponse {
   new_device: boolean;
   two_factor_required: boolean;
   two_factor_setup_required: boolean;
+  /** Mot de passe provisoire : la session ne sert qu'à le remplacer (POST /auth/change-password). */
+  password_change_required?: boolean;
   user: UserSummary;
   token?: string;
 }
 
 export interface Me extends UserSummary {
   greeting: string | null;
+  password_change_required?: boolean;
   two_factor: { enabled: boolean; required: boolean; verified: boolean };
   context: { establishment_id: string | null; role: string | null };
 }

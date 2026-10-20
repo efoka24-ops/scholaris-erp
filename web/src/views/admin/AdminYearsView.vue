@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue';
 import AdminSubnav from './AdminSubnav.vue';
+import { useRoute, useRouter } from 'vue-router';
 import ErrorNotice from '@/components/ErrorNotice.vue';
+import { ApiError } from '@/api/http';
+import { useConfirmation } from '@/views/account/useConfirmation';
 import { useAction } from './useAction';
 import { periodKindsFor } from './catalog';
 import {
@@ -39,6 +42,17 @@ const list = useAction();
 const yearAction = useAction();
 const periodAction = useAction();
 const closureAction = useAction();
+const router = useRouter();
+const route = useRoute();
+const confirmation = useConfirmation();
+/** Approbation refusée faute de confirmation récente (code de double authentification, ou mot de passe sans 2FA). */
+const needsConfirmation = computed(() => {
+  const e = closureAction.error.value;
+  return e instanceof ApiError && e.status === 403 && /double authentification/i.test(e.problem?.detail ?? '');
+});
+async function goConfirm(): Promise<void> {
+  await router.push({ name: 'twofactor', query: { redirect: route.fullPath } });
+}
 const detailAction = useAction();
 
 const yearForm = reactive({ label: '', starts_on: '', ends_on: '' });
@@ -266,6 +280,7 @@ onMounted(loadYears);
         </div>
         <p class="muted">{{ t('admin.closure.principle') }}</p>
         <ErrorNotice :error="closureAction.error.value" />
+        <button v-if="needsConfirmation" type="button" class="btn btn--ink" data-test="closure-confirm" @click="goConfirm">{{ confirmation.go(t('twofa.title')) }}</button>
 
         <template v-if="report">
           <ul class="checks" :aria-label="t('admin.closure.checks')">

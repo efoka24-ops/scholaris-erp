@@ -10,6 +10,7 @@ import HigherFrame from './HigherFrame.vue';
 import YearField from './YearField.vue';
 import { P } from './access';
 import { k, toneOf } from './display';
+import { useConfirmation } from '@/views/account/useConfirmation';
 import { useHigherStore } from './store';
 import { useHigherAction } from './useHigherAction';
 
@@ -17,6 +18,7 @@ import { useHigherAction } from './useHigherAction';
 // motif et double authentification récente (403 second-factor-required : ressaisie du code, puis nouvel envoi par la personne).
 type ParamValue = number | boolean | string | null;
 const { t, locale } = useI18n();
+const confirmation = useConfirmation();
 const ctx = useContextStore();
 const higher = useHigherStore();
 const router = useRouter();
@@ -193,9 +195,9 @@ onMounted(async () => {
         <label class="check"><input v-model="confirmed" type="checkbox" /> {{ t('hi.reg.amendConfirm') }}</label>
         <p v-if="tried && !confirmed" class="error">{{ t('hi.reg.amendConfirmRequired') }}</p>
         <div v-if="needsTwoFactor" class="notice notice--warning" role="alert" data-test="tfa">
-          <p><strong>{{ t('hi.reg.tfaTitle') }}</strong></p>
-          <p>{{ t('hi.reg.tfaText') }}</p>
-          <button type="button" class="btn btn--ink" @click="revalidate">{{ t('hi.reg.tfaGo') }}</button>
+          <p><strong>{{ confirmation.title(t('hi.reg.tfaTitle')) }}</strong></p>
+          <p>{{ confirmation.text(t('hi.reg.tfaText')) }}</p>
+          <button type="button" class="btn btn--ink" @click="revalidate">{{ confirmation.go(t('hi.reg.tfaGo')) }}</button>
         </div>
         <button type="button" class="btn btn--primary" :disabled="save.busy.value || !changes || Object.keys(changes).length === 0" @click="amend">{{ t('hi.reg.amend') }}</button>
       </div>

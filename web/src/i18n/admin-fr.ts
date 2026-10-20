@@ -132,7 +132,7 @@ export const adminFr = {
   'admin.closure.someone': 'un autre responsable',
   'admin.closure.pendingBy': 'Demande déposée par {who} le {date}.',
   'admin.closure.needsAnother': 'Vous ne pouvez pas approuver votre propre demande : une autre personne habilitée doit le faire.',
-  'admin.closure.needs2fa': 'L’approbation exige une double authentification de moins de dix minutes. Si elle est refusée, vérifiez votre code puis réessayez.',
+  'admin.closure.needs2fa': 'L’approbation exige une confirmation de moins de dix minutes : votre code de double authentification, ou votre mot de passe si vous n’avez pas de double authentification. Si elle est refusée, un bouton vous permet de confirmer, puis vous réessayez.',
   'admin.closure.whyDisabled': 'Boutons désactivés : la demande vient de vous.',
   'admin.closure.approve': 'Approuver la clôture',
   'admin.closure.reject': 'Refuser la demande',

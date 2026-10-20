@@ -10,6 +10,7 @@ import { useContextStore } from '@/stores/context';
 import { formatDateTime } from '@/lib/format';
 import HigherFrame from '../HigherFrame.vue';
 import { toneOf } from '../display';
+import { useConfirmation } from '@/views/account/useConfirmation';
 import { useHigherStore } from '../store';
 import { useHigherAction } from '../useHigherAction';
 import GradesNav from './GradesNav.vue';
@@ -21,6 +22,7 @@ import { gk, useGradesI18n } from './i18n';
 // Corrections de notes verrouillées (EX-NOT-06) : chaîne chef de département puis directeur d'école (2FA récente) ;
 // séparation des tâches : le demandeur ne décide jamais sa propre demande (le serveur refuse aussi : 403).
 const { tg, locale } = useGradesI18n();
+const confirmation = useConfirmation();
 const ctx = useContextStore();
 const auth = useAuthStore();
 const higher = useHigherStore();
@@ -99,9 +101,9 @@ onMounted(async () => {
     <ErrorNotice :error="list.error.value" />
     <ErrorNotice :error="act.error.value" />
     <div v-if="needsTwoFactor" class="notice notice--warning" role="alert" data-test="needs-2fa">
-      <p><strong>{{ tg('hg.twofa.title') }}</strong></p>
-      <p>{{ tg('hg.twofa.text') }}</p>
-      <button type="button" class="btn btn--ink" @click="revalidate">{{ tg('hg.twofa.go') }}</button>
+      <p><strong>{{ confirmation.title(tg('hg.twofa.title')) }}</strong></p>
+      <p>{{ confirmation.text(tg('hg.twofa.text')) }}</p>
+      <button type="button" class="btn btn--ink" @click="revalidate">{{ confirmation.go(tg('hg.twofa.go')) }}</button>
     </div>
     <ul class="hi-list card">
       <li v-for="c in items" :key="c.id" data-test="correction">

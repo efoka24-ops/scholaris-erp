@@ -14,7 +14,8 @@ L'application affiche parfois un code (le « statut »). Voici ce qu'il veut dir
 | Code | Message affiché | Ce que cela veut dire | Que faire |
 |---|---|---|---|
 | 401 | « Votre session a expiré. » | Vous êtes resté longtemps sans activité ou vous avez été déconnecté. | « Reconnectez-vous pour continuer. » |
-| 2FA | « La double authentification est requise. » ou « Double authentification récente exigée » | L'action est sensible : il faut un code récent. | Cliquez sur le bouton proposé (**Saisir mon code**…), saisissez le code de votre application, puis recommencez l'action. |
+| Confirmation | « Confirmation requise », « Double authentification récente exigée » | L'action est sensible : il faut une confirmation de moins de 10 minutes. | Cliquez sur le bouton proposé. Sans double authentification : **Confirmer avec mon mot de passe**. Avec : saisissez le code de votre application. Puis recommencez l'action. |
+| 403 | « Remplacez votre mot de passe provisoire avant de continuer. » | Votre mot de passe est provisoire. | Choisissez votre propre mot de passe sur l'écran **Choisissez votre mot de passe** (chapitre 01, 1.2). |
 | 403 | « Vous n'avez pas le droit d'effectuer cette action. » ou page **Accès refusé** | Votre rôle ou votre périmètre ne le permet pas (par exemple un enseignant sur un EC qui ne lui est pas affecté). La tentative est journalisée. | Changez de rôle si vous en avez plusieurs ; sinon demandez à l'administrateur de vérifier votre rôle ou au chef de département votre affectation. |
 | 404 | « Cet élément est introuvable. » ou page **Page introuvable** | L'élément n'existe pas, a été supprimé, ou appartient à un autre institut (vous n'y avez jamais accès). | « Vérifiez l'adresse ou revenez à l'accueil. » Vérifiez l'établissement choisi. |
 | 409 | « Cet élément a été modifié entre-temps. » / « Conflit de version : rien n'a été enregistré » | Quelqu'un a modifié la même chose pendant que vous travailliez. Rien n'a été écrasé. | « Rechargez la page, comparez les deux versions, puis décidez. » Pour les notes, voir 13.6. |
@@ -27,14 +28,18 @@ L'application affiche parfois un code (le « statut »). Voici ce qu'il veut dir
 
 ## 13.3 Compte et connexion
 
+**Mon mot de passe provisoire ne marche pas.**
+Vérifiez l'identifiant (l'e-mail enregistré par l'établissement, sans espace) et recopiez le mot de passe lettre par lettre : il ne contient jamais de 0, O, 1, l ni I. Après 5 erreurs, la connexion est bloquée 15 minutes. Si le mot de passe est perdu, l'administrateur en génère un nouveau (chapitre 11, 11.4).
+
 **Je n'ai jamais reçu de code d'activation.**
+(Concerne les candidats en ligne et le parcours « Activer mon compte » : un compte créé par l'administrateur n'a pas besoin de code.)
 Vérifiez le dossier « Courrier indésirable ». Les SMS ne sont pas encore actifs partout : choisissez **Recevoir par e-mail**. Si votre téléphone ou votre e-mail n'est pas celui enregistré, demandez à la scolarité ou à l'administrateur de corriger votre fiche.
 
 **J'ai oublié mon mot de passe.**
 Lien **Mot de passe oublié ?** sur la page de connexion (chapitre 01). Personne d'autre ne peut le lire, pas même l'administrateur.
 
 **Je veux changer mon mot de passe.**
-Utilisez la même procédure **Mot de passe oublié ?** : il n'y a pas d'écran séparé.
+Menu **Sécurité** > **Changer mon mot de passe** : saisissez l'actuel puis le nouveau (vos autres appareils sont déconnectés). Si vous ne connaissez plus l'actuel, utilisez **Mot de passe oublié ?**.
 
 **Le code de double authentification est toujours « incorrect ».**
 L'heure du téléphone est sans doute décalée : réglez-la en mode automatique. Saisissez le code dès qu'il apparaît.

@@ -20,11 +20,11 @@ describe('écran Connexion', () => {
   it('affiche des libellés liés aux champs et refuse un envoi vide sans appeler le serveur', async () => {
     const calls = mockApi({});
     const { wrapper } = await mountView(LoginView, {}, '/connexion');
-    expect(wrapper.get('label[for="identifier"]').text()).toContain('Numéro de téléphone ou e-mail');
+    expect(wrapper.get('label[for="identifier"]').text()).toContain('E-mail ou téléphone');
     expect(wrapper.get('label[for="password"]').text()).toBe('Mot de passe');
     await wrapper.get('form').trigger('submit');
     expect(calls).toHaveLength(0);
-    expect(wrapper.text()).toContain('Saisissez votre numéro de téléphone ou votre adresse e-mail.');
+    expect(wrapper.text()).toContain('Saisissez votre adresse e-mail ou votre numéro de téléphone.');
     expect(wrapper.get('#identifier').attributes('aria-invalid')).toBe('true');
   });
 

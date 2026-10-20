@@ -477,7 +477,7 @@ describe('écran Utilisateurs et rôles', () => {
 
   it('crée une personne avec son compte, la sélectionne, et exige un contact', async () => {
     signIn(directorMe, [directorTile], 'directeur');
-    const calls = api({ 'POST /users': { data: { person_id: 'P9', user_id: 'U9', status: 'pending' } } });
+    const calls = api({ 'POST /users': { data: { person_id: 'P9', user_id: 'U9', status: 'active', login: 'emm@example.cm', must_change_password: true, provisional_password: 'Xk7mQp4vRa9d' } } });
     const { wrapper } = await mountView(AdminUsersView, {}, '/administration/utilisateurs');
     await wrapper.get('#u-ln').setValue('Foka');
     await wrapper.get('#u-fn').setValue('Emmanuel');
@@ -487,8 +487,11 @@ describe('écran Utilisateurs et rôles', () => {
     await wrapper.get('#u-em').setValue('emm@example.cm');
     await wrapper.get('form[aria-labelledby="u-new"]').trigger('submit');
     await flushPromises();
-    expect(calls.find((c) => c.method === 'POST' && c.path === '/users')?.body).toEqual({ first_name: 'Emmanuel', last_name: 'Foka', email: 'emm@example.cm', locale: 'fr' });
+    expect(calls.find((c) => c.method === 'POST' && c.path === '/users')?.body).toEqual({ first_name: 'Emmanuel', last_name: 'Foka', email: 'emm@example.cm', locale: 'fr', provisional_password: true });
     expect(wrapper.text()).toContain('Emmanuel Foka est créée');
+    expect(wrapper.get('[data-test="provisional-password"]').text()).toBe('Xk7mQp4vRa9d');
+    await wrapper.get('[data-test="provisional-close"]').trigger('click');
+    expect(wrapper.find('[data-test="provisional-password"]').exists()).toBe(false);
     expect(wrapper.get('.picked').text()).toContain('FOKA Emmanuel');
   });
 

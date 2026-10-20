@@ -5,14 +5,26 @@ Ce chapitre concerne **tout le monde** : personnel, étudiants, garants.
 ## 1.1 Ce qu'il vous faut
 
 - Un ordinateur, une tablette ou un téléphone avec un navigateur récent (Chrome, Firefox, Edge, Safari). L'application fonctionne aussi en 3G.
-- Le **numéro de téléphone** ou l'**adresse e-mail** que l'institut a enregistré pour vous.
-- Pour les rôles sensibles (voir 1.4) : un téléphone avec une **application d'authentification** (Google Authenticator ou Microsoft Authenticator, gratuites).
+- Votre **adresse e-mail** (Gmail, Yahoo ou autre) telle que l'institut l'a enregistrée, ou votre numéro de téléphone : c'est votre identifiant. Pas de pseudo.
+- Le **mot de passe provisoire** que l'administrateur de l'institut vous remet en main propre (ou sur une fiche imprimée).
+- Seulement si l'institut l'impose pour votre rôle (voir 1.4) : un téléphone avec une **application d'authentification** (Google Authenticator ou Microsoft Authenticator, gratuites).
 
 Adresse du site : **https://scholariserp.trugroup.cm**. Vérifiez toujours que l'adresse commence par `https://` et que le cadenas est affiché. N'ouvrez jamais un lien reçu d'un inconnu qui imite cette adresse.
 
 Astuce : sur téléphone, l'application peut être **installée** comme une application (menu du navigateur > « Ajouter à l'écran d'accueil »).
 
-## 1.2 Activer son compte (première fois)
+## 1.2 Première connexion avec le mot de passe provisoire
+
+**Qui** : toute personne dont l'administrateur de l'institut vient de créer le compte.
+**Où** : écran **Connexion** (`/connexion`).
+
+1. Dans **E-mail ou téléphone**, saisissez votre e-mail. Dans **Mot de passe**, saisissez le mot de passe provisoire reçu (12 caractères, sans 0, O, 1, l ni I). Cliquez sur **Se connecter**.
+2. L'écran **Choisissez votre mot de passe** s'ouvre : rien d'autre n'est accessible tant que vous ne l'avez pas rempli. Recopiez le mot de passe provisoire dans **Mot de passe provisoire**, puis choisissez un **Nouveau mot de passe** (10 caractères au minimum, ni courant, ni contenant votre nom ou votre e-mail) et confirmez-le.
+3. Cliquez sur **Enregistrer et continuer**. Le mot de passe provisoire ne sert plus ; vos autres appareils éventuels sont déconnectés.
+
+Après 5 erreurs, la connexion est bloquée 15 minutes. Mot de passe provisoire perdu : demandez-en un nouveau à l'administrateur (chapitre 11, 11.4).
+
+### Activation par code (candidats en ligne, comptes sans mot de passe provisoire)
 
 **Qui** : toute personne dont le compte vient d'être créé par l'institut (personnel, étudiant, garant).
 **Où** : `https://scholariserp.trugroup.cm/activation`, ou le lien **Activer mon compte par SMS** sur la page de connexion.
@@ -39,11 +51,11 @@ L'écran **Activation du compte** a trois étapes : **Identifiant**, **Code reç
 
 **Où** : `https://scholariserp.trugroup.cm/connexion` (écran **Connexion**, titre « Accéder à mon espace »).
 
-1. Dans **Numéro de téléphone ou e-mail**, saisissez votre identifiant.
+1. Dans **E-mail ou téléphone**, saisissez votre identifiant.
 2. Dans **Mot de passe**, saisissez votre mot de passe.
 3. Cochez **Rester connecté sur cet appareil** seulement sur votre appareil personnel, jamais sur un ordinateur partagé (cybercafé, secrétariat).
 4. Cliquez sur **Se connecter**.
-5. Si votre rôle est sensible, l'écran **Double authentification** s'affiche (voir 1.4).
+5. Avec un mot de passe provisoire, l'écran de changement s'ouvre d'abord (1.2). Si l'institut impose la double authentification pour votre rôle, l'écran **Double authentification** s'affiche ensuite (voir 1.4).
 
 Après plusieurs mots de passe faux, la connexion est bloquée un moment : « Nouvel essai possible dans … ». Attendez, ou utilisez **Mot de passe oublié ?**.
 
@@ -55,7 +67,7 @@ La double authentification protège les notes et l'argent. En plus du mot de pas
 
 ### Qui doit l'activer ?
 
-Elle est **obligatoire** pour les rôles dits sensibles : Directeur général (R02), Directeur académique (R03), Directeur d'école (R04), Enseignant permanent (R09), Caissier (R14), Comptable (R15), ainsi que les administrateurs. L'écran vous l'indique : « La double authentification est obligatoire pour votre rôle : … ».
+Pour le personnel des établissements, elle n'est **plus obligatoire par défaut** : l'institut peut l'exiger (réglage d'exploitation). Elle reste **toujours obligatoire** pour l'administrateur de la plateforme (connexion par le code de l'application). Quand elle est exigée, elle concerne les rôles dits sensibles : Directeur général (R02), Directeur académique (R03), Directeur d'école (R04), Enseignant permanent (R09), Caissier (R14), Comptable (R15), ainsi que les administrateurs. L'écran vous l'indique : « La double authentification est obligatoire pour votre rôle : … ».
 
 Même pour un autre rôle, certaines actions demandent un code récent (voir 1.4.4).
 
@@ -94,7 +106,9 @@ Autres choix (lien **Autre méthode**) :
 3. Si vous n'avez plus de code de secours, vous ne pouvez pas entrer seul : contactez l'administrateur de l'institut, qui s'adressera à l'équipe SCHOLARIS si nécessaire.
 4. Si le téléphone a été **volé**, faites aussi « Déconnecter partout » (1.8) dès que vous avez accès à un autre appareil.
 
-### 1.4.4 « Double authentification récente exigée »
+### 1.4.4 « Confirmation récente exigée »
+
+Si vous n'avez **pas** de double authentification, la confirmation se fait par votre **mot de passe** : l'écran **Confirmez avec votre mot de passe** s'ouvre (bouton **Confirmer avec mon mot de passe**). Elle vaut 10 minutes, et votre connexion par mot de passe compte déjà pendant 10 minutes. Après 5 erreurs, le compte est bloqué 15 minutes. Si vous avez la double authentification, c'est votre code qui est demandé, comme ci-dessous.
 
 Certaines actions demandent de ressaisir votre code, même si vous êtes déjà connecté : verrouiller des notes, clôturer une séance de jury, signer un procès-verbal, publier des résultats, rouvrir une délibération, modifier un règlement figé, exporter la liste des candidats aux examens nationaux, appliquer une reprise de données.
 
@@ -147,7 +161,7 @@ D'autres menus généraux de SCHOLARIS servent aussi à l'IPES : **Appel** (fair
 2. Saisissez le code à 6 chiffres reçu par e-mail ou SMS, puis **Vérifier le code**.
 3. Choisissez un **Nouveau mot de passe** (10 caractères au moins), confirmez, puis **Enregistrer le mot de passe**.
 
-Pour **changer** un mot de passe que vous connaissez encore, utilisez la même procédure : il n'y a pas d'écran séparé « changer mon mot de passe ».
+Pour **changer** un mot de passe que vous connaissez encore : menu **Sécurité** > **Changer mon mot de passe** (ancien puis nouveau mot de passe).
 
 Ne demandez jamais à un collègue de vous « prêter » son compte en attendant.
 

@@ -14,6 +14,7 @@ import { higherDashboardsRoutes } from '@/views/higher/dashboards/routes';
 import { higherHelpRoutes } from '@/views/higher/help/routes';
 import { higherTutelageRoutes } from '@/views/higher/tutelage/routes';
 import { higherDeliberationRoutes } from '@/views/higher/deliberation/routes';
+import { accountRoutes } from '@/views/account/routes';
 
 declare module 'vue-router' {
   interface RouteMeta {
@@ -343,6 +344,7 @@ export const routes: RouteRecordRaw[] = [
   ...higherHelpRoutes,
   ...higherTutelageRoutes,
   ...higherDeliberationRoutes,
+  ...accountRoutes,
   { path: '/interdit', name: 'forbidden', component: () => import('@/views/ForbiddenView.vue'), meta: { titleKey: 'forbidden.title' } },
   { path: '/:pathMatch(.*)*', name: 'not-found', component: () => import('@/views/NotFoundView.vue'), meta: { public: true, titleKey: 'notFound.title' } },
 ];

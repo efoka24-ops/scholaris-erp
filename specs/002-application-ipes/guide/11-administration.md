@@ -18,7 +18,7 @@ Le menu **Administration** (`/administration`) s'ouvre sur une **Vue d'ensemble*
 
 1. L'équipe SCHOLARIS crée votre compte et vous envoie une invitation par e-mail (ou vous communique votre identifiant et le lien d'activation).
 2. Activez votre compte sur `/activation` (chapitre 01, section 1.2), puis connectez-vous.
-3. Activez la **double authentification** (obligatoire pour un administrateur, chapitre 01, section 1.4).
+3. Si l'institut l'impose, activez la **double authentification** (chapitre 01, section 1.4).
 4. Ouvrez **Mes applications** : l'application IPES doit apparaître dans **Applications ouvertes**, en essai (« 90 jours d'essai restants »).
 5. Vérifiez dans **Administration > Établissements** que votre institut existe, avec le type **Supérieur** (le type ne change plus après la création).
 
@@ -37,13 +37,12 @@ La **clôture** d'une année se fait en deux temps : une personne la demande, un
 
 **Règle d'or : un compte par personne, jamais partagé.** Une secrétaire qui aide un chef de département a son propre compte.
 
-### Étape 1 : créer la personne
+### Étape 1 : créer la personne et son mot de passe provisoire
 
-1. Formulaire **Créer une personne avec son compte** : nom, prénoms, **téléphone** et/ou **e-mail**, **Langue**.
-   « Indiquez au moins un téléphone ou un e-mail pour que la personne reçoive son code d'activation. » Préférez l'**e-mail** tant que les SMS ne sont pas actifs pour votre institut.
-2. Cliquez sur **Créer la personne**. Message : « … est créée. Son compte attend l'activation ; vous pouvez maintenant lui attribuer un rôle. »
-
-« Son compte reste en attente : elle l'active elle-même avec un code envoyé par SMS ou par e-mail. » **Vous ne connaissez jamais son mot de passe**, et vous n'avez pas de code à lui transmettre : dites-lui simplement d'aller sur `https://scholariserp.trugroup.cm/activation` et de saisir le téléphone ou l'e-mail que vous avez enregistré (chapitre 01).
+1. Formulaire **Créer une personne avec son compte** : nom, prénoms, **e-mail** (c'est l'identifiant de connexion : Gmail, Yahoo ou autre) ou **téléphone**, **Langue**.
+2. Cliquez sur **Créer la personne**. Le compte est **utilisable tout de suite** : un cadre **Compte créé : mot de passe provisoire** affiche l'identifiant et un mot de passe de 12 caractères, **une seule fois**.
+3. Remettez-le à la personne en main propre : **Copier le mot de passe**, ou **Imprimer la fiche** (à remettre sur papier). Cliquez sur **J'ai noté le mot de passe, fermer** : il ne s'affichera plus, n'est envoyé par aucun message et n'est conservé nulle part en clair.
+4. À sa première connexion, la personne doit le remplacer par son propre mot de passe (chapitre 01, 1.2) : **vous ne connaîtrez jamais son mot de passe définitif**.
 
 ### Étape 2 : attribuer un rôle et un périmètre
 
@@ -82,7 +81,7 @@ Les comptes des étudiants sont créés à la candidature (« Nouvelle personne 
 
 ## 11.4 Accès perdu, téléphone perdu, compte bloqué
 
-- **Mot de passe oublié** : la personne le réinitialise elle-même (`/mot-de-passe-oublie`, chapitre 01). Personne ne doit communiquer son mot de passe, pas même à l'administrateur.
+- **Mot de passe oublié ou provisoire perdu** : la personne peut utiliser **Mot de passe oublié ?** (`/mot-de-passe-oublie`, chapitre 01), ou vous générez un nouveau mot de passe provisoire : dans **Rôles attribués**, bouton **Nouveau mot de passe** sur sa ligne, puis confirmez (vous pouvez aussi effacer son application d'authentification si son téléphone est perdu). L'ancien mot de passe et toutes ses connexions sont supprimés ; le nouveau s'affiche une seule fois (à copier ou imprimer) et doit être changé à la prochaine connexion. Limites : pas pour votre propre compte, pas pour un compte bloqué, pas pour un administrateur du client (réservé au super administrateur), 5 fois par heure et par compte. Chaque émission est journalisée, sans le mot de passe.
 - **Téléphone d'authentification perdu sans code de secours** : la réinitialisation de la double authentification d'un compte se demande à l'équipe SCHOLARIS (pour un administrateur du client, « Réinitialiser l'accès » efface mot de passe et double authentification et renvoie une invitation). Vérifiez l'identité de la personne avant de transmettre la demande.
 - **Compte bloqué** après « Ce n'est pas moi » : la personne réinitialise son mot de passe pour le rouvrir.
 - **Départ** d'un employé : retirez tous ses rôles.

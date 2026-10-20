@@ -61,7 +61,10 @@ async function submit(): Promise<void> {
       : await auth.login({ identifier: identifier.value, password: password.value, remember: remember.value });
     password.value = '';
     code.value = '';
-    if (res.two_factor_setup_required) {
+    if (res.password_change_required) {
+      // Mot de passe provisoire : à remplacer avant tout (la double authentification éventuelle vient après).
+      await router.replace({ name: 'change-password' });
+    } else if (res.two_factor_setup_required) {
       await router.replace({ name: 'twofactor-setup' });
     } else if (res.two_factor_required) {
       await router.replace({ name: 'twofactor' });
@@ -108,7 +111,7 @@ async function submit(): Promise<void> {
             <h1 id="login-title" class="form__title">{{ t('login.heading') }}</h1>
           </div>
           <div class="field">
-            <label for="identifier">{{ t('login.identifier') }}</label>
+            <label for="identifier">{{ t('acc.login.identifier') }}</label>
             <input
               id="identifier"
               v-model="identifier"
@@ -120,7 +123,8 @@ async function submit(): Promise<void> {
               :aria-invalid="identifierInvalid"
               :aria-describedby="identifierInvalid ? 'identifier-error' : undefined"
             />
-            <span v-if="identifierInvalid" id="identifier-error" class="error">{{ t('login.identifierRequired') }}</span>
+            <span v-if="identifierInvalid" id="identifier-error" class="error">{{ t('acc.login.identifierRequired') }}</span>
+            <span v-else class="hint">{{ t('acc.login.hint') }}</span>
           </div>
           <div v-if="authenticatorMode" class="field">
             <label for="authenticator-code">{{ t('login.authCode') }}</label>

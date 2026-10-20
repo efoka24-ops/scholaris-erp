@@ -59,6 +59,12 @@ onMounted(load);
     </header>
     <ErrorNotice :error="error" />
 
+    <section class="card" aria-labelledby="pw-title">
+      <h2 id="pw-title">{{ t('acc.pw.title') }}</h2>
+      <p class="muted">{{ t('acc.pw.rules') }}</p>
+      <router-link class="btn" :to="{ name: 'change-password' }">{{ t('acc.pw.open') }}</router-link>
+    </section>
+
     <section class="card" aria-labelledby="dev-title">
       <h2 id="dev-title">{{ t('security.devices') }}</h2>
       <ul class="plain">

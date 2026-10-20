@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import CodeInput from '@/components/CodeInput.vue';
 import ErrorNotice from '@/components/ErrorNotice.vue';
@@ -25,6 +25,11 @@ const error = ref<unknown>(null);
 const attemptsLeft = ref<number | null>(null);
 const smsInfo = ref<CodeChallenge | null>(null);
 const notMeDone = ref(false);
+
+// Confirmation récente d'une action sensible par une personne SANS double authentification : elle confirme par son mot de passe.
+onMounted(async () => {
+  if (auth.me && !auth.me.two_factor.enabled) await router.replace({ name: 'reconfirm', query: route.query });
+});
 
 const roleLine = computed(() => {
   const code = auth.me?.context.role ?? null;

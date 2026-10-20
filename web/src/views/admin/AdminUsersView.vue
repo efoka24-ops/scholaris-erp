@@ -2,11 +2,12 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import AdminSubnav from './AdminSubnav.vue';
 import ErrorNotice from '@/components/ErrorNotice.vue';
+import ProvisionalPasswordCard from '@/views/account/ProvisionalPasswordCard.vue';
+import { createStaffAccount, reissueProvisionalPassword, type ProvisionalAccount } from '@/api/account';
 import { useAction } from './useAction';
 import { ROLE_CATALOG, roleKey, roleLevel } from './catalog';
 import {
   assignRole,
-  createUser,
   delegateRole,
   getPerson,
   listAssignments,
@@ -43,7 +44,11 @@ const userAction = useAction();
 const assignAction = useAction();
 const revokeAction = useAction();
 const notice = ref<{ kind: 'user' | 'assigned' | 'delegated' | 'revoked'; text: string } | null>(null);
+/** Mot de passe provisoire à remettre (affiché une fois, jeté à la fermeture ou en quittant l'écran). */
+const issued = ref<{ account: ProvisionalAccount; name: string; variant: 'created' | 'reissued' } | null>(null);
+const reissueAction = useAction();
 
+const canReissue = computed(() => ctx.can('identity.manage'));
 const canAssign = computed(() => ctx.can('identity.roles.assign', 'identity.manage'));
 const isTenantActor = computed(() => ['super_admin', 'direction_groupe'].includes(ctx.activeRole ?? ''));
 const roleOptions = computed(() =>
@@ -130,7 +135,7 @@ async function submitUser(): Promise<void> {
   notice.value = null;
   if (userForm.first_name.trim() === '' || userForm.last_name.trim() === '' || contactMissing.value) return;
   const res = await userAction.run(() =>
-    createUser({
+    createStaffAccount({
       first_name: userForm.first_name.trim(),
       last_name: userForm.last_name.trim(),
       ...(userForm.phone.trim() ? { phone: userForm.phone.trim() } : {}),
@@ -138,11 +143,12 @@ async function submitUser(): Promise<void> {
       locale: userForm.locale,
     }),
   );
-  if (!res) return;
+  if (!res || !res.person_id) return;
   const person = { id: res.person_id, first_name: userForm.first_name.trim(), last_name: userForm.last_name.trim() };
   picked.value = person;
   names[person.id] = `${person.last_name.toUpperCase()} ${person.first_name}`;
-  notice.value = { kind: 'user', text: t('admin.users.created', { name: `${person.first_name} ${person.last_name}` }) };
+  issued.value = { account: res, name: `${person.first_name} ${person.last_name}`, variant: 'created' };
+  notice.value = { kind: 'user', text: t('acc.users.created', { name: `${person.first_name} ${person.last_name}` }) };
   Object.assign(userForm, { first_name: '', last_name: '', phone: '', email: '' });
   userTouched.value = false;
 }
@@ -196,6 +202,16 @@ async function submitAssign(): Promise<void> {
   await load();
 }
 
+/** Nouveau mot de passe provisoire (mot de passe perdu) : l'ancien et les connexions de la personne sont supprimés. */
+async function reissue(a: RoleAssignment): Promise<void> {
+  notice.value = null;
+  const name = personName(a.person_id);
+  if (!window.confirm(t('acc.reissue.confirm', { name }))) return;
+  const resetTwoFactor = window.confirm(t('acc.reissue.resetTwoFactor'));
+  const res = await reissueAction.run(() => reissueProvisionalPassword(a.person_id, resetTwoFactor));
+  if (res) issued.value = { account: res, name, variant: 'reissued' };
+}
+
 async function revoke(a: RoleAssignment): Promise<void> {
   notice.value = null;
   const ok = await revokeAction.run(async () => {
@@ -222,11 +238,13 @@ onMounted(async () => {
 
     <AdminSubnav />
     <div v-if="notice" class="notice notice--success" role="status">{{ notice.text }}</div>
+    <ProvisionalPasswordCard v-if="issued" :account="issued.account" :name="issued.name" :variant="issued.variant" @close="issued = null" />
+    <ErrorNotice :error="reissueAction.error.value" />
 
     <section class="two">
       <form class="card" novalidate aria-labelledby="u-new" @submit.prevent="submitUser">
         <h2 id="u-new">{{ t('admin.users.new') }}</h2>
-        <p class="muted">{{ t('admin.users.newHint') }}</p>
+        <p class="muted">{{ t('acc.users.newHint') }}</p>
         <ErrorNotice :error="userAction.error.value" />
         <div class="field">
           <label for="u-ln">{{ t('people.lastName') }}</label>
@@ -243,7 +261,7 @@ onMounted(async () => {
         <div class="field">
           <label for="u-em">{{ t('people.email') }}</label>
           <input id="u-em" v-model="userForm.email" type="email" autocomplete="off" :aria-invalid="contactMissing" aria-describedby="u-contact" />
-          <span id="u-contact" class="hint" :class="{ error: contactMissing }">{{ t('admin.users.contactHint') }}</span>
+          <span id="u-contact" class="hint" :class="{ error: contactMissing }">{{ t('acc.users.contactHint') }}</span>
         </div>
         <div class="field">
           <label for="u-loc">{{ t('admin.users.locale') }}</label>
@@ -352,6 +370,7 @@ onMounted(async () => {
               <td>{{ a.ends_at ? t('admin.users.until', { date: formatDate(a.ends_at, locale) }) : t('admin.users.permanent') }}</td>
               <td>
                 <button v-if="canRevoke(a)" type="button" class="btn btn--quiet" :disabled="revokeAction.busy.value" :aria-label="t('admin.users.revokeNamed', { name: personName(a.person_id), role: roleLabel(a.role) })" @click="revoke(a)">{{ t('admin.users.revoke') }}</button>
+                <button v-if="canReissue" type="button" class="btn btn--quiet" :disabled="reissueAction.busy.value" :aria-label="t('acc.reissue.aria', { name: personName(a.person_id) })" data-test="reissue" @click="reissue(a)">{{ t('acc.reissue.cta') }}</button>
               </td>
             </tr>
           </tbody>

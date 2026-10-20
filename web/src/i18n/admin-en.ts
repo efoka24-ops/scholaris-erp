@@ -134,7 +134,7 @@ export const adminEn: Record<AdminKey, string> = {
   'admin.closure.someone': 'another manager',
   'admin.closure.pendingBy': 'Request filed by {who} on {date}.',
   'admin.closure.needsAnother': 'You cannot approve your own request: another authorised person must do it.',
-  'admin.closure.needs2fa': 'Approval requires a two-factor check less than ten minutes old. If it is refused, check your code and try again.',
+  'admin.closure.needs2fa': 'Approval requires a confirmation less than ten minutes old: your two-factor code, or your password if you have no two-factor authentication. If it is refused, a button lets you confirm, then you try again.',
   'admin.closure.whyDisabled': 'Buttons disabled: the request comes from you.',
   'admin.closure.approve': 'Approve closure',
   'admin.closure.reject': 'Reject the request',

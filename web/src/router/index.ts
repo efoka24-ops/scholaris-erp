@@ -22,6 +22,9 @@ export async function guard(to: RouteLocationNormalized): Promise<RouteLocationR
 
   if (!auth.isAuthenticated) return { name: 'login', query: to.fullPath !== '/' ? { redirect: to.fullPath } : {} };
 
+  // Mot de passe provisoire : à remplacer avant tout (le serveur n'ouvre rien d'autre à cette session).
+  if (auth.passwordChangeRequired && to.name !== 'change-password') return { name: 'change-password' };
+
   // Double authentification : exigée pour les rôles sensibles, avant tout accès aux ressources.
   if (auth.twoFactorSetupNeeded && to.name !== 'twofactor-setup') return { name: 'twofactor-setup' };
   if (auth.twoFactorPending && to.name !== 'twofactor') return { name: 'twofactor' };

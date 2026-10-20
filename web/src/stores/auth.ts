@@ -17,6 +17,8 @@ export const useAuthStore = defineStore('auth', () => {
   const isAuthenticated = computed(() => me.value !== null);
   const displayName = computed(() => me.value?.greeting ?? me.value?.first_name ?? '');
   const twoFactorPending = computed(() => !!me.value && me.value.two_factor.required && me.value.two_factor.enabled && !me.value.two_factor.verified);
+  /** Mot de passe provisoire à remplacer avant tout autre écran. */
+  const passwordChangeRequired = computed(() => !!me.value && me.value.password_change_required === true);
   const twoFactorSetupNeeded = computed(() => !!me.value && me.value.two_factor.required && !me.value.two_factor.enabled);
 
   async function login(input: LoginInput): Promise<LoginResponse> {
@@ -78,5 +80,5 @@ export const useAuthStore = defineStore('auth', () => {
     loaded.value = true;
   }
 
-  return { me, loaded, lastLogin, isAuthenticated, displayName, twoFactorPending, twoFactorSetupNeeded, login, loginWithAuthenticator, loadMe, logout, clear };
+  return { me, loaded, lastLogin, isAuthenticated, displayName, twoFactorPending, twoFactorSetupNeeded, passwordChangeRequired, login, loginWithAuthenticator, loadMe, logout, clear };
 });

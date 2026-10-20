@@ -6,6 +6,7 @@ import { isSecondFactorRequired } from '@/api/higher';
 import { grades, isMinutesUnsigned, type Assessment, type AssessmentStatus } from '@/api/higher-grades';
 import { useContextStore } from '@/stores/context';
 import { formatDate } from '@/lib/format';
+import { useConfirmation } from '@/views/account/useConfirmation';
 import { useHigherStore } from '../store';
 import { useHigherAction } from '../useHigherAction';
 import { G } from './perms';
@@ -18,6 +19,7 @@ type Action = 'submit' | 'sendBack' | 'validate' | 'lock' | 'publish' | 'lift';
 const props = defineProps<{ assessment: Assessment; nextStates: AssessmentStatus[] }>();
 const emit = defineEmits<{ (e: 'changed', a: Assessment): void }>();
 const { tg, locale } = useGradesI18n();
+const confirmation = useConfirmation();
 const ctx = useContextStore();
 const higher = useHigherStore();
 const route = useRoute();
@@ -119,9 +121,9 @@ onMounted(() => {
     </div>
 
     <div v-if="needsTwoFactor" class="notice notice--warning" role="alert" data-test="needs-2fa">
-      <p><strong>{{ tg('hg.twofa.title') }}</strong></p>
-      <p>{{ tg('hg.twofa.text') }}</p>
-      <button type="button" class="btn btn--ink" @click="revalidate">{{ tg('hg.twofa.go') }}</button>
+      <p><strong>{{ confirmation.title(tg('hg.twofa.title')) }}</strong></p>
+      <p>{{ confirmation.text(tg('hg.twofa.text')) }}</p>
+      <button type="button" class="btn btn--ink" @click="revalidate">{{ confirmation.go(tg('hg.twofa.go')) }}</button>
     </div>
     <div v-if="minutesUnsigned" class="notice notice--warning" role="alert" data-test="pv-required"><p>{{ tg('hg.life.pvRequired') }}</p></div>
     <ErrorNotice :error="act.error.value" />
