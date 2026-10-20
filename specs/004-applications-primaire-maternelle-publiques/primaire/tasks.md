@@ -25,11 +25,11 @@ Date : 2026-10-15. Entrées : [spec.md](spec.md), [plan.md](plan.md), [data-mode
 - [ ] T619 Revue de la phase 0 : relancer `tests/Feature/Organisation/TerritoryHistoryTest.php`, `ScopedAccessAuditTest`, `ApprovalWorkflowTest`, `SmallCellDisclosureTest` ; suite complète verte.
 
 ## Phase 1 : squelettes
-- [ ] T620 `PS/` : `PublicSchoolsApplication`, `definitions.php`, `routes.php` (glob), `Support/{WriteGate,GatedAction,PublicRoutes,Perimeter,ScopedByTerritory}`, `Policies/{RoleMatrix,ScopeResolver}`, manifeste `platform.applications.public_schools`. **D** : T606, T610.
-- [ ] T621 `PP/` : `PublicPrimaryApplication`, `definitions.php`, `routes.php` ; suppression de `PP/Registry` après T625. **D** : T620.
-- [ ] T622 [P] `PS/Contracts/` : `SchoolRegistry`, `PupilRegistry`, `ClassRoster`, `PupilTransfer`, `CensusSectionProvider`, `PublicMessages` (signatures seules) — **à remettre à l'agent Maternelle**.
-- [ ] T623 `tests/Architecture/PublicSchoolsConventionsTest.php` : contrats seuls (exception `PS/Contracts`), préfixes, WriteGate, aucun littéral de seuil dans `Domain/`, aucune colonne `apee` hors `PS/Apee`, aucune variable `apee_*` dans les modèles de documents d'élève (SC-02..04).
-- [ ] T624 `tests/Isolation/PublicTerritoryTest.php` (autre client, autre arrondissement, autre classe, région → agrégats seuls). **D** : T620.
+- [x] T620 `PS/` : `PublicSchoolsApplication`, `definitions.php`, `routes.php` (glob), `Support/{WriteGate,GatedAction,PublicRoutes,Perimeter,ScopedByTerritory}`, `Policies/{RoleMatrix,ScopeResolver}`, manifeste `platform.applications.public_schools`. **D** : T606, T610. **Fait (W1-A, 2026-10-20)**.
+- [x] T621 `PP/` : `PublicPrimaryApplication`, `definitions.php`, `routes.php` ; suppression de `PP/Registry` après T625. **D** : T620. **Fait (W1-A, 2026-10-20)** hors suppression de `PP/Registry` (reste à T625 ; le routeur racine lui réserve une exception transitoire).
+- [x] T622 [P] `PS/Contracts/` : `SchoolRegistry`, `PupilRegistry`, `ClassRoster`, `PupilTransfer`, `CensusSectionProvider`, `PublicMessages` (signatures seules) — **à remettre à l'agent Maternelle**. **Fait (W1-A, 2026-10-20)**.
+- [x] T623 `tests/Architecture/PublicSchoolsConventionsTest.php` : contrats seuls (exception `PS/Contracts`), préfixes, WriteGate, aucun littéral de seuil dans `Domain/`, aucune colonne `apee` hors `PS/Apee`, aucune variable `apee_*` dans les modèles de documents d'élève (SC-02..04). **Fait (W1-A, 2026-10-20)**.
+- [x] T624 `tests/Isolation/PublicTerritoryTest.php` (autre client, autre arrondissement, autre classe, région → agrégats seuls). **D** : T620. **Fait (W1-A, 2026-10-20)**.
 
 ## Phase 2 : lot P1 (ECO, ELV, CLA, PRE, PER, COM, Sync, Territory)
 - [ ] T625 ECO : `PS/Schools` (tables `pub_schools`, `pub_infrastructure_years`, `pub_classrooms`), reprise de la logique de `InfrastructureSnapshotService` ; suppression de la migration `202610151002_primary_public_registry.sql` et des tests `tests/Feature/PublicSchools/Registry/*` déplacés. **T** : RG-TER-5 (école sans acte exclue des agrégats officiels) ; version close immuable ; correction = version n+1 motivée.
