@@ -31,6 +31,8 @@ return static function (RouteRegistry $routes): void {
     $routes->add('POST', '/public/access-requests/{token}/complement', [PublicAccessController::class, 'complement'], $public);
 
     $routes->add('GET', '/platform/dashboard', [PlatformAdminController::class, 'dashboard'], $platform);
+    $routes->add('GET', '/platform/settings', [PlatformAdminController::class, 'settings'], $platform);
+    $routes->add('PATCH', '/platform/settings', [PlatformAdminController::class, 'updateSettings'], $platform);
     $routes->add('GET', '/platform/applications', [PlatformAdminController::class, 'catalog'], $platform);
     $routes->add('PATCH', '/platform/applications/{key}', [PlatformAdminController::class, 'updateCatalog'], $platform);
     $routes->add('GET', '/platform/clients', [ClientsAdminController::class, 'index'], $platform);

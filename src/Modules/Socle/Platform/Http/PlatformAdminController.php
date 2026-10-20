@@ -14,6 +14,7 @@ use Scholaris\Modules\Socle\Platform\Application\Catalog;
 use Scholaris\Modules\Socle\Platform\Application\DashboardService;
 use Scholaris\Modules\Socle\Platform\Application\EntitlementService;
 use Scholaris\Modules\Socle\Platform\Application\PlatformAudit;
+use Scholaris\Modules\Socle\Platform\Application\PlatformSettings;
 use Scholaris\Modules\Socle\Platform\Application\SubscriptionPayments;
 use Scholaris\Modules\Socle\Platform\Contracts\ApplicationManifest;
 
@@ -33,6 +34,7 @@ final class PlatformAdminController
         private readonly SubscriptionPayments $payments,
         private readonly ClientProvisioning $clients,
         private readonly PlatformAudit $audit,
+        private readonly PlatformSettings $settings,
     ) {
     }
 
@@ -42,6 +44,25 @@ final class PlatformAdminController
         $this->guard->platformAdmin($request, 'platform.dashboard.read');
 
         return $this->responder->json(['data' => $this->dashboard->summary()]);
+    }
+
+    /** GET /platform/settings : réglages de la plateforme (valeur, défaut, bornes). */
+    public function settings(ServerRequestInterface $request): ResponseInterface
+    {
+        $this->guard->platformAdmin($request, 'platform.dashboard.read');
+
+        return $this->responder->json(['data' => $this->settings->all()]);
+    }
+
+    /** PATCH /platform/settings : modifier un réglage (2FA récente, journalisé). */
+    public function updateSettings(ServerRequestInterface $request): ResponseInterface
+    {
+        $principal = $this->guard->platformAdmin($request, 'platform.settings.manage', true);
+        $input = Input::of($request, [PlatformSettings::ACCESS_CODE_TTL]);
+        $ttl = $input->integer(PlatformSettings::ACCESS_CODE_TTL, 5, 10080);
+        $input->validate();
+
+        return $this->responder->json(['data' => $this->settings->set(PlatformSettings::ACCESS_CODE_TTL, (int) $ttl, $principal->userId, PlatformGuard::ip($request))]);
     }
 
     /** GET /platform/applications */

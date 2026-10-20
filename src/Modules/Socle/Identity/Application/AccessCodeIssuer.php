@@ -21,6 +21,9 @@ use Scholaris\Modules\Socle\Identity\Infrastructure\PdoOneTimeCodeRepository;
  */
 final class AccessCodeIssuer
 {
+    /** Durée maximale d'un code d'accès créé par la plateforme : 7 jours. */
+    public const MAX_TTL = 604800;
+
     public const CHANNEL = 'platform';
     public const MAX_PER_HOUR = 5;
 
@@ -33,7 +36,7 @@ final class AccessCodeIssuer
     }
 
     /** @return array{code: string, purpose: string, expires_at: string, expires_in: int, login: string} */
-    public function issue(User $user, string $actorId): array
+    public function issue(User $user, string $actorId, ?int $ttlSeconds = null): array
     {
         if ($user->status === User::LOCKED) {
             throw HttpException::conflict('Ce compte est bloqué : débloquez-le avant de lui créer un code d\'accès.');
@@ -45,7 +48,8 @@ final class AccessCodeIssuer
         $this->codes->consumeOpen($user->tenantId, $user->id, [ActivationService::ACTIVATION, ActivationService::RESET], $now);
         $code = sprintf('%06d', random_int(0, 999999));
         $id = (string) new Ulid();
-        $expiresAt = $this->moment->in(ActivationService::CODE_TTL);
+        $ttl = max(ActivationService::CODE_TTL, min(self::MAX_TTL, $ttlSeconds ?? ActivationService::CODE_TTL));
+        $expiresAt = $this->moment->in($ttl);
         $this->codes->insert($id, $user->tenantId, $user->id, $purpose, self::CHANNEL, ActivationService::codeHash($code, $id), $expiresAt, $now);
         $this->openVerificationWindow($user, $now);
         $this->audit->append($user->tenantId, $actorId, 'identity.access_code_issued', 'user', $user->id, null, ['purpose' => $purpose, 'by' => 'platform']);
@@ -54,7 +58,7 @@ final class AccessCodeIssuer
             'code' => $code,
             'purpose' => $purpose,
             'expires_at' => $expiresAt,
-            'expires_in' => ActivationService::CODE_TTL,
+            'expires_in' => $ttl,
             'login' => (string) ($user->email ?? $user->phone),
         ];
     }

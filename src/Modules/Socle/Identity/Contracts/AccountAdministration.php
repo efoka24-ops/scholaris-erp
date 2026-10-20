@@ -56,7 +56,7 @@ interface AccountAdministration
      *
      * @return array{code: string, purpose: string, expires_at: string, expires_in: int, login: string}
      */
-    public function issueAccessCode(string $tenantId, string $userId, string $actorId): array;
+    public function issueAccessCode(string $tenantId, string $userId, string $actorId, ?int $ttlSeconds = null): array;
 
     /** Vrai si `code` est le code d'accès ouvert et non expiré du compte (renvoi du même code sans le régénérer). */
     public function isOpenAccessCode(string $tenantId, string $userId, string $code): bool;

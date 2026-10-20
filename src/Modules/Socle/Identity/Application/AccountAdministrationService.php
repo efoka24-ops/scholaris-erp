@@ -153,13 +153,13 @@ final class AccountAdministrationService implements AccountAdministration
         ], array_values($statement->fetchAll(PDO::FETCH_ASSOC)));
     }
 
-    public function issueAccessCode(string $tenantId, string $userId, string $actorId): array
+    public function issueAccessCode(string $tenantId, string $userId, string $actorId, ?int $ttlSeconds = null): array
     {
         if ($tenantId === Role::PLATFORM_TENANT && $userId === $actorId) {
             throw HttpException::conflict('Vous ne pouvez pas créer de code d\'accès pour votre propre compte.');
         }
 
-        return $this->issuer->issue($this->account($tenantId, $userId), $actorId);
+        return $this->issuer->issue($this->account($tenantId, $userId), $actorId, $ttlSeconds);
     }
 
     public function isOpenAccessCode(string $tenantId, string $userId, string $code): bool

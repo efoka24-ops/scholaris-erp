@@ -76,7 +76,7 @@ abstract class PlatformTestCase extends TestCase
             self::ROOT,
             'platform',
             'platform.access',
-            'platform.dashboard.read',
+            'platform.dashboard.read', 'platform.settings.manage',
             'platform.clients.read',
             'platform.catalog.manage',
             'platform.requests.read',

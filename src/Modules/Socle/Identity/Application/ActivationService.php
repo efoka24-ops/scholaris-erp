@@ -126,13 +126,6 @@ final class ActivationService
         $state = $this->throttle->state($key);
         $now = $this->moment->iso();
 
-        if ($state['last_otp_at'] === null || $this->moment->secondsBetween($state['last_otp_at'], $now) > self::CODE_TTL) {
-            throw CodeRejected::expired();
-        }
-        if ($state['otp_attempts'] >= self::MAX_ATTEMPTS) {
-            throw CodeRejected::exhausted();
-        }
-
         $row = null;
         $owner = null;
         foreach ($this->users->findByIdentifier($identifier) as $candidate) {
@@ -141,6 +134,15 @@ final class ActivationService
                 $owner = $candidate;
                 break;
             }
+        }
+        // La fenêtre de saisie suit l'échéance du code : 5 minutes pour un code demandé par l'utilisateur, la durée réglée par
+        // la plateforme pour un code d'accès créé depuis le back-office.
+        $open = $row !== null && $row['expires_at'] > $now;
+        if ($state['last_otp_at'] === null || (!$open && $this->moment->secondsBetween($state['last_otp_at'], $now) > self::CODE_TTL)) {
+            throw CodeRejected::expired();
+        }
+        if ($state['otp_attempts'] >= self::MAX_ATTEMPTS) {
+            throw CodeRejected::exhausted();
         }
 
         $valid = $row !== null

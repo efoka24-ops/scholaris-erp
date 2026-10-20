@@ -82,6 +82,23 @@ paths:
           description: "Aucun complément attendu"
         '422':
           description: "Données invalides"
+  /api/v1/platform/settings:
+    get:
+      summary: "Réglages de la plateforme : valeur, défaut, bornes (access_code_ttl_minutes : validité des codes d'accès créés depuis le back-office)"
+      responses:
+        '200': {description: "Réglages"}
+        '403': {description: "Réservé à l'administrateur de plateforme"}
+    patch:
+      summary: "Modifier un réglage (2FA récente, journalisé)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object, properties: {access_code_ttl_minutes: {type: integer, minimum: 5, maximum: 10080}}}
+      responses:
+        '200': {description: "Réglages mis à jour"}
+        '403': {description: "Réservé à l'administrateur de plateforme ; 2FA récente exigée"}
+        '422': {description: "Valeur hors bornes"}
   /api/v1/platform/dashboard:
     get:
       summary: "Tableau de bord de la plateforme : clients, demandes en attente, applications ouvertes, essais qui se terminent (14 j), impayés, MRR ; indicateur sans source = available:false"

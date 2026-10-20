@@ -30,6 +30,7 @@ final class UserAccessCodes
         private readonly MailGateway $mail,
         private readonly SmsGateway $sms,
         private readonly LoggerInterface $logger,
+        private readonly PlatformSettings $settings,
     ) {
     }
 
@@ -63,7 +64,8 @@ final class UserAccessCodes
         if ($unavailable && $strict) {
             throw HttpException::validation(['send' => [self::unavailable($send)]]);
         }
-        $issued = $this->accounts->issueAccessCode($tenantId, $userId, $actorId);
+        // Durée réglée par le super admin (Plateforme → Réglages), 24 heures par défaut.
+        $issued = $this->accounts->issueAccessCode($tenantId, $userId, $actorId, $this->settings->value(PlatformSettings::ACCESS_CODE_TTL) * 60);
         $share = $this->share($account, $tenantName, $issued['code'], $issued['purpose'] === 'reset', $issued['expires_in']);
         $delivery = match (true) {
             $unavailable => ['channel' => $send, 'status' => 'unavailable', 'masked_to' => null],

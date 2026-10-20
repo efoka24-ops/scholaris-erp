@@ -317,6 +317,12 @@ export const routes: RouteRecordRaw[] = [
     component: () => import('@/views/platform/PlatformAuditView.vue'),
     meta: { platform: true, titleKey: 'pa.audit.title', nav: { labelKey: 'pa.nav.audit', order: 7 } },
   },
+  {
+    path: '/platform/reglages',
+    name: 'platform-settings',
+    component: () => import('@/views/platform/PlatformSettingsView.vue'),
+    meta: { platform: true, titleKey: 'pa.set.title', nav: { labelKey: 'pa.nav.settings', order: 8 } },
+  },
   ...higherRoutes,
   ...higherGradesRoutes,
   ...higherTeachingRoutes,

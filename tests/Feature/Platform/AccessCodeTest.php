@@ -64,7 +64,7 @@ final class AccessCodeTest extends PlatformTestCase
         self::assertMatchesRegularExpression('/^\d{6}$/', $code);
         self::assertSame('activation', $json['data']['purpose']);
         self::assertSame('not_sent', $json['data']['delivery']['status']);
-        self::assertSame(300, $json['data']['expires_in']);
+        self::assertSame(86400, $json['data']['expires_in']);
         self::assertSame([], $this->mail->sent, 'afficher seulement : rien n\'est envoyé');
         $share = $json['data']['share'];
         self::assertSame('Institut Polytechnique du Nord', $share['establishment_name']);
@@ -175,6 +175,43 @@ final class AccessCodeTest extends PlatformTestCase
 
         [$asClient] = $this->api('POST', '/platform/clients/' . $tenant . '/users/' . $user . '/access-code', 'boss', $tenant, []);
         self::assertSame(403, $asClient->getStatusCode());
+    }
+
+    public function testDureeReglableParLeSuperAdminEtCodeAccepteAuDelaDeCinqMinutes(): void
+    {
+        [$read, $settings] = $this->api('GET', '/platform/settings', self::ROOT);
+        self::assertSame(200, $read->getStatusCode(), (string) $read->getBody());
+        self::assertSame(1440, $settings['data']['access_code_ttl_minutes']['value'], '24 heures par défaut.');
+
+        $this->secondFactor->revoke(self::ROOT);
+        [$stale] = $this->api('PATCH', '/platform/settings', self::ROOT, null, ['access_code_ttl_minutes' => 60]);
+        self::assertSame(403, $stale->getStatusCode(), '2FA récente exigée.');
+        $this->secondFactor->allow(self::ROOT);
+        [$bad] = $this->api('PATCH', '/platform/settings', self::ROOT, null, ['access_code_ttl_minutes' => 2]);
+        self::assertSame(422, $bad->getStatusCode(), '5 minutes au moins.');
+        [$ok, $updated] = $this->api('PATCH', '/platform/settings', self::ROOT, null, ['access_code_ttl_minutes' => 60]);
+        self::assertSame(200, $ok->getStatusCode(), (string) $ok->getBody());
+        self::assertSame(60, $updated['data']['access_code_ttl_minutes']['value']);
+
+        ['tenant' => $tenant, 'user' => $user] = $this->clientWithAdministrator();
+        [$response, $json] = $this->issue($tenant, $user);
+        self::assertSame(201, $response->getStatusCode(), (string) $response->getBody());
+        self::assertSame(3600, $json['data']['expires_in']);
+
+        // 30 minutes plus tard : la fenêtre de 5 minutes des codes demandés en libre-service ne s'applique pas.
+        $this->clock->set(date('c', $this->clock->now() + 1800));
+        [$verified] = $this->verify('paul@ipn.test', (string) $json['data']['code']);
+        self::assertSame(200, $verified->getStatusCode(), (string) $verified->getBody());
+    }
+
+    public function testCodeExpireApresLaDureeReglee(): void
+    {
+        $this->api('PATCH', '/platform/settings', self::ROOT, null, ['access_code_ttl_minutes' => 10]);
+        ['tenant' => $tenant, 'user' => $user] = $this->clientWithAdministrator();
+        [, $json] = $this->issue($tenant, $user);
+        $this->clock->set(date('c', $this->clock->now() + 11 * 60));
+        [$expired] = $this->verify('paul@ipn.test', (string) $json['data']['code']);
+        self::assertContains($expired->getStatusCode(), [410, 422, 400], (string) $expired->getBody());
     }
 
     public function testCloisonnementEntreClients(): void

@@ -336,6 +336,11 @@ export const sendComplement = async (token: string, message: string): Promise<Ac
 // --- Administrateur de plateforme : lectures ------------------------------------------------------------------------------
 export const fetchPlatformDashboard = async (): Promise<PlatformDashboard> => (await http.get<{ data: PlatformDashboard }>('/platform/dashboard', undefined, NO_ESTABLISHMENT)).data;
 
+/** Réglage de plateforme : valeur, défaut et bornes (GET /platform/settings). */
+export interface PlatformSetting { value: number; default: number; min: number; max: number; updated_at: string | null }
+export const fetchPlatformSettings = async (): Promise<Record<string, PlatformSetting>> =>
+  (await http.get<{ data: Record<string, PlatformSetting> }>('/platform/settings', undefined, NO_ESTABLISHMENT)).data ?? {};
+
 export const fetchPlatformCatalog = async (): Promise<CatalogApplication[]> => (await http.get<{ data: CatalogApplication[] }>('/platform/applications', undefined, NO_ESTABLISHMENT)).data ?? [];
 
 export const fetchClients = async (state: ClientState | null = null): Promise<Tenant[]> =>
@@ -379,6 +384,7 @@ export interface PlatformAction {
 const seg = (v: string): string => encodeURIComponent(v);
 
 export const actions = {
+  updateSettings: (values: Record<string, number>): PlatformAction => ({ method: 'PATCH', path: '/platform/settings', body: values }),
   acceptRequest: (id: string, tenantId: string | null, shareSend: AccessSend = 'none'): PlatformAction => ({
     method: 'POST',
     path: `/platform/access-requests/${seg(id)}/accept`,
