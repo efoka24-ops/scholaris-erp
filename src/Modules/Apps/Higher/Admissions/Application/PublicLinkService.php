@@ -44,7 +44,8 @@ final class PublicLinkService
         $tenantId = $principal->tenantId;
         $current = $this->store->select(self::TABLE, $tenantId, $establishmentId, [], 'id', 1)[0] ?? null;
         $now = $this->clock->now();
-        $name = $this->establishments->find($tenantId, $establishmentId)?->name ?? throw HttpException::notFound('Établissement introuvable.');
+        $establishment = $this->establishments->find($tenantId, $establishmentId) ?? throw HttpException::notFound('Établissement introuvable.');
+        $name = $establishment->name;
         if ($current === null) {
             $this->store->insert(self::TABLE, $tenantId, $establishmentId, [
                 'id' => (string) new Ulid(), 'slug' => self::newSlug($name), 'enabled' => $enabled ? 1 : 0,
