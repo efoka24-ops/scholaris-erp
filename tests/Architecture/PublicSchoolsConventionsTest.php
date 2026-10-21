@@ -264,8 +264,8 @@ final class PublicSchoolsConventionsTest extends TestCase
             $definitions = require self::base() . self::ROOT . '/' . $application . '/definitions.php';
             self::assertIsArray($definitions);
             foreach (array_keys($definitions) as $key) {
-                if (!is_string($key) || !str_contains($key, '.') || str_contains($key, '\\')) {
-                    continue; // clé de classe
+                if (!is_string($key) || !str_contains($key, '.') || str_contains($key, '\\') || str_starts_with($key, 'console.command.')) {
+                    continue; // clé de classe, ou nom de commande artisan (« public:absence-alerts »)
                 }
                 if (preg_match('/^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$/', $key) !== 1 || array_intersect(explode('.', $key), $segments) === []) {
                     $problems[] = $application . ' : clé ' . $key . ' (forme attendue <préfixe>.<application>)';

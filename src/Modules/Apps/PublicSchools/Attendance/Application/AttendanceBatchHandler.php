@@ -5,17 +5,30 @@ declare(strict_types=1);
 namespace Scholaris\Modules\Apps\PublicSchools\Attendance\Application;
 
 use Scholaris\Core\Http\HttpException;
+use Scholaris\Modules\Apps\PublicSchools\Support\ScopedByTerritory;
+use Scholaris\Modules\Apps\PublicSchools\Support\WriteGate;
 use Scholaris\Modules\Socle\Attendance\Contracts\AttendanceMark;
 use Scholaris\Modules\Socle\Sync\Contracts\BatchContext;
 use Scholaris\Modules\Socle\Sync\Contracts\BatchItem;
 use Scholaris\Modules\Socle\Sync\Contracts\BatchItemHandler;
 use Scholaris\Modules\Socle\Sync\Contracts\ItemResult;
 
-/** Application d'un élément hors ligne d'appel, sans écraser une séance validée différente. */
+/**
+ * Gestionnaire `sync.handlers.public.attendance` (T635, API-04) : un élément = l'appel d'une classe pour un jour et une demi-journée,
+ * saisi hors ligne. Charge utile minimale (SC-06) : `structure_id`, `date`, `day_part` et seulement les exceptions (`records`) ;
+ * tous les autres élèves sont présents par défaut.
+ *
+ * Le socle Sync ne vérifie que le droit de soumettre un lot : le gestionnaire contrôle lui-même la porte du droit d'usage (application
+ * suspendue : 423) et le périmètre de l'enseignant (sa classe seulement). Idempotent par `client_uuid` ; un appel déjà validé et
+ * différent n'est jamais écrasé par une synchronisation (409 rendu en conflit) : sa correction passe par la route PUT, avec ses règles.
+ */
 final class AttendanceBatchHandler implements BatchItemHandler
 {
-    public function __construct(private readonly DailyAttendanceService $attendance)
-    {
+    public function __construct(
+        private readonly DailyAttendanceService $attendance,
+        private readonly ScopedByTerritory $scope,
+        private readonly WriteGate $gate,
+    ) {
     }
 
     public function handle(BatchItem $item, BatchContext $context): ItemResult
@@ -28,7 +41,10 @@ final class AttendanceBatchHandler implements BatchItemHandler
         }
 
         try {
-            $session = $this->attendance->submit(
+            $this->gate->assertWritable($context->principal);
+            $perimeter = $this->scope->perimeter($context->principal, 'public_schools.attendance.write', $context->establishmentId);
+            $this->scope->assertWritable($context->principal, $perimeter, $structureId, 'attendance_session', $structureId . ':' . $date);
+            $result = $this->attendance->process(
                 $context->tenantId(),
                 $context->principal,
                 $context->establishmentId,
@@ -37,7 +53,7 @@ final class AttendanceBatchHandler implements BatchItemHandler
                 $dayPart,
                 $item->clientUuid,
                 self::records($item->payload['records'] ?? []),
-                is_string($item->payload['reason'] ?? null) ? $item->payload['reason'] : null,
+                null,
                 false,
             );
         } catch (HttpException $exception) {
@@ -48,7 +64,9 @@ final class AttendanceBatchHandler implements BatchItemHandler
             return ItemResult::rejected($exception->getMessage(), $exception->status, $exception->errors);
         }
 
-        return ItemResult::applied(['session_id' => $session->id, 'status' => $session->status]);
+        $data = ['session_id' => $result['session']->id, 'status' => $result['session']->status];
+
+        return $result['outcome'] === DailyAttendanceService::REPLAYED ? ItemResult::duplicate($data) : ItemResult::applied($data);
     }
 
     /** @return list<array{person_id: string, status: string, arrived_at?: ?string, note?: ?string}> */

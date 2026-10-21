@@ -6,17 +6,30 @@ namespace Scholaris\Modules\Apps\PublicSchools\Attendance\Application;
 
 use Scholaris\Core\Http\HttpException;
 use Scholaris\Core\Security\Principal;
+use Scholaris\Modules\Apps\PublicSchools\Attendance\Infrastructure\PdoAttendanceCalls;
 use Scholaris\Modules\Apps\PublicSchools\Contracts\ClassRoster;
 use Scholaris\Modules\Socle\Attendance\Contracts\AttendanceMark;
 use Scholaris\Modules\Socle\Attendance\Contracts\AttendanceRecorder;
 use Scholaris\Modules\Socle\Attendance\Contracts\AttendanceSession;
 
-/** Orchestration de l'appel d'une classe sur le contrat du socle Attendance. */
+/**
+ * Orchestration de l'appel d'une classe sur le contrat du socle Attendance (T634).
+ *
+ * Tous présents par défaut : seules les exceptions (absent, en retard) sont transmises, le contrat complète la liste de la classe.
+ * RG-PRE-1 : l'enseignant auteur de l'appel le corrige le jour même ; le lendemain et après, le socle exige le droit
+ * `attendance.correct_late` (directeur) et un motif. Les absences ne déclenchent aucune sanction (RG-PRE-3).
+ */
 final class DailyAttendanceService
 {
+    public const RECORDED = 'recorded';
+    public const REPLAYED = 'replayed';
+    public const CORRECTED = 'corrected';
+
     public function __construct(
         private readonly AttendanceRecorder $recorder,
         private readonly ClassRoster $classes,
+        private readonly PdoAttendanceCalls $calls,
+        private readonly CallClock $clock,
     ) {
     }
 
@@ -33,6 +46,27 @@ final class DailyAttendanceService
         ?string $reason = null,
         bool $allowCorrection = true,
     ): AttendanceSession {
+        return $this->process($tenantId, $principal, $establishmentId, $structureId, $date, $dayPart, $clientUuid, $exceptions, $reason, $allowCorrection)['session'];
+    }
+
+    /**
+     * Même chose que submit(), avec l'issue : première saisie, rejeu identique (aucune écriture) ou correction.
+     *
+     * @param list<array{person_id: string, status: string, arrived_at?: ?string, note?: ?string}> $exceptions
+     * @return array{session: AttendanceSession, outcome: string}
+     */
+    public function process(
+        string $tenantId,
+        Principal $principal,
+        string $establishmentId,
+        string $structureId,
+        string $date,
+        string $dayPart,
+        string $clientUuid,
+        array $exceptions,
+        ?string $reason = null,
+        bool $allowCorrection = true,
+    ): array {
         if (!in_array($dayPart, ['morning', 'afternoon'], true)) {
             throw HttpException::validation(['day_part' => ['Valeur attendue : morning ou afternoon.']]);
         }
@@ -51,25 +85,56 @@ final class DailyAttendanceService
             $line['person_id'],
             $line['status'],
             $line['arrived_at'] ?? null,
-            $clientUuid,
+            null,
             $line['note'] ?? null,
         ), $exceptions);
 
         if ($session->status === 'validated') {
             $fullRoster = $this->fullRoster($tenantId, $establishmentId, $structureId, $date, $marks);
             if (self::sameMarks($session->marks, $fullRoster)) {
-                return $session;
+                return ['session' => $session, 'outcome' => self::REPLAYED];
             }
             if (!$allowCorrection) {
                 throw HttpException::conflict('Une autre version de cet appel est déjà validée. Aucune donnée n’a été écrasée.');
             }
+            $corrected = $this->recorder->correct($tenantId, $principal, $establishmentId, $session->id, $fullRoster, $reason);
+            $this->track($tenantId, $establishmentId, $principal, $corrected, trim((string) $reason));
 
-            return $this->recorder->correct($tenantId, $principal, $establishmentId, $session->id, $fullRoster, $reason);
+            return ['session' => $corrected, 'outcome' => self::CORRECTED];
         }
 
         $recorded = $this->recorder->record($tenantId, $principal, $establishmentId, $session->id, $structureId, $marks);
+        $validated = $this->recorder->validate($tenantId, $principal, $establishmentId, $recorded->id);
+        $this->track($tenantId, $establishmentId, $principal, $validated, null);
 
-        return $this->recorder->validate($tenantId, $principal, $establishmentId, $recorded->id);
+        return ['session' => $validated, 'outcome' => self::RECORDED];
+    }
+
+    private function track(string $tenantId, string $establishmentId, Principal $principal, AttendanceSession $session, ?string $correctionReason): void
+    {
+        $absent = 0;
+        $late = 0;
+        foreach ($session->marks as $mark) {
+            if ($mark->status === AttendanceMark::ABSENT) {
+                ++$absent;
+            } elseif ($mark->status === AttendanceMark::LATE) {
+                ++$late;
+            }
+        }
+        $this->calls->record(
+            $tenantId,
+            $establishmentId,
+            $session->structureId,
+            $session->date,
+            $session->dayPart,
+            $session->id,
+            count($session->marks),
+            $absent,
+            $late,
+            $principal->userId,
+            $this->clock->now(),
+            $correctionReason === '' ? null : $correctionReason,
+        );
     }
 
     /** @param list<AttendanceMark> $exceptions

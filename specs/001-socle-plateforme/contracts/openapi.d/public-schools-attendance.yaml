@@ -1,4 +1,4 @@
-# Contrat de l'appel des classes des écoles publiques.
+# Contrat de l'appel des classes et de la présence des enseignants des écoles publiques.
 paths:
   /api/v1/public/classes/{id}/attendance/{date}:
     put:
@@ -14,7 +14,7 @@ paths:
         - name: date
           in: path
           required: true
-          schema: { type: string, format: date }
+          schema: { type: string }
       requestBody:
         required: true
         content:
@@ -22,25 +22,239 @@ paths:
             schema:
               type: object
               required: [day_part, client_uuid]
-              properties:
-                day_part: { type: string, enum: [morning, afternoon] }
-                client_uuid: { type: string, maxLength: 40 }
-                reason: { type: string, maxLength: 500 }
-                records:
-                  type: array
-                  items:
-                    type: object
-                    required: [person_id, status]
-                    properties:
-                      person_id: { type: string }
-                      status: { type: string, enum: [P, A, R] }
-                      arrived_at: { type: string, maxLength: 5, nullable: true }
-                      note: { type: string, maxLength: 255, nullable: true }
+              properties: {}
       responses:
-        '200': { description: Appel enregistré ou corrigé }
+        '200': { description: Succès }
         '400': { description: Requête invalide }
         '401': { description: Authentification requise }
         '403': { description: Permission ou périmètre insuffisant }
-        '404': { description: Classe introuvable dans le périmètre }
-        '409': { description: Conflit de séance }
-        '422': { description: Données invalides ou motif de correction manquant }
+        '404': { description: Introuvable dans le périmètre }
+        '409': { description: Conflit }
+        '422': { description: Données invalides }
+        '423': { description: Application en lecture seule }
+    get:
+      summary: État de l'appel d'une classe un jour donné
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: date
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: Succès }
+        '401': { description: Authentification requise }
+        '403': { description: Permission ou périmètre insuffisant }
+        '404': { description: Introuvable dans le périmètre }
+        '422': { description: Données invalides }
+  /api/v1/public/classes/{id}/attendance-register:
+    get:
+      summary: Données du cahier d'appel mensuel (DOC-06)
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: month
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        '200': { description: Succès }
+        '401': { description: Authentification requise }
+        '403': { description: Permission ou périmètre insuffisant }
+        '404': { description: Introuvable dans le périmètre }
+        '422': { description: Données invalides }
+  /api/v1/public/staff/{id}/presence/{date}:
+    put:
+      summary: Déclarer la présence d'un enseignant
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: date
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [presence]
+              properties: {}
+      responses:
+        '200': { description: Succès }
+        '400': { description: Requête invalide }
+        '401': { description: Authentification requise }
+        '403': { description: Permission ou périmètre insuffisant }
+        '404': { description: Introuvable dans le périmètre }
+        '409': { description: Conflit }
+        '422': { description: Données invalides }
+        '423': { description: Application en lecture seule }
+  /api/v1/public/staff/{id}/presence/{date}/check:
+    put:
+      summary: Contrôle de l'inspection sur la présence d'un enseignant
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: date
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [result]
+              properties: {}
+      responses:
+        '200': { description: Succès }
+        '400': { description: Requête invalide }
+        '401': { description: Authentification requise }
+        '403': { description: Permission ou périmètre insuffisant }
+        '404': { description: Introuvable dans le périmètre }
+        '409': { description: Conflit }
+        '422': { description: Données invalides }
+        '423': { description: Application en lecture seule }
+  /api/v1/public/teacher-presence:
+    get:
+      summary: Présences des enseignants d'un jour
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: date
+          in: query
+          required: false
+          schema: { type: string }
+        - name: purpose
+          in: query
+          required: false
+          schema: { type: string }
+        - name: per_page
+          in: query
+          required: false
+          schema: { type: integer }
+        - name: cursor
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        '200': { description: Succès }
+        '401': { description: Authentification requise }
+        '403': { description: Permission ou périmètre insuffisant }
+        '404': { description: Introuvable dans le périmètre }
+        '422': { description: Données invalides }
+  /api/v1/public/teacher-presence/control-sample:
+    get:
+      summary: Échantillon aléatoire pour le contrôle de l'inspection
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: date
+          in: query
+          required: false
+          schema: { type: string }
+        - name: purpose
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        '200': { description: Succès }
+        '401': { description: Authentification requise }
+        '403': { description: Permission ou périmètre insuffisant }
+        '404': { description: Introuvable dans le périmètre }
+        '422': { description: Données invalides }
+  /api/v1/public/teacher-presence/summary:
+    get:
+      summary: Synthèse mensuelle de présence des enseignants (DOC-22)
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: month
+          in: query
+          required: false
+          schema: { type: string }
+        - name: purpose
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        '200': { description: Succès }
+        '401': { description: Authentification requise }
+        '403': { description: Permission ou périmètre insuffisant }
+        '404': { description: Introuvable dans le périmètre }
+        '422': { description: Données invalides }
+  /api/v1/public/uncovered-classes:
+    get:
+      summary: Classes sans enseignant d'un jour (RG-PRE-2)
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: date
+          in: query
+          required: false
+          schema: { type: string }
+        - name: per_page
+          in: query
+          required: false
+          schema: { type: integer }
+        - name: cursor
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        '200': { description: Succès }
+        '401': { description: Authentification requise }
+        '403': { description: Permission ou périmètre insuffisant }
+        '404': { description: Introuvable dans le périmètre }
+        '422': { description: Données invalides }
+  /api/v1/public/attendance-alerts:
+    get:
+      summary: Alertes d'assiduité (NOT-03, NOT-12, NOT-13)
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: kind
+          in: query
+          required: false
+          schema: { type: string }
+        - name: per_page
+          in: query
+          required: false
+          schema: { type: integer }
+        - name: cursor
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        '200': { description: Succès }
+        '401': { description: Authentification requise }
+        '403': { description: Permission ou périmètre insuffisant }
+        '404': { description: Introuvable dans le périmètre }
+        '422': { description: Données invalides }

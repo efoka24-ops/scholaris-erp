@@ -8,32 +8,43 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Scholaris\Core\Http\HttpException;
 use Scholaris\Core\Http\JsonResponder;
-use Scholaris\Core\Security\Principal;
+use Scholaris\Modules\Apps\PublicSchools\Attendance\Application\AttendanceRegisterService;
 use Scholaris\Modules\Apps\PublicSchools\Attendance\Application\DailyAttendanceService;
+use Scholaris\Modules\Apps\PublicSchools\Attendance\Infrastructure\PdoAttendanceCalls;
+use Scholaris\Modules\Apps\PublicSchools\Contracts\ClassRoster;
 use Scholaris\Modules\Apps\PublicSchools\Support\ScopedByTerritory;
+use Scholaris\Modules\Socle\Attendance\Contracts\DailyPresence;
 
+/**
+ * API-05 : appel d'une classe par demi-journée (PUT, enseignant ou directeur), lecture de l'état du jour et données du cahier
+ * d'appel mensuel (DOC-06). Le nominatif (liste des absents, cahier) n'est rendu qu'à l'école elle-même : la supervision
+ * territoriale ne reçoit que des effectifs (RG-TER-2).
+ */
 final class AttendanceController
 {
+    private const DAY_PARTS = ['morning', 'afternoon'];
+
     public function __construct(
         private readonly JsonResponder $responder,
         private readonly ScopedByTerritory $scope,
         private readonly DailyAttendanceService $attendance,
+        private readonly PdoAttendanceCalls $calls,
+        private readonly DailyPresence $presence,
+        private readonly ClassRoster $classes,
+        private readonly AttendanceRegisterService $registers,
     ) {
     }
 
     public function record(ServerRequestInterface $request): ResponseInterface
     {
-        $principal = $request->getAttribute('principal');
-        if (!$principal instanceof Principal) {
-            throw HttpException::unauthorized();
-        }
-        $establishmentId = self::attribute($request, 'establishment_id');
-        $structureId = self::attribute($request, 'id');
-        $date = self::attribute($request, 'date');
+        $principal = RequestInput::principal($request);
+        $establishmentId = RequestInput::attribute($request, 'establishment_id');
+        $structureId = RequestInput::attribute($request, 'id');
+        $date = RequestInput::attribute($request, 'date');
         $perimeter = $this->scope->perimeter($principal, 'public_schools.attendance.write', $establishmentId);
         $this->scope->assertWritable($principal, $perimeter, $structureId, 'attendance_session', $structureId . ':' . $date);
 
-        $body = self::body($request);
+        $body = RequestInput::body($request);
         $dayPart = is_string($body['day_part'] ?? null) ? $body['day_part'] : '';
         $clientUuid = is_string($body['client_uuid'] ?? null) ? trim($body['client_uuid']) : '';
         $reason = is_string($body['reason'] ?? null) ? trim($body['reason']) : null;
@@ -64,6 +75,71 @@ final class AttendanceController
                 'note' => $mark->note,
             ], $session->marks),
         ]]);
+    }
+
+    /** État de l'appel d'une classe un jour donné : demi-journées faites ou manquantes, effectifs, et absents pour l'école. */
+    public function show(ServerRequestInterface $request): ResponseInterface
+    {
+        $principal = RequestInput::principal($request);
+        $establishmentId = RequestInput::attribute($request, 'establishment_id');
+        $structureId = RequestInput::attribute($request, 'id');
+        $date = self::date(RequestInput::attribute($request, 'date'));
+        $perimeter = $this->scope->perimeter($principal, 'public_schools.attendance.read', $establishmentId);
+        $this->scope->assertReadable($perimeter, $structureId);
+        $class = $this->classes->find($principal->tenantId, $establishmentId, $structureId);
+        if ($class === null) {
+            throw HttpException::notFound('Classe introuvable dans cet établissement.');
+        }
+
+        $byPart = [];
+        foreach ($this->calls->forDay($principal->tenantId, $establishmentId, $structureId, $date) as $call) {
+            $byPart[(string) $call['day_part']] = $call;
+        }
+        $parts = [];
+        foreach (self::DAY_PARTS as $part) {
+            $call = $byPart[$part] ?? null;
+            $entry = ['day_part' => $part, 'taken' => $call !== null];
+            if ($call !== null) {
+                $entry += [
+                    'headcount' => (int) $call['headcount'],
+                    'absent_count' => (int) $call['absent_count'],
+                    'late_count' => (int) $call['late_count'],
+                    'recorded_at' => (string) $call['recorded_at'],
+                    'corrected_at' => $call['corrected_at'],
+                ];
+                if ($perimeter->isInSchool()) {
+                    $entry['absent_person_ids'] = $this->presence->absentOn($principal->tenantId, $establishmentId, $date, $structureId, $part);
+                    $entry['correction_reason'] = $call['correction_reason'];
+                }
+            }
+            $parts[] = $entry;
+        }
+
+        return $this->responder->json(['data' => [
+            'structure_id' => $structureId,
+            'date' => $date,
+            'headcount' => $this->classes->headcount($principal->tenantId, $establishmentId, $structureId, $date),
+            'parts' => $parts,
+        ]]);
+    }
+
+    /** DOC-06 : données du cahier d'appel mensuel (`?month=AAAA-MM`), nominatives. */
+    public function register(ServerRequestInterface $request): ResponseInterface
+    {
+        $principal = RequestInput::principal($request);
+        $establishmentId = RequestInput::attribute($request, 'establishment_id');
+        $structureId = RequestInput::attribute($request, 'id');
+        $month = RequestInput::query($request, 'month');
+        if ($month === null) {
+            throw HttpException::validation(['month' => ['Mois au format AAAA-MM requis.']]);
+        }
+        $perimeter = $this->scope->perimeter($principal, 'public_schools.attendance.read', $establishmentId);
+        $this->scope->assertReadable($perimeter, $structureId);
+        if (!$perimeter->isInSchool()) {
+            throw HttpException::forbidden('Le cahier d’appel est nominatif : il n’est lisible que dans l’école.');
+        }
+
+        return $this->responder->json(['data' => $this->registers->month($principal->tenantId, $establishmentId, $structureId, $month)]);
     }
 
     /** @return list<array{person_id: string, status: string, arrived_at?: ?string, note?: ?string}> */
@@ -112,22 +188,13 @@ final class AttendanceController
         return $records;
     }
 
-    /** @return array<string, mixed> */
-    private static function body(ServerRequestInterface $request): array
+    private static function date(string $date): string
     {
-        $raw = trim((string) $request->getBody());
-        $body = $raw === '' ? [] : json_decode($raw, true);
-        if (!is_array($body)) {
-            throw HttpException::validation(['body' => ['JSON attendu.']]);
+        $parsed = \DateTimeImmutable::createFromFormat('!Y-m-d', $date);
+        if ($parsed === false || $parsed->format('Y-m-d') !== $date) {
+            throw HttpException::validation(['date' => ['Date au format AAAA-MM-JJ attendue.']]);
         }
 
-        return $body;
-    }
-
-    private static function attribute(ServerRequestInterface $request, string $name): string
-    {
-        $value = $request->getAttribute($name);
-
-        return is_string($value) && $value !== '' ? $value : throw HttpException::badRequest('Paramètre de route manquant.');
+        return $date;
     }
 }
