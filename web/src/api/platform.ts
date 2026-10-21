@@ -49,6 +49,8 @@ export interface AccessRequestInput {
   contact_position?: string;
   ministerial_authorization?: string;
   app_key: string;
+  /** Secondaire : obligatoire (leg, lycee_technique, ces, cetic, college_prive, lycee_prive, autre). */
+  establishment_subtype?: string;
   message?: string;
   locale?: 'fr' | 'en';
   /** Champ piège : jamais rempli par une personne. */

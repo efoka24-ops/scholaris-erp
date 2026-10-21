@@ -6,7 +6,8 @@ import { fetchPublicApplications, type PublicApplication } from '@/api/platform'
 import { useI18n } from '@/i18n';
 import { formatXaf } from '@/lib/format';
 import { appStatusKey, appStatusTone, sectorKey, targetKey } from './display';
-import { groupByLevel, useRegimePick } from './catalogGroups';
+import { SCHOOL_TYPES, groupByLevel, needsSchoolType, useRegimePick } from './catalogGroups';
+import type { MessageKey } from '@/i18n';
 
 // Catalogue public des applications — design : Main.html (tuiles), Fondations.html (étiquettes de statut).
 // Une carte par niveau (supérieur, maternelle, primaire, secondaire) ; le régime (privé ou public) désigne l'application demandée.
@@ -16,6 +17,8 @@ const loaded = ref(false);
 const error = ref<unknown>(null);
 const groups = computed(() => groupByLevel(items.value));
 const regime = useRegimePick<PublicApplication>();
+/** Secondaire : le type d'établissement (obligatoire) est choisi sur la carte puis repris par le formulaire de demande. */
+const subtype = ref('');
 
 onMounted(async () => {
   try {
@@ -53,7 +56,13 @@ onMounted(async () => {
                 <span>{{ t(sectorKey(r.sector)) }}</span>
               </label>
             </div>
-            <p v-else-if="group.level !== 'higher'" class="muted small">{{ t('pub.regime.only', { regime: t(sectorKey(regime.current(group).sector)) }) }}</p>
+            <div v-if="needsSchoolType(group.level)" class="field">
+              <label :for="'subtype-' + group.level">{{ t('pub.catalog.schoolType') }}</label>
+              <select :id="'subtype-' + group.level" v-model="subtype">
+                <option value="">{{ t('pub.req.chooseSchoolType') }}</option>
+                <option v-for="st in SCHOOL_TYPES" :key="st" :value="st">{{ t(('pub.schoolType.' + st) as MessageKey) }}</option>
+              </select>
+            </div>
             <p class="muted small">{{ t('pub.catalog.version', { version: regime.current(group).app.version }) }}</p>
             <ul class="app__facts">
               <li>{{ t('pub.catalog.trial', { days: regime.current(group).app.trial_days }) }}</li>
@@ -62,7 +71,7 @@ onMounted(async () => {
             <router-link
               v-if="regime.current(group).app.status === 'available'"
               class="btn btn--primary app__cta"
-              :to="{ name: 'access-request', query: { application: regime.current(group).app.key } }"
+              :to="{ name: 'access-request', query: needsSchoolType(group.level) && subtype !== '' ? { application: regime.current(group).app.key, subtype } : { application: regime.current(group).app.key } }"
               :aria-label="t('pub.catalog.requestNamed', { label: group.regimes.length > 1 ? group.label + ' (' + t(sectorKey(regime.current(group).sector)) + ')' : group.label })"
             >
               {{ t('pub.catalog.request') }} →

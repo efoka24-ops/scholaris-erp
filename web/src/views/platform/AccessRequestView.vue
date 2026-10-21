@@ -17,7 +17,7 @@ import {
 } from '@/api/platform';
 import { useI18n, type MessageKey } from '@/i18n';
 import { sectorKey, targetKey } from './display';
-import { SCHOOL_TYPES, groupByLevel, withSchoolType, type SchoolType } from './catalogGroups';
+import { SCHOOL_TYPES, groupByLevel, isSchoolType, needsSchoolType } from './catalogGroups';
 
 // Demande d'accès sans compte — design : Inscription.html (sections de formulaire, libellés 13 px, champs 44 px) et Login.html.
 // Protections : champ piège « website » caché, jamais rempli par une personne ; validation stricte côté serveur (422).
@@ -27,16 +27,16 @@ const router = useRouter();
 
 type Field =
   | 'institution_name' | 'target_type' | 'city' | 'region' | 'contact_first_name' | 'contact_last_name'
-  | 'contact_email' | 'contact_phone' | 'contact_position' | 'ministerial_authorization' | 'app_key' | 'message';
+  | 'contact_email' | 'contact_phone' | 'contact_position' | 'ministerial_authorization' | 'app_key' | 'establishment_subtype' | 'message';
 
 const ORDER: Field[] = [
   'institution_name', 'target_type', 'city', 'region', 'ministerial_authorization', 'contact_first_name', 'contact_last_name',
-  'contact_email', 'contact_phone', 'contact_position', 'app_key', 'message',
+  'contact_email', 'contact_phone', 'contact_position', 'app_key', 'establishment_subtype', 'message',
 ];
 
 const form = reactive<Record<Field, string>>({
   institution_name: '', target_type: '', city: '', region: '', contact_first_name: '', contact_last_name: '',
-  contact_email: '', contact_phone: '', contact_position: '', ministerial_authorization: '', app_key: '', message: '',
+  contact_email: '', contact_phone: '', contact_position: '', ministerial_authorization: '', app_key: '', establishment_subtype: '', message: '',
 });
 /** Champ piège : lié à un champ invisible ; une personne ne le remplit jamais. */
 const website = ref('');
@@ -56,24 +56,25 @@ const AUTHORIZATION = /^[\p{L}\p{N} /._°-]+$/u;
 const EMAIL = /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/;
 
 const appsForTarget = computed(() => groupByLevel(catalog.value.filter((a) => (a.family ?? a.target) === form.target_type))[0]?.regimes ?? []);
-/** Type d'établissement (secondaire) : consigné dans le message de la demande, sans colonne dédiée. */
-const schoolType = ref<SchoolType | ''>('');
-const chosenSector = computed(() => appsForTarget.value.find((r) => r.app.key === form.app_key)?.sector ?? null);
-const schoolTypes = computed<SchoolType[]>(() => (form.target_type === 'secondary' && chosenSector.value !== null ? SCHOOL_TYPES[chosenSector.value] : []));
-const fullMessage = (): string => withSchoolType(schoolType.value, form.message.trim());
+/** Secondaire : une seule application, le type d'établissement (obligatoire) la personnalise. */
+const regimeText = (r: (typeof appsForTarget.value)[number]): string => {
+  const name = appsForTarget.value.length > 1 ? t(sectorKey(r.sector)) : r.app.label;
+  return r.app.status === 'available' ? name : t('pub.req.soonSuffix', { label: name });
+};
+const askSchoolType = computed(() => needsSchoolType(form.target_type));
 
 watch(
   () => form.target_type,
   () => {
     if (!appsForTarget.value.some((r) => r.app.key === form.app_key)) {
       const available = appsForTarget.value.filter((r) => r.app.status === 'available');
-      form.app_key = available.length === 1 && available[0] ? available[0].app.key : '';
+      form.app_key = appsForTarget.value.length === 1 && appsForTarget.value[0] ? appsForTarget.value[0].app.key : available.length === 1 && available[0] ? available[0].app.key : '';
     }
   },
 );
 
-watch(schoolTypes, (list) => {
-  if (schoolType.value !== '' && !list.includes(schoolType.value)) schoolType.value = '';
+watch(askSchoolType, (asked) => {
+  if (!asked) form.establishment_subtype = '';
 });
 
 onMounted(async () => {
@@ -89,6 +90,8 @@ onMounted(async () => {
     await nextTick();
     form.app_key = app.key;
   }
+  const subtype = typeof route.query.subtype === 'string' ? route.query.subtype : '';
+  if (isSchoolType(subtype) && form.target_type === 'secondary') form.establishment_subtype = subtype;
 });
 
 const clean = (v: string): string => v.replace(/\s+/g, ' ').trim();
@@ -113,7 +116,8 @@ function validate(): Partial<Record<Field, string>> {
   const position = clean(form.contact_position);
   if (position !== '' && !between(position, 2, 80)) e.contact_position = msg('pub.req.err.position');
   if (form.app_key === '') e.app_key = msg('pub.req.err.app');
-  if (fullMessage().length > 2000) e.message = msg('pub.req.err.message');
+  if (askSchoolType.value && !isSchoolType(form.establishment_subtype)) e.establishment_subtype = msg('pub.req.err.schoolType');
+  if (form.message.trim().length > 2000) e.message = msg('pub.req.err.message');
   return e;
 }
 
@@ -137,7 +141,8 @@ function payload(): AccessRequestInput {
     contact_position: opt(form.contact_position),
     ministerial_authorization: opt(form.ministerial_authorization),
     app_key: form.app_key,
-    message: fullMessage() === '' ? undefined : fullMessage(),
+    establishment_subtype: askSchoolType.value ? form.establishment_subtype : undefined,
+    message: form.message.trim() === '' ? undefined : form.message.trim(),
     locale: locale.value,
   };
   // Le champ piège n'est transmis que s'il a été rempli (par un robot) : le serveur répond alors par un leurre.
@@ -190,7 +195,6 @@ function selectToken(event: Event): void {
 function restart(): void {
   receipt.value = null;
   for (const f of ORDER) form[f] = '';
-  schoolType.value = '';
   errors.value = {};
 }
 
@@ -308,24 +312,25 @@ const describedBy = (f: Field, hint = false): string | undefined => [hint ? `ar-
         <fieldset class="card">
           <legend class="h3">{{ t('pub.req.section.app') }}</legend>
           <fieldset class="field regime-field">
-            <legend>{{ t('pub.req.regime') }}</legend>
+            <legend>{{ appsForTarget.length > 1 ? t('pub.req.regime') : t('pub.req.app') }}</legend>
             <div class="regimes" role="radiogroup" :aria-describedby="describedBy('app_key', true)">
               <label v-for="(r, i) in appsForTarget" :key="r.app.key" class="regime" :class="{ 'regime--on': form.app_key === r.app.key }">
                 <input :id="i === 0 ? 'ar-app_key' : undefined" v-model="form.app_key" type="radio" name="ar-regime" :value="r.app.key" :aria-invalid="!!errors.app_key" />
-                <span>{{ r.app.status === 'available' ? t(sectorKey(r.sector)) : t('pub.req.soonSuffix', { label: t(sectorKey(r.sector)) }) }}</span>
-                <span class="muted small">{{ r.app.label }}</span>
+                <span>{{ regimeText(r) }}</span>
+                <span v-if="appsForTarget.length > 1" class="muted small">{{ r.app.label }}</span>
               </label>
             </div>
-            <span id="ar-app_key-hint" class="hint">{{ form.target_type === '' ? t('pub.req.chooseTargetFirst') : appsForTarget.length === 0 ? t('pub.req.noAppForTarget') : t('pub.req.regimeHint') }}</span>
+            <span id="ar-app_key-hint" class="hint">{{ form.target_type === '' ? t('pub.req.chooseTargetFirst') : appsForTarget.length === 0 ? t('pub.req.noAppForTarget') : (appsForTarget.length > 1 ? t('pub.req.regimeHint') : '') }}</span>
             <span v-if="errors.app_key" id="ar-app_key-err" class="error">{{ errors.app_key }}</span>
           </fieldset>
-          <div v-if="schoolTypes.length > 0" class="field">
-            <label for="ar-school_type">{{ t('pub.req.schoolType') }}</label>
-            <select id="ar-school_type" v-model="schoolType">
-              <option value="">{{ t('pub.req.chooseSchoolType') }}</option>
-              <option v-for="st in schoolTypes" :key="st" :value="st">{{ t(('pub.schoolType.' + st) as MessageKey) }}</option>
+          <div v-if="askSchoolType" class="field">
+            <label for="ar-establishment_subtype">{{ t('pub.req.schoolType') }}</label>
+            <select id="ar-establishment_subtype" v-model="form.establishment_subtype" required :aria-invalid="!!errors.establishment_subtype" :aria-describedby="describedBy('establishment_subtype', true)">
+              <option value="" disabled>{{ t('pub.req.chooseSchoolType') }}</option>
+              <option v-for="st in SCHOOL_TYPES" :key="st" :value="st">{{ t(('pub.schoolType.' + st) as MessageKey) }}</option>
             </select>
-            <span class="hint">{{ t('pub.req.schoolTypeHint') }}</span>
+            <span id="ar-establishment_subtype-hint" class="hint">{{ t('pub.req.schoolTypeHint') }}</span>
+            <span v-if="errors.establishment_subtype" id="ar-establishment_subtype-err" class="error">{{ errors.establishment_subtype }}</span>
           </div>
           <div class="field">
             <label for="ar-message">{{ t('pub.req.message') }}</label>

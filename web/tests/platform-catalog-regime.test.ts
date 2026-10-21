@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import PublicCatalogView from '@/views/platform/PublicCatalogView.vue';
 import AccessRequestView from '@/views/platform/AccessRequestView.vue';
 import MyApplicationsView from '@/views/platform/MyApplicationsView.vue';
-import { groupByLevel, withSchoolType } from '@/views/platform/catalogGroups';
+import { groupByLevel } from '@/views/platform/catalogGroups';
 import type { PublicApplication } from '@/api/platform';
 import { flushPromises, freshEnvironment, jsonResponse, mockApi, mountView, signIn, teacherMe } from './helpers';
 
@@ -47,12 +47,6 @@ describe('catalogue par niveau et par régime', () => {
     expect(groups[0]?.regimes[0]?.sector).toBe('private');
   });
 
-  it('consigne le type d\'établissement avant le message', () => {
-    expect(withSchoolType('cetic', '')).toBe('Type d\'établissement : CETIC (collège d\'enseignement technique et commercial)');
-    expect(withSchoolType('college', 'Bonjour')).toBe('Type d\'établissement : Collège\nBonjour');
-    expect(withSchoolType('', 'Bonjour')).toBe('Bonjour');
-  });
-
   it('page Catalogue : une carte par niveau, le régime choisi change prix, statut et clé demandée', async () => {
     mockApi({ 'GET /public/applications': { data: catalog } });
     const { wrapper } = await mountView(PublicCatalogView, {}, '/applications-disponibles');
@@ -95,24 +89,47 @@ describe('catalogue par niveau et par régime', () => {
     expect(wrapper.find('#ar-school_type').exists()).toBe(false);
   });
 
-  it('demande d\'accès : secondaire, le type d\'établissement est consigné dans le message', async () => {
-    const withPublic = [...catalog, app('public_secondary', 'secondary', 'public', 'Enseignement secondaire')];
-    const calls = mockApi({ 'GET /public/applications': { data: withPublic }, 'POST /public/access-requests': receipt });
+  it('demande d\'accès : secondaire = une seule application, type d\'établissement obligatoire et envoyé en champ structuré', async () => {
+    const calls = mockApi({ 'GET /public/applications': { data: catalog }, 'POST /public/access-requests': receipt });
     const { wrapper } = await mountView(AccessRequestView, {}, '/demande-acces');
     await wrapper.get('#ar-target_type').setValue('secondary');
     await flushPromises(2);
-    await wrapper.findAll('input[name="ar-regime"]')[1]!.setValue(true);
-    await flushPromises(2);
-    const options = wrapper.findAll('#ar-school_type option').map((o) => o.text()).join('|');
-    expect(options).toContain('Lycée technique');
-    expect(options).toContain('CETIC');
-    await wrapper.get('#ar-school_type').setValue('technical');
+    expect(wrapper.findAll('input[name="ar-regime"]')).toHaveLength(1); // une seule application : pas de choix de régime
+    expect(wrapper.get('.regime-field').text()).not.toContain('Privé');
+    const options = wrapper.findAll('#ar-establishment_subtype option').map((o) => o.text()).join('|');
+    for (const label of ['Lycée d\'enseignement général', 'Lycée technique', 'CES', 'CETIC', 'Collège privé', 'Lycée privé', 'Autre']) expect(options).toContain(label);
     await fillIdentity(wrapper, 'Lycée de Maroua', 'Maroua', 'Extrême-Nord');
     await wrapper.get('#ar-message').setValue('Effectif : 800 élèves');
     await wrapper.get('form').trigger('submit');
+    await flushPromises(2);
+    expect(calls.some((c) => c.method === 'POST')).toBe(false); // type manquant : aucun envoi
+    expect(wrapper.get('#ar-establishment_subtype-err').text()).toContain('type d\'établissement');
+    await wrapper.get('#ar-establishment_subtype').setValue('lycee_technique');
+    await wrapper.get('form').trigger('submit');
     await flushPromises();
     const post = calls.find((c) => c.method === 'POST');
-    expect(post?.body).toMatchObject({ app_key: 'public_secondary', message: 'Type d\'établissement : Lycée technique\nEffectif : 800 élèves' });
+    expect(post?.body).toMatchObject({ app_key: 'secondary', establishment_subtype: 'lycee_technique', message: 'Effectif : 800 élèves' });
+  });
+
+  it('demande d\'accès : le type d\'établissement n\'est pas demandé hors secondaire', async () => {
+    const calls = mockApi({ 'GET /public/applications': { data: catalog }, 'POST /public/access-requests': receipt });
+    const { wrapper } = await mountView(AccessRequestView, {}, '/demande-acces');
+    await wrapper.get('#ar-target_type').setValue('higher');
+    await flushPromises(2);
+    expect(wrapper.find('#ar-establishment_subtype').exists()).toBe(false);
+    await fillIdentity(wrapper, 'IPES Test', 'Douala', 'Littoral');
+    await wrapper.get('form').trigger('submit');
+    await flushPromises();
+    expect(calls.find((c) => c.method === 'POST')?.body).not.toHaveProperty('establishment_subtype');
+  });
+
+  it('page Catalogue : la carte du secondaire demande le type d\'établissement, sans choix de régime', async () => {
+    mockApi({ 'GET /public/applications': { data: catalog } });
+    const { wrapper } = await mountView(PublicCatalogView, {}, '/applications-disponibles');
+    const secondary = wrapper.get('article[data-level="secondary"]');
+    expect(secondary.findAll('input[type="radio"]')).toHaveLength(0);
+    expect(secondary.find('select').exists()).toBe(true);
+    expect(wrapper.get('article[data-level="primary"]').find('select').exists()).toBe(false);
   });
 
   it('Mes applications : le catalogue client est regroupé par niveau avec choix du régime', async () => {

@@ -73,30 +73,10 @@ export function useRegimePick<T extends Leveled>() {
   };
 }
 
-// --- Type d'établissement du secondaire (consigné dans le message de la demande, sans colonne dédiée) ---
-export type SchoolType = 'leg' | 'technical' | 'ces' | 'cetic' | 'college' | 'lycee' | 'other';
+// --- Type d'établissement du secondaire : application unique, le type la personnalise (liste fermée, codes du serveur) ---
+export const SCHOOL_TYPES = ['leg', 'lycee_technique', 'ces', 'cetic', 'college_prive', 'lycee_prive', 'autre'] as const;
+export type SchoolType = (typeof SCHOOL_TYPES)[number];
 
-export const SCHOOL_TYPES: Record<Sector, SchoolType[]> = {
-  public: ['leg', 'technical', 'ces', 'cetic', 'other'],
-  private: ['college', 'lycee', 'other'],
-};
-
-/** Libellés enregistrés dans le message : lus par l'administrateur de plateforme, donc toujours en français. */
-export const SCHOOL_TYPE_FR: Record<SchoolType, string> = {
-  leg: "Lycée d'enseignement général",
-  technical: 'Lycée technique',
-  ces: "CES (collège d'enseignement secondaire)",
-  cetic: "CETIC (collège d'enseignement technique et commercial)",
-  college: 'Collège',
-  lycee: 'Lycée',
-  other: 'Autre',
-};
-
-export const SCHOOL_TYPE_PREFIX = "Type d'établissement : ";
-
-/** Message de la demande précédé du type d'établissement choisi (secondaire). */
-export function withSchoolType(type: SchoolType | '', message: string): string {
-  if (type === '') return message;
-  const line = SCHOOL_TYPE_PREFIX + SCHOOL_TYPE_FR[type];
-  return message === '' ? line : `${line}\n${message}`;
-}
+/** Le type d'établissement est demandé (et obligatoire) pour le secondaire seulement. */
+export const needsSchoolType = (level: string): boolean => level === 'secondary';
+export const isSchoolType = (v: string): v is SchoolType => (SCHOOL_TYPES as readonly string[]).includes(v);

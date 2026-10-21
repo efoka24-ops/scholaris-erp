@@ -200,7 +200,7 @@ onMounted(load);
             <div class="row row--between">
               <div>
                 <h3 class="name">{{ app.label }}</h3>
-                <p class="muted small">{{ t(targetKey(app.target)) }}<template v-if="app.target && app.target !== 'higher'"> · {{ t(sectorKey(app.sector ?? 'private')) }}</template><template v-if="establishmentsOf(app)"> · {{ t('apps.for', { names: establishmentsOf(app) }) }}</template></p>
+                <p class="muted small">{{ t(targetKey(app.target)) }}<template v-if="app.target === 'nursery' || app.target === 'primary'"> · {{ t(sectorKey(app.sector ?? 'private')) }}</template><template v-if="establishmentsOf(app)"> · {{ t('apps.for', { names: establishmentsOf(app) }) }}</template></p>
               </div>
               <span class="tag" :class="stateTone(app.state) ? `tag--${stateTone(app.state)}` : app.state === 'trial' ? 'tag--accent' : ''">{{ t(stateKey(app.state)) }}</span>
             </div>
@@ -324,7 +324,7 @@ onMounted(load);
                 <span>{{ t(sectorKey(r.sector)) }}</span>
               </label>
             </div>
-            <p v-else-if="group.level !== 'higher'" class="muted small">{{ t('pub.regime.only', { regime: t(sectorKey(regime.current(group).sector)) }) }}</p>
+
             <p class="muted small">{{ t('pub.catalog.trial', { days: app.trial_days }) }} · {{ t('pub.catalog.price', { amount: formatXaf(app.monthly_price_xaf, locale) }) }}</p>
             <template v-if="app.status === 'available'">
               <template v-if="actionable">
