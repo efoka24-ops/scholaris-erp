@@ -22,7 +22,7 @@ final class AccessRequestTest extends PlatformTestCase
 
         self::assertSame(200, $response->getStatusCode());
         $keys = array_column($json['data'], 'key');
-        self::assertSame(['higher', 'nursery', 'primary', 'public_nursery', 'public_primary', 'public_schools', 'secondary'], $keys);
+        self::assertSame(['higher', 'nursery', 'public_nursery', 'primary', 'public_primary', 'secondary'], $keys, 'Par niveau puis régime ; le module commun public_schools n\'est pas un produit.');
         $available = array_column(array_filter($json['data'], static fn (array $app): bool => $app['status'] === 'available'), 'key');
         self::assertSame(['higher'], $available, 'Les applications publiques restent « bientôt » tant qu\'elles ne sont pas terminées (T610).');
         self::assertSame(60000, $json['data'][0]['monthly_price_xaf']);

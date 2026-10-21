@@ -70,7 +70,7 @@ final class AccessRequestService
         $this->hit('platform.access_request.email|' . (string) $data['contact_email'], self::LIMIT_PER_EMAIL, 86400);
 
         $app = $this->catalog->find((string) $data['app_key']);
-        if ($app === null || $app['status'] === 'retired') {
+        if ($app === null || $app['status'] === 'retired' || $app['listed'] !== true) {
             throw HttpException::validation(['app_key' => ['Application inconnue ou retirée.']]);
         }
         if ($app['target'] !== $data['target_type']) {

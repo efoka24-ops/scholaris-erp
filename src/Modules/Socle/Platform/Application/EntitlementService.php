@@ -66,6 +66,9 @@ final class EntitlementService
         $app = $this->catalog->findOrFail($appKey);
         $status = (string) $app['status'];
         $forced = false;
+        if ($source === self::SOURCE_SELF_SERVICE && $app['listed'] !== true) {
+            throw HttpException::validation(['app_key' => ['Cette application n\'est pas proposée au catalogue.']], 'Application non disponible.');
+        }
         if ($source === self::SOURCE_PLATFORM) {
             // Ouverture directe par l'administrateur de plateforme : application disponible ou à venir (règle inchangée).
             if (!in_array($status, [ApplicationManifest::AVAILABLE, ApplicationManifest::COMING_SOON], true)) {
@@ -213,6 +216,7 @@ final class EntitlementService
             'app_key' => (string) $row['app_key'],
             'label' => $app['label'] ?? (string) $row['app_key'],
             'target' => $app['target'] ?? null,
+            'sector' => $app['sector'] ?? 'private',
             'state' => $state,
             'source' => (string) $row['source'],
             'started_on' => (string) $row['started_on'],

@@ -21,6 +21,9 @@ final class ApplicationManifest
     public const COMING_SOON = 'coming_soon';
     public const RETIRED = 'retired';
     public const STATUSES = [self::AVAILABLE, self::COMING_SOON, self::RETIRED];
+    public const PRIVATE = 'private';
+    public const PUBLIC = 'public';
+    public const SECTORS = [self::PRIVATE, self::PUBLIC];
     public const TARGETS = ['higher', 'secondary', 'primary', 'nursery'];
 
     /** @param list<string> $requiredModules modules du socle à activer pour les établissements de la cible */
@@ -36,12 +39,16 @@ final class ApplicationManifest
         public readonly int $monthlyPriceXaf = 60000,
         public readonly int $trialDays = 90,
         public readonly int $graceDays = 15,
+        /** régime de l'application pour son niveau : private ou public (présentation du catalogue) */
+        public readonly string $sector = self::PRIVATE,
+        /** false : application technique qui n'est pas un produit (module commun), absente des catalogues */
+        public readonly bool $listed = true,
     ) {
         if (preg_match('/^[a-z][a-z0-9_]{1,19}$/', $key) !== 1) {
             throw new InvalidArgumentException('Clé d\'application invalide : ' . $key);
         }
-        if (!in_array($target, self::TARGETS, true) || !in_array($status, self::STATUSES, true)) {
-            throw new InvalidArgumentException('Cible ou statut d\'application invalide pour ' . $key);
+        if (!in_array($target, self::TARGETS, true) || !in_array($status, self::STATUSES, true) || !in_array($sector, self::SECTORS, true)) {
+            throw new InvalidArgumentException('Cible, statut ou régime d\'application invalide pour ' . $key);
         }
         if ($monthlyPriceXaf < 0 || $trialDays < 0 || $graceDays < 0) {
             throw new InvalidArgumentException('Tarif, essai et délai de grâce sont des entiers positifs.');

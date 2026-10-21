@@ -6,11 +6,31 @@
 paths:
   /api/v1/public/applications:
     get:
-      summary: "Catalogue public : applications disponibles ou annoncées (clé, libellé, cible, statut, tarif mensuel XAF, jours d'essai)"
+      summary: "Catalogue public : une application par niveau (family : higher, nursery, primary, secondary) et par régime (sector : private, public). Champs : clé, libellé, cible (= family), régime, statut, tarif mensuel XAF, jours d'essai"
       security: []
       responses:
         '200':
-          description: "Liste des applications (les applications retirées sont exclues)"
+          description: "Liste des applications, par niveau (higher, nursery, primary, secondary) puis privé avant public ; les applications retirées et non listées (module commun public_schools) sont exclues"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      required: [key, label, target, family, sector, status, version, monthly_price_xaf, trial_days]
+                      properties:
+                        key: {type: string, description: "Clé technique de l'application à ouvrir pour ce régime"}
+                        label: {type: string, description: "Libellé du niveau, sans le régime (ex. École primaire)"}
+                        target: {type: string, enum: [higher, secondary, primary, nursery]}
+                        family: {type: string, enum: [higher, secondary, primary, nursery], description: "Niveau (identique à target)"}
+                        sector: {type: string, enum: [private, public]}
+                        status: {type: string, enum: [available, coming_soon]}
+                        version: {type: string}
+                        monthly_price_xaf: {type: integer}
+                        trial_days: {type: integer}
   /api/v1/public/access-requests:
     post:
       summary: "Demande d'accès sans compte. Limitation : 5 par heure et par IP, 3 par jour et par e-mail ; champ piège `website` ; champs inconnus refusés"
@@ -35,7 +55,7 @@ paths:
                 contact_phone: {type: string, description: "Format international, 8 à 15 chiffres"}
                 contact_position: {type: string, maxLength: 80}
                 ministerial_authorization: {type: string, maxLength: 120, description: "Référence de l'autorisation ministérielle, facultative"}
-                app_key: {type: string, description: "Application demandée ; sa cible doit être target_type"}
+                app_key: {type: string, description: "Application du régime choisi (privé ou public) ; sa cible doit être target_type ; refusée (422) si retirée ou non listée (public_schools). Pour le secondaire, le type d'établissement précisé est consigné dans message"}
                 message: {type: string, maxLength: 2000}
                 locale: {type: string, enum: [fr, en]}
                 website: {type: string, description: "Champ piège : doit rester vide (réponse leurre sinon)"}
@@ -111,7 +131,7 @@ paths:
           description: "Réservé à l'administrateur de plateforme"
   /api/v1/platform/applications:
     get:
-      summary: "Catalogue complet (y compris retirées), modules du socle requis, tarif, essai, délai de grâce"
+      summary: "Catalogue complet (y compris retirées et non listées), modules du socle requis, tarif, essai, délai de grâce, régime (sector), famille (family) et listed (false : application technique absente des catalogues)"
       security:
         - bearer: []
       responses:
@@ -488,7 +508,7 @@ paths:
           description: "Corps invalide"
   /api/v1/me/applications:
     get:
-      summary: "Lanceur : applications ouvertes aux établissements de l'utilisateur (état, jours d'essai restants, échéance) ; meta.catalog : applications non ouvertes"
+      summary: "Lanceur : applications ouvertes aux établissements de l'utilisateur (état, jours d'essai restants, échéance) ; meta.catalog : applications listées non ouvertes, avec family et sector, par niveau puis régime"
       security:
         - bearer: []
       responses:

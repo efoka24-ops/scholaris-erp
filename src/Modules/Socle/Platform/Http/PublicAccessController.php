@@ -32,16 +32,13 @@ final class PublicAccessController
     ) {
     }
 
-    /** GET /public/applications : applications disponibles ou annoncées (jamais les retirées). */
+    /** GET /public/applications : applications disponibles ou annoncées (jamais les retirées ni les non listées), par niveau puis régime. */
     public function applications(ServerRequestInterface $request): ResponseInterface
     {
         $items = [];
-        foreach ($this->catalog->all() as $app) {
-            if ($app['status'] === ApplicationManifest::RETIRED) {
-                continue;
-            }
+        foreach ($this->catalog->listed() as $app) {
             $items[] = [
-                'key' => $app['key'], 'label' => $app['label'], 'target' => $app['target'], 'status' => $app['status'], 'version' => $app['version'],
+                'key' => $app['key'], 'label' => $app['label'], 'target' => $app['target'], 'family' => $app['family'], 'sector' => $app['sector'], 'status' => $app['status'], 'version' => $app['version'],
                 'monthly_price_xaf' => $app['monthly_price_xaf'], 'trial_days' => $app['trial_days'],
             ];
         }

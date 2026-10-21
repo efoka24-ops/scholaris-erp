@@ -16,6 +16,8 @@ use Scholaris\Modules\Socle\Platform\Infrastructure\PlatformDb;
 final class Catalog
 {
     public const PREFIX = 'platform.applications.';
+    /** Ordre d'affichage des niveaux. */
+    public const LEVELS = ['higher', 'nursery', 'primary', 'secondary'];
 
     /** @var array<string, array<string, mixed>>|null */
     private ?array $cache = null;
@@ -31,6 +33,25 @@ final class Catalog
     public function all(): array
     {
         return array_values($this->load());
+    }
+
+    /**
+     * Applications présentées aux utilisateurs (catalogue public, catalogue client, choix d'une demande d'accès) : ni les
+     * retirées ni les non listées (module commun), par niveau (supérieur, maternelle, primaire, secondaire) puis le privé
+     * avant le public.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function listed(): array
+    {
+        $apps = array_values(array_filter(
+            $this->load(),
+            static fn (array $app): bool => $app['listed'] === true && $app['status'] !== ApplicationManifest::RETIRED,
+        ));
+        $rank = static fn (array $app): array => [array_search($app['family'], self::LEVELS, true), $app['sector'] === ApplicationManifest::PUBLIC ? 1 : 0, $app['key']];
+        usort($apps, static fn (array $a, array $b): int => $rank($a) <=> $rank($b));
+
+        return $apps;
     }
 
     /** @return array<string, mixed>|null */
@@ -67,6 +88,8 @@ final class Catalog
                 'monthly_price_xaf' => (int) ($values['monthly_price_xaf'] ?? $app['monthly_price_xaf']),
                 'trial_days' => (int) ($values['trial_days'] ?? $app['trial_days']),
                 'grace_days' => (int) ($values['grace_days'] ?? $app['grace_days']),
+                'sector' => (string) $app['sector'],
+                'listed' => $app['listed'] === true ? 1 : 0,
                 'created_at' => $now,
                 'updated_at' => $now,
             ]);
@@ -98,6 +121,9 @@ final class Catalog
                 'monthly_price_xaf' => (int) $row['monthly_price_xaf'],
                 'trial_days' => (int) $row['trial_days'],
                 'grace_days' => (int) $row['grace_days'],
+                'sector' => (string) $row['sector'] === ApplicationManifest::PUBLIC ? ApplicationManifest::PUBLIC : ApplicationManifest::PRIVATE,
+                'listed' => (int) $row['listed'] === 1,
+                'family' => (string) $row['target_type'],
             ];
         }
         foreach ($this->manifests() as $manifest) {
@@ -112,6 +138,9 @@ final class Catalog
                 'monthly_price_xaf' => $known['monthly_price_xaf'] ?? $manifest->monthlyPriceXaf,
                 'trial_days' => $known['trial_days'] ?? $manifest->trialDays,
                 'grace_days' => $known['grace_days'] ?? $manifest->graceDays,
+                'sector' => $known['sector'] ?? $manifest->sector,
+                'listed' => $known['listed'] ?? $manifest->listed,
+                'family' => $manifest->target,
             ];
         }
         ksort($apps);

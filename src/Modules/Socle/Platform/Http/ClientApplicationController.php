@@ -15,7 +15,6 @@ use Scholaris\Modules\Socle\Platform\Application\Catalog;
 use Scholaris\Modules\Socle\Platform\Application\EntitlementService;
 use Scholaris\Modules\Socle\Platform\Application\SubscriptionPayments;
 use Scholaris\Modules\Socle\Platform\Contracts\ApplicationAccess;
-use Scholaris\Modules\Socle\Platform\Contracts\ApplicationManifest;
 
 /**
  * Côté client : lanceur d'applications de l'utilisateur, ouverture en libre-service (essai gratuit), paiement de
@@ -56,9 +55,9 @@ final class ClientApplicationController
         }
 
         $others = [];
-        foreach ($this->catalog->all() as $app) {
-            if ($app['status'] !== ApplicationManifest::RETIRED && !in_array($app['key'], $openKeys, true)) {
-                $others[] = ['key' => $app['key'], 'label' => $app['label'], 'target' => $app['target'], 'status' => $app['status'], 'monthly_price_xaf' => $app['monthly_price_xaf'], 'trial_days' => $app['trial_days']];
+        foreach ($this->catalog->listed() as $app) {
+            if (!in_array($app['key'], $openKeys, true)) {
+                $others[] = ['key' => $app['key'], 'label' => $app['label'], 'target' => $app['target'], 'family' => $app['family'], 'sector' => $app['sector'], 'status' => $app['status'], 'monthly_price_xaf' => $app['monthly_price_xaf'], 'trial_days' => $app['trial_days']];
             }
         }
 
