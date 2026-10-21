@@ -15,3 +15,25 @@ paths:
         '401': { description: Authentification requise }
         '403': { description: Permission insuffisante }
         '404': { description: Territoire hors périmètre ou introuvable }
+
+  /api/v1/public/territories/{id}/schools/{school}/pupils:
+    get:
+      summary: "Élèves d’une école de l’arrondissement (nominatif, finalité obligatoire, journalisé)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: school
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: "Succès : enveloppe JSON {data}" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission insuffisante ou application non ouverte au rôle" }
+        '404': { description: "Ressource inconnue, hors client, hors arrondissement ou hors classe (isolation)" }
+        '422': { description: "Paramètre invalide" }

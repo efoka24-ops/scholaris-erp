@@ -7,4 +7,5 @@ use Scholaris\Modules\Apps\PublicSchools\Territory\Http\TerritorySchoolsControll
 
 return static function (PublicRoutes $routes): void {
     $routes->get('/territories/{id}/schools', [TerritorySchoolsController::class, 'index']);
+    $routes->get('/territories/{id}/schools/{school}/pupils', [TerritorySchoolsController::class, 'pupils']);
 };

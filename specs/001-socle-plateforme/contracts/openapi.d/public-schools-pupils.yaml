@@ -57,3 +57,392 @@ paths:
         '200': { description: Classe et profil pédagogique }
         '401': { description: Authentification requise }
         '404': { description: Classe hors périmètre ou inconnue }
+    patch:
+      summary: "Modifier le profil pédagogique d’une classe"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: "Succès : enveloppe JSON {data}" }
+        '400': { description: "Requête invalide (JSON illisible)" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission insuffisante ou application non ouverte au rôle" }
+        '404': { description: "Ressource inconnue, hors client, hors arrondissement ou hors classe (isolation)" }
+        '409': { description: "Conflit d’état (version close, doublon, transition interdite)" }
+        '422': { description: "Données invalides ou règle métier (RFC 9457, errors par champ)" }
+        '423': { description: "Application en lecture seule (écriture fermée)" }
+  /api/v1/public/classes/distribution-proposal:
+    get:
+      summary: "Répartition proposée des élèves en classes (suggestion)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200': { description: "Succès : enveloppe JSON {data}" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission insuffisante ou application non ouverte au rôle" }
+        '404': { description: "Ressource inconnue, hors client, hors arrondissement ou hors classe (isolation)" }
+        '422': { description: "Paramètre invalide" }
+  /api/v1/public/classes/{id}/homeroom:
+    put:
+      summary: "Affecter le titulaire daté d’une classe"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: "Succès : enveloppe JSON {data}" }
+        '400': { description: "Requête invalide (JSON illisible)" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission insuffisante ou application non ouverte au rôle" }
+        '404': { description: "Ressource inconnue, hors client, hors arrondissement ou hors classe (isolation)" }
+        '409': { description: "Conflit d’état (version close, doublon, transition interdite)" }
+        '422': { description: "Données invalides ou règle métier (RFC 9457, errors par champ)" }
+        '423': { description: "Application en lecture seule (écriture fermée)" }
+  /api/v1/public/classes/{id}/homeroom-history:
+    get:
+      summary: "Historique des titulaires d’une classe"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: "Succès : enveloppe JSON {data}" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission insuffisante ou application non ouverte au rôle" }
+        '404': { description: "Ressource inconnue, hors client, hors arrondissement ou hors classe (isolation)" }
+        '422': { description: "Paramètre invalide" }
+  /api/v1/public/classes/{id}/headcount:
+    get:
+      summary: "Effectifs par sexe et âge, alerte de seuil"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: "Succès : enveloppe JSON {data}" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission insuffisante ou application non ouverte au rôle" }
+        '404': { description: "Ressource inconnue, hors client, hors arrondissement ou hors classe (isolation)" }
+        '422': { description: "Paramètre invalide" }
+  /api/v1/public/pupils:
+    post:
+      summary: "Inscrire un élève (doublons et avertissements signalés)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '201': { description: "Succès : enveloppe JSON {data}" }
+        '400': { description: "Requête invalide (JSON illisible)" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission insuffisante ou application non ouverte au rôle" }
+        '404': { description: "Ressource inconnue, hors client, hors arrondissement ou hors classe (isolation)" }
+        '409': { description: "Conflit d’état (version close, doublon, transition interdite)" }
+        '422': { description: "Données invalides ou règle métier (RFC 9457, errors par champ)" }
+        '423': { description: "Application en lecture seule (écriture fermée)" }
+  /api/v1/public/pupils/without-birth-act:
+    get:
+      summary: "Liste trimestrielle des élèves sans acte de naissance"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200': { description: "Succès : enveloppe JSON {data}" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission insuffisante ou application non ouverte au rôle" }
+        '404': { description: "Ressource inconnue, hors client, hors arrondissement ou hors classe (isolation)" }
+        '422': { description: "Paramètre invalide" }
+  /api/v1/public/pupils/without-birth-act/transmissions:
+    post:
+      summary: "Journaliser la transmission de la liste sans acte"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '201': { description: "Succès : enveloppe JSON {data}" }
+        '400': { description: "Requête invalide (JSON illisible)" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission insuffisante ou application non ouverte au rôle" }
+        '404': { description: "Ressource inconnue, hors client, hors arrondissement ou hors classe (isolation)" }
+        '409': { description: "Conflit d’état (version close, doublon, transition interdite)" }
+        '422': { description: "Données invalides ou règle métier (RFC 9457, errors par champ)" }
+        '423': { description: "Application en lecture seule (écriture fermée)" }
+    get:
+      summary: "Transmissions déjà journalisées"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200': { description: "Succès : enveloppe JSON {data}" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission insuffisante ou application non ouverte au rôle" }
+        '404': { description: "Ressource inconnue, hors client, hors arrondissement ou hors classe (isolation)" }
+        '422': { description: "Paramètre invalide" }
+  /api/v1/public/pupils/{id}:
+    get:
+      summary: "Lire le dossier d’un élève (consultation nominative journalisée)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: "Succès : enveloppe JSON {data}" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission insuffisante ou application non ouverte au rôle" }
+        '404': { description: "Ressource inconnue, hors client, hors arrondissement ou hors classe (isolation)" }
+        '422': { description: "Paramètre invalide" }
+    patch:
+      summary: "Modifier le dossier d’un élève et ses situations particulières"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: "Succès : enveloppe JSON {data}" }
+        '400': { description: "Requête invalide (JSON illisible)" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission insuffisante ou application non ouverte au rôle" }
+        '404': { description: "Ressource inconnue, hors client, hors arrondissement ou hors classe (isolation)" }
+        '409': { description: "Conflit d’état (version close, doublon, transition interdite)" }
+        '422': { description: "Données invalides ou règle métier (RFC 9457, errors par champ)" }
+        '423': { description: "Application en lecture seule (écriture fermée)" }
+  /api/v1/public/transfers:
+    post:
+      summary: "Demander un transfert"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '201': { description: "Succès : enveloppe JSON {data}" }
+        '400': { description: "Requête invalide (JSON illisible)" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission insuffisante ou application non ouverte au rôle" }
+        '404': { description: "Ressource inconnue, hors client, hors arrondissement ou hors classe (isolation)" }
+        '409': { description: "Conflit d’état (version close, doublon, transition interdite)" }
+        '422': { description: "Données invalides ou règle métier (RFC 9457, errors par champ)" }
+        '423': { description: "Application en lecture seule (écriture fermée)" }
+    get:
+      summary: "Lister les transferts entrants et sortants"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200': { description: "Succès : enveloppe JSON {data}" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission insuffisante ou application non ouverte au rôle" }
+        '404': { description: "Ressource inconnue, hors client, hors arrondissement ou hors classe (isolation)" }
+        '422': { description: "Paramètre invalide" }
+  /api/v1/public/transfers/{id}:
+    get:
+      summary: "Lire un transfert visible de l’établissement"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: "Succès : enveloppe JSON {data}" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission insuffisante ou application non ouverte au rôle" }
+        '404': { description: "Ressource inconnue, hors client, hors arrondissement ou hors classe (isolation)" }
+        '422': { description: "Paramètre invalide" }
+  /api/v1/public/transfers/{id}/accept:
+    post:
+      summary: "Accepter un transfert"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: "Succès : enveloppe JSON {data}" }
+        '400': { description: "Requête invalide (JSON illisible)" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission insuffisante ou application non ouverte au rôle" }
+        '404': { description: "Ressource inconnue, hors client, hors arrondissement ou hors classe (isolation)" }
+        '409': { description: "Conflit d’état (version close, doublon, transition interdite)" }
+        '422': { description: "Données invalides ou règle métier (RFC 9457, errors par champ)" }
+        '423': { description: "Application en lecture seule (écriture fermée)" }
+  /api/v1/public/transfers/{id}/complete:
+    post:
+      summary: "Clôturer le transfert à la date d’accueil"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: "Succès : enveloppe JSON {data}" }
+        '400': { description: "Requête invalide (JSON illisible)" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission insuffisante ou application non ouverte au rôle" }
+        '404': { description: "Ressource inconnue, hors client, hors arrondissement ou hors classe (isolation)" }
+        '409': { description: "Conflit d’état (version close, doublon, transition interdite)" }
+        '422': { description: "Données invalides ou règle métier (RFC 9457, errors par champ)" }
+        '423': { description: "Application en lecture seule (écriture fermée)" }
+  /api/v1/public/transfers/{id}/refuse:
+    post:
+      summary: "Refuser un transfert (motif obligatoire)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: "Succès : enveloppe JSON {data}" }
+        '400': { description: "Requête invalide (JSON illisible)" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission insuffisante ou application non ouverte au rôle" }
+        '404': { description: "Ressource inconnue, hors client, hors arrondissement ou hors classe (isolation)" }
+        '409': { description: "Conflit d’état (version close, doublon, transition interdite)" }
+        '422': { description: "Données invalides ou règle métier (RFC 9457, errors par champ)" }
+        '423': { description: "Application en lecture seule (écriture fermée)" }
+  /api/v1/public/transfers/{id}/exeat:
+    post:
+      summary: "Délivrer l’exeat du transfert"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '201': { description: "Succès : enveloppe JSON {data}" }
+        '400': { description: "Requête invalide (JSON illisible)" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission insuffisante ou application non ouverte au rôle" }
+        '404': { description: "Ressource inconnue, hors client, hors arrondissement ou hors classe (isolation)" }
+        '409': { description: "Conflit d’état (version close, doublon, transition interdite)" }
+        '422': { description: "Données invalides ou règle métier (RFC 9457, errors par champ)" }
+        '423': { description: "Application en lecture seule (écriture fermée)" }
+  /api/v1/public/transfers/{id}/dossier:
+    get:
+      summary: "Dossier utile de l’élève transféré"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: "Succès : enveloppe JSON {data}" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission insuffisante ou application non ouverte au rôle" }
+        '404': { description: "Ressource inconnue, hors client, hors arrondissement ou hors classe (isolation)" }
+        '422': { description: "Paramètre invalide" }
+  /api/v1/public/dropouts:
+    get:
+      summary: "Lister les abandons déclarés ou présumés"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200': { description: "Succès : enveloppe JSON {data}" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission insuffisante ou application non ouverte au rôle" }
+        '404': { description: "Ressource inconnue, hors client, hors arrondissement ou hors classe (isolation)" }
+        '422': { description: "Paramètre invalide" }
+    post:
+      summary: "Déclarer un abandon"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '201': { description: "Succès : enveloppe JSON {data}" }
+        '400': { description: "Requête invalide (JSON illisible)" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission insuffisante ou application non ouverte au rôle" }
+        '404': { description: "Ressource inconnue, hors client, hors arrondissement ou hors classe (isolation)" }
+        '409': { description: "Conflit d’état (version close, doublon, transition interdite)" }
+        '422': { description: "Données invalides ou règle métier (RFC 9457, errors par champ)" }
+        '423': { description: "Application en lecture seule (écriture fermée)" }
+  /api/v1/public/dropouts/{id}/contact:
+    post:
+      summary: "Journaliser une relance de la famille"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: "Succès : enveloppe JSON {data}" }
+        '400': { description: "Requête invalide (JSON illisible)" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission insuffisante ou application non ouverte au rôle" }
+        '404': { description: "Ressource inconnue, hors client, hors arrondissement ou hors classe (isolation)" }
+        '409': { description: "Conflit d’état (version close, doublon, transition interdite)" }
+        '422': { description: "Données invalides ou règle métier (RFC 9457, errors par champ)" }
+        '423': { description: "Application en lecture seule (écriture fermée)" }
+  /api/v1/public/dropouts/{id}/resolve:
+    post:
+      summary: "Clore un abandon (retour ou issue)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: "Succès : enveloppe JSON {data}" }
+        '400': { description: "Requête invalide (JSON illisible)" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission insuffisante ou application non ouverte au rôle" }
+        '404': { description: "Ressource inconnue, hors client, hors arrondissement ou hors classe (isolation)" }
+        '409': { description: "Conflit d’état (version close, doublon, transition interdite)" }
+        '422': { description: "Données invalides ou règle métier (RFC 9457, errors par champ)" }
+        '423': { description: "Application en lecture seule (écriture fermée)" }
