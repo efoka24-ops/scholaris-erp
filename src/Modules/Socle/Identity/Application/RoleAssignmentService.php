@@ -216,6 +216,31 @@ final class RoleAssignmentService
         throw HttpException::forbidden('Vous n\'exercez aucun rôle que vous puissiez déléguer.');
     }
 
+    /**
+     * Rôles que l'acteur peut attribuer dans l'établissement : exactement ceux que assign() accepterait sur le plan du droit
+     * (mêmes contrôles), sans rien écrire. Sert à l'import en masse, qui n'élève jamais les droits de l'importeur.
+     *
+     * @return list<Role>
+     */
+    public function assignableRoles(User $actor, string $establishmentId): array
+    {
+        if (!$this->resolver->canSomewhere($actor->tenantId, $actor->personId, Permission::IDENTITY_ROLES_ASSIGN)) {
+            return [];
+        }
+        $result = [];
+        foreach ($this->roles->all() as $role) {
+            try {
+                self::assertAssignable($role);
+                $this->authorize($actor, $role, $establishmentId);
+            } catch (HttpException) {
+                continue;
+            }
+            $result[] = $role;
+        }
+
+        return $result;
+    }
+
     private static function assertAssignable(Role $role): void
     {
         if ($role->code === Role::PLATFORM_ADMIN) {

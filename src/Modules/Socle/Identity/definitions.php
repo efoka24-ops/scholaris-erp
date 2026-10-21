@@ -58,6 +58,7 @@ return [
     PlatformAdministrators::class => autowire(PlatformAdministratorService::class),
     ClientAdministrators::class => autowire(ClientAdministratorService::class),
     \Scholaris\Modules\Socle\Identity\Contracts\AccountAdministration::class => autowire(\Scholaris\Modules\Socle\Identity\Application\AccountAdministrationService::class),
+    \Scholaris\Modules\Socle\Identity\Contracts\RoleAssignmentGateway::class => autowire(\Scholaris\Modules\Socle\Identity\Application\RoleAssignmentGatewayService::class),
     AccessibleEstablishments::class => autowire(UserEstablishments::class),
     // S15 : périmètres d'une permission (établissement, unité, structure, classe) ; PermissionChecker::can reste inchangé.
     \Scholaris\Modules\Socle\Identity\Contracts\PermissionScopes::class => autowire(\Scholaris\Modules\Socle\Identity\Infrastructure\RoleBasedPermissionScopes::class),
