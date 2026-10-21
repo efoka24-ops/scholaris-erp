@@ -20,7 +20,8 @@ import { useContextStore } from '@/stores/context';
 import { useI18n } from '@/i18n';
 import { formatDate, formatDateTime, formatXaf } from '@/lib/format';
 import { ulid } from '@/lib/ulid';
-import { appStatusKey, channelKey, paymentStatusKey, paymentTone, stateKey, stateTone, targetKey } from './display';
+import { appStatusKey, channelKey, paymentStatusKey, paymentTone, sectorKey, stateKey, stateTone, targetKey } from './display';
+import { groupByLevel, useRegimePick, type LevelGroup } from './catalogGroups';
 
 // « Mes applications » : état des droits d'usage (essai, actif, en retard, suspendu), ouverture en libre-service, paiement de
 // l'abonnement par mobile money (clé d'idempotence conservée entre deux tentatives), historique et reçus.
@@ -32,6 +33,13 @@ const data = ref<MyApplications | null>(null);
 const loadError = ref<unknown>(null);
 const loading = ref(true);
 const notice = ref<string | null>(null);
+
+// Catalogue des applications non ouvertes : une carte par niveau, le régime (privé ou public) choisit l'application à ouvrir.
+type CatalogEntry = MyApplications['catalog'][number];
+const catalogGroups = computed(() => groupByLevel(data.value?.catalog ?? []));
+const regime = useRegimePick<CatalogEntry>();
+const named = (group: LevelGroup<CatalogEntry>, app: CatalogEntry): string =>
+  group.regimes.length > 1 ? `${app.label} (${t(sectorKey(regime.current(group).sector))})` : app.label;
 
 const canManage = computed(() => ctx.can('applications.manage'));
 const hasEstablishment = computed(() => !!ctx.establishmentId);
@@ -192,7 +200,7 @@ onMounted(load);
             <div class="row row--between">
               <div>
                 <h3 class="name">{{ app.label }}</h3>
-                <p class="muted small">{{ t(targetKey(app.target)) }}<template v-if="establishmentsOf(app)"> · {{ t('apps.for', { names: establishmentsOf(app) }) }}</template></p>
+                <p class="muted small">{{ t(targetKey(app.target)) }}<template v-if="app.target && app.target !== 'higher'"> · {{ t(sectorKey(app.sector ?? 'private')) }}</template><template v-if="establishmentsOf(app)"> · {{ t('apps.for', { names: establishmentsOf(app) }) }}</template></p>
               </div>
               <span class="tag" :class="stateTone(app.state) ? `tag--${stateTone(app.state)}` : app.state === 'trial' ? 'tag--accent' : ''">{{ t(stateKey(app.state)) }}</span>
             </div>
@@ -303,26 +311,35 @@ onMounted(load);
         <h2 id="apps-others">{{ t('apps.others') }}</h2>
         <ErrorNotice :error="openError" />
         <ul class="grid grid--tiles others">
-          <li v-for="app in data.catalog" :key="app.key" class="card other">
+          <li v-for="group in catalogGroups" :key="group.level" class="card other" :data-level="group.level">
+            <template v-for="app in [regime.current(group).app]" :key="app.key">
             <div class="row row--between">
-              <span class="tag">{{ t(targetKey(app.target)) }}</span>
+              <span class="tag">{{ t(targetKey(group.level)) }}</span>
               <span class="tag" :class="app.status === 'available' ? 'tag--success' : ''">{{ t(appStatusKey(app.status)) }}</span>
             </div>
-            <h3 class="name">{{ app.label }}</h3>
+            <h3 class="name">{{ group.label }}</h3>
+            <div v-if="group.regimes.length > 1" class="regimes" role="radiogroup" :aria-label="t('pub.regime.legendNamed', { label: group.label })">
+              <label v-for="r in group.regimes" :key="r.app.key" class="regime" :class="{ 'regime--on': app.key === r.app.key }">
+                <input type="radio" :name="'regime-' + group.level" :value="r.sector" :checked="app.key === r.app.key" @change="regime.choose(group, r.sector); confirmOpen = null" />
+                <span>{{ t(sectorKey(r.sector)) }}</span>
+              </label>
+            </div>
+            <p v-else-if="group.level !== 'higher'" class="muted small">{{ t('pub.regime.only', { regime: t(sectorKey(regime.current(group).sector)) }) }}</p>
             <p class="muted small">{{ t('pub.catalog.trial', { days: app.trial_days }) }} · {{ t('pub.catalog.price', { amount: formatXaf(app.monthly_price_xaf, locale) }) }}</p>
             <template v-if="app.status === 'available'">
               <template v-if="actionable">
-                <div v-if="confirmOpen === app.key" class="confirm" role="group" :aria-label="t('apps.openNamed', { label: app.label })">
-                  <p>{{ t('apps.openConfirm', { label: app.label, days: app.trial_days, amount: formatXaf(app.monthly_price_xaf, locale) }) }}</p>
+                <div v-if="confirmOpen === app.key" class="confirm" role="group" :aria-label="t('apps.openNamed', { label: named(group, app) })">
+                  <p>{{ t('apps.openConfirm', { label: named(group, app), days: app.trial_days, amount: formatXaf(app.monthly_price_xaf, locale) }) }}</p>
                   <div class="row">
-                    <button type="button" class="btn btn--primary" :disabled="opening" @click="open(app.key, app.label)">{{ opening ? t('common.loading') : t('apps.openConfirmBtn') }}</button>
+                    <button type="button" class="btn btn--primary" :disabled="opening" @click="open(app.key, named(group, app))">{{ opening ? t('common.loading') : t('apps.openConfirmBtn') }}</button>
                     <button type="button" class="btn btn--quiet" @click="confirmOpen = null">{{ t('plat.cancel') }}</button>
                   </div>
                 </div>
-                <button v-else type="button" class="btn btn--primary open-btn" :aria-label="t('apps.openNamed', { label: app.label })" @click="confirmOpen = app.key">{{ t('apps.openApp') }}</button>
+                <button v-else type="button" class="btn btn--primary open-btn" :aria-label="t('apps.openNamed', { label: named(group, app) })" @click="confirmOpen = app.key">{{ t('apps.openApp') }}</button>
               </template>
             </template>
             <p v-else class="soon">{{ t('apps.soon') }}</p>
+            </template>
           </li>
         </ul>
       </section>
@@ -415,6 +432,30 @@ onMounted(load);
   list-style: none;
   padding: 0;
   margin: 0;
+}
+.regimes {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.regime {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--tap);
+  padding: 0 14px;
+  border: 1.5px solid currentColor;
+  border-radius: 999px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.regime--on {
+  background: var(--ink, #14213d);
+  border-color: var(--ink, #14213d);
+  color: #fff;
+}
+.regime input {
+  accent-color: currentColor;
 }
 .other {
   display: flex;

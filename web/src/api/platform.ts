@@ -23,6 +23,9 @@ export interface PublicApplication {
   key: string;
   label: string;
   target: AppTarget;
+  /** Niveau (= target) et régime (privé ou public) : une carte par niveau, le régime désigne l'application à demander. */
+  family?: AppTarget;
+  sector?: 'private' | 'public';
   status: AppStatus;
   version: string;
   monthly_price_xaf: number;
@@ -76,6 +79,7 @@ export interface Entitlement {
   app_key: string;
   label: string;
   target: AppTarget | null;
+  sector?: 'private' | 'public';
   state: EntitlementState;
   source: string;
   started_on: string;
@@ -310,7 +314,7 @@ export interface PaymentReceipt {
 
 export interface MyApplications {
   opened: Entitlement[];
-  catalog: Array<Pick<PublicApplication, 'key' | 'label' | 'target' | 'status' | 'monthly_price_xaf' | 'trial_days'>>;
+  catalog: Array<Pick<PublicApplication, 'key' | 'label' | 'target' | 'family' | 'sector' | 'status' | 'monthly_price_xaf' | 'trial_days'>>;
 }
 
 export interface PageOf<T> {

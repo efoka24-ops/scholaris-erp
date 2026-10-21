@@ -1,17 +1,21 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import PublicLayout from './PublicLayout.vue';
 import ErrorNotice from '@/components/ErrorNotice.vue';
 import { fetchPublicApplications, type PublicApplication } from '@/api/platform';
 import { useI18n } from '@/i18n';
 import { formatXaf } from '@/lib/format';
-import { appStatusKey, appStatusTone, targetKey } from './display';
+import { appStatusKey, appStatusTone, sectorKey, targetKey } from './display';
+import { groupByLevel, useRegimePick } from './catalogGroups';
 
 // Catalogue public des applications — design : Main.html (tuiles), Fondations.html (étiquettes de statut).
+// Une carte par niveau (supérieur, maternelle, primaire, secondaire) ; le régime (privé ou public) désigne l'application demandée.
 const { t, locale } = useI18n();
 const items = ref<PublicApplication[]>([]);
 const loaded = ref(false);
 const error = ref<unknown>(null);
+const groups = computed(() => groupByLevel(items.value));
+const regime = useRegimePick<PublicApplication>();
 
 onMounted(async () => {
   try {
@@ -36,23 +40,30 @@ onMounted(async () => {
       <p v-if="!loaded" class="muted" role="status">{{ t('common.loading') }}</p>
       <p v-else-if="!error && items.length === 0" class="card muted">{{ t('pub.catalog.empty') }}</p>
       <ul v-else class="grid grid--tiles apps">
-        <li v-for="app in items" :key="app.key">
-          <article class="card app" :class="{ 'card--strong': app.status === 'available' }">
+        <li v-for="group in groups" :key="group.level">
+          <article class="card app" :class="{ 'card--strong': regime.current(group).app.status === 'available' }" :data-level="group.level">
             <div class="row row--between">
-              <span class="tag">{{ t('pub.catalog.target', { target: t(targetKey(app.target)) }) }}</span>
-              <span class="tag" :class="appStatusTone(app.status) ? `tag--${appStatusTone(app.status)}` : ''">{{ t(appStatusKey(app.status)) }}</span>
+              <span class="tag">{{ t('pub.catalog.target', { target: t(targetKey(group.level)) }) }}</span>
+              <span class="tag" :class="appStatusTone(regime.current(group).app.status) ? 'tag--' + appStatusTone(regime.current(group).app.status) : ''">{{ t(appStatusKey(regime.current(group).app.status)) }}</span>
             </div>
-            <h2 class="app__name">{{ app.label }}</h2>
-            <p class="muted small">{{ t('pub.catalog.version', { version: app.version }) }}</p>
+            <h2 class="app__name">{{ group.label }}</h2>
+            <div v-if="group.regimes.length > 1" class="regimes" role="radiogroup" :aria-label="t('pub.regime.legendNamed', { label: group.label })">
+              <label v-for="r in group.regimes" :key="r.app.key" class="regime" :class="{ 'regime--on': regime.current(group).app.key === r.app.key }">
+                <input type="radio" :name="'regime-' + group.level" :value="r.sector" :checked="regime.current(group).app.key === r.app.key" @change="regime.choose(group, r.sector)" />
+                <span>{{ t(sectorKey(r.sector)) }}</span>
+              </label>
+            </div>
+            <p v-else-if="group.level !== 'higher'" class="muted small">{{ t('pub.regime.only', { regime: t(sectorKey(regime.current(group).sector)) }) }}</p>
+            <p class="muted small">{{ t('pub.catalog.version', { version: regime.current(group).app.version }) }}</p>
             <ul class="app__facts">
-              <li>{{ t('pub.catalog.trial', { days: app.trial_days }) }}</li>
-              <li>{{ t('pub.catalog.price', { amount: formatXaf(app.monthly_price_xaf, locale) }) }}</li>
+              <li>{{ t('pub.catalog.trial', { days: regime.current(group).app.trial_days }) }}</li>
+              <li>{{ t('pub.catalog.price', { amount: formatXaf(regime.current(group).app.monthly_price_xaf, locale) }) }}</li>
             </ul>
             <router-link
-              v-if="app.status === 'available'"
+              v-if="regime.current(group).app.status === 'available'"
               class="btn btn--primary app__cta"
-              :to="{ name: 'access-request', query: { application: app.key } }"
-              :aria-label="t('pub.catalog.requestNamed', { label: app.label })"
+              :to="{ name: 'access-request', query: { application: regime.current(group).app.key } }"
+              :aria-label="t('pub.catalog.requestNamed', { label: group.regimes.length > 1 ? group.label + ' (' + t(sectorKey(regime.current(group).sector)) + ')' : group.label })"
             >
               {{ t('pub.catalog.request') }} →
             </router-link>
@@ -79,6 +90,30 @@ onMounted(async () => {
 .app__name {
   font-size: 22px;
   margin: 6px 0 0;
+}
+.regimes {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.regime {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--tap);
+  padding: 0 14px;
+  border: 1.5px solid currentColor;
+  border-radius: 999px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.regime--on {
+  background: var(--ink, #14213d);
+  border-color: var(--ink, #14213d);
+  color: #fff;
+}
+.regime input {
+  accent-color: currentColor;
 }
 .small {
   font-size: 13px;

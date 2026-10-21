@@ -16,7 +16,8 @@ import {
   type PublicApplication,
 } from '@/api/platform';
 import { useI18n, type MessageKey } from '@/i18n';
-import { targetKey } from './display';
+import { sectorKey, targetKey } from './display';
+import { SCHOOL_TYPES, groupByLevel, withSchoolType, type SchoolType } from './catalogGroups';
 
 // Demande d'accès sans compte — design : Inscription.html (sections de formulaire, libellés 13 px, champs 44 px) et Login.html.
 // Protections : champ piège « website » caché, jamais rempli par une personne ; validation stricte côté serveur (422).
@@ -54,17 +55,26 @@ const NAME = /^\p{L}[\p{L}\p{M} '’.-]*$/u;
 const AUTHORIZATION = /^[\p{L}\p{N} /._°-]+$/u;
 const EMAIL = /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/;
 
-const appsForTarget = computed(() => catalog.value.filter((a) => a.target === form.target_type));
+const appsForTarget = computed(() => groupByLevel(catalog.value.filter((a) => (a.family ?? a.target) === form.target_type))[0]?.regimes ?? []);
+/** Type d'établissement (secondaire) : consigné dans le message de la demande, sans colonne dédiée. */
+const schoolType = ref<SchoolType | ''>('');
+const chosenSector = computed(() => appsForTarget.value.find((r) => r.app.key === form.app_key)?.sector ?? null);
+const schoolTypes = computed<SchoolType[]>(() => (form.target_type === 'secondary' && chosenSector.value !== null ? SCHOOL_TYPES[chosenSector.value] : []));
+const fullMessage = (): string => withSchoolType(schoolType.value, form.message.trim());
 
 watch(
   () => form.target_type,
   () => {
-    if (!appsForTarget.value.some((a) => a.key === form.app_key)) {
-      const available = appsForTarget.value.filter((a) => a.status === 'available');
-      form.app_key = available.length === 1 && available[0] ? available[0].key : '';
+    if (!appsForTarget.value.some((r) => r.app.key === form.app_key)) {
+      const available = appsForTarget.value.filter((r) => r.app.status === 'available');
+      form.app_key = available.length === 1 && available[0] ? available[0].app.key : '';
     }
   },
 );
+
+watch(schoolTypes, (list) => {
+  if (schoolType.value !== '' && !list.includes(schoolType.value)) schoolType.value = '';
+});
 
 onMounted(async () => {
   try {
@@ -75,7 +85,7 @@ onMounted(async () => {
   const wanted = typeof route.query.application === 'string' ? route.query.application : null;
   const app = catalog.value.find((a) => a.key === wanted);
   if (app) {
-    form.target_type = app.target;
+    form.target_type = app.family ?? app.target;
     await nextTick();
     form.app_key = app.key;
   }
@@ -103,7 +113,7 @@ function validate(): Partial<Record<Field, string>> {
   const position = clean(form.contact_position);
   if (position !== '' && !between(position, 2, 80)) e.contact_position = msg('pub.req.err.position');
   if (form.app_key === '') e.app_key = msg('pub.req.err.app');
-  if (form.message.trim().length > 2000) e.message = msg('pub.req.err.message');
+  if (fullMessage().length > 2000) e.message = msg('pub.req.err.message');
   return e;
 }
 
@@ -127,7 +137,7 @@ function payload(): AccessRequestInput {
     contact_position: opt(form.contact_position),
     ministerial_authorization: opt(form.ministerial_authorization),
     app_key: form.app_key,
-    message: form.message.trim() === '' ? undefined : form.message.trim(),
+    message: fullMessage() === '' ? undefined : fullMessage(),
     locale: locale.value,
   };
   // Le champ piège n'est transmis que s'il a été rempli (par un robot) : le serveur répond alors par un leurre.
@@ -180,6 +190,7 @@ function selectToken(event: Event): void {
 function restart(): void {
   receipt.value = null;
   for (const f of ORDER) form[f] = '';
+  schoolType.value = '';
   errors.value = {};
 }
 
@@ -296,14 +307,25 @@ const describedBy = (f: Field, hint = false): string | undefined => [hint ? `ar-
 
         <fieldset class="card">
           <legend class="h3">{{ t('pub.req.section.app') }}</legend>
-          <div class="field">
-            <label for="ar-app_key">{{ t('pub.req.app') }}</label>
-            <select id="ar-app_key" v-model="form.app_key" required :disabled="form.target_type === '' || appsForTarget.length === 0" :aria-invalid="!!errors.app_key" :aria-describedby="describedBy('app_key', true)">
-              <option value="" disabled>{{ t('pub.req.chooseApp') }}</option>
-              <option v-for="a in appsForTarget" :key="a.key" :value="a.key">{{ a.status === 'available' ? a.label : t('pub.req.soonSuffix', { label: a.label }) }}</option>
-            </select>
-            <span id="ar-app_key-hint" class="hint">{{ form.target_type === '' ? t('pub.req.chooseTargetFirst') : appsForTarget.length === 0 ? t('pub.req.noAppForTarget') : '' }}</span>
+          <fieldset class="field regime-field">
+            <legend>{{ t('pub.req.regime') }}</legend>
+            <div class="regimes" role="radiogroup" :aria-describedby="describedBy('app_key', true)">
+              <label v-for="(r, i) in appsForTarget" :key="r.app.key" class="regime" :class="{ 'regime--on': form.app_key === r.app.key }">
+                <input :id="i === 0 ? 'ar-app_key' : undefined" v-model="form.app_key" type="radio" name="ar-regime" :value="r.app.key" :aria-invalid="!!errors.app_key" />
+                <span>{{ r.app.status === 'available' ? t(sectorKey(r.sector)) : t('pub.req.soonSuffix', { label: t(sectorKey(r.sector)) }) }}</span>
+                <span class="muted small">{{ r.app.label }}</span>
+              </label>
+            </div>
+            <span id="ar-app_key-hint" class="hint">{{ form.target_type === '' ? t('pub.req.chooseTargetFirst') : appsForTarget.length === 0 ? t('pub.req.noAppForTarget') : t('pub.req.regimeHint') }}</span>
             <span v-if="errors.app_key" id="ar-app_key-err" class="error">{{ errors.app_key }}</span>
+          </fieldset>
+          <div v-if="schoolTypes.length > 0" class="field">
+            <label for="ar-school_type">{{ t('pub.req.schoolType') }}</label>
+            <select id="ar-school_type" v-model="schoolType">
+              <option value="">{{ t('pub.req.chooseSchoolType') }}</option>
+              <option v-for="st in schoolTypes" :key="st" :value="st">{{ t(('pub.schoolType.' + st) as MessageKey) }}</option>
+            </select>
+            <span class="hint">{{ t('pub.req.schoolTypeHint') }}</span>
           </div>
           <div class="field">
             <label for="ar-message">{{ t('pub.req.message') }}</label>
@@ -339,6 +361,40 @@ const describedBy = (f: Field, hint = false): string | undefined => [hint ? `ar-
 </template>
 
 <style scoped>
+.regime-field {
+  border: 0;
+  padding: 0;
+}
+.regime-field legend {
+  font-size: 13px;
+  font-weight: 700;
+  padding: 0;
+  margin-bottom: 6px;
+}
+.regimes {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.regime {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--tap);
+  padding: 4px 14px;
+  border: 1.5px solid var(--border, currentColor);
+  border-radius: 999px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.regime--on {
+  border-color: var(--ink, #14213d);
+  box-shadow: inset 0 0 0 1px var(--ink, #14213d);
+}
+.regime .small {
+  font-size: 13px;
+  font-weight: 400;
+}
 .narrow {
   max-width: 880px;
 }

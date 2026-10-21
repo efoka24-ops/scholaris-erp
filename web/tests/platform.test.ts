@@ -237,7 +237,7 @@ describe('pages publiques', () => {
     expect(trap.element.closest('[aria-hidden="true"]')).not.toBeNull();
     expect(trap.attributes('tabindex')).toBe('-1');
     await fillRequest(wrapper);
-    expect((wrapper.get('#ar-app_key').element as HTMLSelectElement).value).toBe('ipes'); // seule application disponible pour la cible
+    expect((wrapper.get('#ar-app_key').element as HTMLInputElement).checked).toBe(true); // seul régime disponible pour la cible
     await wrapper.get('form').trigger('submit');
     await flushPromises();
     const post = calls.find((c) => c.method === 'POST');

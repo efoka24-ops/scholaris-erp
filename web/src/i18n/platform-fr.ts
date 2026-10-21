@@ -402,6 +402,24 @@ export const platformFr = {
   'apps.tile.title': 'Mes applications',
   'apps.tile.text': 'Essais gratuits, abonnements et paiements de vos applications.',
   'apps.tile.open': 'Gérer mes applications',
+
+  // Catalogue par niveau et par régime
+  'plat.sector.private': 'Privé',
+  'plat.sector.public': 'Public',
+  'pub.regime.legendNamed': 'Régime de {label}',
+  'pub.regime.only': 'Régime : {regime}',
+  'pub.req.regime': 'Régime *',
+  'pub.req.regimeHint': "Le régime (privé ou public) détermine l'application ouverte, ses règles et son tarif.",
+  'pub.req.schoolType': "Type d'établissement",
+  'pub.req.chooseSchoolType': 'Précisez (facultatif)',
+  'pub.req.schoolTypeHint': 'Enregistré dans le message de la demande.',
+  'pub.schoolType.leg': "Lycée d'enseignement général",
+  'pub.schoolType.technical': 'Lycée technique',
+  'pub.schoolType.ces': "CES (collège d'enseignement secondaire)",
+  'pub.schoolType.cetic': "CETIC (collège d'enseignement technique et commercial)",
+  'pub.schoolType.college': 'Collège',
+  'pub.schoolType.lycee': 'Lycée',
+  'pub.schoolType.other': 'Autre',
 } as const;
 
 export type PlatformKey = keyof typeof platformFr;

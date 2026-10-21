@@ -389,4 +389,22 @@ export const platformEn: Record<PlatformKey, string> = {
   'apps.tile.title': 'My applications',
   'apps.tile.text': 'Free trials, subscriptions and payments for your applications.',
   'apps.tile.open': 'Manage my applications',
+
+  // Catalogue by level and regime
+  'plat.sector.private': 'Private',
+  'plat.sector.public': 'Public',
+  'pub.regime.legendNamed': 'Regime of {label}',
+  'pub.regime.only': 'Regime: {regime}',
+  'pub.req.regime': 'Regime *',
+  'pub.req.regimeHint': 'The regime (private or public) determines the application opened, its rules and its price.',
+  'pub.req.schoolType': 'Type of institution',
+  'pub.req.chooseSchoolType': 'Specify (optional)',
+  'pub.req.schoolTypeHint': 'Recorded in the message of the request.',
+  'pub.schoolType.leg': 'General secondary school (lycee)',
+  'pub.schoolType.technical': 'Technical lycee',
+  'pub.schoolType.ces': 'CES (secondary school)',
+  'pub.schoolType.cetic': 'CETIC (technical and commercial school)',
+  'pub.schoolType.college': 'College',
+  'pub.schoolType.lycee': 'Lycee',
+  'pub.schoolType.other': 'Other',
 };

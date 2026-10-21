@@ -10,6 +10,7 @@ export const requestStatusKey = (s: AccessRequestStatus | string): MessageKey =>
 export const paymentStatusKey = (s: PaymentStatus | string): MessageKey => `plat.payStatus.${s}` as MessageKey;
 export const channelKey = (c: string): MessageKey => `plat.channel.${c}` as MessageKey;
 export const targetKey = (t: string | null | undefined): MessageKey => `type.${t ?? 'higher'}` as MessageKey;
+export const sectorKey = (s: string): MessageKey => `plat.sector.${s === 'public' ? 'public' : 'private'}` as MessageKey;
 export const sourceKey = (s: string): MessageKey => `plat.source.${s}` as MessageKey;
 
 export function stateTone(s: string): Tone {
