@@ -16,6 +16,38 @@ paths:
         '403': { description: Permission insuffisante }
         '404': { description: Territoire hors périmètre ou introuvable }
 
+  /api/v1/public/schools/receiving:
+    get:
+      summary: "Écoles d'accueil possibles pour un transfert (identifiant, nom, code officiel, arrondissement ; sans donnée sensible)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: search
+          in: query
+          required: false
+          description: "Nom ou code officiel de l'école"
+          schema: { type: string }
+        - name: territory_id
+          in: query
+          required: false
+          description: "Territoire à parcourir, dans la lignée de l'école ou le périmètre de supervision ; par défaut celui de l'école"
+          schema: { type: string }
+        - name: per_page
+          in: query
+          required: false
+          schema: { type: integer }
+        - name: cursor
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        '200': { description: "Succès : enveloppe JSON {data, meta.next_cursor}" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission insuffisante, rôle à agrégats seuls ou application non ouverte au rôle" }
+        '404': { description: "Ressource inconnue, hors client, hors arrondissement ou hors classe (isolation)" }
+        '422': { description: "Paramètre invalide (date, terme de recherche, finalité de la consultation nominative)" }
+
   /api/v1/public/territories/{id}/schools/{school}/pupils:
     get:
       summary: "Élèves d’une école de l’arrondissement (nominatif, finalité obligatoire, journalisé)"

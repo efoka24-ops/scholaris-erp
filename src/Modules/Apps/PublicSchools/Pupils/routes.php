@@ -17,8 +17,10 @@ return static function (PublicRoutes $routes): void {
     $routes->put('/classes/{id}/homeroom', [ClassController::class, 'assignHomeroom']);
     $routes->get('/classes/{id}/homeroom-history', [ClassController::class, 'homeroomHistory']);
     $routes->get('/classes/{id}/headcount', [ClassController::class, 'headcount']);
+    $routes->get('/classes/{id}/pupils', [ClassController::class, 'pupils']);
 
     $routes->post('/pupils', [PupilController::class, 'register']);
+    $routes->get('/pupils', [PupilController::class, 'search']);
     $routes->get('/pupils/without-birth-act', [PupilController::class, 'withoutBirthAct']);
     $routes->post('/pupils/without-birth-act/transmissions', [PupilController::class, 'transmit']);
     $routes->get('/pupils/without-birth-act/transmissions', [PupilController::class, 'transmissions']);

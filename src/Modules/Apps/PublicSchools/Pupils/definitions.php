@@ -17,6 +17,7 @@ use Scholaris\Modules\Apps\PublicSchools\Pupils\Application\GuardianNotifier;
 use Scholaris\Modules\Apps\PublicSchools\Pupils\Application\PublicLearnerNumbers;
 use Scholaris\Modules\Apps\PublicSchools\Pupils\Application\PupilClock;
 use Scholaris\Modules\Apps\PublicSchools\Pupils\Application\PupilEnrolmentService;
+use Scholaris\Modules\Apps\PublicSchools\Pupils\Application\PupilListingService;
 use Scholaris\Modules\Apps\PublicSchools\Pupils\Application\PupilProfileService;
 use Scholaris\Modules\Apps\PublicSchools\Pupils\Application\TerritorialDuplicateCriteria;
 use Scholaris\Modules\Apps\PublicSchools\Pupils\Application\TransferService;
@@ -46,6 +47,7 @@ return [
     GuardianNotifier::class => autowire(),
     PupilEnrolmentService::class => autowire(),
     PupilProfileService::class => autowire(),
+    PupilListingService::class => autowire(),
     TransferService::class => autowire(),
     DropoutService::class => autowire(),
     ClassProfileService::class => autowire(),

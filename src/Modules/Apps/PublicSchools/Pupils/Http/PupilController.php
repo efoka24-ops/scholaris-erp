@@ -8,7 +8,9 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Scholaris\Core\Http\HttpException;
 use Scholaris\Core\Http\JsonResponder;
+use Scholaris\Modules\Apps\PublicSchools\Pupils\Application\PupilClock;
 use Scholaris\Modules\Apps\PublicSchools\Pupils\Application\PupilEnrolmentService;
+use Scholaris\Modules\Apps\PublicSchools\Pupils\Application\PupilListingService;
 use Scholaris\Modules\Apps\PublicSchools\Pupils\Application\PupilProfileService;
 use Scholaris\Modules\Socle\Audit\Contracts\AuditLog;
 
@@ -20,6 +22,8 @@ final class PupilController
         private readonly PupilAccess $access,
         private readonly PupilEnrolmentService $enrolment,
         private readonly PupilProfileService $profiles,
+        private readonly PupilListingService $listing,
+        private readonly PupilClock $clock,
         private readonly AuditLog $audit,
     ) {
     }
@@ -70,6 +74,25 @@ final class PupilController
         ]], $result['replayed'] ? 200 : 201);
     }
 
+    /**
+     * Recherche d'un élève de l'école par nom, prénom ou numéro d'apprenant (`search`), pour ouvrir un dossier sans connaître son identifiant.
+     * Nominatif : l'enseignant ne trouve que les élèves de ses classes ; la supervision territoriale déclare sa finalité (journalisée).
+     */
+    public function search(ServerRequestInterface $request): ResponseInterface
+    {
+        $principal = ApiRequest::principal($request);
+        $establishmentId = ApiRequest::establishment($request);
+        $read = $this->access->read($principal, $establishmentId);
+        $term = $request->getQueryParams()['search'] ?? null;
+        $minimum = $this->listing->searchMinLength($principal->tenantId, $establishmentId);
+        if (!is_string($term) || mb_strlen(trim($term)) < $minimum) {
+            throw HttpException::validation(['search' => ['Terme de recherche requis : ' . $minimum . ' caractères au moins.']]);
+        }
+        $this->access->named($principal, $read, 'pupil_search', $establishmentId, self::purpose($request));
+        $classIds = $read->wholeSchool || $read->isTerritorial() ? null : $read->classIds;
+
+        return $this->responder->json(ListPage::of($request, $this->listing->search($principal->tenantId, $establishmentId, trim($term), $classIds, $this->clock->today())));
+    }
     public function show(ServerRequestInterface $request): ResponseInterface
     {
         $principal = ApiRequest::principal($request);

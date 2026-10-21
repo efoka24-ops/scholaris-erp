@@ -14,6 +14,7 @@ use Scholaris\Modules\Apps\PublicSchools\Pupils\Application\ClassHeadcountServic
 use Scholaris\Modules\Apps\PublicSchools\Pupils\Application\ClassProfileService;
 use Scholaris\Modules\Apps\PublicSchools\Pupils\Application\DistributionService;
 use Scholaris\Modules\Apps\PublicSchools\Pupils\Application\PupilClock;
+use Scholaris\Modules\Apps\PublicSchools\Pupils\Application\PupilListingService;
 use Scholaris\Modules\Socle\Audit\Contracts\AuditLog;
 
 /** Classes de l'école (CLA, EX-CLA-01..04) : niveaux jumelés, double flux, titulaire daté, effectifs par sexe et âge, alerte d'effectif. */
@@ -27,6 +28,7 @@ final class ClassController
         private readonly ClassHeadcountService $headcounts,
         private readonly DistributionService $distribution,
         private readonly PupilClock $clock,
+        private readonly PupilListingService $listing,
         private readonly AuditLog $audit,
     ) {
     }
@@ -144,6 +146,32 @@ final class ClassController
         }
 
         return $this->responder->json(['data' => $this->headcounts->of($principal->tenantId, $establishmentId, $structureId, $date)]);
+    }
+
+    /**
+     * Élèves inscrits dans la classe à la date (`date`, défaut aujourd'hui), triés par nom, avec pagination par curseur. Nominatif : dans
+     * l'école, la direction et l'enseignant de la classe ; en supervision territoriale, permission nominative et finalité déclarée (journalisée).
+     */
+    public function pupils(ServerRequestInterface $request): ResponseInterface
+    {
+        $principal = ApiRequest::principal($request);
+        $establishmentId = ApiRequest::establishment($request);
+        $structureId = ApiRequest::attribute($request, 'id');
+        $perimeter = $this->access->read($principal, $establishmentId);
+        if (!$this->access->covers($perimeter, $structureId)) {
+            throw HttpException::notFound();
+        }
+        $this->classes->find($principal->tenantId, $establishmentId, $structureId) ?? throw HttpException::notFound('Classe introuvable.');
+        $query = $request->getQueryParams();
+        $date = $query['date'] ?? $this->clock->today();
+        $parsed = is_string($date) ? \DateTimeImmutable::createFromFormat('!Y-m-d', $date) : false;
+        if ($parsed === false || $parsed->format('Y-m-d') !== $date) {
+            throw HttpException::validation(['date' => ['Date AAAA-MM-JJ attendue.']]);
+        }
+        $purpose = $query['purpose'] ?? null;
+        $this->access->named($principal, $perimeter, 'class_roster', $structureId, is_string($purpose) ? $purpose : null);
+
+        return $this->responder->json(ListPage::of($request, $this->listing->roster($principal->tenantId, $establishmentId, $structureId, $date)));
     }
 
     /** EX-CLA-04 : répartition proposée entre les classes données (`class_ids` séparés par des virgules) ; lecture seule. */
