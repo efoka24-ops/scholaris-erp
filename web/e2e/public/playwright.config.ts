@@ -12,7 +12,7 @@ const PORT = 4318;
 export default defineConfig({
   testDir: '.',
   testMatch: '*.spec.ts',
-  outputDir: '../.results',
+  outputDir: '../.dist/.results-public',
   fullyParallel: false,
   workers: 1,
   retries: 0,
