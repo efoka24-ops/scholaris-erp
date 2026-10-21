@@ -1,6 +1,6 @@
 {
     "recorded_from": "tests/E2E/PlatformUiFixturesRecorderTest.php",
-    "tracking_token": "8c5238ebef613790dbb730787260d6ca25c8c80ecad1cf88",
+    "tracking_token": "26632d77f135b612e10395137a969372e5652a671610d18c",
     "calls": {
         "public.applications": {
             "status": 200,
@@ -11,6 +11,8 @@
                         "key": "higher",
                         "label": "IPES - Enseignement supérieur",
                         "target": "higher",
+                        "family": "higher",
+                        "sector": "private",
                         "status": "available",
                         "version": "0.1.0",
                         "monthly_price_xaf": 60000,
@@ -18,26 +20,54 @@
                     },
                     {
                         "key": "nursery",
-                        "label": "Maternelle",
+                        "label": "École maternelle",
                         "target": "nursery",
+                        "family": "nursery",
+                        "sector": "private",
                         "status": "coming_soon",
                         "version": "0.1.0",
                         "monthly_price_xaf": 60000,
                         "trial_days": 90
                     },
                     {
+                        "key": "public_nursery",
+                        "label": "École maternelle",
+                        "target": "nursery",
+                        "family": "nursery",
+                        "sector": "public",
+                        "status": "coming_soon",
+                        "version": "0.1.0",
+                        "monthly_price_xaf": 30000,
+                        "trial_days": 90
+                    },
+                    {
                         "key": "primary",
-                        "label": "Enseignement primaire",
+                        "label": "École primaire",
                         "target": "primary",
+                        "family": "primary",
+                        "sector": "private",
                         "status": "coming_soon",
                         "version": "0.1.0",
                         "monthly_price_xaf": 60000,
+                        "trial_days": 90
+                    },
+                    {
+                        "key": "public_primary",
+                        "label": "École primaire",
+                        "target": "primary",
+                        "family": "primary",
+                        "sector": "public",
+                        "status": "coming_soon",
+                        "version": "0.1.0",
+                        "monthly_price_xaf": 30000,
                         "trial_days": 90
                     },
                     {
                         "key": "secondary",
                         "label": "Enseignement secondaire",
                         "target": "secondary",
+                        "family": "secondary",
+                        "sector": "private",
                         "status": "coming_soon",
                         "version": "0.1.0",
                         "monthly_price_xaf": 60000,
@@ -54,7 +84,7 @@
                 "title": "Données invalides",
                 "status": 422,
                 "detail": "Données invalides.",
-                "trace_id": "01M4SBWXSB8PFMA662N5W0KQPN",
+                "trace_id": "01M5ERDCBB9WYJGXTS3VC0B8SB",
                 "errors": {
                     "contact_email": [
                         "Adresse e-mail invalide."
@@ -67,7 +97,7 @@
             "content_type": "application/json; charset=utf-8",
             "body": {
                 "data": {
-                    "tracking_token": "8c5238ebef613790dbb730787260d6ca25c8c80ecad1cf88",
+                    "tracking_token": "26632d77f135b612e10395137a969372e5652a671610d18c",
                     "status": "pending",
                     "message": "Demande enregistrée. Si les informations sont valides, vous recevrez un message de confirmation."
                 }
@@ -78,15 +108,15 @@
             "content_type": "application/json; charset=utf-8",
             "body": {
                 "data": {
-                    "reference": "HCSTKJAD",
+                    "reference": "94NF286B",
                     "institution_name": "Collège Bilingue de Recette",
                     "app_key": "secondary",
                     "app_label": "Enseignement secondaire",
                     "status": "pending",
                     "info_request": null,
                     "decision_reason": null,
-                    "submitted_at": "2026-10-14T10:00:00+01:00",
-                    "updated_at": "2026-10-14T10:00:00+01:00"
+                    "submitted_at": "2026-10-22T10:00:00+01:00",
+                    "updated_at": "2026-10-22T10:00:00+01:00"
                 }
             }
         },
@@ -98,7 +128,7 @@
                 "title": "Introuvable",
                 "status": 404,
                 "detail": "Demande introuvable.",
-                "trace_id": "01M4SBWXT0PDEDY8ZZF2SBDJNY"
+                "trace_id": "01M5ERDCDW30TW51EQSNTXESVS"
             }
         }
     }

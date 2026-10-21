@@ -88,6 +88,36 @@ export const routes: RouteRecordRaw[] = [
     meta: { perms: ['attendance.read', 'attendance.take'], needsEstablishment: true, titleKey: 'nursery.logbookTitle' },
   },
   {
+    path: '/maternelle/observations',
+    name: 'nursery-observation',
+    component: () => import('@/views/public-nursery/ObservationView.vue'),
+    meta: { perms: ['public_nursery.dev.observe', 'public_nursery.lifebook.write'], needsEstablishment: true, establishmentTypes: ['nursery'], titleKey: 'pn.observation.title' },
+  },
+  {
+    path: '/maternelle/carnet-trimestriel',
+    name: 'nursery-progress-book',
+    component: () => import('@/views/public-nursery/ProgressBookView.vue'),
+    meta: { perms: ['public_nursery.dev.observe', 'public_nursery.lifebook.write'], needsEstablishment: true, establishmentTypes: ['nursery'], titleKey: 'pn.progressBook.title' },
+  },
+  {
+    path: '/maternelle/cahier-de-vie',
+    name: 'nursery-lifebook',
+    component: () => import('@/views/public-nursery/LifeBookView.vue'),
+    meta: { perms: ['public_nursery.lifebook.write', 'public_nursery.lifebook.view'], needsEstablishment: true, establishmentTypes: ['nursery'], titleKey: 'pn.lifebook.title' },
+  },
+  {
+    path: '/maternelle/transition/decisions',
+    name: 'nursery-transition-decisions',
+    component: () => import('@/views/public-nursery/TransitionDecisionsView.vue'),
+    meta: { perms: ['public_nursery.transition.opinion', 'settings.manage'], needsEstablishment: true, titleKey: 'pn.transition.title' },
+  },
+  {
+    path: '/maternelle/transition/liaison',
+    name: 'nursery-transition-liaison',
+    component: () => import('@/views/public-nursery/TransitionLiaisonView.vue'),
+    meta: { perms: ['public_nursery.transition.opinion', 'settings.manage'], needsEstablishment: true, titleKey: 'pn.liaison.title' },
+  },
+  {
     path: '/notes',
     name: 'grades',
     component: () => import('@/views/GradesView.vue'),

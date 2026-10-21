@@ -2,7 +2,7 @@
 import ComingSoon from '@/components/ComingSoon.vue';
 import { useI18n } from '@/i18n';
 
-// Carnet de suivi (maquette CarnetSuivi.html) : grille de compétences A / EC / NA par enfant, observation, photos.
+// Carnet de suivi (maquette CarnetSuivi.html) : grille de compétences Acquis / En cours / Non acquis par enfant, observation, photos.
 // Aucun service serveur ne le porte encore : l'écran l'annonce et décrit ce qui est prévu, sans rien simuler.
 const { t } = useI18n();
 </script>

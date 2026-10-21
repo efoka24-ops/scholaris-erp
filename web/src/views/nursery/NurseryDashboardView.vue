@@ -34,6 +34,11 @@ onMounted(async () => {
     <nav class="row" :aria-label="t('nursery.dashTitle')">
       <router-link class="btn btn--primary" :to="{ name: 'nursery-pickup' }">{{ t('nursery.pickupTitle') }}</router-link>
       <router-link class="btn" :to="{ name: 'nursery-logbook' }">{{ t('nursery.logbookTitle') }}</router-link>
+      <router-link class="btn" :to="{ name: 'nursery-observation' }">{{ t('pn.observation.title') }}</router-link>
+      <router-link class="btn" :to="{ name: 'nursery-progress-book' }">{{ t('pn.progressBook.title') }}</router-link>
+      <router-link class="btn" :to="{ name: 'nursery-lifebook' }">{{ t('pn.lifebook.title') }}</router-link>
+      <router-link class="btn" :to="{ name: 'nursery-transition-decisions' }">{{ t('pn.transition.title') }}</router-link>
+      <router-link class="btn" :to="{ name: 'nursery-transition-liaison' }">{{ t('pn.liaison.title') }}</router-link>
     </nav>
 
     <section class="card kpi-line" aria-labelledby="nd-pick">
