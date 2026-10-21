@@ -66,8 +66,12 @@ export class ApiError extends Error {
 
 /** Routes où l'API exige une clé d'idempotence (conventions : POST /payments, /cash/receipts, /documents). */
 const IDEMPOTENT_POST = /^\/(payments|cash\/receipts|documents)$/;
-/** Routes hors contexte d'établissement : l'en-tête X-Establishment-Id n'y est jamais envoyé. */
-const NO_ESTABLISHMENT = /^\/(auth|me|portal|public|health|vocabulary)(\/|$)/;
+/**
+ * Routes hors contexte d'établissement : l'en-tête X-Establishment-Id n'y est jamais envoyé. Sous /public, seules les routes
+ * anonymes (catalogue, demandes d'accès, candidature en ligne, vérification d'un document) en sont exclues : les routes
+ * authentifiées des écoles publiques (/public/classes, /public/pupils…) exigent l'en-tête.
+ */
+const NO_ESTABLISHMENT = /^\/(auth|me|portal|health|vocabulary)(\/|$)|^\/public\/(applications|access-requests|admissions|verify)(\/|$)/;
 const MUTATING = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
 export class HttpClient {
