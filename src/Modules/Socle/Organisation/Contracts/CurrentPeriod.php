@@ -15,4 +15,5 @@ interface CurrentPeriod
      * @return PeriodInfo|null null quand aucune période ne couvre ce jour (jamais de période inventée)
      */
     public function at(string $tenantId, string $establishmentId, string $date): ?PeriodInfo;
+
 }

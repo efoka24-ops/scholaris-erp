@@ -33,6 +33,26 @@ final class GradeEntryExtensionsTest extends AssessmentTestCase
         self::assertSame(201, $ok->getStatusCode(), 'Sans pas déclaré, 6,3 reste accepté.');
     }
 
+    public function testEchelleQualitativeParametreeEstAccepteeEtExposee(): void
+    {
+        $this->bootAssessment(['assessment.qualitative_scale' => [
+            ['code' => 'excellent', 'label_fr' => 'Excellent', 'label_en' => 'Excellent', 'sort_order' => 1],
+            ['code' => 'developing', 'label_fr' => 'En développement', 'label_en' => 'Developing', 'sort_order' => 2],
+            ['code' => 'emerging', 'label_fr' => 'Émergeant', 'label_en' => 'Emerging', 'sort_order' => 3],
+            ['code' => 'not_yet', 'label_fr' => 'Pas encore', 'label_en' => 'Not yet', 'sort_order' => 4],
+        ]]);
+        $this->seedClass();
+        $assessment = $this->assessment($this->subject('MATH'), 'Compétence', 1.0, 20.0, ['grading_mode' => 'qualitative']);
+
+        [$accepted] = $this->api('POST', '/grades', 'censor', ['assessment_id' => $assessment, 'person_id' => 'p1', 'qualitative' => 'not_yet']);
+        [$unknown] = $this->api('POST', '/grades', 'censor', ['assessment_id' => $assessment, 'person_id' => 'p2', 'qualitative' => 'acquired']);
+        [, $details] = $this->api('GET', '/assessments/' . $assessment, 'reader');
+
+        self::assertSame(201, $accepted->getStatusCode());
+        self::assertSame(422, $unknown->getStatusCode());
+        self::assertSame(['excellent', 'developing', 'emerging', 'not_yet'], array_column($details['data']['qualitative_scale'], 'code'));
+    }
+
     public function testCodesNaFrEtEffetsSurLaMoyenne(): void
     {
         $this->bootAssessment(self::IPES);

@@ -73,6 +73,18 @@ final class PeriodController extends ScopedCrudController
             $this->fail(['starts_on' => ['La période doit être comprise dans l\'année scolaire (du ' . $year['starts_on'] . ' au ' . $year['ends_on'] . ').']]);
         }
 
+        $parentId = $merged['parent_id'] ?? null;
+        if ($parentId !== null) {
+            $parent = $this->repositories->request('periods')->find((string) $parentId);
+            if ($parent === null || $parent['academic_year_id'] !== $merged['academic_year_id'] || $parent['kind'] !== 'trimester'
+                || $merged['kind'] !== 'sequence' || $merged['starts_on'] < $parent['starts_on'] || $merged['ends_on'] > $parent['ends_on']) {
+                $this->fail(['parent_id' => ['Une séquence doit appartenir à un trimestre de la même année et rester dans ses dates.']]);
+            }
+        } elseif ($merged['kind'] === 'sequence') {
+            $this->fail(['parent_id' => ['Une séquence doit être rattachée à un trimestre.']]);
+        }
+
         return $changes;
     }
+
 }

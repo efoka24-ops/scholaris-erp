@@ -19,6 +19,8 @@ final class AssessmentExtensions
     public const STRATEGIES = 'assessment.rule_strategies.';
     public const SCOPES = 'assessment.rule_scopes.';
     public const GUARDS = 'assessment.deliberation_guards.';
+    public const COUNCIL_LINES = 'assessment.council_line_providers.';
+    public const REPORT_CARD_VARIABLES = 'assessment.report_card_variables.';
 
     /**
      * @template T of object

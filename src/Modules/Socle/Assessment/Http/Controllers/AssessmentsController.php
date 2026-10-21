@@ -46,6 +46,7 @@ final class AssessmentsController extends AssessmentController
 
         return $this->responder->json(['data' => Resource::assessment()->toArray($row) + [
             'lifecycle' => $this->settings->lifecycle($this->context->tenantId(), $this->context->establishmentId())->toArray(),
+            'qualitative_scale' => $this->settings->qualitativeScale($this->context->tenantId(), $this->context->establishmentId()),
         ]]);
     }
 

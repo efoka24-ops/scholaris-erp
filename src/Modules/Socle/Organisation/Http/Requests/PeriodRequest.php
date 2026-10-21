@@ -16,6 +16,7 @@ final class PeriodRequest extends ValidatedRequest
             'ordinal' => Field::int(1, 12)->required(),
             'starts_on' => Field::date()->required(),
             'ends_on' => Field::date()->required(),
+            'parent_id' => Field::reference(),
         ];
     }
 

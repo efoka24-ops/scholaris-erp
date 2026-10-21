@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace Scholaris\Modules\Socle\Assessment\Application;
 
+use Psr\Container\ContainerInterface;
 use Scholaris\Core\Http\HttpException;
 use Scholaris\Core\Security\Principal;
 use Scholaris\Core\Support\Ulid;
 use Scholaris\Modules\Socle\Assessment\Contracts\DeliberationGuard;
+use Scholaris\Modules\Socle\Assessment\Contracts\PeriodAggregatingStrategy;
 use Scholaris\Modules\Socle\Assessment\Contracts\RuleStrategy;
 use Scholaris\Modules\Socle\Assessment\Domain\RuleEngine;
 use Scholaris\Modules\Socle\Assessment\Domain\RuleSet;
@@ -43,6 +45,7 @@ final class ResultService
         private readonly AssessmentClock $clock,
         private readonly AuditLog $audit,
         private readonly DeliberationGuards $guards,
+        private readonly ContainerInterface $container,
     ) {
     }
 
@@ -154,6 +157,10 @@ final class ResultService
      */
     public function compute(string $tenantId, string $establishmentId, string $structureId, string $periodId, ?string $periodLabel = null, string $session = AssessmentService::NORMAL): array
     {
+        $aggregated = $this->aggregateParent($tenantId, $establishmentId, $structureId, $periodId, $periodLabel, $session);
+        if ($aggregated !== null) {
+            return $aggregated;
+        }
         $data = $this->inputs($tenantId, $establishmentId, $structureId, $periodId, null, $session);
         $rules = $this->rules->activeRules($tenantId, $establishmentId, $data['year'], $structureId);
 
@@ -213,6 +220,80 @@ final class ResultService
 
             return $rows;
         });
+
+        return ['rows' => $rows, 'rules' => $rules];
+    }
+
+    /**
+     * Agrège les résultats enfants uniquement si une stratégie déclarée implémente le point d'extension facultatif.
+     *
+     * @return array{rows: list<array<string, mixed>>, rules: RuleSet}|null
+     */
+    private function aggregateParent(string $tenantId, string $establishmentId, string $structureId, string $periodId, ?string $periodLabel, string $session): ?array
+    {
+        $period = $this->db->one('SELECT parent_id, academic_year_id FROM periods WHERE tenant_id = ? AND establishment_id = ? AND id = ?', [$tenantId, $establishmentId, $periodId]);
+        if ($period === null || ($period['parent_id'] ?? null) !== null) {
+            return null;
+        }
+        $children = $this->db->all('SELECT id FROM periods WHERE tenant_id = ? AND establishment_id = ? AND parent_id = ? ORDER BY ordinal', [$tenantId, $establishmentId, $periodId]);
+        if ($children === []) {
+            return null;
+        }
+        $rules = $this->rules->activeRules($tenantId, $establishmentId, (string) $period['academic_year_id'], $structureId);
+        $strategy = null;
+        foreach (AssessmentExtensions::collect($this->container, AssessmentExtensions::STRATEGIES, RuleStrategy::class) as $candidate) {
+            if ($candidate instanceof PeriodAggregatingStrategy && $candidate->key() === $rules->strategy) {
+                $strategy = $candidate;
+                break;
+            }
+        }
+        if ($strategy === null) {
+            return null;
+        }
+        $childResults = [];
+        foreach ($children as $child) {
+            $computed = $this->compute($tenantId, $establishmentId, $structureId, (string) $child['id'], null, $session);
+            $childResults[(string) $child['id']] = $computed['rows'];
+        }
+        $roster = $this->roster->students($tenantId, $establishmentId, $structureId);
+        $averages = [];
+        $aggregates = [];
+        foreach ($roster as $student) {
+            $summaries = [];
+            foreach ($children as $child) {
+                $childId = (string) $child['id'];
+                $row = null;
+                foreach ($childResults[$childId] as $childRow) {
+                    if ((string) $childRow['person_id'] === (string) $student['person_id']) {
+                        $row = $childRow;
+                        break;
+                    }
+                }
+                if ($row !== null) {
+                    $summaries[] = ['period_id' => $childId, 'average' => $row['average'] === null ? null : (float) $row['average'], 'credits_earned' => (int) ($row['credits_earned'] ?? 0), 'credits_total' => (int) ($row['credits_total'] ?? 0), 'units' => (array) json_decode((string) ($row['details'] ?? '{}'), true)];
+                }
+            }
+            $aggregate = $strategy->aggregatePeriods($rules->toCalculationRules(), $summaries);
+            $aggregates[(string) $student['person_id']] = $aggregate;
+            $averages[(string) $student['person_id']] = $aggregate['average'];
+        }
+        $ranks = $this->engine->ranks($averages);
+        $now = $this->clock->now();
+        $rows = [];
+        foreach ($roster as $student) {
+            $personId = (string) $student['person_id'];
+            $aggregate = $aggregates[$personId];
+            $existing = $this->results->resultOf($tenantId, $establishmentId, $personId, $periodId, $session);
+            $fields = ['structure_id' => $structureId, 'period_label' => $periodLabel ?? (string) ($period['academic_year_id'] ?? $periodId), 'average' => $aggregate['average'], 'rank_in_class' => $ranks[$personId], 'class_size' => count($roster), 'credits_earned' => $aggregate['credits_earned'] ?: null, 'credits_total' => $aggregate['credits_total'] ?: null, 'mention' => $aggregate['average'] === null ? null : $this->engine->mention($rules, (float) $aggregate['average']), 'proposal' => null, 'rule_version' => $rules->version, 'details' => json_encode($aggregate['units'], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE), 'computed_extras' => null, 'computed_at' => $now];
+            if ($existing === null) {
+                $id = (string) new Ulid();
+                $this->results->insert('results', $fields + ['id' => $id, 'tenant_id' => $tenantId, 'establishment_id' => $establishmentId, 'person_id' => $personId, 'period_id' => $periodId, 'exam_session' => $session, 'decision' => null, 'status' => 'computed', 'published_at' => null]);
+            } else {
+                $id = (string) $existing['id'];
+                $this->results->update('results', $tenantId, $id, $fields);
+            }
+            $rows[] = $this->results->result($tenantId, $establishmentId, $id) ?? [];
+        }
 
         return ['rows' => $rows, 'rules' => $rules];
     }

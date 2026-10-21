@@ -90,6 +90,11 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     'public_nursery.need.report', 'public_nursery.transition.opinion',
   ],
   pn_assistant: ['public_nursery.pickup.handover', 'public_nursery.arrival.record'],
+  primary_promoteur: ['primary.dashboard.read', 'reporting.read'],
+  primary_directeur: ['primary.settings.manage', 'primary.council.preside', 'primary.report_card.sign', 'assessment.correction.approve', 'primary.promotion.decide', 'primary.dashboard.read'],
+  primary_adjoint: ['primary.referential.manage', 'assessment.validate', 'scheduling.manage'],
+  primary_secretaire: ['people.manage', 'primary.enrol', 'documents.issue', 'primary.exam.manage'],
+  primary_surveillant: ['attendance.sanction.manage', 'primary.pickup.handover'],
 };
 
 export function permissionsForRoles(roles: string[]): Set<string> {

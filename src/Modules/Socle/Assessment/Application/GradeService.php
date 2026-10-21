@@ -62,9 +62,11 @@ final class GradeService
         $qualitative = null;
 
         if ($assessment['grading_mode'] === 'qualitative') {
+            $rules ??= $this->cellRules($assessment);
             $qualitative = $input['qualitative'] ?? null;
-            if ($qualitative !== null && !in_array($qualitative, self::QUALITATIVE, true)) {
-                throw new InvalidArgumentException('Appréciation inconnue. Valeurs possibles : ' . implode(', ', self::QUALITATIVE) . '.');
+            $allowed = $rules['qualitative'] ?? self::QUALITATIVE;
+            if ($qualitative !== null && !in_array($qualitative, $allowed, true)) {
+                throw new InvalidArgumentException('Appréciation inconnue. Valeurs possibles : ' . implode(', ', $allowed) . '.');
             }
             if (isset($input['value'])) {
                 throw new InvalidArgumentException('Cette épreuve est qualitative : saisissez une appréciation, pas une note.');
@@ -106,7 +108,7 @@ final class GradeService
      * Paramètres de saisie de l'établissement de l'épreuve : codes d'absence acceptés et pas de saisie.
      *
      * @param array<string, mixed> $assessment
-     * @return array{codes: list<string>, step: float|null}
+     * @return array{codes: list<string>, step: float|null, qualitative: list<string>}
      */
     private function cellRules(array $assessment): array
     {
@@ -116,6 +118,7 @@ final class GradeService
         return [
             'codes' => array_map('strval', array_keys($this->settings->absenceCodes($tenantId, $establishmentId))),
             'step' => $this->settings->step($tenantId, $establishmentId),
+            'qualitative' => array_column($this->settings->qualitativeScale($tenantId, $establishmentId), 'code'),
         ];
     }
 

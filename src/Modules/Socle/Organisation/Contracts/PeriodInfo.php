@@ -16,6 +16,7 @@ final class PeriodInfo
         public readonly int $ordinal,
         public readonly string $startsOn,
         public readonly string $endsOn,
+        public readonly ?string $parentId = null,
     ) {
     }
 }

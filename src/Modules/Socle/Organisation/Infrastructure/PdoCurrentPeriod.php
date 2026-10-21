@@ -45,6 +45,33 @@ final class PdoCurrentPeriod implements CurrentPeriod
             (int) $row['ordinal'],
             (string) $row['starts_on'],
             (string) $row['ends_on'],
+            isset($row['parent_id']) ? (string) $row['parent_id'] : null,
         );
+    }
+
+    /** @return list<PeriodInfo> */
+    public function allAt(string $tenantId, string $establishmentId, string $date): array
+    {
+        $day = substr($date, 0, 10);
+        if (preg_match('/^\\d{4}-\\d{2}-\\d{2}$/', $day) !== 1) {
+            return [];
+        }
+        $periods = $this->repositories->explicit('periods', $tenantId, $establishmentId)->all();
+        $years = $this->repositories->explicit('academic_years', $tenantId, $establishmentId);
+        $byId = [];
+        foreach ($periods as $period) {
+            $byId[(string) $period['id']] = $period;
+        }
+        $covering = array_values(array_filter($periods, static fn (array $row): bool => substr((string) $row['starts_on'], 0, 10) <= $day && $day <= substr((string) $row['ends_on'], 0, 10)));
+        usort($covering, static fn (array $a, array $b): int => [(string) $a['starts_on'], (int) $a['ordinal']] <=> [(string) $b['starts_on'], (int) $b['ordinal']]);
+        $result = [];
+        foreach ($covering as $row) {
+            $year = $years->find((string) $row['academic_year_id']);
+            $parentId = isset($row['parent_id']) ? (string) $row['parent_id'] : null;
+            $parent = $parentId === null ? null : ($byId[$parentId] ?? null);
+            $result[] = new PeriodInfo((string) $row['id'], (string) $row['academic_year_id'], $year === null ? null : (string) $year['label'], (string) $row['kind'], (int) $row['ordinal'], (string) $row['starts_on'], (string) $row['ends_on'], $parent === null ? null : (string) $parent['id']);
+        }
+
+        return $result;
     }
 }

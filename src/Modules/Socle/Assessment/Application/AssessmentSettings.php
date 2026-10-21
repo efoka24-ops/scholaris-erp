@@ -114,6 +114,34 @@ final class AssessmentSettings
         return (is_int($value) || is_float($value)) && $value > 0 && $value <= 10 ? (float) $value : null;
     }
 
+    /** @return list<array{code: string, label_fr: string, label_en: string, sort_order: int}> */
+    public function qualitativeScale(string $tenantId, string $establishmentId): array
+    {
+        $default = [
+            ['code' => 'acquired', 'label_fr' => 'Acquis', 'label_en' => 'Acquired', 'sort_order' => 1],
+            ['code' => 'in_progress', 'label_fr' => 'En cours', 'label_en' => 'In progress', 'sort_order' => 2],
+            ['code' => 'not_acquired', 'label_fr' => 'Non acquis', 'label_en' => 'Not acquired', 'sort_order' => 3],
+        ];
+        $raw = $this->anyArray($this->settings->value($tenantId, $establishmentId, 'assessment.qualitative_scale', null));
+        if ($raw === null || !array_is_list($raw) || $raw === []) {
+            return $default;
+        }
+        $scale = [];
+        $codes = [];
+        foreach ($raw as $index => $row) {
+            if (!is_array($row) || !isset($row['code']) || !is_string($row['code']) || preg_match('/^[a-z][a-z0-9_]{1,19}$/', $row['code']) !== 1
+                || !isset($row['label_fr'], $row['label_en']) || !is_string($row['label_fr']) || !is_string($row['label_en'])
+                || trim($row['label_fr']) === '' || trim($row['label_en']) === '' || isset($codes[$row['code']])) {
+                return $default;
+            }
+            $codes[$row['code']] = true;
+            $scale[] = ['code' => $row['code'], 'label_fr' => trim($row['label_fr']), 'label_en' => trim($row['label_en']), 'sort_order' => isset($row['sort_order']) && is_numeric($row['sort_order']) ? (int) $row['sort_order'] : $index + 1];
+        }
+        usort($scale, static fn (array $a, array $b): int => $a['sort_order'] <=> $b['sort_order']);
+
+        return $scale;
+    }
+
     /**
      * Séparation saisie / verrouillage (S4) : null = désactivée ; [] = toute transition qui sort de la saisie ;
      * sinon les états cibles concernés.

@@ -164,7 +164,7 @@ paths:
           description: "Données invalides"
   /api/v1/assessments/{id}:
     get:
-      summary: "Détail d'une épreuve et cycle de vie déclaré par l'application"
+      summary: "Détail d'une épreuve, cycle de vie et échelle qualitative effective"
       security:
         - bearer: []
       parameters:

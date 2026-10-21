@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace Scholaris\Modules\Socle\Assessment\Application;
 
+use Psr\Container\ContainerInterface;
 use Scholaris\Core\Http\HttpException;
 use Scholaris\Core\Security\Principal;
 use Scholaris\Core\Support\Ulid;
 use Scholaris\Modules\Socle\Assessment\Contracts\ActorDirectory;
+use Scholaris\Modules\Socle\Assessment\Contracts\CouncilLineProvider;
 use Scholaris\Modules\Socle\Assessment\Domain\RuleEngine;
 use Scholaris\Modules\Socle\Assessment\Domain\RuleSet;
 use Scholaris\Modules\Socle\Assessment\Infrastructure\CatalogRepository;
@@ -35,6 +37,7 @@ final class CouncilService
         private readonly MinutesIssuer $minutes,
         private readonly AuditLog $audit,
         private readonly AssessmentClock $clock,
+        private readonly ContainerInterface $container,
     ) {
     }
 
@@ -57,6 +60,8 @@ final class CouncilService
         $id = (string) new Ulid();
         $this->db->transaction(function () use ($principal, $establishmentId, $data, $tenantId, $structureId, $periodId, $id): void {
             $computed = $this->results->compute($tenantId, $establishmentId, $structureId, $periodId, $data['period_label'] ?? null);
+            $personIds = array_map(static fn (array $row): string => (string) $row['person_id'], $computed['rows']);
+            $prefills = $this->prefills($tenantId, $establishmentId, $structureId, $periodId, $personIds);
             $window = ['from' => (string) ($data['from'] ?? '0001-01-01'), 'to' => (string) ($data['to'] ?? '9999-12-31')];
             $this->repo->insert('class_councils', [
                 'id' => $id, 'tenant_id' => $tenantId, 'establishment_id' => $establishmentId, 'structure_id' => $structureId, 'period_id' => $periodId,
@@ -70,8 +75,8 @@ final class CouncilService
                 $this->repo->insert('council_lines', [
                     'id' => (string) new Ulid(), 'tenant_id' => $tenantId, 'establishment_id' => $establishmentId, 'council_id' => $id,
                     'person_id' => $row['person_id'], 'average' => $row['average'], 'rank_in_class' => $row['rank_in_class'],
-                    'unjustified_absences' => $absences, 'conduct' => null, 'proposal' => $proposal, 'decision' => $proposal, 'reason' => null,
-                    'appraisal' => $row['mention'],
+                    'unjustified_absences' => $absences, 'conduct' => $prefills[$row['person_id']]['conduct'] ?? null, 'proposal' => $proposal, 'decision' => $proposal, 'reason' => null,
+                    'appraisal' => $prefills[$row['person_id']]['appraisal'] ?? $row['mention'],
                 ]);
             }
             $this->repo->update('class_councils', $tenantId, $id, ['summary' => $this->summaryJson($tenantId, $establishmentId, $id, $computed['rules'], $window)]);
@@ -232,6 +237,12 @@ final class CouncilService
             $absences = $this->unjustified($tenantId, $establishmentId, (string) $row['person_id'], $window);
             $proposal = $this->engine->councilProposal($computed['rules'], $row['average'] === null ? null : (float) $row['average'], $absences);
             $set = ['average' => $row['average'], 'rank_in_class' => $row['rank_in_class'], 'unjustified_absences' => $absences, 'proposal' => $proposal];
+            $prefill = $this->prefills($tenantId, $establishmentId, (string) $council['structure_id'], (string) $council['period_id'], [(string) $row['person_id']])[(string) $row['person_id']] ?? [];
+            foreach (['conduct', 'appraisal'] as $field) {
+                if (($line[$field] ?? null) === null && isset($prefill[$field])) {
+                    $set[$field] = $prefill[$field];
+                }
+            }
             if ($line['decision'] === $line['proposal'] || $line['decision'] === null) {
                 $set['decision'] = $proposal;
                 $set['reason'] = null;
@@ -335,5 +346,23 @@ final class CouncilService
         }
 
         return implode("\n", $out);
+    }
+
+    /**
+     * @param list<string> $personIds
+     * @return array<string, array<string, mixed>>
+     */
+    private function prefills(string $tenantId, string $establishmentId, string $structureId, string $periodId, array $personIds): array
+    {
+        $result = [];
+        foreach (AssessmentExtensions::collect($this->container, AssessmentExtensions::COUNCIL_LINES, CouncilLineProvider::class) as $provider) {
+            foreach ($provider->prefill($tenantId, $establishmentId, $structureId, $periodId, $personIds) as $personId => $values) {
+                if (in_array($personId, $personIds, true)) {
+                    $result[$personId] = array_merge($result[$personId] ?? [], $values);
+                }
+            }
+        }
+
+        return $result;
     }
 }
