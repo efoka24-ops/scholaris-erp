@@ -8,6 +8,7 @@ use Scholaris\Core\Database\ConnectionFactory;
 use Scholaris\Core\Http\HttpException;
 use Scholaris\Core\Support\Ulid;
 use Scholaris\Modules\Socle\Organisation\Contracts\ClientProvisioning;
+use Scholaris\Modules\Socle\Organisation\Contracts\EstablishmentSubtypes;
 use Scholaris\Modules\Socle\Organisation\Contracts\ModuleActivator;
 use Scholaris\Modules\Socle\Organisation\Domain\EstablishmentType;
 use Scholaris\Modules\Socle\Organisation\Domain\ModuleCatalog;
@@ -65,14 +66,17 @@ final class ClientOnboarding implements ClientProvisioning, ModuleActivator
         return $rows;
     }
 
-    public function createEstablishment(string $tenantId, string $name, string $type): string
+    public function createEstablishment(string $tenantId, string $name, string $type, ?string $subtype = null): string
     {
         $kind = EstablishmentType::tryFrom($type) ?? throw HttpException::validation(['type' => ['Type d\'établissement inconnu.']]);
+        if ($subtype !== null && !in_array($subtype, EstablishmentSubtypes::allowedFor($kind->value), true)) {
+            throw HttpException::validation(['establishment_subtype' => ['Type d\'établissement inconnu pour ce niveau.']]);
+        }
         if (!$this->tenantExists($tenantId)) {
             throw HttpException::notFound('Client introuvable.');
         }
 
-        return (string) $this->establishments->create($tenantId, trim($name), $kind)['id'];
+        return (string) $this->establishments->create($tenantId, trim($name), $kind, $subtype)['id'];
     }
 
     public function renameTenant(string $tenantId, string $name): void
@@ -103,6 +107,7 @@ final class ClientOnboarding implements ClientProvisioning, ModuleActivator
                 'id' => (string) $row['id'],
                 'name' => (string) $row['name'],
                 'type' => (string) $row['type'],
+                'establishment_subtype' => isset($row['establishment_subtype']) ? (string) $row['establishment_subtype'] : null,
                 'closed_at' => isset($row['closed_at']) ? (string) $row['closed_at'] : null,
                 'created_at' => (string) $row['created_at'],
             ];

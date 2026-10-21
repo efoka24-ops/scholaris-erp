@@ -55,7 +55,8 @@ paths:
                 contact_phone: {type: string, description: "Format international, 8 à 15 chiffres"}
                 contact_position: {type: string, maxLength: 80}
                 ministerial_authorization: {type: string, maxLength: 120, description: "Référence de l'autorisation ministérielle, facultative"}
-                app_key: {type: string, description: "Application du régime choisi (privé ou public) ; sa cible doit être target_type ; refusée (422) si retirée ou non listée (public_schools). Pour le secondaire, le type d'établissement précisé est consigné dans message"}
+                app_key: {type: string, description: "Application du régime choisi (privé ou public) ; sa cible doit être target_type ; refusée (422) si retirée ou non listée (public_schools)."}
+                establishment_subtype: {type: string, enum: [leg, lycee_technique, ces, cetic, college_prive, lycee_prive, autre], description: "Type d'établissement : OBLIGATOIRE pour le secondaire (liste fermée, 422 sinon), refusé pour les autres niveaux. Repris sur l'établissement créé à l'acceptation"}
                 message: {type: string, maxLength: 2000}
                 locale: {type: string, enum: [fr, en]}
                 website: {type: string, description: "Champ piège : doit rester vide (réponse leurre sinon)"}

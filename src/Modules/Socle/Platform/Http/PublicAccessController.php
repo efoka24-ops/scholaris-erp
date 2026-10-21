@@ -7,6 +7,7 @@ namespace Scholaris\Modules\Socle\Platform\Http;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Scholaris\Core\Http\JsonResponder;
+use Scholaris\Modules\Socle\Organisation\Contracts\EstablishmentSubtypes;
 use Scholaris\Modules\Socle\Platform\Application\AccessRequestService;
 use Scholaris\Modules\Socle\Platform\Application\Catalog;
 use Scholaris\Modules\Socle\Platform\Contracts\ApplicationManifest;
@@ -20,7 +21,7 @@ final class PublicAccessController
 {
     private const FIELDS = [
         'institution_name', 'target_type', 'city', 'region', 'country', 'contact_first_name', 'contact_last_name',
-        'contact_email', 'contact_phone', 'contact_position', 'ministerial_authorization', 'app_key', 'message', 'locale', 'website',
+        'contact_email', 'contact_phone', 'contact_position', 'ministerial_authorization', 'app_key', 'establishment_subtype', 'message', 'locale', 'website',
     ];
     private const NAME = '/^\p{L}[\p{L}\p{M} \'’.\-]*$/u';
     private const ACKNOWLEDGEMENT = 'Demande enregistrée. Si les informations sont valides, vous recevrez un message de confirmation.';
@@ -69,6 +70,7 @@ final class PublicAccessController
             'contact_position' => $input->text('contact_position', 2, 80, false),
             'ministerial_authorization' => $input->text('ministerial_authorization', 2, 120, false, '/^[\p{L}\p{N} \/.\-_°]+$/u'),
             'app_key' => $input->text('app_key', 2, 20, true, '/^[a-z][a-z0-9_]+$/'),
+            'establishment_subtype' => $input->choice('establishment_subtype', EstablishmentSubtypes::CODES, false),
             'message' => $input->longText('message', 2000),
             'locale' => $input->choice('locale', ['fr', 'en'], false) ?? ($request->getAttribute('locale') === 'en' ? 'en' : 'fr'),
         ];

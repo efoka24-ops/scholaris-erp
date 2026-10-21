@@ -21,9 +21,10 @@ interface ClientProvisioning
     /**
      * Crée un établissement du type indiqué (nursery, primary, secondary, higher) ; renvoie son identifiant.
      *
-     * @throws \Scholaris\Core\Http\HttpException 422 type inconnu, 409 nom déjà utilisé dans ce client
+     * @param string|null $subtype type d'établissement du secondaire (voir EstablishmentSubtypes), null ailleurs
+     * @throws \Scholaris\Core\Http\HttpException 422 type ou sous-type inconnu, 409 nom déjà utilisé dans ce client
      */
-    public function createEstablishment(string $tenantId, string $name, string $type): string;
+    public function createEstablishment(string $tenantId, string $name, string $type, ?string $subtype = null): string;
 
     /** Renomme le client. @throws \Scholaris\Core\Http\HttpException 404 client introuvable, 422 nom invalide */
     public function renameTenant(string $tenantId, string $name): void;

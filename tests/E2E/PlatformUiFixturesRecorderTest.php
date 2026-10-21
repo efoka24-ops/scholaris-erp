@@ -35,7 +35,7 @@ final class PlatformUiFixturesRecorderTest extends RealStackTestCase
         $valid = [
             'institution_name' => 'Collège Bilingue de Recette', 'target_type' => 'secondary', 'city' => 'Douala', 'region' => 'Littoral',
             'contact_first_name' => 'Awa', 'contact_last_name' => 'Ngo Bassa', 'contact_email' => 'direction@college-recette.test',
-            'contact_phone' => '+237690112233', 'app_key' => 'secondary', 'locale' => 'fr',
+            'contact_phone' => '+237690112233', 'app_key' => 'secondary', 'establishment_subtype' => 'college_prive', 'locale' => 'fr',
         ];
         $calls = [];
         $calls['public.applications'] = $this->call('GET', '/public/applications');

@@ -26,7 +26,7 @@ final class EstablishmentService
     }
 
     /** @return array<string, mixed> */
-    public function create(string $tenantId, string $name, EstablishmentType $type): array
+    public function create(string $tenantId, string $name, EstablishmentType $type, ?string $subtype = null): array
     {
         $id = (string) new Ulid();
         $now = $this->clock->now();
@@ -45,6 +45,7 @@ final class EstablishmentService
                 'id' => $id,
                 'name' => $name,
                 'type' => $type->value,
+                'establishment_subtype' => $subtype,
                 'branding' => $this->json($branding),
                 'modules_enabled' => $this->json(ModuleCatalog::KEYS),
                 'created_at' => $now,

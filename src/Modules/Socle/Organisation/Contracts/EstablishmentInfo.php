@@ -16,6 +16,8 @@ final class EstablishmentInfo
         /** couleur d'accent (#RRGGBB), contraste 4,5:1 avec du texte noir garanti */
         public readonly string $accent,
         public readonly ?string $logoPath = null,
+        /** type d'établissement du secondaire (leg, ces, cetic...), null ailleurs */
+        public readonly ?string $subtype = null,
     ) {
     }
 }

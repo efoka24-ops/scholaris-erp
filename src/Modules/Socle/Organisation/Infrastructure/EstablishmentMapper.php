@@ -27,6 +27,7 @@ final class EstablishmentMapper
             (string) $row['type'],
             is_string($branding['accent'] ?? null) ? $branding['accent'] : AccentColor::DEFAULT,
             is_array($logo) && is_string($logo['path'] ?? null) ? $logo['path'] : null,
+            is_string($row['establishment_subtype'] ?? null) ? $row['establishment_subtype'] : null,
         );
     }
 

@@ -46,7 +46,7 @@ final class PlatformAccessJourneyTest extends RealStackTestCase
         [$submitted, $submittedJson] = $this->publicCall('POST', '/public/access-requests', [
             'institution_name' => 'Collège Bilingue de Recette', 'target_type' => 'secondary', 'city' => 'Douala', 'region' => 'Littoral',
             'contact_first_name' => 'Awa', 'contact_last_name' => 'Ngo Bassa', 'contact_email' => 'direction@college-recette.test',
-            'contact_phone' => $phone, 'app_key' => 'secondary', 'message' => 'Rentrée de septembre.',
+            'contact_phone' => $phone, 'app_key' => 'secondary', 'establishment_subtype' => 'college_prive', 'message' => 'Rentrée de septembre.',
         ]);
         self::assertSame(202, $submitted->getStatusCode(), (string) $submitted->getBody());
         $tracking = (string) $submittedJson['data']['tracking_token'];

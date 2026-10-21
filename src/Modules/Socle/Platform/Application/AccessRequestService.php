@@ -11,6 +11,7 @@ use Scholaris\Core\Support\Ulid;
 use Scholaris\Modules\Socle\Identity\Contracts\ClientAdministrators;
 use Scholaris\Modules\Socle\Organisation\Contracts\ClientProvisioning;
 use Scholaris\Modules\Socle\Organisation\Contracts\EstablishmentDirectory;
+use Scholaris\Modules\Socle\Organisation\Contracts\EstablishmentSubtypes;
 use Scholaris\Modules\Socle\Platform\Contracts\ApplicationAccess;
 use Scholaris\Modules\Socle\Platform\Contracts\ApplicationManifest;
 use Scholaris\Modules\Socle\Platform\Domain\Calendar;
@@ -77,6 +78,15 @@ final class AccessRequestService
             throw HttpException::validation(['app_key' => ['Cette application ne convient pas à ce type d\'établissement.']]);
         }
 
+        $subtype = $data['establishment_subtype'] ?? null;
+        $allowed = EstablishmentSubtypes::allowedFor((string) $data['target_type']);
+        if ($subtype === null && $allowed !== []) {
+            throw HttpException::validation(['establishment_subtype' => ['Précisez le type d\'établissement.']]);
+        }
+        if ($subtype !== null && !in_array($subtype, $allowed, true)) {
+            throw HttpException::validation(['establishment_subtype' => ['Ce type d\'établissement ne convient pas à ce niveau.']]);
+        }
+
         $token = bin2hex(random_bytes(24));
         $id = (string) new Ulid();
         $now = $this->clock->iso();
@@ -95,6 +105,7 @@ final class AccessRequestService
             'contact_position' => $data['contact_position'] ?? null,
             'ministerial_authorization' => $data['ministerial_authorization'] ?? null,
             'app_key' => (string) $data['app_key'],
+            'establishment_subtype' => $subtype,
             'request_message' => $data['message'] ?? null,
             'locale' => ($data['locale'] ?? 'fr') === 'en' ? 'en' : 'fr',
             'status' => self::PENDING,
@@ -239,7 +250,12 @@ final class AccessRequestService
                 $establishmentId = $establishment->id;
             }
         }
-        $establishmentId ??= $this->clients->createEstablishment($tenantId, (string) $row['institution_name'], (string) $row['target_type']);
+        $establishmentId ??= $this->clients->createEstablishment(
+            $tenantId,
+            (string) $row['institution_name'],
+            (string) $row['target_type'],
+            isset($row['establishment_subtype']) ? (string) $row['establishment_subtype'] : null,
+        );
 
         $current = $this->entitlements->row($tenantId, $appKey);
         $entitlement = $current === null || $current['state'] === ApplicationAccess::CLOSED
@@ -395,6 +411,7 @@ final class AccessRequestService
                 'position' => $row['contact_position'],
             ],
             'ministerial_authorization' => $row['ministerial_authorization'],
+            'establishment_subtype' => $row['establishment_subtype'] ?? null,
             'app_key' => (string) $row['app_key'],
             'app_label' => $app['label'] ?? (string) $row['app_key'],
             'message' => $row['request_message'],

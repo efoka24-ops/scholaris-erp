@@ -81,6 +81,37 @@ final class CatalogRegimeTest extends PlatformTestCase
         self::assertSame(422, $response->getStatusCode());
     }
 
+    public function testLeSecondaireExigeUnTypeDEtablissementDeLaListeFermee(): void
+    {
+        $post = fn (array $over): int => $this->raw(
+            'POST',
+            '/public/access-requests',
+            ['Content-Type' => 'application/json'],
+            json_encode($this->requestBody($over + ['target_type' => 'secondary', 'app_key' => 'secondary']), JSON_THROW_ON_ERROR),
+        )[0]->getStatusCode();
+
+        self::assertSame(422, $post([]), 'Le type manque pour le secondaire.');
+        self::assertSame(422, $post(['establishment_subtype' => 'inconnu']));
+        self::assertSame(422, $post(['target_type' => 'higher', 'app_key' => 'higher', 'establishment_subtype' => 'leg']), 'Pas de type hors secondaire.');
+        self::assertSame(202, $post(['establishment_subtype' => 'cetic']));
+    }
+
+    public function testLeTypeEstStockeSurLaDemandeEtSurLEtablissementCree(): void
+    {
+        $request = $this->submitRequest(['target_type' => 'secondary', 'app_key' => 'secondary', 'establishment_subtype' => 'lycee_technique', 'message' => 'Bonjour']);
+
+        [, $detail] = $this->api('GET', '/platform/access-requests/' . $request['id'], self::ROOT);
+        self::assertSame('lycee_technique', $detail['data']['establishment_subtype']);
+        self::assertSame('Bonjour', $detail['data']['message'], 'Le type ne passe plus par le message.');
+
+        [$response, $json] = $this->api('POST', '/platform/access-requests/' . $request['id'] . '/accept', self::ROOT, null, ['force_reason' => 'Ouverture pilote du secondaire']);
+        self::assertSame(200, $response->getStatusCode(), (string) $response->getBody());
+        $stored = $this->connections()->pdo()->query("SELECT establishment_subtype FROM establishments WHERE id = '" . $json['data']['establishment_id'] . "'")->fetchColumn();
+        self::assertSame('lycee_technique', $stored);
+        $info = $this->kernel->container()->get(\Scholaris\Modules\Socle\Organisation\Contracts\EstablishmentDirectory::class)->forTenant((string) $json['data']['tenant_id']);
+        self::assertSame('lycee_technique', $info[0]->subtype);
+    }
+
     public function testLeRegimeDesigneLApplicationDeLaDemande(): void
     {
         $privee = $this->submitRequest(['target_type' => 'primary', 'app_key' => 'primary', 'contact_email' => 'a@ecole.test']);

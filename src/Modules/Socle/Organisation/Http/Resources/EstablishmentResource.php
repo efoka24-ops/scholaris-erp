@@ -8,7 +8,7 @@ final class EstablishmentResource extends Resource
 {
     protected function fields(): array
     {
-        return ['id', 'name', 'type', 'branding', 'modules_enabled', 'created_at', 'updated_at'];
+        return ['id', 'name', 'type', 'establishment_subtype', 'branding', 'modules_enabled', 'created_at', 'updated_at'];
     }
 
     protected function jsonFields(): array

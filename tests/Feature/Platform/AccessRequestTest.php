@@ -172,7 +172,7 @@ final class AccessRequestTest extends PlatformTestCase
     /** F2 : une demande d'accès n'ouvre pas en essai une application à venir ou retirée, sauf forçage motivé et tracé. */
     public function testApplicationAVenirOuRetireeRefuseeSaufForcageMotive(): void
     {
-        $soon = $this->submitRequest(['app_key' => 'secondary', 'target_type' => 'secondary', 'institution_name' => 'Collège Pilote', 'contact_email' => 'pilote@college.test']);
+        $soon = $this->submitRequest(['app_key' => 'secondary', 'target_type' => 'secondary', 'establishment_subtype' => 'college_prive', 'institution_name' => 'Collège Pilote', 'contact_email' => 'pilote@college.test']);
         [$refused, $refusedJson] = $this->api('POST', '/platform/access-requests/' . $soon['id'] . '/accept', self::ROOT, null, []);
         self::assertSame(422, $refused->getStatusCode(), (string) $refused->getBody());
         self::assertStringContainsString('pas encore disponible', $refusedJson['errors']['app_key'][0]);
