@@ -84,6 +84,9 @@ final class RolePermissionsPublicSchoolsTest extends TestCase
         ],
         // Identity 202610201010 (PP3, T607) : journal des consultations nominatives visible du directeur.
         'identity.named_access.read' => ['pub_school_director'],
+        // database/migrations/202610211104_roles_public_attendance.sql (T634, RG-PRE-1) : correction de l'appel par le directeur.
+        'attendance.correct' => ['pub_school_director'],
+        'attendance.correct_late' => ['pub_school_director'],
     ];
 
     /** @var array<string, array{level: string, sensitive: bool, label_fr: string, label_en: string}> */
