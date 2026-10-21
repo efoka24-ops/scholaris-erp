@@ -23,4 +23,12 @@ final class LazyCurrentPeriod implements CurrentPeriod
             ? $this->container->get(CurrentPeriod::class)->at($tenantId, $establishmentId, $date)
             : null;
     }
+
+    /** @return list<PeriodInfo> */
+    public function allAt(string $tenantId, string $establishmentId, string $date): array
+    {
+        return $this->container->has(CurrentPeriod::class)
+            ? $this->container->get(CurrentPeriod::class)->allAt($tenantId, $establishmentId, $date)
+            : [];
+    }
 }

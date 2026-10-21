@@ -24,6 +24,7 @@ final class TemplateRenderer
         'full_name', 'child_name', 'class_name', 'establishment_name', 'date', 'absence_date', 'link',
         'reference', 'school_year', 'due_on', 'label', 'offset',
         'subject', 'time', 'change_label', 'details',
+        'period_label', 'exam_label', 'place',
     ];
 
     /** @return list<string> variables utilisées par le texte, sans doublon */

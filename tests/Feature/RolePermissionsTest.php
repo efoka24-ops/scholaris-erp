@@ -16,6 +16,9 @@ final class RolePermissionsTest extends TestCase
     /** @var array<string, list<string>> */
     private array $grants = [];
 
+    /** @var array<string, array{level: string, sensitive: bool}> */
+    private array $roles = [];
+
     protected function setUp(): void
     {
         $kernel = Kernel::boot(dirname(__DIR__, 2), Config::fromArray([
@@ -23,7 +26,11 @@ final class RolePermissionsTest extends TestCase
             'database' => ['driver' => 'sqlite', 'database' => ':memory:'],
         ]));
         $kernel->container()->get(Migrator::class)->migrate();
-        $rows = $kernel->container()->get(ConnectionFactory::class)->pdo()->query('SELECT role, permission FROM role_permissions')->fetchAll();
+        $pdo = $kernel->container()->get(ConnectionFactory::class)->pdo();
+        foreach ($pdo->query('SELECT code, level, is_sensitive FROM roles')->fetchAll() as $row) {
+            $this->roles[(string) $row['code']] = ['level' => (string) $row['level'], 'sensitive' => (int) $row['is_sensitive'] === 1];
+        }
+        $rows = $pdo->query('SELECT role, permission FROM role_permissions')->fetchAll();
         foreach ($rows as $row) {
             $this->grants[(string) $row['role']][] = (string) $row['permission'];
         }
@@ -67,5 +74,56 @@ final class RolePermissionsTest extends TestCase
     public function testPermissionRefusee(string $role, string $permission): void
     {
         self::assertNotContains($permission, $this->grants[$role] ?? []);
+    }
+
+    /** @return array<string, array{0: string, 1: bool, 2: list<string>}> les 5 rôles de 202610201201_roles_primary.sql */
+    public static function primaryRoles(): array
+    {
+        return [
+            'primary_promoteur' => ['primary_promoteur', false, ['primary.dashboard.read', 'reporting.read']],
+            'primary_directeur' => ['primary_directeur', true, ['primary.settings.manage', 'primary.council.preside', 'primary.report_card.sign', 'assessment.correction.approve', 'primary.promotion.decide', 'primary.dashboard.read']],
+            'primary_adjoint' => ['primary_adjoint', false, ['primary.referential.manage', 'assessment.validate', 'scheduling.manage']],
+            'primary_secretaire' => ['primary_secretaire', false, ['people.manage', 'primary.enrol', 'documents.issue', 'primary.exam.manage']],
+            'primary_surveillant' => ['primary_surveillant', false, ['attendance.sanction.manage', 'primary.pickup.handover']],
+        ];
+    }
+
+    /**
+     * @dataProvider primaryRoles
+     * @param list<string> $permissions
+     */
+    public function testRolePrimaireAvecSesPermissionsExactes(string $role, bool $sensitive, array $permissions): void
+    {
+        $granted = $this->grants[$role] ?? [];
+        sort($granted);
+        sort($permissions);
+
+        self::assertSame($permissions, $granted);
+    }
+
+    /** @dataProvider primaryRoles */
+    public function testRolePrimaireDeNiveauEtablissementEtSaSensibilite(string $role, bool $sensitive): void
+    {
+        self::assertArrayHasKey($role, $this->roles);
+        self::assertSame('establishment', $this->roles[$role]['level']);
+        self::assertSame($sensitive, $this->roles[$role]['sensitive']);
+    }
+
+    public function testSeulsLesCinqRolesPrimaireSontSemesEtLeDirecteurEstLeSeulSensible(): void
+    {
+        $codes = array_values(array_filter(array_keys($this->roles), static fn (string $code): bool => str_starts_with($code, 'primary_')));
+        sort($codes);
+        self::assertSame(['primary_adjoint', 'primary_directeur', 'primary_promoteur', 'primary_secretaire', 'primary_surveillant'], $codes);
+        $sensitive = array_values(array_filter($codes, fn (string $code): bool => $this->roles[$code]['sensitive']));
+        self::assertSame(['primary_directeur'], $sensitive);
+    }
+
+    public function testLesPermissionsSensiblesDuPrimaireNeSontPasAccordeesAuxAutresRolesPrimaire(): void
+    {
+        foreach (['primary.report_card.sign', 'primary.promotion.decide', 'primary.council.preside', 'assessment.correction.approve'] as $permission) {
+            foreach (['primary_promoteur', 'primary_adjoint', 'primary_secretaire', 'primary_surveillant'] as $role) {
+                self::assertNotContains($permission, $this->grants[$role] ?? [], $role . ' ne doit pas avoir ' . $permission);
+            }
+        }
     }
 }

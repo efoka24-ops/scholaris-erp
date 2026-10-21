@@ -16,4 +16,12 @@ interface CurrentPeriod
      */
     public function at(string $tenantId, string $establishmentId, string $date): ?PeriodInfo;
 
+    /**
+     * Toutes les périodes qui couvrent ce jour (une séquence et le trimestre qui la contient, par exemple), triées par
+     * date de début puis par rang.
+     *
+     * @param string $date jour au format AAAA-MM-JJ (ou ISO 8601 complet : seuls les dix premiers caractères comptent)
+     * @return list<PeriodInfo> liste vide quand aucune période ne couvre ce jour ou que la date est invalide
+     */
+    public function allAt(string $tenantId, string $establishmentId, string $date): array;
 }
