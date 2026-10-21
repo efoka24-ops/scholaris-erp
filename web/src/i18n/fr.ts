@@ -16,6 +16,7 @@ import { higherDeliberationFr } from './higher-deliberation-fr';
 import { higherDashboardsFr } from './higher-dashboards-fr';
 import { accountFr } from './account-fr';
 import { publicNurseryFr } from './public-nursery-fr';
+import { publicSchoolsFr } from './public-schools-fr';
 
 export const fr = {
   ...adminFr,
@@ -34,6 +35,7 @@ export const fr = {
   ...higherDashboardsFr,
   ...accountFr,
   ...publicNurseryFr,
+  ...publicSchoolsFr,
   'nav.reportcards': "Bulletins",
   'reportcards.eyebrow': "Résultats",
   'reportcards.title': "Bulletins de notes",
