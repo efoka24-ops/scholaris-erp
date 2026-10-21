@@ -12,8 +12,13 @@ use Scholaris\Modules\Apps\PublicSchools\Support\PublicRoutes;
  */
 return static function (RouteRegistry $registry): void {
     $routes = new PublicRoutes($registry);
+    $primaryRoutes = new PublicRoutes($registry, PublicRoutes::PRIMARY_PREFIX);
 
     foreach (glob(__DIR__ . '/*/routes.php') ?: [] as $file) {
-        (require $file)($routes);
+        $route = require $file;
+        $route($routes);
+        if (basename(dirname($file)) === 'Schools') {
+            $route($primaryRoutes);
+        }
     }
 };

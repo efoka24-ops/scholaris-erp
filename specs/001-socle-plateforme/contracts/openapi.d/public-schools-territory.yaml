@@ -1,0 +1,17 @@
+paths:
+  /api/v1/public/territories/{id}/schools:
+    get:
+      summary: Lister les écoles d'un territoire accessible
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: Liste minimale des écoles sans données nominatives }
+        '401': { description: Authentification requise }
+        '403': { description: Permission insuffisante }
+        '404': { description: Territoire hors périmètre ou introuvable }

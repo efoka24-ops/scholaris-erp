@@ -39,9 +39,6 @@ final class PublicSchoolsConventionsTest extends TestCase
     /** Littéraux numériques tolérés dans Domain/ (neutres : indices, bornes triviales, pourcentage). */
     private const NEUTRAL_NUMBERS = ['0', '1', '2', '100'];
 
-    /** Routes transitoires hors garde : ancien registre, supprimé par T625 (avec l'exception du routeur racine). */
-    private const LEGACY_PREFIX = '/api/v1/public-primary/registry/';
-
     private static function base(): string
     {
         return str_replace(DIRECTORY_SEPARATOR, '/', dirname(__DIR__, 2));
@@ -117,7 +114,7 @@ final class PublicSchoolsConventionsTest extends TestCase
                 // Entre sous-modules d'une même application : Contracts, Support et Policies partagés seulement.
                 if (preg_match_all('/Scholaris\\\\Modules\\\\Apps\\\\' . $application . '\\\\(\w+)\\\\/', $source, $matches) > 0) {
                     foreach ($matches[1] as $target) {
-                        if ($target !== $module && !in_array($target, self::SHARED_FOLDERS, true) && $module !== '' && !($application === 'PublicPrimary' && $target === 'Registry')) {
+                        if ($target !== $module && !in_array($target, self::SHARED_FOLDERS, true) && $module !== '') {
                             $offenders[] = $relative . ' -> ' . $application . '\\' . $target . ' (sous-module voisin : passer par un Contract)';
                         }
                     }
@@ -204,15 +201,13 @@ final class PublicSchoolsConventionsTest extends TestCase
         $problems = [];
         foreach ([['PublicSchools', 'pub_', 'public_schools'], ['PublicPrimary', 'pp_', 'public_primary']] as [$application, $prefix, $slug]) {
             foreach (self::migrations($application) as $file => $sql) {
-                if (str_starts_with($file, 'PublicPrimary/Registry/')) {
-                    continue; // ancien registre : supprimé par T625
-                }
-                if (preg_match('#^\w+/\w+/Database/Migrations/\d{12}_' . $slug . '_[a-z0-9_]+\.sql$#', $file) !== 1) {
+                $historicalRegistry = $file === 'PublicSchools/Schools/Database/Migrations/202610151002_primary_public_registry.sql';
+                if (!$historicalRegistry && preg_match('#^\w+/\w+/Database/Migrations/\d{12}_' . $slug . '_[a-z0-9_]+\.sql$#', $file) !== 1) {
                     $problems[] = $file . ' : nom attendu AAAAMMJJHHMM_' . $slug . '_<objet>.sql';
                 }
                 foreach (array_filter(array_map('trim', explode(';', $sql))) as $statement) {
                     if (preg_match('/^CREATE TABLE(?: IF NOT EXISTS)?\s+`?(\w+)`?\s*\((.*)\)\s*$/is', $statement, $m) === 1) {
-                        if (!str_starts_with($m[1], $prefix)) {
+                        if (!$historicalRegistry && !str_starts_with($m[1], $prefix)) {
                             $problems[] = $file . ' : table ' . $m[1] . ' sans préfixe ' . $prefix;
                         }
                         if (preg_match('/^\s*tenant_id\s+VARCHAR\(40\)\s+NOT NULL/im', $m[2]) !== 1) {
@@ -220,7 +215,8 @@ final class PublicSchoolsConventionsTest extends TestCase
                         }
                     }
                     if (preg_match('/^(?:ALTER TABLE|INSERT INTO|UPDATE|DELETE FROM|DROP TABLE(?: IF EXISTS)?|CREATE (?:UNIQUE )?INDEX \w+ ON)\s+`?(\w+)`?/i', $statement, $m) === 1
-                        && !str_starts_with($m[1], $prefix)) {
+                        && !str_starts_with($m[1], $prefix)
+                        && !($historicalRegistry && str_starts_with($m[1], 'pp_'))) {
                         $problems[] = $file . ' : modifie la table ' . $m[1] . ' d\'un autre module';
                     }
                     foreach (['AUTO_INCREMENT', 'AUTOINCREMENT', 'ENGINE', 'FOREIGN KEY', 'REFERENCES'] as $word) {
@@ -240,16 +236,16 @@ final class PublicSchoolsConventionsTest extends TestCase
         $offenders = [];
         foreach ([['PublicSchools', 'pub_'], ['PublicPrimary', 'pp_']] as [$application, $prefix]) {
             foreach (self::files($application, 'php') as $file) {
-                if (str_starts_with(self::relative($file), 'PublicPrimary/Registry/')) {
-                    continue;
-                }
                 foreach (token_get_all((string) file_get_contents($file)) as $token) {
                     if (!is_array($token) || !in_array($token[0], [T_CONSTANT_ENCAPSED_STRING, T_ENCAPSED_AND_WHITESPACE], true)) {
                         continue;
                     }
                     if (preg_match_all('/\b(?:FROM|JOIN|INTO|UPDATE)\s+`?([a-z][a-z0-9_]*)`?/', $token[1], $m) > 0) {
                         foreach ($m[1] as $table) {
-                            if (!str_starts_with($table, $prefix)) {
+                            $historicalRegistry = $application === 'PublicSchools'
+                                && str_starts_with(self::relative($file), 'PublicSchools/Schools/')
+                                && str_starts_with($table, 'pp_');
+                            if (!str_starts_with($table, $prefix) && !$historicalRegistry) {
                                 $offenders[] = self::relative($file) . ' : ' . $table;
                             }
                         }
@@ -303,9 +299,6 @@ final class PublicSchoolsConventionsTest extends TestCase
         $problems = [];
         foreach ($registry->all() as $route) {
             $name = $route['method'] . ' ' . $route['path'];
-            if (str_starts_with($route['path'], self::LEGACY_PREFIX)) {
-                continue;
-            }
             if (!str_starts_with($route['path'], $prefixes['PublicSchools']) && !str_starts_with($route['path'], $prefixes['PublicPrimary'])) {
                 $problems[] = $name . ' : préfixe /public ou /public-primary attendu';
             }
@@ -334,13 +327,13 @@ final class PublicSchoolsConventionsTest extends TestCase
         foreach (self::APPLICATIONS as $application) {
             foreach (self::files($application, 'php') as $file) {
                 $relative = self::relative($file);
-                if (preg_match('#^[^/]+/(\w+)/routes\.php$#', $relative, $m) === 1 && $m[1] !== 'Registry') {
+                if (preg_match('#^[^/]+/(\w+)/routes\.php$#', $relative, $m) === 1) {
                     $source = (string) file_get_contents($file);
                     if (preg_match('/RouteRegistry|->add\s*\(|->addRoute\s*\(/', $source) === 1 || !str_contains($source, 'PublicRoutes')) {
                         $offenders[] = $relative;
                     }
                 }
-                if (preg_match('#^[^/]+/.+/(routes|definitions)\.php$#', $relative, $m) === 1 && !str_contains($relative, '/Registry/')
+                if (preg_match('#^[^/]+/.+/(routes|definitions)\.php$#', $relative, $m) === 1
                     && substr_count($relative, '/') > 2) {
                     $offenders[] = $relative . ' : un seul routes.php / definitions.php par sous-module, à sa racine';
                 }
@@ -469,7 +462,7 @@ final class PublicSchoolsConventionsTest extends TestCase
         foreach ([['PublicSchools', PublicSchoolsApplication::MODULES], ['PublicPrimary', PublicPrimaryApplication::MODULES]] as [$application, $modules]) {
             foreach (glob(self::base() . self::ROOT . '/' . $application . '/*', GLOB_ONLYDIR) ?: [] as $dir) {
                 $name = basename($dir);
-                if (in_array($name, self::SHARED_FOLDERS, true) || ($application === 'PublicPrimary' && $name === 'Registry')) {
+                if (in_array($name, self::SHARED_FOLDERS, true)) {
                     continue;
                 }
                 self::assertContains($name, $modules, $application . '/' . $name . ' : sous-module non prévu (voir ' . $application . 'Application::MODULES)');

@@ -1,0 +1,59 @@
+paths:
+  /api/v1/public/classes:
+    post:
+      summary: Créer une classe et son profil pédagogique
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, academic_year_id, org_unit_id, level_codes, shift]
+              properties:
+                name: { type: string, maxLength: 160 }
+                academic_year_id: { type: string }
+                org_unit_id: { type: string }
+                level_codes: { type: array, minItems: 1, items: { type: string } }
+                shift: { type: string, enum: [full_day, morning, afternoon] }
+                homeroom_staff_id: { type: string, nullable: true }
+                homeroom_from: { type: string, format: date, nullable: true }
+                capacity: { type: integer, minimum: 1, maximum: 10000, nullable: true }
+      responses:
+        '201': { description: Classe créée }
+        '401': { description: Authentification requise }
+        '403': { description: Permission insuffisante }
+        '422': { description: Profil de classe invalide }
+    get:
+      summary: Lister les classes de l'établissement pour une année scolaire
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: academic_year_id
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: Classes accessibles dans le périmètre }
+        '401': { description: Authentification requise }
+        '404': { description: Périmètre indisponible }
+        '422': { description: Année scolaire manquante }
+  /api/v1/public/classes/{id}:
+    get:
+      summary: Lire une classe accessible
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: Classe et profil pédagogique }
+        '401': { description: Authentification requise }
+        '404': { description: Classe hors périmètre ou inconnue }

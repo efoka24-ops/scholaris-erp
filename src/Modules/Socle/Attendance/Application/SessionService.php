@@ -241,6 +241,83 @@ final class SessionService
     }
 
     /**
+     * Correction contrôlée d’un appel validé, appelée par le contrat d’écriture des applications.
+     *
+     * @param list<array{person_id: string, status: string, arrived_at?: ?string, note?: ?string}> $lines
+     * @return array<string, mixed>
+     */
+    public function correctRecords(Principal $principal, string $establishmentId, string $sessionId, array $lines, string $reason): array
+    {
+        $tenantId = $principal->tenantId;
+        $session = $this->mustFind($tenantId, $establishmentId, $sessionId);
+        if ($session['status'] !== 'validated') {
+            throw HttpException::conflict('Seul un appel validé peut être corrigé.');
+        }
+        $canManageCorrections = $this->access->can($principal, $establishmentId, 'attendance.correct');
+        if ($session['taken_by'] !== $principal->userId && !$canManageCorrections) {
+            throw HttpException::forbidden('Seul l’auteur de l’appel ou un responsable autorisé peut le corriger.');
+        }
+
+        $today = $this->clock->today();
+        $sessionDate = (string) $session['session_date'];
+        if ($sessionDate > $today) {
+            throw HttpException::validation(['date' => ['Un appel futur ne peut pas être corrigé.']]);
+        }
+        if ($sessionDate < $today) {
+            if (!$this->access->can($principal, $establishmentId, 'attendance.correct_late')) {
+                throw HttpException::forbidden('Une correction après le jour de l’appel exige le droit attendance.correct_late.');
+            }
+            if (trim($reason) === '') {
+                throw HttpException::validation(['reason' => ['Un motif est obligatoire pour corriger un appel après le jour concerné.']]);
+            }
+        }
+
+        $expected = $this->expected($tenantId, (string) $session['structure_id']);
+        $seen = [];
+        foreach ($lines as $index => $line) {
+            $personId = $line['person_id'];
+            if (!in_array($personId, $expected, true) || isset($seen[$personId])) {
+                throw HttpException::validation(["records.$index.person_id" => ['Élève absent de cette classe ou répété dans la demande.']]);
+            }
+            $seen[$personId] = true;
+        }
+        if (count($seen) !== count($expected)) {
+            throw HttpException::validation(['records' => ['La correction doit contenir chaque élève attendu.']]);
+        }
+
+        $existing = [];
+        foreach ($this->repository->records($tenantId, $sessionId) as $record) {
+            $existing[(string) $record['person_id']] = $record;
+        }
+        $this->db->transaction(function () use ($tenantId, $sessionId, $lines, $existing, $principal, $reason, $session): void {
+            foreach ($lines as $line) {
+                $record = $existing[(string) $line['person_id']] ?? null;
+                if ($record === null) {
+                    throw HttpException::conflict('L’appel validé est incomplet ; la correction est impossible.');
+                }
+                $this->repository->updateRecord($tenantId, (string) $record['id'], [
+                    'status' => (string) $line['status'],
+                    'arrived_at' => $line['arrived_at'] ?? null,
+                    'note' => $line['note'] ?? null,
+                    'updated_at' => $this->clock->now(),
+                ]);
+            }
+            $this->repository->updateSession($tenantId, $sessionId, ['updated_at' => $this->clock->now()]);
+            $this->audit->append(
+                $tenantId,
+                $principal->userId,
+                'attendance.session.corrected',
+                'attendance_session',
+                $sessionId,
+                ['status' => 'validated', 'session_date' => $session['session_date']],
+                ['status' => 'validated', 'reason' => trim($reason)],
+            );
+        });
+
+        return $this->find($tenantId, $establishmentId, $sessionId);
+    }
+
+    /**
      * Valide l'appel : chaque élève attendu doit avoir un statut. Les parents des absents non justifiés sont prévenus (une fois par jour).
      *
      * @return array<string, mixed>

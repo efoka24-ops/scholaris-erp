@@ -1,0 +1,46 @@
+# Contrat de l'appel des classes des écoles publiques.
+paths:
+  /api/v1/public/classes/{id}/attendance/{date}:
+    put:
+      summary: Enregistrer ou corriger l'appel d'une classe par demi-journée
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: date
+          in: path
+          required: true
+          schema: { type: string, format: date }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [day_part, client_uuid]
+              properties:
+                day_part: { type: string, enum: [morning, afternoon] }
+                client_uuid: { type: string, maxLength: 40 }
+                reason: { type: string, maxLength: 500 }
+                records:
+                  type: array
+                  items:
+                    type: object
+                    required: [person_id, status]
+                    properties:
+                      person_id: { type: string }
+                      status: { type: string, enum: [P, A, R] }
+                      arrived_at: { type: string, maxLength: 5, nullable: true }
+                      note: { type: string, maxLength: 255, nullable: true }
+      responses:
+        '200': { description: Appel enregistré ou corrigé }
+        '400': { description: Requête invalide }
+        '401': { description: Authentification requise }
+        '403': { description: Permission ou périmètre insuffisant }
+        '404': { description: Classe introuvable dans le périmètre }
+        '409': { description: Conflit de séance }
+        '422': { description: Données invalides ou motif de correction manquant }
