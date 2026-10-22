@@ -188,7 +188,7 @@ final class RoleMatrix
             'label_fr' => 'Administrateur fonctionnel', 'label_en' => 'Functional administrator', 'scopes' => ['establishment'], 'external' => false, 'max_days' => null,
             'permissions' => [
                 'higher.access', 'organisation.read', 'identity.manage', 'identity.roles.assign', 'settings.manage', 'documents.templates.manage',
-                'higher.settings.read', 'higher.settings.manage',
+                'higher.settings.read', 'higher.settings.manage', 'imports.people.manage', 'workflows.manage',
             ],
         ],
         'R21' => [

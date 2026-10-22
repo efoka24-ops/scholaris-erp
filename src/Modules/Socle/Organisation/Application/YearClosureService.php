@@ -13,6 +13,7 @@ use Scholaris\Modules\Socle\Organisation\Contracts\ClosureFinding;
 use Scholaris\Modules\Socle\Organisation\Contracts\ClosureStepResult;
 use Scholaris\Modules\Socle\Organisation\Infrastructure\ClosureRepository;
 use Scholaris\Modules\Socle\Organisation\Infrastructure\Repositories;
+use Scholaris\Modules\Socle\Workflows\Contracts\WorkflowResolver;
 use Throwable;
 
 /**
@@ -49,6 +50,7 @@ final class YearClosureService
         private readonly RecentSecondFactor $secondFactor,
         private readonly AuditLog $audit,
         private readonly OrgClock $clock,
+        private readonly WorkflowResolver $workflows,
     ) {
     }
 
@@ -138,7 +140,9 @@ final class YearClosureService
         if ($closure['status'] === self::REJECTED) {
             throw HttpException::conflict('Cette demande de clôture a été refusée : déposez-en une nouvelle.');
         }
-        if (!$this->secondFactor->hasRecent($tenantId, $approverId, self::SECOND_FACTOR_MAX_AGE)) {
+        // Circuit « clôture d'année » : la confirmation récente de l'approbation est verrouillée à « exigée » (voir ClosureWorkflows).
+        $approval = $this->workflows->resolve($tenantId, $establishmentId, ClosureWorkflows::APPLICATION, ClosureWorkflows::CLOSURE)->step('approve');
+        if ($approval->recentConfirmation && !$this->secondFactor->hasRecent($tenantId, $approverId, self::SECOND_FACTOR_MAX_AGE)) {
             throw HttpException::forbidden('Une double authentification récente est exigée pour approuver la clôture d\'une année.');
         }
 

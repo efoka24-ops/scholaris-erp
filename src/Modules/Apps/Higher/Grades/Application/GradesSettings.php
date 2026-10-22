@@ -15,7 +15,7 @@ use Scholaris\Modules\Socle\Organisation\Contracts\OrgUnitSettingsReader;
  */
 final class GradesSettings
 {
-    public function __construct(private readonly OrgUnitSettingsReader $settings)
+    public function __construct(private readonly OrgUnitSettingsReader $settings, private readonly GradesWorkflow $workflow)
     {
     }
 
@@ -72,11 +72,19 @@ final class GradesSettings
 
     public function lifecycle(string $tenantId, string $establishmentId, ?string $schoolId): GradeLifecycle
     {
-        return GradeLifecycle::fromArray($this->raw($tenantId, $establishmentId, $schoolId, 'assessment.lifecycle')) ?? GradeLifecycle::ipes();
+        $base = GradeLifecycle::fromArray($this->raw($tenantId, $establishmentId, $schoolId, 'assessment.lifecycle')) ?? GradeLifecycle::ipes();
+
+        return $this->workflow->lifecycle($base, $tenantId, $establishmentId);
     }
 
     /** @return list<array{permission: string, role: ?string, label: string, require_recent_2fa: bool}> */
     public function correctionChain(string $tenantId, string $establishmentId, ?string $schoolId): array
+    {
+        return $this->workflow->correctionChain($this->declaredChain($tenantId, $establishmentId, $schoolId), $tenantId, $establishmentId);
+    }
+
+    /** @return list<array{permission: string, role: ?string, label: string, require_recent_2fa: bool}> */
+    private function declaredChain(string $tenantId, string $establishmentId, ?string $schoolId): array
     {
         $raw = $this->raw($tenantId, $establishmentId, $schoolId, 'assessment.correction.chain');
         $source = is_array($raw) && $raw !== [] && array_is_list($raw) && count($raw) <= 5 ? $raw : IpesDefaults::CORRECTION_CHAIN;

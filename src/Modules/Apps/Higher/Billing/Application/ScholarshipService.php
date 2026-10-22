@@ -11,10 +11,14 @@ use Scholaris\Core\Support\Ulid;
 use Scholaris\Modules\Apps\Higher\Billing\Domain\PaymentTerms;
 use Scholaris\Modules\Apps\Higher\Billing\Domain\ScholarshipRules;
 use Scholaris\Modules\Apps\Higher\Billing\Infrastructure\BillingRepository;
+use Scholaris\Modules\Apps\Higher\Support\Perimeter;
+use Scholaris\Modules\Apps\Higher\Workflows\HigherWorkflows;
+use Scholaris\Modules\Socle\Assessment\Contracts\RecentSecondFactor;
 use Scholaris\Modules\Socle\Audit\Contracts\AuditLog;
 use Scholaris\Modules\Socle\Billing\Contracts\InvoiceIssuer;
 use Scholaris\Modules\Socle\Billing\Contracts\InvoicePayer;
 use Scholaris\Modules\Socle\Organisation\Contracts\OrgUnitSettingsReader;
+use Scholaris\Modules\Socle\Workflows\Contracts\WorkflowResolver;
 
 /**
  * Bourses et réductions (EX-FIN-03, RG-FIN-1), échéanciers individuels négociés (EX-FIN-02) et tiers payeurs (EX-FIN-04, S13).
@@ -33,6 +37,8 @@ final class ScholarshipService
         private readonly InvoiceIssuer $invoices,
         private readonly OrgUnitSettingsReader $settings,
         private readonly AuditLog $audit,
+        private readonly WorkflowResolver $workflows,
+        private readonly RecentSecondFactor $secondFactor,
     ) {
     }
 
@@ -106,7 +112,7 @@ final class ScholarshipService
     public function decide(Principal $principal, string $establishmentId, string $id, bool $approve, ?string $note = null): array
     {
         $tenantId = $principal->tenantId;
-        $perimeter = $this->access->perimeter($principal, $establishmentId, BillingAccess::MANAGE);
+        $perimeter = $this->approver($principal, $establishmentId);
         $row = $this->find($tenantId, $establishmentId, $id);
         $this->access->assertWritable($principal, $perimeter, $row, 'hi_scholarship', $id);
         if ($row['status'] !== 'pending') {
@@ -178,7 +184,7 @@ final class ScholarshipService
     /** @return array<string, mixed> */
     public function decidePlan(Principal $principal, string $establishmentId, string $id, bool $approve): array
     {
-        $perimeter = $this->access->perimeter($principal, $establishmentId, BillingAccess::MANAGE);
+        $perimeter = $this->approver($principal, $establishmentId);
         $row = $this->plan($principal->tenantId, $establishmentId, $id);
         $this->access->assertWritable($principal, $perimeter, $row, 'hi_payment_plan', $id);
         if ($row['status'] !== 'pending') {
@@ -245,6 +251,22 @@ final class ScholarshipService
         }
 
         return self::sponsorResource($sponsor) + ['accounts' => $accounts, 'balance_xaf' => $due];
+    }
+
+    /**
+     * Périmètre de celui qui valide une bourse ou un échéancier : la fonction du circuit de validation de l'établissement
+     * (`billing_scholarship`, par défaut le comptable `billing.manage`), avec confirmation récente si le circuit l'exige.
+     * Le contrôle « autre personne que le demandeur » reste dans decide() et decidePlan(), quel que soit le réglage.
+     */
+    private function approver(Principal $principal, string $establishmentId): Perimeter
+    {
+        $step = $this->workflows->resolve($principal->tenantId, $establishmentId, HigherWorkflows::APPLICATION, HigherWorkflows::SCHOLARSHIP)->step('approval');
+        $perimeter = $this->access->perimeter($principal, $establishmentId, $step->permission());
+        if ($step->recentConfirmation && !$this->secondFactor->isRecent($principal->tenantId, $principal->userId)) {
+            throw new HttpException(403, 'Double authentification requise', 'Ressaisissez votre code de double authentification pour cette validation.', 'https://api.scholaris.cm/errors/second-factor-required');
+        }
+
+        return $perimeter;
     }
 
     private function defaultRate(string $tenantId, string $establishmentId, string $school, string $kind): ?int

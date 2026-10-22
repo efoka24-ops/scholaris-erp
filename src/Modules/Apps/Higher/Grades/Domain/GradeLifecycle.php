@@ -13,7 +13,7 @@ final class GradeLifecycle
     /**
      * @param list<string> $states
      * @param list<string> $editable
-     * @param list<array{from: string, to: string, permission: string, require_recent_2fa: bool}> $transitions
+     * @param list<array{from: string, to: string, permission: string, require_recent_2fa: bool, role?: string|null}> $transitions
      */
     private function __construct(
         public readonly array $states,
@@ -98,7 +98,18 @@ final class GradeLifecycle
         return $a !== false && $b !== false && $a >= $b;
     }
 
-    /** @return array{from: string, to: string, permission: string, require_recent_2fa: bool}|null */
+    /**
+     * Même cycle avec d'autres transitions (circuit de validation configuré par l'administrateur, voir GradesWorkflow) : une
+     * transition peut alors exiger un rôle précis (`role`) en plus du droit.
+     *
+     * @param list<array{from: string, to: string, permission: string, require_recent_2fa: bool, role?: string|null}> $transitions
+     */
+    public function withTransitions(array $transitions): self
+    {
+        return new self($this->states, $this->editable, $this->published, $transitions);
+    }
+
+    /** @return array{from: string, to: string, permission: string, require_recent_2fa: bool, role?: string|null}|null */
     public function transition(string $from, string $to): ?array
     {
         foreach ($this->transitions as $t) {

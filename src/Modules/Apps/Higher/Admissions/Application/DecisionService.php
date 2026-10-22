@@ -11,7 +11,10 @@ use Scholaris\Modules\Apps\Higher\Admissions\Domain\ApplicationStatus;
 use Scholaris\Modules\Apps\Higher\Admissions\Domain\Prerequisites;
 use Scholaris\Modules\Apps\Higher\Admissions\Infrastructure\AdmissionsStore;
 use Scholaris\Modules\Apps\Higher\Support\WriteGate;
+use Scholaris\Modules\Apps\Higher\Workflows\HigherWorkflows;
+use Scholaris\Modules\Socle\Assessment\Contracts\RecentSecondFactor;
 use Scholaris\Modules\Socle\Organisation\Contracts\OrgUnitSettingsReader;
+use Scholaris\Modules\Socle\Workflows\Contracts\WorkflowResolver;
 
 /**
  * Décisions d'admission motivées (EX-ADM-06), prises par le directeur d'école (R04, `higher.admission.decide`) :
@@ -34,6 +37,8 @@ final class DecisionService
         private readonly OrgUnitSettingsReader $settings,
         private readonly WriteGate $gate,
         private readonly AdmissionsClock $clock,
+        private readonly WorkflowResolver $workflows,
+        private readonly RecentSecondFactor $secondFactor,
     ) {
     }
 
@@ -41,7 +46,13 @@ final class DecisionService
     public function decide(Principal $principal, string $establishmentId, string $id, string $decision, string $reason, ?string $overCapacityReason): array
     {
         $tenantId = $principal->tenantId;
-        $application = $this->applications->managed($principal, $establishmentId, $id, [AdmissionPermissions::DECIDE]);
+        // Qui décide : la fonction du circuit « décision d'admission » de l'établissement (défaut : le directeur d'école,
+        // `higher.admission.decide`). Prérequis, pièces vérifiées, motif et audit ci-dessous valent quel que soit le réglage.
+        $step = $this->workflows->resolve($tenantId, $establishmentId, HigherWorkflows::APPLICATION, HigherWorkflows::ADMISSION)->step('decision');
+        $application = $this->applications->managed($principal, $establishmentId, $id, [$step->permission()]);
+        if ($step->recentConfirmation && !$this->secondFactor->isRecent($tenantId, $principal->userId)) {
+            throw new HttpException(403, 'Double authentification requise', 'Ressaisissez votre code de double authentification pour cette décision.', 'https://api.scholaris.cm/errors/second-factor-required');
+        }
         if (!in_array($decision, ApplicationStatus::DECISIONS, true)) {
             throw HttpException::validation(['decision' => ['Décision attendue parmi : ' . implode(', ', ApplicationStatus::DECISIONS) . '.']]);
         }

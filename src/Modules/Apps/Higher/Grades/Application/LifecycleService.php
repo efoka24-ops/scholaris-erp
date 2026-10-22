@@ -58,7 +58,15 @@ final class LifecycleService
         if (in_array($permission, [MarkPolicy::SUBMIT, MarkPolicy::ENTER], true)) {
             $this->policy->assertTeacher($principal, $establishmentId, $row, $permission);
         } else {
-            $this->policy->assertScoped($principal, $establishmentId, $row, $permission);
+            $perimeter = $this->policy->assertScoped($principal, $establishmentId, $row, $permission);
+            // Circuit de validation réglé par l'administrateur : la fonction choisie peut exiger un rôle précis (le droit seul
+            // est partagé par plusieurs rôles). Sans réglage, `role` est absent et seul le droit compte, comme avant.
+            $role = $transition['role'] ?? null;
+            if ($role !== null && !in_array($role, $perimeter->roles, true)) {
+                $this->policy->audit($principal, 'higher.grades.denied', 'higher_grade_assessment', $assessmentId, null, ['permission' => $permission, 'role_required' => $role]);
+
+                throw HttpException::forbidden('Cette étape revient à un autre rôle (circuit de validation de l\'établissement).');
+            }
         }
         if ($transition['require_recent_2fa'] && !$this->secondFactor->isRecent($tenantId, $principal->userId)) {
             throw new HttpException(403, 'Double authentification requise', 'Ressaisissez votre code de double authentification pour cette opération.', self::SECOND_FACTOR_TYPE);

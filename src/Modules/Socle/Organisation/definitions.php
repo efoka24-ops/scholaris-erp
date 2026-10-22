@@ -39,6 +39,10 @@ return [
     \Scholaris\Modules\Socle\Organisation\Contracts\ClientProvisioning::class => get(\Scholaris\Modules\Socle\Organisation\Application\ClientOnboarding::class),
     \Scholaris\Modules\Socle\Organisation\Contracts\ModuleActivator::class => get(\Scholaris\Modules\Socle\Organisation\Application\ClientOnboarding::class),
 
+    // Circuit de clôture d'année, déclaré au socle des circuits de validation configurables (Socle\Workflows).
+    \Scholaris\Modules\Socle\Organisation\Application\ClosureWorkflows::class => autowire(),
+    'workflows.definitions.organisation' => [\Scholaris\Modules\Socle\Organisation\Application\ClosureWorkflows::class],
+
     // Export complet du client (tenant:export) : liste blanche de colonnes, aucun secret.
     'privacy.tenant_data_source.organisation' => \DI\autowire(\Scholaris\Modules\Socle\Organisation\Infrastructure\PrivacyExportSource::class),
 ];
