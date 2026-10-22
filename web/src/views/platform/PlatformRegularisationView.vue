@@ -8,6 +8,7 @@ import { formatDate, formatXaf } from '@/lib/format';
 import RegularisationActions from './RegularisationActions.vue';
 import ManualPaymentForm from './ManualPaymentForm.vue';
 import ReplayNotice from './ReplayNotice.vue';
+import DeclarationsPanel from './DeclarationsPanel.vue';
 
 // Liste « À régulariser » : clients en retard, en régularisation de paiement et promesses de paiement en cours, avec les
 // actions rapides (bloquer, débloquer, accorder un délai, saisir un paiement manuel) et l'export CSV.
@@ -19,6 +20,7 @@ const bucket = ref<RegularisationBucket | ''>('');
 const open = ref<{ key: string; kind: 'lock' | 'unlock' | 'delay' | 'payment' } | null>(null);
 const info = ref<string | null>(null);
 const exportError = ref<unknown>(null);
+const declared = ref<InstanceType<typeof DeclarationsPanel> | null>(null);
 
 const BUCKETS: Array<RegularisationBucket | ''> = ['', 'past_due', 'regularisation', 'promise'];
 const rowKey = (i: RegularisationItem): string => `${i.tenant_id}:${i.app_key}`;
@@ -39,6 +41,11 @@ function toggle(item: RegularisationItem, kind: 'lock' | 'unlock' | 'delay' | 'p
   const key = rowKey(item);
   open.value = open.value?.key === key && open.value.kind === kind ? null : { key, kind };
   info.value = null;
+}
+
+/** Après la reprise d'une action interrompue : relit la liste et les paiements déclarés. */
+async function reloadAll(): Promise<void> {
+  await Promise.all([load(), declared.value?.reload()]);
 }
 
 async function done(): Promise<void> {
@@ -82,8 +89,10 @@ onMounted(load);
 
     <ErrorNotice :error="loadError" />
     <ErrorNotice :error="exportError" />
-    <ReplayNotice @done="load" />
+    <ReplayNotice @done="reloadAll" />
     <p v-if="info" class="notice notice--success" role="status">{{ info }}</p>
+
+    <DeclarationsPanel ref="declared" @changed="load" />
 
     <div v-if="data" class="kpis" role="group" :aria-label="t('rg.list.summary')">
       <p class="kpi"><span class="kpi__v">{{ data.counts.past_due }}</span> {{ t('rg.bucket.past_due') }}</p>

@@ -168,6 +168,12 @@ export interface RegularisationItem {
   base_price_xaf: number;
   options: EntitlementOption[];
   amount_due_xaf: number;
+  /** Crédit d'un paiement partiel confirmé et solde restant à régler (amount_due_xaf moins le crédit). */
+  credit_xaf?: number;
+  balance_xaf?: number;
+  /** Impayé non encore bloqué : dernier jour avant le blocage et jours restants (null si déjà bloqué). */
+  blocks_on?: string | null;
+  days_left?: number | null;
   promise_until: string | null;
   promise_reason: string | null;
   receipts?: Array<{ id: string; receipt_number: string; amount_xaf: number; paid_at: string | null }>;
@@ -180,12 +186,54 @@ export interface RegularisationOverview {
   counts: Record<RegularisationBucket, number>;
 }
 
+export type DeclarationKind = 'total' | 'partial';
+/** declared : déclarée, en vérification par la plateforme ; verified : confirmée ; rejected : rejetée ; expired : non confirmée à temps. */
+export type DeclarationState = 'declared' | 'verified' | 'rejected' | 'expired';
+export const DECLARATION_STATES: DeclarationState[] = ['declared', 'verified', 'rejected', 'expired'];
+export type MobileMoneyChannel = 'orange_money' | 'mtn_momo';
+
+/** Demande de régularisation (paiement déclaré) ; le numéro payeur n'est jamais renvoyé en clair. */
+export interface RegularisationDeclaration {
+  id: string;
+  tenant_id: string;
+  tenant_name?: string;
+  app_key: string;
+  label: string;
+  kind: DeclarationKind;
+  channel: MobileMoneyChannel;
+  payer_phone_masked: string;
+  reference: string;
+  declared_amount_xaf: number;
+  balance_xaf: number;
+  state: DeclarationState;
+  verified_via: 'webhook' | 'manual' | null;
+  confirmed_amount_xaf: number | null;
+  decision_reason: string | null;
+  declared_at: string;
+  expires_on: string;
+  decided_at: string | null;
+  review_note?: string | null;
+  unlocked?: boolean;
+}
+
+/** Numéro de paiement mobile money de la plateforme, à afficher aux clients. */
+export interface PaymentNumber {
+  channel: MobileMoneyChannel;
+  phone: string;
+  holder: string;
+}
+
 export interface MyRegularisation {
   mode: 'ok' | 'past_due' | RegularisationLevel;
   locked: boolean;
   can_pay: boolean;
   items: RegularisationItem[];
   contact: { name: string; email: string | null; phone: string | null };
+  payment_numbers?: PaymentNumber[];
+  requests?: RegularisationDeclaration[];
+  partial_min_xaf?: number;
+  tolerance_xaf?: number;
+  expiry_days?: number;
 }
 
 export interface AccessRequest {
@@ -434,6 +482,37 @@ export interface PlatformSetting { value: number; default: number; min: number; 
 export const fetchPlatformSettings = async (): Promise<Record<string, PlatformSetting>> =>
   (await http.get<{ data: Record<string, PlatformSetting> }>('/platform/settings', undefined, NO_ESTABLISHMENT)).data ?? {};
 
+/** Contact et numéros de paiement de la plateforme (GET /platform/settings/contact) : valeurs saisies et valeurs effectives. */
+export interface PlatformContactValues {
+  name: string | null;
+  email: string | null;
+  phone: string | null;
+  payments: PaymentNumber[];
+}
+export interface PlatformContact {
+  stored: PlatformContactValues;
+  effective: { name: string; email: string | null; phone: string | null; payments: PaymentNumber[] };
+  updated_at: string | null;
+}
+export const fetchPlatformContact = async (): Promise<PlatformContact> =>
+  (await http.get<{ data: PlatformContact }>('/platform/settings/contact', undefined, NO_ESTABLISHMENT)).data;
+
+/** Paiements déclarés à vérifier (plateforme). */
+export interface DeclarationFilters {
+  state?: DeclarationState | '';
+  channel?: MobileMoneyChannel | '';
+}
+const declarationQuery = (f: DeclarationFilters): Record<string, string> => ({
+  ...(f.state ? { 'filter[state]': f.state } : {}),
+  ...(f.channel ? { 'filter[channel]': f.channel } : {}),
+});
+export async function fetchDeclarations(filters: DeclarationFilters = {}): Promise<{ items: RegularisationDeclaration[]; counts: Record<DeclarationState, number> }> {
+  const res = await http.get<{ data: RegularisationDeclaration[]; meta?: { counts?: Record<DeclarationState, number> } }>('/platform/regularisation/declarations', declarationQuery(filters), NO_ESTABLISHMENT);
+  return { items: res.data ?? [], counts: res.meta?.counts ?? { declared: 0, verified: 0, rejected: 0, expired: 0 } };
+}
+export const fetchDeclarationsCsv = (filters: DeclarationFilters = {}): Promise<Blob> =>
+  http.get<Blob>('/platform/regularisation/declarations/export', declarationQuery(filters), { expect: 'blob', ...NO_ESTABLISHMENT });
+
 /** Liste « À régulariser » : impayés, applications en régularisation, promesses en cours. */
 export async function fetchRegularisation(bucket: RegularisationBucket | null = null): Promise<RegularisationOverview> {
   const res = await http.get<{ data: RegularisationItem[]; meta: { total: number; amount_due_xaf: number; counts: Record<RegularisationBucket, number> } }>(
@@ -583,6 +662,13 @@ export const actions = {
     path: `/platform/clients/${seg(tenant)}/regularisation/delay`,
     body: { until, reason, ...(appKey ? { app_key: appKey } : {}) },
   }),
+  updateContact: (contact: { name: string | null; email: string | null; phone: string | null; payments: PaymentNumber[] }): PlatformAction => ({ method: 'PATCH', path: '/platform/settings/contact', body: { ...contact } }),
+  confirmDeclaration: (id: string, input: { received_amount_xaf: number; reference?: string; note?: string; promise_until?: string }): PlatformAction => ({
+    method: 'POST',
+    path: `/platform/regularisation/declarations/${seg(id)}/confirm`,
+    body: { ...input },
+  }),
+  rejectDeclaration: (id: string, reason: string): PlatformAction => ({ method: 'POST', path: `/platform/regularisation/declarations/${seg(id)}/reject`, body: { reason } }),
   clientLevel: (tenant: string, level: RegularisationLevel | null, reason: string): PlatformAction => ({
     method: 'POST',
     path: `/platform/clients/${seg(tenant)}/regularisation/level`,
@@ -617,6 +703,11 @@ export async function fetchMyApplications(): Promise<MyApplications> {
 /** Situation de paiement du client de l'utilisateur (écran de régularisation). */
 export const fetchMyRegularisation = async (): Promise<MyRegularisation> => (await http.get<{ data: MyRegularisation }>('/me/regularisation')).data;
 
+/** Déclare un paiement mobile money fait à la plateforme. Ne débloque rien : la plateforme vérifie le paiement. */
+export const declarePayment = async (
+  body: { app_key: string; kind: DeclarationKind; amount_xaf?: number; channel: MobileMoneyChannel; payer_phone: string; reference: string; idempotency_key: string },
+): Promise<RegularisationDeclaration> => (await http.post<{ data: RegularisationDeclaration }>('/me/regularisation/declarations', body)).data;
+
 export const openApplication = async (key: string): Promise<Entitlement> => (await http.post<{ data: Entitlement }>(`/applications/${seg(key)}/open`)).data;
 
 export const payApplication = async (key: string, body: { months: number; channel: PaymentChannel; payer_phone: string }, idempotencyKey: string): Promise<SubscriptionPayment> =>
@@ -633,6 +724,14 @@ export const fetchReceipt = async (paymentId: string): Promise<PaymentReceipt> =
 export function normalizePhone(raw: string): string | null {
   const clean = raw.replace(/[\s.\-()]/g, '');
   return /^\+?[0-9]{8,15}$/.test(clean) ? clean : null;
+}
+
+/** Mobile camerounais (mobile money) : « 6 99 00 00 01 », « 237699000001 » ou « +237 699 00 00 01 » deviennent +237699000001 ; null sinon. */
+export function normalizeCameroonPhone(raw: string): string | null {
+  let clean = raw.replace(/[\s.\-()]/g, '');
+  if (clean.startsWith('00')) clean = `+${clean.slice(2)}`;
+  const m = /^(?:\+?237)?(6\d{8})$/.exec(clean);
+  return m ? `+237${m[1]}` : null;
 }
 
 /** Canaux d'envoi d'un code d'accès : e-mail si présent, SMS pour un mobile camerounais (+237 6…) seulement. */

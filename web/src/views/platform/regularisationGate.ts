@@ -12,6 +12,7 @@ const checkedFor = ref<string | null>(null);
 /** Un blocage connu est relu au plus toutes les 60 secondes : un paiement ou un déblocage prend effet sans recharger la page. */
 let lockedCheckedAt = 0;
 const LOCKED_TTL_MS = 60_000;
+const BANNER_TTL_MS = 60_000;
 
 /** Vrai si le compte appartient à un client dont l'accès est bloqué pour impayé. */
 export async function isLockedForRegularisation(userId: string): Promise<boolean> {
@@ -21,6 +22,15 @@ export async function isLockedForRegularisation(userId: string): Promise<boolean
     await refreshRegularisation(userId);
   }
   return state.value?.locked === true;
+}
+
+/**
+ * Situation de paiement pour le bandeau d'abonnement : lue au plus une fois par minute et par compte (cache court), partagée avec
+ * le garde de routes. Renvoie null hors ligne ou pour un compte sans client.
+ */
+export async function cachedRegularisation(userId: string, maxAgeMs = BANNER_TTL_MS): Promise<MyRegularisation | null> {
+  if (checkedFor.value === userId && state.value !== null && Date.now() - lockedCheckedAt < maxAgeMs) return state.value;
+  return refreshRegularisation(userId);
 }
 
 /** Relit la situation de paiement (après un paiement, par exemple). */

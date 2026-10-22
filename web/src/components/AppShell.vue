@@ -9,6 +9,7 @@ import { usePlatformStore } from '@/stores/platform';
 import { useI18n } from '@/i18n';
 import ErrorNotice from './ErrorNotice.vue';
 import OfflineBanner from './OfflineBanner.vue';
+import RegularisationBanner from './RegularisationBanner.vue';
 
 // Cadre de l'application, d'après les maquettes Main (lanceur : barre noire) et Dashboard / Frais (barre latérale noire + barre blanche).
 const { t, locale, setLocale } = useI18n();
@@ -143,6 +144,7 @@ const initials = computed(() => {
       </header>
 
       <OfflineBanner />
+      <RegularisationBanner />
       <ErrorNotice v-if="switchError" :error="switchError" />
 
       <main id="contenu" class="content" tabindex="-1">

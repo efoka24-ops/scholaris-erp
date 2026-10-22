@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import ErrorNotice from '@/components/ErrorNotice.vue';
 import { fetchReceipt, normalizePhone, payApplication, type MyRegularisation, type PaymentChannel, type PaymentReceipt, type RegularisationItem } from '@/api/platform';
+import DeclarePaymentForm from './DeclarePaymentForm.vue';
+import DeclarationTracking from './DeclarationTracking.vue';
 import { useAuthStore } from '@/stores/auth';
 import { useI18n } from '@/i18n';
 import { formatDate, formatDateTime, formatXaf } from '@/lib/format';
@@ -12,7 +14,8 @@ import { refreshRegularisation } from './regularisationGate';
 
 // Écran de régularisation de paiement : seule page ouverte à un client bloqué (niveau « bloqué »), accessible aussi en lecture seule.
 // Montant dû et détail, période, jours écoulés, paiement Orange Money ou MTN MoMo (direction et super administrateur du client
-// seulement), reçu, contact de TRU GROUP et déconnexion. Le paiement confirmé débloque aussitôt l'accès.
+// seulement), déclaration d'un paiement déjà fait (vérifié ensuite par la plateforme : déclarer ne débloque jamais) et son suivi,
+// numéros de paiement et contact de TRU GROUP, reçu et déconnexion. Le paiement confirmé débloque aussitôt l'accès.
 const { t, locale } = useI18n();
 const router = useRouter();
 const auth = useAuthStore();
@@ -103,6 +106,26 @@ function stopPolling(): void {
   waiting.value = false;
 }
 
+// --- Déclaration d'un paiement déjà fait ---
+const declaring = ref<string | null>(null);
+const hasOpenRequest = (item: RegularisationItem): boolean => (data.value?.requests ?? []).some((r) => r.app_key === item.app_key && r.state === 'declared');
+const anyOpenRequest = computed(() => (data.value?.requests ?? []).some((r) => r.state === 'declared'));
+const balanceOf = (item: RegularisationItem): number => item.balance_xaf ?? item.amount_due_xaf;
+const DECLARATION_POLL_MS = 30_000;
+let declarationTimer: ReturnType<typeof setInterval> | null = null;
+
+async function onDeclared(): Promise<void> {
+  declaring.value = null;
+  notice.value = t('rg.decl.sent');
+  await load(true);
+}
+
+// Tant qu'une déclaration attend sa vérification, l'écran se met à jour tout seul (confirmation, rejet, expiration).
+watch(anyOpenRequest, (open) => {
+  if (declarationTimer !== null) clearInterval(declarationTimer);
+  declarationTimer = open ? setInterval(() => void load(true), DECLARATION_POLL_MS) : null;
+}, { immediate: true });
+
 // --- Reçu ---
 const receipt = ref<PaymentReceipt | null>(null);
 const receiptError = ref<unknown>(null);
@@ -130,7 +153,10 @@ async function logout(): Promise<void> {
 
 const whoCanPay = computed(() => data.value?.can_pay === true);
 onMounted(() => load());
-onBeforeUnmount(stopPolling);
+onBeforeUnmount(() => {
+  stopPolling();
+  if (declarationTimer !== null) clearInterval(declarationTimer);
+});
 </script>
 
 <template>
@@ -166,7 +192,7 @@ onBeforeUnmount(stopPolling);
 
           <p class="amount" :aria-label="t('rg.client.amountDue')">
             <span class="amount__label">{{ t('rg.client.amountDue') }}</span>
-            <strong class="amount__value">{{ formatXaf(item.amount_due_xaf, locale) }}</strong>
+            <strong class="amount__value">{{ formatXaf(balanceOf(item), locale) }}</strong>
           </p>
 
           <dl class="facts">
@@ -175,6 +201,7 @@ onBeforeUnmount(stopPolling);
               <dt>{{ locale === 'en' ? o.label_en : o.label_fr }}</dt>
               <dd>{{ formatXaf(o.price_xaf, locale) }}</dd>
             </div>
+            <div v-if="(item.credit_xaf ?? 0) > 0"><dt>{{ t('rg.decl.creditLabel') }}</dt><dd>{{ formatXaf(item.credit_xaf ?? 0, locale) }}</dd></div>
             <div><dt>{{ t('rg.client.monthly') }}</dt><dd>{{ formatXaf(item.monthly_total_xaf, locale) }}</dd></div>
             <div><dt>{{ t('rg.client.period') }}</dt><dd>{{ t('rg.client.periodValue', { from: formatDate(item.period_from, locale), months: item.months }) }}</dd></div>
             <div><dt>{{ t('rg.col.dueOn') }}</dt><dd>{{ formatDate(item.due_on, locale) }}</dd></div>
@@ -197,6 +224,28 @@ onBeforeUnmount(stopPolling);
             </button>
           </div>
 
+          <div v-if="whoCanPay && balanceOf(item) > 0" class="row">
+            <button
+              v-if="!hasOpenRequest(item)"
+              type="button"
+              class="btn"
+              :aria-expanded="declaring === item.app_key"
+              :aria-controls="`rg-decl-${item.app_key}-title`"
+              @click="declaring = declaring === item.app_key ? null : item.app_key"
+            >
+              {{ t('rg.decl.open') }}
+            </button>
+            <p v-else class="notice" role="status">{{ t('rg.decl.alreadyOpen') }}</p>
+          </div>
+          <DeclarePaymentForm
+            v-if="declaring === item.app_key && !hasOpenRequest(item)"
+            :item="item"
+            :numbers="data.payment_numbers ?? []"
+            :partial-min="data.partial_min_xaf ?? 1000"
+            @declared="onDeclared"
+            @cancel="declaring = null"
+          />
+
           <form v-if="paying?.key === item.app_key" :id="`rg-pay-${item.app_key}`" class="panel" novalidate @submit.prevent="submitPay(item)">
             <div class="field">
               <label :for="`rg-phone-${item.app_key}`">{{ t('rg.client.phone', { channel: t(channelKey(paying.channel)) }) }}</label>
@@ -217,7 +266,7 @@ onBeforeUnmount(stopPolling);
             <ErrorNotice :error="payError" />
             <p v-if="payResult" class="notice notice--success" role="status">{{ payResult }}</p>
             <div class="row">
-              <button type="submit" class="btn btn--primary" :disabled="payBusy">{{ payBusy ? t('common.loading') : t('rg.client.payNow', { amount: formatXaf(item.amount_due_xaf, locale) }) }}</button>
+              <button type="submit" class="btn btn--primary" :disabled="payBusy">{{ payBusy ? t('common.loading') : t('rg.client.payNow', { amount: formatXaf(balanceOf(item), locale) }) }}</button>
               <button type="button" class="btn btn--quiet" @click="paying = null">{{ t('plat.cancel') }}</button>
             </div>
           </form>
@@ -233,6 +282,16 @@ onBeforeUnmount(stopPolling);
           </div>
         </li>
       </ul>
+
+      <DeclarationTracking :requests="data.requests ?? []" />
+
+      <section v-if="mode !== 'ok' && whoCanPay" class="card" aria-labelledby="rg-where">
+        <h2 id="rg-where">{{ t('rg.decl.payTitle') }}</h2>
+        <ul v-if="(data.payment_numbers ?? []).length > 0" class="list">
+          <li v-for="n in data.payment_numbers" :key="n.channel">{{ t('rg.decl.payTo', { channel: t(channelKey(n.channel)), phone: n.phone, holder: n.holder }) }}</li>
+        </ul>
+        <p v-else class="muted">{{ t('rg.decl.noNumber', { name: data.contact.name }) }}</p>
+      </section>
 
       <ErrorNotice :error="receiptError" />
       <article v-if="receipt" ref="receiptBox" class="receipt card" tabindex="-1" aria-labelledby="rg-receipt-title">
