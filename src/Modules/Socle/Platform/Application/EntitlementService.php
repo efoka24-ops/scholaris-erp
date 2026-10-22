@@ -29,6 +29,8 @@ final class EntitlementService
     /** Périodicités de facturation permises (mois). */
     public const BILLING_PERIODS = [1, 3, 12];
     /** Colonnes remises à zéro quand le blocage prend fin (paiement, réactivation, fermeture). */
+    /** Crédit d'un paiement partiel, remis à zéro quand un paiement couvre le solde. */
+    public const CREDIT_CLEARED = ['regularisation_credit_xaf' => null, 'regularisation_credit_anchor' => null];
     public const LOCK_CLEARED = ['regularisation' => null, 'regularisation_origin' => null, 'regularisation_since' => null, 'promise_until' => null, 'promise_reason' => null];
 
     public function __construct(

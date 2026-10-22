@@ -16,6 +16,7 @@ class HttpException extends RuntimeException
     /**
      * @param array<string, list<string>> $errors erreurs de champ
      * @param array<string, string> $headers
+     * @param array<string, scalar|null> $extensions membres supplémentaires de la réponse RFC 9457 (jamais de donnée métier)
      */
     public function __construct(
         public readonly int $status,
@@ -24,6 +25,7 @@ class HttpException extends RuntimeException
         public readonly string $type = 'about:blank',
         public readonly array $errors = [],
         public readonly array $headers = [],
+        public readonly array $extensions = [],
     ) {
         parent::__construct($detail !== '' ? $detail : $title, $status);
     }

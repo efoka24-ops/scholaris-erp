@@ -17,6 +17,7 @@ use Scholaris\Modules\Socle\Platform\Http\PlatformAdminController;
 use Scholaris\Modules\Socle\Platform\Http\PricingAdminController;
 use Scholaris\Modules\Socle\Platform\Http\PublicAccessController;
 use Scholaris\Modules\Socle\Platform\Http\RegularisationAdminController;
+use Scholaris\Modules\Socle\Platform\Http\RegularisationRequestsAdminController;
 
 /**
  * Routes du module Platform. Le préfixe /api/v1 est ajouté par le registre.
@@ -36,6 +37,8 @@ return static function (RouteRegistry $routes): void {
     $routes->add('GET', '/platform/dashboard', [PlatformAdminController::class, 'dashboard'], $platform);
     $routes->add('GET', '/platform/settings', [PlatformAdminController::class, 'settings'], $platform);
     $routes->add('PATCH', '/platform/settings', [PlatformAdminController::class, 'updateSettings'], $platform);
+    $routes->add('GET', '/platform/settings/contact', [PlatformAdminController::class, 'contact'], $platform);
+    $routes->add('PATCH', '/platform/settings/contact', [PlatformAdminController::class, 'updateContact'], $platform);
     $routes->add('GET', '/platform/applications', [PlatformAdminController::class, 'catalog'], $platform);
     $routes->add('PATCH', '/platform/applications/{key}', [PlatformAdminController::class, 'updateCatalog'], $platform);
     $routes->add('GET', '/platform/clients', [ClientsAdminController::class, 'index'], $platform);
@@ -82,6 +85,10 @@ return static function (RouteRegistry $routes): void {
     $routes->add('DELETE', '/platform/service-options/{key}', [PricingAdminController::class, 'destroy'], $platform);
     $routes->add('GET', '/platform/regularisation', [RegularisationAdminController::class, 'index'], $platform);
     $routes->add('GET', '/platform/regularisation/export', [RegularisationAdminController::class, 'export'], $platform);
+    $routes->add('GET', '/platform/regularisation/declarations', [RegularisationRequestsAdminController::class, 'index'], $platform);
+    $routes->add('GET', '/platform/regularisation/declarations/export', [RegularisationRequestsAdminController::class, 'export'], $platform);
+    $routes->add('POST', '/platform/regularisation/declarations/{id}/confirm', [RegularisationRequestsAdminController::class, 'confirm'], $platform);
+    $routes->add('POST', '/platform/regularisation/declarations/{id}/reject', [RegularisationRequestsAdminController::class, 'reject'], $platform);
     $routes->add('POST', '/platform/clients/{tenant}/regularisation/lock', [RegularisationAdminController::class, 'lock'], $platform);
     $routes->add('POST', '/platform/clients/{tenant}/regularisation/unlock', [RegularisationAdminController::class, 'unlock'], $platform);
     $routes->add('POST', '/platform/clients/{tenant}/regularisation/delay', [RegularisationAdminController::class, 'delay'], $platform);
@@ -101,6 +108,7 @@ return static function (RouteRegistry $routes): void {
 
     $routes->add('GET', '/me/applications', [ClientApplicationController::class, 'mine'], ['tenant' => false]);
     $routes->add('GET', '/me/regularisation', [ClientRegularisationController::class, 'mine'], ['tenant' => false]);
+    $routes->add('POST', '/me/regularisation/declarations', [ClientRegularisationController::class, 'declare'], ['tenant' => false]);
     $routes->add('POST', '/applications/{key}/open', [ClientApplicationController::class, 'open']);
     $routes->add('POST', '/applications/{key}/payments', [ClientApplicationController::class, 'pay']);
     $routes->add('GET', '/applications/{key}/payments', [ClientApplicationController::class, 'payments']);

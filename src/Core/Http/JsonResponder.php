@@ -35,6 +35,8 @@ final class JsonResponder
         if ($e->errors !== []) {
             $payload['errors'] = $e->errors;
         }
+        // Membres d'extension (RFC 9457, section 3.2), sans jamais écraser les membres standard.
+        $payload += $e->extensions;
 
         $response = $this->build($payload, $e->status, 'application/problem+json');
         foreach ($e->headers as $name => $value) {

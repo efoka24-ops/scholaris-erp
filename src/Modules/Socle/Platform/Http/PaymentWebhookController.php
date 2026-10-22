@@ -9,14 +9,20 @@ use Psr\Http\Message\ServerRequestInterface;
 use Scholaris\Core\Config\Config;
 use Scholaris\Core\Http\HttpException;
 use Scholaris\Core\Http\JsonResponder;
+use Scholaris\Modules\Socle\Integrations\Contracts\PaymentWebhookEvent;
+use Scholaris\Modules\Socle\Platform\Application\RegularisationRequests;
 use Scholaris\Modules\Socle\Platform\Application\SubscriptionPayments;
 
-/** POST /platform/payments/webhook : route publique, protégée par la signature vérifiée par la passerelle (et la liste d'IP si configurée). */
+/**
+ * POST /platform/payments/webhook : route publique, protégée par la signature vérifiée par la passerelle (et la liste d'IP si configurée).
+ * Un paiement réussi qui n'est celui d'aucun paiement initié par la plateforme est rapproché des déclarations de régularisation.
+ */
 final class PaymentWebhookController
 {
     public function __construct(
         private readonly JsonResponder $responder,
         private readonly SubscriptionPayments $payments,
+        private readonly RegularisationRequests $declarations,
         private readonly Config $config,
     ) {
     }
@@ -32,6 +38,6 @@ final class PaymentWebhookController
             $headers[strtolower((string) $name)] = $request->getHeaderLine((string) $name);
         }
 
-        return $this->responder->json(['data' => $this->payments->handleWebhook((string) $request->getBody(), $headers)]);
+        return $this->responder->json(['data' => $this->payments->handleWebhook((string) $request->getBody(), $headers, fn (PaymentWebhookEvent $event): ?string => $this->declarations->reconcile($event))]);
     }
 }

@@ -22,6 +22,7 @@ use Scholaris\Core\Http\ControllerInvoker;
 use Scholaris\Core\Http\JsonResponder;
 use Scholaris\Core\Http\Middleware\Authenticate;
 use Scholaris\Core\Http\Middleware\Cors;
+use Scholaris\Core\Http\Middleware\EnforceTenantRestriction;
 use Scholaris\Core\Http\Middleware\ErrorHandler;
 use Scholaris\Core\Http\Middleware\Idempotency;
 use Scholaris\Core\Http\Middleware\JsonBodyLimit;
@@ -32,6 +33,7 @@ use Scholaris\Core\Http\Middleware\RouteResolver;
 use Scholaris\Core\Http\Middleware\SecurityHeaders;
 use Scholaris\Core\Http\Pipeline;
 use Scholaris\Core\Http\RouteRegistry;
+use Scholaris\Core\Http\TenantRestriction;
 use Scholaris\Core\Idempotency\IdempotencyStore;
 use Scholaris\Core\RateLimit\RateLimiter;
 use Scholaris\Core\Security\Authenticator;
@@ -43,7 +45,7 @@ use Scholaris\Core\Tenancy\TenantContext;
  * découvre les routes des modules et traite une requête PSR-7 à travers la chaîne de middlewares PSR-15.
  *
  * Ordre : erreurs, en-têtes de sécurité, CORS, langue, résolution de route, authentification,
- * limitation de débit, établissement (droits + contexte), idempotence, contrôleur.
+ * restriction du client (régularisation de paiement, si un module fournit TenantRestriction), limitation de débit, établissement (droits + contexte), idempotence, contrôleur.
  */
 final class Kernel
 {
@@ -113,12 +115,23 @@ final class Kernel
             new Locale(),
             new RouteResolver($this->dispatcher()),
             new Authenticate($c->get(Authenticator::class)),
+            ...$this->restriction(),
             new RateLimit($c->get(RateLimiter::class), $this->rateRules()),
             new ResolveEstablishment($c->get(EstablishmentAccess::class), $c->get(TenantContext::class)),
             new Idempotency($c->get(IdempotencyStore::class), $this->stringList('api.idempotent_paths')),
         ];
 
         return (new Pipeline($middlewares, new ControllerInvoker($c)))->handle($request);
+    }
+
+    /** @return list<EnforceTenantRestriction> vide si aucun module ne fournit de restriction de client */
+    private function restriction(): array
+    {
+        if (!$this->container->has(TenantRestriction::class)) {
+            return [];
+        }
+
+        return [new EnforceTenantRestriction($this->container->get(TenantRestriction::class), (string) $this->config->get('app.api_prefix', '/api/v1'))];
     }
 
     /** @return list<string> */

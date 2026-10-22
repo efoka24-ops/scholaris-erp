@@ -3,6 +3,31 @@
 # Erreurs au format RFC 9457 (components/schemas/Problem). Montants entiers en XAF, dates AAAA-MM-JJ ou ISO 8601.
 # Routes /platform/** : compte du client technique `platform` avec le rôle platform_admin ; les actions marquées
 # « 2FA récente » exigent une double authentification validée depuis moins de 15 minutes (403 two-factor-recent-required).
+# Blocage central d'un client en régularisation de paiement (middleware du noyau, avant tout contrôleur), pour TOUTES les routes
+# authentifiées du socle et des applications, quel que soit le client HTTP :
+#  - niveau `locked` : tout est refusé, 423 de type https://api.scholaris.cm/errors/regularisation-required, sauf la liste blanche ;
+#  - niveau `read_only` : les requêtes qui modifient (hors GET, HEAD, OPTIONS) sont refusées, 423 de type
+#    https://api.scholaris.cm/errors/subscription-suspended ; lecture et exports restent permis.
+# Liste blanche (chemins sous /api/v1) : /auth/**, /me, /me/context, /me/contexts, /me/regularisation/**,
+# /applications/{key}/payments, /application-payments/{id}/receipt, /public/**, /health, /platform/** (compte de plateforme, jamais
+# restreint) et les webhooks de paiement. Le niveau du client est celui de TOUTES ses applications non fermées bloquées pour impayé
+# (une application à jour suffit à ne rien restreindre au niveau du socle). Le déblocage est immédiat (paiement vérifié).
+# La réponse 423 est commune (components/responses/RegularisationBlocked) : titre et détail en français ou en anglais
+# (Accept-Language), membres `level` et `regularisation_url` (écran de régularisation), jamais de donnée du client. Elle n'est pas
+# répétée sur chaque opération.
+components:
+  responses:
+    RegularisationBlocked:
+      description: "Client en régularisation de paiement : locked (type regularisation-required, toute route hors liste blanche) ou read_only (type subscription-suspended, écritures seulement)"
+      content:
+        application/problem+json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/Problem'
+              - type: object
+                properties:
+                  level: {type: string, enum: [read_only, locked]}
+                  regularisation_url: {type: string, example: "/regularisation"}
 paths:
   /api/v1/public/applications:
     get:
@@ -115,11 +140,55 @@ paths:
         required: true
         content:
           application/json:
-            schema: {type: object, properties: {access_code_ttl_minutes: {type: integer, minimum: 5, maximum: 10080}, regularisation_default_level: {type: integer, minimum: 0, maximum: 1, description: "Niveau de blocage par défaut d un impayé : 0 lecture et export seulement, 1 tout bloqué sauf la régularisation"}}}
+            schema:
+              type: object
+              properties:
+                access_code_ttl_minutes: {type: integer, minimum: 5, maximum: 10080}
+                regularisation_default_level: {type: integer, minimum: 0, maximum: 1, description: "Niveau de blocage par défaut d un impayé : 0 lecture et export seulement, 1 tout bloqué sauf la régularisation"}
+                regularisation_request_expiry_days: {type: integer, minimum: 1, maximum: 60, description: "Jours avant qu une déclaration de paiement non confirmée expire (défaut 7)"}
+                regularisation_amount_tolerance_xaf: {type: integer, minimum: 0, maximum: 10000, description: "Écart toléré entre montant déclaré et reçu (défaut 100)"}
+                regularisation_partial_min_xaf: {type: integer, minimum: 100, maximum: 1000000, description: "Montant minimum d un paiement partiel déclaré (défaut 1000)"}
+                regularisation_partial_mode: {type: integer, minimum: 0, maximum: 1, description: "Paiement partiel confirmé : 0 période prolongée proportionnellement (défaut), 1 crédit du solde seulement ; dans les deux cas le niveau ne change qu à la couverture du solde"}
       responses:
         '200': {description: "Réglages mis à jour"}
         '403': {description: "Réservé à l'administrateur de plateforme ; 2FA récente exigée"}
         '422': {description: "Valeur hors bornes"}
+  /api/v1/platform/settings/contact:
+    get:
+      summary: "Contact et numéros de paiement mobile money de la plateforme : valeurs saisies (stored) et valeurs effectives (effective) avec repli sur les variables d environnement PLATFORM_CONTACT_* et PLATFORM_PAY_*"
+      security:
+        - bearer: []
+      responses:
+        '200': {description: "stored {name, email, phone, payments[]}, effective, updated_at"}
+        '403': {description: "Réservé à l'administrateur de plateforme"}
+    patch:
+      summary: "Remplace le contact saisi : nom, e-mail valide, téléphone camerounais normalisé +237, et 0 à 2 numéros de paiement (Orange Money, MTN MoMo, un par moyen) avec le nom du bénéficiaire ; un champ vide se replie sur l environnement (2FA récente, permission platform.settings.manage, journalisé sans numéro en clair)"
+      security:
+        - bearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: {type: [string, "null"], maxLength: 120}
+                email: {type: [string, "null"], format: email}
+                phone: {type: [string, "null"], example: "+237 6 99 00 00 01"}
+                payments:
+                  type: array
+                  maxItems: 2
+                  items:
+                    type: object
+                    required: [channel, phone, holder]
+                    properties:
+                      channel: {type: string, enum: [orange_money, mtn_momo]}
+                      phone: {type: string}
+                      holder: {type: string, maxLength: 120}
+      responses:
+        '200': {description: "Contact enregistré"}
+        '403': {description: "Refusé ou 2FA récente requise"}
+        '422': {description: "E-mail, téléphone, moyen ou bénéficiaire invalide"}
   /api/v1/platform/dashboard:
     get:
       summary: "Tableau de bord de la plateforme : clients, demandes en attente, applications ouvertes, essais qui se terminent (14 j), impayés, MRR ; indicateur sans source = available:false"
@@ -1445,5 +1514,96 @@ paths:
       security:
         - bearer: []
       responses:
-        '200': {description: "Situation de paiement du client (jamais celle d'un autre client)"}
+        '200': {description: "Situation de paiement du client (jamais celle d'un autre client) ; contact et payment_numbers (numéros de paiement mobile money de la plateforme) viennent des réglages du back-office, avec repli sur l'environnement ; par application balance_xaf (solde) et credit_xaf ; partial_min_xaf ; requests : suivi des déclarations (declared = en vérification, verified, rejected, expired ; numéro payeur masqué)"}
         '403': {description: "Compte de la plateforme"}
+  /api/v1/me/regularisation/declarations:
+    post:
+      summary: "Le responsable de l'établissement (applications.manage) déclare un paiement mobile money fait à la plateforme : application, type total (solde dû) ou partial (amount_xaf entre le minimum et le solde moins 1), moyen (orange_money, mtn_momo), numéro payeur (mobile camerounais, normalisé +237, jamais renvoyé en clair), référence de la transaction ; crée une demande à l'état declared (en vérification). Idempotente : même idempotency_key = même demande ; une seule demande ouverte à la fois par application. NE DÉBLOQUE JAMAIS : seul un paiement vérifié (webhook ou confirmation du super admin) débloque. Prévient le super admin."
+      security:
+        - bearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [app_key, kind, channel, payer_phone, reference]
+              properties:
+                app_key: {type: string}
+                kind: {type: string, enum: [total, partial]}
+                amount_xaf: {type: integer, description: "Obligatoire pour partial, interdit pour total"}
+                channel: {type: string, enum: [orange_money, mtn_momo]}
+                payer_phone: {type: string}
+                reference: {type: string, minLength: 3, maxLength: 120}
+                idempotency_key: {type: string, minLength: 8, maxLength: 80}
+      responses:
+        '200': {description: "Même clé d'idempotence : demande déjà créée"}
+        '201': {description: "Demande créée (declared)"}
+        '403': {description: "Réservé au responsable (applications.manage) d'un client"}
+        '409': {description: "Demande déjà ouverte, aucun solde à régulariser, application fermée ou référence déjà utilisée"}
+        '422': {description: "Montant, numéro, type ou référence invalide"}
+  /api/v1/platform/regularisation/declarations:
+    get:
+      summary: "Paiements déclarés à vérifier (numéro payeur masqué) ; filtres filter[state] = declared, verified, rejected, expired, filter[channel], filter[tenant_id] ; meta.counts par état"
+      security:
+        - bearer: []
+      responses:
+        '200': {description: "Liste, avec meta.total et meta.counts"}
+        '403': {description: "Réservé à l'administrateur de plateforme"}
+        '422': {description: "Filtre invalide"}
+  /api/v1/platform/regularisation/declarations/export:
+    get:
+      summary: "Export CSV (ou xlsx avec ?format=xlsx) des paiements déclarés (mêmes filtres)"
+      security:
+        - bearer: []
+      responses:
+        '200': {description: "Fichier CSV"}
+        '403': {description: "Réservé à l'administrateur de plateforme"}
+        '422': {description: "Filtre ou format invalide"}
+  /api/v1/platform/regularisation/declarations/{id}/confirm:
+    post:
+      summary: "Confirme le paiement constaté sur le relevé : montant réellement reçu, référence constatée facultative, note, promise_until facultatif (promesse de paiement accordée avec un paiement partiel). Un paiement qui couvre le solde (tolérance comprise) débloque aussitôt par le chemin des paiements manuels (état actif, période prolongée, reçu, blocage levé) et prévient le client ; sinon le montant est porté au crédit du solde et le niveau est conservé. Une même référence ne valide qu'une demande (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [received_amount_xaf]
+              properties:
+                received_amount_xaf: {type: integer, minimum: 1}
+                reference: {type: string}
+                note: {type: string, maxLength: 500}
+                promise_until: {type: string, format: date}
+      responses:
+        '200': {description: "Demande vérifiée ; unlocked indique si le solde est couvert"}
+        '403': {description: "Refusé ou 2FA récente requise"}
+        '404': {description: "Demande introuvable"}
+        '409': {description: "Demande déjà traitée, référence déjà utilisée ou application fermée"}
+        '422': {description: "Montant, référence ou date invalide"}
+  /api/v1/platform/regularisation/declarations/{id}/reject:
+    post:
+      summary: "Rejette la demande (reason obligatoire) et prévient le client avec le motif (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: {type: string, maxLength: 500}
+      responses:
+        '200': {description: "Demande rejetée"}
+        '403': {description: "Refusé ou 2FA récente requise"}
+        '404': {description: "Demande introuvable"}
+        '409': {description: "Demande déjà traitée"}
+        '422': {description: "Motif obligatoire"}

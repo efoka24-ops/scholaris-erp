@@ -183,6 +183,7 @@ final class RegularisationService
         $default = $this->settings->value(PlatformSettings::REGULARISATION_LEVEL);
         $items = [];
         $mode = 'ok';
+        $contact = $this->settings->contact();
         $rank = ['ok' => 0, 'past_due' => 1, Regularisation::READ_ONLY => 2, Regularisation::LOCKED => 3];
         foreach ($this->db->all('SELECT * FROM tenant_applications WHERE tenant_id = ? ORDER BY app_key', [$tenantId]) as $row) {
             $item = $this->item($row, $today, $default);
@@ -207,11 +208,11 @@ final class RegularisationService
             'locked' => $mode === Regularisation::LOCKED,
             'can_pay' => $canPay,
             'items' => $items,
-            'contact' => [
-                'name' => $this->env('PLATFORM_CONTACT_NAME') ?? 'TRU GROUP',
-                'email' => $this->env('PLATFORM_CONTACT_EMAIL'),
-                'phone' => $this->env('PLATFORM_CONTACT_PHONE'),
-            ],
+            'contact' => ['name' => $contact['name'], 'email' => $contact['email'], 'phone' => $contact['phone']],
+            'payment_numbers' => $contact['payments'],
+            'partial_min_xaf' => $this->settings->value(PlatformSettings::PARTIAL_MIN),
+            'tolerance_xaf' => $this->settings->value(PlatformSettings::AMOUNT_TOLERANCE),
+            'expiry_days' => $this->settings->value(PlatformSettings::REQUEST_EXPIRY_DAYS),
         ];
     }
 
@@ -253,6 +254,17 @@ final class RegularisationService
     }
 
     /**
+     * Situation de paiement d'une application (montant dû, solde, échéance) ; null si elle n'a ni retard, ni blocage, ni promesse.
+     *
+     * @param array<string, mixed> $row ligne de tenant_applications
+     * @return array<string, mixed>|null
+     */
+    public function itemOf(array $row): ?array
+    {
+        return $this->item($row, $this->clock->today(), $this->settings->value(PlatformSettings::REGULARISATION_LEVEL));
+    }
+
+    /**
      * @param array<string, mixed> $row
      * @return array<string, mixed>|null null : ni retard, ni blocage pour impayé, ni promesse
      */
@@ -271,6 +283,9 @@ final class RegularisationService
         $months = $row['billing_period_months'] === null ? 1 : (int) $row['billing_period_months'];
         $options = array_map(static fn (array $o): array => ['option_key' => $o['option_key'], 'label_fr' => $o['label_fr'], 'label_en' => $o['label_en'], 'price_xaf' => $o['price_xaf']], $this->entitlements->present($row)['options']);
         $monthly = $this->entitlements->totalOf($row);
+        $credit = (int) ($row['regularisation_credit_xaf'] ?? 0);
+        // Dernier jour avant le blocage (fin du délai de grâce, ou de la promesse de paiement si elle va plus loin) pour un impayé non encore bloqué.
+        $blocksOn = $blocked ? null : ($promiseActive ? Calendar::max(Calendar::addDays($dueOn, $grace), (string) $promise) : Calendar::addDays($dueOn, $grace));
         $since = $row['regularisation_since'] ?? $row['past_due_since'] ?? Calendar::addDays($dueOn, 1);
 
         return [
@@ -291,6 +306,10 @@ final class RegularisationService
             'base_price_xaf' => $this->entitlements->priceOf($row),
             'options' => $options,
             'amount_due_xaf' => $monthly * $months,
+            'blocks_on' => $blocksOn,
+            'days_left' => $blocksOn === null ? null : max(0, Calendar::daysBetween($today, $blocksOn)),
+            'credit_xaf' => $credit,
+            'balance_xaf' => max(0, $monthly * $months - $credit),
             'promise_until' => $promise,
             'promise_reason' => $row['promise_reason'] ?? null,
         ];
@@ -386,12 +405,5 @@ final class RegularisationService
         if (strcmp($until, $today) <= 0 || strcmp($until, Calendar::addDays($today, Regularisation::MAX_PROMISE_DAYS)) > 0) {
             throw HttpException::validation(['until' => [sprintf('Date attendue entre demain et %d jours.', Regularisation::MAX_PROMISE_DAYS)]]);
         }
-    }
-
-    private function env(string $name): ?string
-    {
-        $value = $_ENV[$name] ?? $_SERVER[$name] ?? null;
-
-        return is_string($value) && trim($value) !== '' ? trim($value) : null;
     }
 }

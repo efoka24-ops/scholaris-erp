@@ -33,9 +33,10 @@ final class ManualPayments
 
     /**
      * @param int|null $amountXaf montant encaissé (par défaut : tarif effectif × mois)
+     * @param bool $notify faux : l'appelant envoie lui-même le message au client (déclaration de paiement confirmée)
      * @return array<string, mixed>
      */
-    public function record(string $tenantId, string $appKey, int $months, string $channel, ?int $amountXaf, ?string $note, string $actorId, ?string $ip): array
+    public function record(string $tenantId, string $appKey, int $months, string $channel, ?int $amountXaf, ?string $note, string $actorId, ?string $ip, bool $notify = true): array
     {
         $entitlement = $this->entitlements->rowOrFail($tenantId, $appKey);
         if ($entitlement['state'] === ApplicationAccess::CLOSED) {
@@ -69,7 +70,7 @@ final class ManualPayments
             $this->db->update('tenant_applications', [
                 'paid_until' => $coverage['until'], 'state' => ApplicationAccess::ACTIVE, 'past_due_since' => null, 'suspended_at' => null,
                 'state_reason' => null, 'updated_at' => $now,
-            ] + EntitlementService::LOCK_CLEARED, ['tenant_id' => $tenantId, 'id' => (string) $entitlement['id']]);
+            ] + EntitlementService::LOCK_CLEARED + EntitlementService::CREDIT_CLEARED, ['tenant_id' => $tenantId, 'id' => (string) $entitlement['id']]);
 
             return $receipt;
         });
@@ -77,6 +78,9 @@ final class ManualPayments
         $this->audit->record($tenantId, $actorId, 'platform.payment_recorded', 'platform_payment', $id, [
             'app_key' => $appKey, 'amount_xaf' => $amount, 'months' => $months, 'channel' => $channel, 'receipt_number' => $receipt,
         ], $ip);
+        if (!$notify) {
+            return $this->payments->present($payment);
+        }
         $this->payments->sendReceipt($payment);
         if ($wasSuspended) {
             $this->payments->sendLifted($payment);

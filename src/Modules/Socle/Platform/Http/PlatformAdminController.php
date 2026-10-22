@@ -17,6 +17,7 @@ use Scholaris\Modules\Socle\Platform\Application\PlatformAudit;
 use Scholaris\Modules\Socle\Platform\Application\PlatformSettings;
 use Scholaris\Modules\Socle\Platform\Application\SubscriptionPayments;
 use Scholaris\Modules\Socle\Platform\Contracts\ApplicationManifest;
+use Scholaris\Modules\Socle\Platform\Domain\CameroonPhone;
 
 /**
  * Espace de l'administrateur de plateforme : tableau de bord, catalogue, clients et leurs droits d'usage, paiements.
@@ -58,13 +59,17 @@ final class PlatformAdminController
     public function updateSettings(ServerRequestInterface $request): ResponseInterface
     {
         $principal = $this->guard->platformAdmin($request, 'platform.settings.manage', true);
-        $input = Input::of($request, [PlatformSettings::ACCESS_CODE_TTL, PlatformSettings::REGULARISATION_LEVEL]);
+        $input = Input::of($request, PlatformSettings::keys());
+        $bounds = $this->settings->all();
         $changes = [];
-        if ($input->has(PlatformSettings::REGULARISATION_LEVEL)) {
-            $changes[PlatformSettings::REGULARISATION_LEVEL] = $input->integer(PlatformSettings::REGULARISATION_LEVEL, 0, 1);
+        foreach (PlatformSettings::keys() as $key) {
+            if ($input->has($key)) {
+                $changes[$key] = $input->integer($key, $bounds[$key]['min'], $bounds[$key]['max']);
+            }
         }
-        if ($input->has(PlatformSettings::ACCESS_CODE_TTL) || $changes === []) {
-            $changes[PlatformSettings::ACCESS_CODE_TTL] = $input->integer(PlatformSettings::ACCESS_CODE_TTL, 5, 10080);
+        if ($changes === []) {
+            // Comme avant : un corps vide est refusé en désignant le premier réglage.
+            $changes[PlatformSettings::ACCESS_CODE_TTL] = $input->integer(PlatformSettings::ACCESS_CODE_TTL, $bounds[PlatformSettings::ACCESS_CODE_TTL]['min'], $bounds[PlatformSettings::ACCESS_CODE_TTL]['max']);
         }
         $input->validate();
 
@@ -74,6 +79,37 @@ final class PlatformAdminController
         }
 
         return $this->responder->json(['data' => $all]);
+    }
+
+    /** GET /platform/settings/contact : contact et numéros de paiement de la plateforme (saisis, et valeurs effectives avec repli sur l'environnement). */
+    public function contact(ServerRequestInterface $request): ResponseInterface
+    {
+        $this->guard->platformAdmin($request, 'platform.dashboard.read');
+
+        return $this->responder->json(['data' => $this->settings->contactSettings()]);
+    }
+
+    /**
+     * PATCH /platform/settings/contact { name?, email?, phone?, payments?: [{ channel: orange_money|mtn_momo, phone, holder }] }
+     * Remplace le contact saisi (2FA récente, journalisé). Un champ vide se replie sur la variable d'environnement.
+     */
+    public function updateContact(ServerRequestInterface $request): ResponseInterface
+    {
+        $principal = $this->guard->platformAdmin($request, 'platform.settings.manage', true);
+        $input = Input::of($request, ['name', 'email', 'phone', 'payments']);
+        $name = $input->text('name', 2, 120, false);
+        $email = $input->raw('email') === null || $input->raw('email') === '' ? null : $input->email('email');
+        $rawPhone = $input->text('phone', 6, 25, false);
+        $phone = $rawPhone === null ? null : CameroonPhone::normalize($rawPhone);
+        if ($rawPhone !== null && $phone === null) {
+            $input->fail('phone', 'Numéro mobile camerounais attendu (par exemple +237 6 99 00 00 01).');
+        }
+        $payments = $this->paymentNumbers($input);
+        $input->validate();
+
+        $this->settings->setContact(['name' => $name, 'email' => $email, 'phone' => $phone, 'payments' => $payments], $principal->userId, PlatformGuard::ip($request));
+
+        return $this->responder->json(['data' => $this->settings->contactSettings()]);
     }
 
     /** GET /platform/applications */
@@ -164,6 +200,48 @@ final class PlatformAdminController
         [$rows, $next] = $this->payments->page($query->filters['status'] ?? null, $query->filters['tenant_id'] ?? null, ListQuery::decodeCursor($query->cursor), $query->perPage);
 
         return $this->responder->json(['data' => $rows, 'meta' => ['next_cursor' => $next === null ? null : ListQuery::encodeCursor($next)]]);
+    }
+
+    /**
+     * Numéros de paiement mobile money (au plus un par moyen, deux en tout) : numéro camerounais normalisé et nom du bénéficiaire.
+     *
+     * @return list<array{channel: string, phone: string, holder: string}>
+     */
+    private function paymentNumbers(Input $input): array
+    {
+        $raw = $input->raw('payments');
+        if ($raw === null || $raw === []) {
+            return [];
+        }
+        if (!is_array($raw) || !array_is_list($raw) || count($raw) > count(PlatformSettings::PAYMENT_CHANNELS)) {
+            $input->fail('payments', 'Au plus un numéro par moyen : Orange Money et MTN MoMo.');
+
+            return [];
+        }
+        $out = [];
+        $seen = [];
+        foreach ($raw as $i => $entry) {
+            $field = 'payments.' . $i;
+            $channel = is_array($entry) && is_string($entry['channel'] ?? null) ? $entry['channel'] : null;
+            $phone = is_array($entry) && is_string($entry['phone'] ?? null) ? CameroonPhone::normalize($entry['phone']) : null;
+            $holder = is_array($entry) && is_string($entry['holder'] ?? null) ? trim($entry['holder']) : '';
+            if ($channel === null || !in_array($channel, PlatformSettings::PAYMENT_CHANNELS, true) || isset($seen[$channel])) {
+                $input->fail($field . '.channel', 'Moyen attendu (une seule fois) : ' . implode(', ', PlatformSettings::PAYMENT_CHANNELS) . '.');
+                continue;
+            }
+            $seen[$channel] = true;
+            if ($phone === null) {
+                $input->fail($field . '.phone', 'Numéro mobile camerounais attendu (par exemple +237 6 99 00 00 01).');
+            }
+            if ($holder === '' || mb_strlen($holder) > 120 || preg_match('/[\p{Cc}\p{Cf}<>]/u', $holder) === 1) {
+                $input->fail($field . '.holder', 'Nom du bénéficiaire obligatoire (120 caractères au plus).');
+            }
+            if ($phone !== null && $holder !== '') {
+                $out[] = ['channel' => $channel, 'phone' => $phone, 'holder' => $holder];
+            }
+        }
+
+        return $out;
     }
 
     private function decide(ServerRequestInterface $request, string $action): ResponseInterface

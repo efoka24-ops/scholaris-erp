@@ -69,7 +69,8 @@ final class SubscriptionPayments
 
         $id = (string) new Ulid();
         $reference = 'PLT-' . $id;
-        $amount = $price * $months;
+        // Un paiement partiel déjà confirmé pour ce cycle impayé est déduit : le client ne règle que le solde.
+        $amount = max(1, $price * $months - (int) ($entitlement['regularisation_credit_xaf'] ?? 0));
         $now = $this->clock->iso();
         try {
             $this->db->insert('platform_payments', [
@@ -113,9 +114,11 @@ final class SubscriptionPayments
      * Webhook de l'agrégateur : signature vérifiée par la passerelle ; un même événement n'est appliqué qu'une fois.
      *
      * @param array<string, string> $headers
+     * @param (callable(PaymentWebhookEvent): ?string)|null $unmatched appelé pour un paiement réussi dont la référence n'est celle d'aucun paiement
+     *        initié par la plateforme (rapprochement avec une déclaration de régularisation) ; renvoie le résultat à journaliser, ou null
      * @return array{event_id: string, outcome: string}
      */
-    public function handleWebhook(string $rawBody, array $headers): array
+    public function handleWebhook(string $rawBody, array $headers, ?callable $unmatched = null): array
     {
         $event = $this->gateway->parseWebhook($rawBody, $headers);
         $now = $this->clock->iso();
@@ -139,6 +142,14 @@ final class SubscriptionPayments
 
             return ['outcome' => $outcome, 'payment' => $payment];
         });
+
+        if ($result['outcome'] === 'unknown_reference' && $unmatched !== null && $event->type === PaymentWebhookEvent::SUCCEEDED) {
+            $resolved = $unmatched($event);
+            if ($resolved !== null) {
+                $this->db->update('platform_payment_events', ['outcome' => $resolved], ['event_id' => $event->eventId]);
+                $result['outcome'] = $resolved;
+            }
+        }
 
         $payment = $result['payment'];
         if (is_array($payment)) {
@@ -240,6 +251,11 @@ final class SubscriptionPayments
         $this->lifted[(string) $payment['id']] = $entitlement['state'] === ApplicationAccess::SUSPENDED;
         $today = $this->clock->today();
         $dueOn = Subscription::dueOn($entitlement['paid_until'] === null ? null : (string) $entitlement['paid_until'], (string) $entitlement['trial_ends_on']);
+        // Un paiement partiel antérieur a pu avancer la période : le solde se calcule depuis l'échéance du cycle impayé.
+        $anchor = $entitlement['regularisation_credit_anchor'] ?? null;
+        if ($anchor !== null) {
+            $dueOn = (string) $anchor;
+        }
         $coverage = Subscription::coverage($today, $dueOn, (int) $payment['months']);
         $year = $this->clock->year();
         $receipt = SequenceService::format('SCH', $year, $this->sequences->next(PlatformAudit::PLATFORM_TENANT, PlatformAudit::PLATFORM_TENANT, 'platform_receipt', $year));
@@ -251,7 +267,7 @@ final class SubscriptionPayments
 
         $values = ['paid_until' => $coverage['until'], 'updated_at' => $now];
         if ($entitlement['state'] !== ApplicationAccess::CLOSED) {
-            $values += ['state' => ApplicationAccess::ACTIVE, 'past_due_since' => null, 'suspended_at' => null, 'state_reason' => null] + EntitlementService::LOCK_CLEARED;
+            $values += ['state' => ApplicationAccess::ACTIVE, 'past_due_since' => null, 'suspended_at' => null, 'state_reason' => null] + EntitlementService::LOCK_CLEARED + EntitlementService::CREDIT_CLEARED;
         }
         $this->db->update('tenant_applications', $values, ['tenant_id' => $tenantId, 'id' => (string) $entitlement['id']]);
 
