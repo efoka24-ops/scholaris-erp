@@ -5,6 +5,7 @@ import { adminEn } from './admin-en';
 import { hrEn } from './hr-en';
 import { platformEn } from './platform-en';
 import { platformAdminEn } from './platform-admin-en';
+import { platformRegularisationEn } from './platform-regularisation-en';
 import { higherEn } from './higher-en';
 import { higherGradesEn } from './higher-grades-en';
 import { higherTeachingEn } from './higher-teaching-en';
@@ -28,6 +29,7 @@ export const en: Record<keyof typeof fr, string> = {
   ...hrEn,
   ...platformEn,
   ...platformAdminEn,
+  ...platformRegularisationEn,
   ...higherEn,
   ...higherGradesEn,
   ...higherTeachingEn,

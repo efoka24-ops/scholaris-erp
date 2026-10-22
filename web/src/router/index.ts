@@ -4,6 +4,7 @@ import { useAuthStore } from '@/stores/auth';
 import { useContextStore } from '@/stores/context';
 import { usePlatformStore } from '@/stores/platform';
 import { translate } from '@/i18n';
+import { isLockedForRegularisation } from '@/views/platform/regularisationGate';
 
 /**
  * Décide où envoyer la personne pour une destination donnée (true = laisser passer).
@@ -47,6 +48,10 @@ export async function guard(to: RouteLocationNormalized): Promise<RouteLocationR
     return { name: 'platform-dashboard' };
   }
   if (to.meta.platform) return { name: 'forbidden' };
+
+  // Mode régularisation de paiement (niveau « bloqué ») : toute page, sauf l'écran de régularisation, y renvoie. La déconnexion et
+  // le paiement se font depuis cet écran ; le serveur refuse de toute façon l'accès aux applications bloquées.
+  if (auth.me && to.name !== 'regularisation' && (await isLockedForRegularisation(auth.me.id))) return { name: 'regularisation' };
 
   if (to.meta.needsEstablishment && !ctx.establishmentId && ctx.loaded) return { name: 'home' };
   if (to.meta.roles && !to.meta.roles.some((r) => ctx.activeRole === r)) return { name: 'forbidden' };

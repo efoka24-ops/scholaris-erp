@@ -4,14 +4,17 @@ declare(strict_types=1);
 
 namespace Scholaris\Modules\Socle\Platform\Console;
 
+use Scholaris\Modules\Socle\Platform\Application\RegularisationService;
 use Scholaris\Modules\Socle\Platform\Application\SubscriptionBilling;
 use Scholaris\Modules\Socle\Platform\Domain\Calendar;
 
 /** `platform:billing-run [AAAA-MM-JJ]` : relances, impayés et suspensions des abonnements (une fois par jour ; rejouable sans effet double). */
 final class BillingRunCommand
 {
-    public function __construct(private readonly SubscriptionBilling $billing)
-    {
+    public function __construct(
+        private readonly SubscriptionBilling $billing,
+        private readonly RegularisationService $regularisation,
+    ) {
     }
 
     /** @param list<string> $args */
@@ -24,6 +27,7 @@ final class BillingRunCommand
             return 2;
         }
         $result = $this->billing->run($date);
+        $dueSoon = $this->regularisation->notifyDueSoon($result['date']);
         echo "Abonnements au {$result['date']} : {$result['reminders_sent']} relance(s) envoyée(s), {$result['reminders_undelivered']} non délivrée(s), "
             . "{$result['past_due']} passage(s) en impayé, {$result['suspended']} suspension(s).\n";
 

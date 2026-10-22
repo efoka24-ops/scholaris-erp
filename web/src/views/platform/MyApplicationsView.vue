@@ -87,9 +87,14 @@ const payResult = ref<string | null>(null);
 /** Clé d'idempotence d'une tentative : conservée si l'envoi échoue, renouvelée dès que la demande change ou aboutit. */
 let idempotencyKey: string | null = null;
 
+/** Périodicité imposée par la plateforme à ce client (1 si libre) : les durées payables en sont des multiples. */
+const periodOf = (app: Entitlement): number => (app.terms?.billing_period_overridden ? app.terms.billing_period_months : 1);
+const monthChoices = (app: Entitlement): number[] => Array.from({ length: MAX_MONTHS }, (_, i) => i + 1).filter((m) => m % periodOf(app) === 0);
+const monthlyTotal = (app: Entitlement): number => app.monthly_total_xaf ?? app.monthly_price_xaf;
+
 function startPay(app: Entitlement): void {
   paying.value = paying.value === app.app_key ? null : app.app_key;
-  pay.months = 1;
+  pay.months = periodOf(app);
   pay.channel = '';
   pay.phone = '';
   payErrors.value = {};
@@ -209,7 +214,7 @@ onMounted(load);
               <li v-if="app.state === 'trial'"><strong>{{ tp('apps.trialLeft', app.trial_days_left) }}</strong> · {{ t('apps.trialEnds', { date: formatDate(app.trial_ends_on, locale) }) }}</li>
               <li v-if="app.paid_until">{{ t('apps.paidUntil', { date: formatDate(app.paid_until, locale) }) }}</li>
               <li v-if="app.due_on && app.state !== 'trial'">{{ t('apps.dueOn', { date: formatDate(app.due_on, locale) }) }}</li>
-              <li>{{ t('apps.price', { amount: formatXaf(app.monthly_price_xaf, locale) }) }}</li>
+              <li>{{ t('apps.price', { amount: formatXaf(monthlyTotal(app), locale) }) }}</li>
             </ul>
             <p v-if="app.state === 'past_due'" class="notice notice--warning">{{ t('apps.pastDueText') }}</p>
             <p v-if="app.state === 'suspended'" class="notice notice--warning">{{ t('apps.suspendedText') }}</p>
@@ -226,7 +231,7 @@ onMounted(load);
                 <div class="field">
                   <label :for="`pay-months-${app.id}`">{{ t('apps.months') }}</label>
                   <select :id="`pay-months-${app.id}`" v-model.number="pay.months" @change="changed">
-                    <option v-for="m in MAX_MONTHS" :key="m" :value="m">{{ tp('apps.monthsOption', m) }}</option>
+                    <option v-for="m in monthChoices(app)" :key="m" :value="m">{{ tp('apps.monthsOption', m) }}</option>
                   </select>
                 </div>
                 <div class="field">
@@ -244,7 +249,7 @@ onMounted(load);
                 </label>
                 <span v-if="payErrors.channel" :id="`pay-channel-${app.id}-err`" class="error">{{ payErrors.channel }}</span>
               </fieldset>
-              <p class="total">{{ t('apps.total', { amount: formatXaf(app.monthly_price_xaf * pay.months, locale) }) }}</p>
+              <p class="total">{{ t('apps.total', { amount: formatXaf(monthlyTotal(app) * pay.months, locale) }) }}</p>
               <ErrorNotice :error="payError" />
               <p v-if="payResult" class="notice notice--success" role="status">{{ payResult }}</p>
               <div class="row">

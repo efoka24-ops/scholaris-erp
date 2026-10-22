@@ -51,8 +51,11 @@ final class Subscription
         return ['stage' => min($reached), 'covered' => $reached];
     }
 
-    /** Nouvel état d'après la date du jour (sans effet sur suspendu ou fermé, qui ne changent que par paiement ou décision). */
-    public static function nextState(string $state, string $today, string $dueOn, int $graceDays): string
+    /**
+     * Nouvel état d'après la date du jour (sans effet sur suspendu ou fermé, qui ne changent que par paiement ou décision).
+     * Une promesse de paiement ($promiseUntil, date incluse) reporte la suspension : l'abonnement reste impayé jusque-là.
+     */
+    public static function nextState(string $state, string $today, string $dueOn, int $graceDays, ?string $promiseUntil = null): string
     {
         if (!in_array($state, [ApplicationAccess::TRIAL, ApplicationAccess::ACTIVE, ApplicationAccess::PAST_DUE], true)) {
             return $state;
@@ -61,7 +64,11 @@ final class Subscription
             return $state;
         }
 
-        return Calendar::daysBetween($dueOn, $today) > $graceDays ? ApplicationAccess::SUSPENDED : ApplicationAccess::PAST_DUE;
+        if (Calendar::daysBetween($dueOn, $today) <= $graceDays || ($promiseUntil !== null && strcmp($today, $promiseUntil) <= 0)) {
+            return ApplicationAccess::PAST_DUE;
+        }
+
+        return ApplicationAccess::SUSPENDED;
     }
 
     /**

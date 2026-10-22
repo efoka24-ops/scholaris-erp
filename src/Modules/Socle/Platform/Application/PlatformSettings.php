@@ -16,9 +16,13 @@ final class PlatformSettings
     /** Durée de validité, en minutes, d'un code d'accès créé depuis le back-office (5 minutes à 7 jours). */
     public const ACCESS_CODE_TTL = 'access_code_ttl_minutes';
 
+    /** Niveau de blocage par défaut d'un impayé (mode régularisation) : 0 = lecture et export seulement, 1 = tout bloqué sauf la régularisation. */
+    public const REGULARISATION_LEVEL = 'regularisation_default_level';
+
     /** @var array<string, array{default: int, min: int, max: int}> */
     private const DEFINITIONS = [
         self::ACCESS_CODE_TTL => ['default' => 1440, 'min' => 5, 'max' => 10080],
+        self::REGULARISATION_LEVEL => ['default' => 0, 'min' => 0, 'max' => 1],
     ];
 
     public function __construct(

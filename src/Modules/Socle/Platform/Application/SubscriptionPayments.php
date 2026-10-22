@@ -27,6 +27,9 @@ final class SubscriptionPayments
     public const CHANNELS = ['mtn_momo', 'orange_money'];
     public const MAX_MONTHS = 12;
 
+    /** @var array<string, bool> paiements confirmés pendant ce traitement qui ont levé un blocage (pour le message de déblocage) */
+    private array $lifted = [];
+
     public function __construct(
         private readonly PlatformDb $db,
         private readonly EntitlementService $entitlements,
@@ -55,7 +58,11 @@ final class SubscriptionPayments
         if ($entitlement['state'] === ApplicationAccess::CLOSED) {
             throw HttpException::conflict('Cette application est fermée : demandez sa réouverture.');
         }
-        $price = $this->entitlements->priceOf($entitlement);
+        $period = $entitlement['billing_period_months'] ?? null;
+        if ($period !== null && $months % (int) $period !== 0) {
+            throw HttpException::validation(['months' => [sprintf('La périodicité de facturation de ce client est de %d mois : choisissez un multiple.', (int) $period)]]);
+        }
+        $price = $this->entitlements->totalOf($entitlement);
         if ($price <= 0) {
             throw HttpException::conflict('Aucun tarif n\'est défini pour cette application.');
         }
@@ -138,7 +145,11 @@ final class SubscriptionPayments
             $tenantId = (string) $payment['tenant_id'];
             $this->audit->record($tenantId, null, 'platform.payment_webhook', 'platform_payment', (string) $payment['id'], ['event_id' => $event->eventId, 'outcome' => $result['outcome']]);
             if ($result['outcome'] === 'succeeded') {
-                $this->sendReceipt($this->findOrFail($tenantId, (string) $payment['id']));
+                $confirmed = $this->findOrFail($tenantId, (string) $payment['id']);
+                $this->sendReceipt($confirmed);
+                if (($this->lifted[(string) $payment['id']] ?? false) === true) {
+                    $this->sendLifted($confirmed);
+                }
             }
         }
 
@@ -226,6 +237,7 @@ final class SubscriptionPayments
     {
         $tenantId = (string) $payment['tenant_id'];
         $entitlement = $this->entitlements->rowOrFail($tenantId, (string) $payment['app_key']);
+        $this->lifted[(string) $payment['id']] = $entitlement['state'] === ApplicationAccess::SUSPENDED;
         $today = $this->clock->today();
         $dueOn = Subscription::dueOn($entitlement['paid_until'] === null ? null : (string) $entitlement['paid_until'], (string) $entitlement['trial_ends_on']);
         $coverage = Subscription::coverage($today, $dueOn, (int) $payment['months']);
@@ -239,7 +251,7 @@ final class SubscriptionPayments
 
         $values = ['paid_until' => $coverage['until'], 'updated_at' => $now];
         if ($entitlement['state'] !== ApplicationAccess::CLOSED) {
-            $values += ['state' => ApplicationAccess::ACTIVE, 'past_due_since' => null, 'suspended_at' => null, 'state_reason' => null];
+            $values += ['state' => ApplicationAccess::ACTIVE, 'past_due_since' => null, 'suspended_at' => null, 'state_reason' => null] + EntitlementService::LOCK_CLEARED;
         }
         $this->db->update('tenant_applications', $values, ['tenant_id' => $tenantId, 'id' => (string) $entitlement['id']]);
 
@@ -254,6 +266,22 @@ final class SubscriptionPayments
         $this->notifier->toClient($tenantId, 'platform_payment_receipt', [
             'receipt_number' => (string) $payment['receipt_number'],
             'amount' => (int) $payment['amount_xaf'],
+            'label' => (string) $entitlement['label'],
+            'establishment_name' => $this->entitlements->tenantName($tenantId),
+            'due_on' => Calendar::display((string) $payment['covered_until']),
+        ]);
+    }
+
+    /**
+     * Message « accès rétabli » après un paiement qui a levé un blocage.
+     *
+     * @param array<string, mixed> $payment
+     */
+    public function sendLifted(array $payment): void
+    {
+        $tenantId = (string) $payment['tenant_id'];
+        $entitlement = $this->entitlements->present($this->entitlements->rowOrFail($tenantId, (string) $payment['app_key']));
+        $this->notifier->toClient($tenantId, 'platform_regularisation_lifted', [
             'label' => (string) $entitlement['label'],
             'establishment_name' => $this->entitlements->tenantName($tenantId),
             'due_on' => Calendar::display((string) $payment['covered_until']),

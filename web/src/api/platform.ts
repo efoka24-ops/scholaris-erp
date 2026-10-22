@@ -99,6 +99,93 @@ export interface Entitlement {
   readable: boolean;
   tenant_name?: string | null;
   establishments?: Array<{ id: string; name: string; type: string; accent?: string | null }>;
+  /** Délais effectifs et surcharges du client (essai, grâce, périodicité, niveau de blocage). */
+  terms?: EntitlementTerms;
+  /** Options de service souscrites et montant mensuel dû (tarif de base + options). */
+  options?: EntitlementOption[];
+  options_total_xaf?: number;
+  monthly_total_xaf?: number;
+  /** Promesse de paiement : le blocage automatique est reporté jusqu'à cette date. */
+  promise_until?: string | null;
+  /** Mode régularisation de paiement (null : pas bloqué pour impayé). */
+  regularisation?: { level: RegularisationLevel; origin: 'auto' | 'manual'; since: string | null; days_elapsed: number } | null;
+}
+
+export type RegularisationLevel = 'read_only' | 'locked';
+export const REGULARISATION_LEVELS: RegularisationLevel[] = ['read_only', 'locked'];
+export type RegularisationBucket = 'past_due' | 'regularisation' | 'promise';
+export const BILLING_PERIODS = [1, 3, 12] as const;
+
+export interface EntitlementTerms {
+  trial_days: number;
+  trial_days_overridden: boolean;
+  grace_days: number;
+  grace_days_overridden: boolean;
+  billing_period_months: number;
+  billing_period_overridden: boolean;
+  regularisation_level: RegularisationLevel;
+  regularisation_level_overridden: boolean;
+}
+
+export interface EntitlementOption {
+  option_key: string;
+  label_fr: string;
+  label_en: string;
+  price_xaf: number;
+  default_price_xaf?: number;
+  price_overridden?: boolean;
+}
+
+/** Option de service du catalogue de la plateforme. */
+export interface ServiceOption {
+  option_key: string;
+  label_fr: string;
+  label_en: string;
+  monthly_price_xaf: number;
+  /** Applications concernées ([] : toutes). */
+  app_keys: string[];
+  active: boolean;
+  subscribers: number;
+}
+
+/** Ligne de la liste « À régulariser » (plateforme) et de l'écran de régularisation (client). */
+export interface RegularisationItem {
+  tenant_id: string;
+  tenant_name?: string;
+  app_key: string;
+  label: string;
+  state: EntitlementState;
+  level: RegularisationLevel | null;
+  bucket: RegularisationBucket;
+  origin: 'auto' | 'manual' | null;
+  due_on: string;
+  period_from: string;
+  since: string;
+  days_late: number;
+  days_elapsed: number;
+  months: number;
+  monthly_total_xaf: number;
+  base_price_xaf: number;
+  options: EntitlementOption[];
+  amount_due_xaf: number;
+  promise_until: string | null;
+  promise_reason: string | null;
+  receipts?: Array<{ id: string; receipt_number: string; amount_xaf: number; paid_at: string | null }>;
+}
+
+export interface RegularisationOverview {
+  items: RegularisationItem[];
+  total: number;
+  amountDueXaf: number;
+  counts: Record<RegularisationBucket, number>;
+}
+
+export interface MyRegularisation {
+  mode: 'ok' | 'past_due' | RegularisationLevel;
+  locked: boolean;
+  can_pay: boolean;
+  items: RegularisationItem[];
+  contact: { name: string; email: string | null; phone: string | null };
 }
 
 export interface AccessRequest {
@@ -347,6 +434,22 @@ export interface PlatformSetting { value: number; default: number; min: number; 
 export const fetchPlatformSettings = async (): Promise<Record<string, PlatformSetting>> =>
   (await http.get<{ data: Record<string, PlatformSetting> }>('/platform/settings', undefined, NO_ESTABLISHMENT)).data ?? {};
 
+/** Liste « À régulariser » : impayés, applications en régularisation, promesses en cours. */
+export async function fetchRegularisation(bucket: RegularisationBucket | null = null): Promise<RegularisationOverview> {
+  const res = await http.get<{ data: RegularisationItem[]; meta: { total: number; amount_due_xaf: number; counts: Record<RegularisationBucket, number> } }>(
+    '/platform/regularisation',
+    bucket ? { 'filter[bucket]': bucket } : undefined,
+    NO_ESTABLISHMENT,
+  );
+  return { items: res.data ?? [], total: res.meta?.total ?? 0, amountDueXaf: res.meta?.amount_due_xaf ?? 0, counts: res.meta?.counts ?? { past_due: 0, regularisation: 0, promise: 0 } };
+}
+
+/** Export CSV de la liste « À régulariser » (téléchargement authentifié). */
+export const fetchRegularisationCsv = (bucket: RegularisationBucket | null = null): Promise<Blob> =>
+  http.get<Blob>('/platform/regularisation/export', bucket ? { 'filter[bucket]': bucket } : undefined, { expect: 'blob', ...NO_ESTABLISHMENT });
+
+export const fetchServiceOptions = async (): Promise<ServiceOption[]> => (await http.get<{ data: ServiceOption[] }>('/platform/service-options', undefined, NO_ESTABLISHMENT)).data ?? [];
+
 export const fetchPlatformCatalog = async (): Promise<CatalogApplication[]> => (await http.get<{ data: CatalogApplication[] }>('/platform/applications', undefined, NO_ESTABLISHMENT)).data ?? [];
 
 export const fetchClients = async (state: ClientState | null = null): Promise<Tenant[]> =>
@@ -450,6 +553,48 @@ export const actions = {
     path: '/platform/payments',
     body: { ...input },
   }),
+  setTerms: (tenant: string, key: string, changes: Record<string, number | string | null>, reason: string): PlatformAction => ({
+    method: 'PATCH',
+    path: `/platform/clients/${seg(tenant)}/applications/${seg(key)}/terms`,
+    body: { ...changes, reason },
+  }),
+  subscribeOption: (tenant: string, key: string, optionKey: string, price: number | null, reason: string): PlatformAction => ({
+    method: 'POST',
+    path: `/platform/clients/${seg(tenant)}/applications/${seg(key)}/options`,
+    body: { option_key: optionKey, price_xaf: price, reason },
+  }),
+  unsubscribeOption: (tenant: string, key: string, optionKey: string, reason: string): PlatformAction => ({
+    method: 'POST',
+    path: `/platform/clients/${seg(tenant)}/applications/${seg(key)}/options/${seg(optionKey)}/remove`,
+    body: { reason },
+  }),
+  lockClient: (tenant: string, reason: string, level: RegularisationLevel | null, appKey: string | null): PlatformAction => ({
+    method: 'POST',
+    path: `/platform/clients/${seg(tenant)}/regularisation/lock`,
+    body: { reason, ...(level ? { level } : {}), ...(appKey ? { app_key: appKey } : {}) },
+  }),
+  unlockClient: (tenant: string, reason: string, until: string | null, appKey: string | null): PlatformAction => ({
+    method: 'POST',
+    path: `/platform/clients/${seg(tenant)}/regularisation/unlock`,
+    body: { reason, ...(until ? { until } : {}), ...(appKey ? { app_key: appKey } : {}) },
+  }),
+  grantDelay: (tenant: string, until: string, reason: string, appKey: string | null): PlatformAction => ({
+    method: 'POST',
+    path: `/platform/clients/${seg(tenant)}/regularisation/delay`,
+    body: { until, reason, ...(appKey ? { app_key: appKey } : {}) },
+  }),
+  clientLevel: (tenant: string, level: RegularisationLevel | null, reason: string): PlatformAction => ({
+    method: 'POST',
+    path: `/platform/clients/${seg(tenant)}/regularisation/level`,
+    body: { level, reason },
+  }),
+  createServiceOption: (input: { option_key: string; label_fr: string; label_en: string; monthly_price_xaf: number; app_keys: string[] }): PlatformAction => ({
+    method: 'POST',
+    path: '/platform/service-options',
+    body: { ...input },
+  }),
+  updateServiceOption: (key: string, changes: Record<string, unknown>): PlatformAction => ({ method: 'PATCH', path: `/platform/service-options/${seg(key)}`, body: changes }),
+  deleteServiceOption: (key: string): PlatformAction => ({ method: 'DELETE', path: `/platform/service-options/${seg(key)}`, body: {} }),
   cancelPayment: (id: string, reason: string): PlatformAction => ({ method: 'POST', path: `/platform/payments/${seg(id)}/cancel`, body: { reason } }),
 };
 
@@ -468,6 +613,9 @@ export async function fetchMyApplications(): Promise<MyApplications> {
   const res = await http.get<{ data: Entitlement[]; meta?: { catalog?: MyApplications['catalog'] } }>('/me/applications');
   return { opened: res.data ?? [], catalog: res.meta?.catalog ?? [] };
 }
+
+/** Situation de paiement du client de l'utilisateur (écran de régularisation). */
+export const fetchMyRegularisation = async (): Promise<MyRegularisation> => (await http.get<{ data: MyRegularisation }>('/me/regularisation')).data;
 
 export const openApplication = async (key: string): Promise<Entitlement> => (await http.post<{ data: Entitlement }>(`/applications/${seg(key)}/open`)).data;
 

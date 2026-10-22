@@ -8,12 +8,15 @@ use Scholaris\Modules\Socle\Platform\Http\AccessRequestAdminController;
 use Scholaris\Modules\Socle\Platform\Http\AdministratorsAdminController;
 use Scholaris\Modules\Socle\Platform\Http\AuditAdminController;
 use Scholaris\Modules\Socle\Platform\Http\ClientApplicationController;
+use Scholaris\Modules\Socle\Platform\Http\ClientRegularisationController;
 use Scholaris\Modules\Socle\Platform\Http\ClientsAdminController;
 use Scholaris\Modules\Socle\Platform\Http\EstablishmentsAdminController;
 use Scholaris\Modules\Socle\Platform\Http\PaymentsAdminController;
 use Scholaris\Modules\Socle\Platform\Http\PaymentWebhookController;
 use Scholaris\Modules\Socle\Platform\Http\PlatformAdminController;
+use Scholaris\Modules\Socle\Platform\Http\PricingAdminController;
 use Scholaris\Modules\Socle\Platform\Http\PublicAccessController;
+use Scholaris\Modules\Socle\Platform\Http\RegularisationAdminController;
 
 /**
  * Routes du module Platform. Le préfixe /api/v1 est ajouté par le registre.
@@ -70,6 +73,19 @@ return static function (RouteRegistry $routes): void {
     $routes->add('POST', '/platform/clients/{tenant}/applications/{key}/suspend', [PlatformAdminController::class, 'suspend'], $platform);
     $routes->add('POST', '/platform/clients/{tenant}/applications/{key}/close', [PlatformAdminController::class, 'close'], $platform);
     $routes->add('POST', '/platform/clients/{tenant}/applications/{key}/reactivate', [PlatformAdminController::class, 'reactivate'], $platform);
+    $routes->add('PATCH', '/platform/clients/{tenant}/applications/{key}/terms', [PricingAdminController::class, 'terms'], $platform);
+    $routes->add('POST', '/platform/clients/{tenant}/applications/{key}/options', [PricingAdminController::class, 'subscribe'], $platform);
+    $routes->add('POST', '/platform/clients/{tenant}/applications/{key}/options/{option}/remove', [PricingAdminController::class, 'unsubscribe'], $platform);
+    $routes->add('GET', '/platform/service-options', [PricingAdminController::class, 'index'], $platform);
+    $routes->add('POST', '/platform/service-options', [PricingAdminController::class, 'store'], $platform);
+    $routes->add('PATCH', '/platform/service-options/{key}', [PricingAdminController::class, 'update'], $platform);
+    $routes->add('DELETE', '/platform/service-options/{key}', [PricingAdminController::class, 'destroy'], $platform);
+    $routes->add('GET', '/platform/regularisation', [RegularisationAdminController::class, 'index'], $platform);
+    $routes->add('GET', '/platform/regularisation/export', [RegularisationAdminController::class, 'export'], $platform);
+    $routes->add('POST', '/platform/clients/{tenant}/regularisation/lock', [RegularisationAdminController::class, 'lock'], $platform);
+    $routes->add('POST', '/platform/clients/{tenant}/regularisation/unlock', [RegularisationAdminController::class, 'unlock'], $platform);
+    $routes->add('POST', '/platform/clients/{tenant}/regularisation/delay', [RegularisationAdminController::class, 'delay'], $platform);
+    $routes->add('POST', '/platform/clients/{tenant}/regularisation/level', [RegularisationAdminController::class, 'level'], $platform);
     $routes->add('GET', '/platform/access-requests', [AccessRequestAdminController::class, 'index'], $platform);
     $routes->add('GET', '/platform/access-requests/{id}', [AccessRequestAdminController::class, 'show'], $platform);
     $routes->add('POST', '/platform/access-requests/{id}/accept', [AccessRequestAdminController::class, 'accept'], $platform);
@@ -84,6 +100,7 @@ return static function (RouteRegistry $routes): void {
     $routes->add('POST', '/platform/payments/webhook', [PaymentWebhookController::class, 'receive'], $public);
 
     $routes->add('GET', '/me/applications', [ClientApplicationController::class, 'mine'], ['tenant' => false]);
+    $routes->add('GET', '/me/regularisation', [ClientRegularisationController::class, 'mine'], ['tenant' => false]);
     $routes->add('POST', '/applications/{key}/open', [ClientApplicationController::class, 'open']);
     $routes->add('POST', '/applications/{key}/payments', [ClientApplicationController::class, 'pay']);
     $routes->add('GET', '/applications/{key}/payments', [ClientApplicationController::class, 'payments']);

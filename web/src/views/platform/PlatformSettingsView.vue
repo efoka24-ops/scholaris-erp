@@ -12,6 +12,9 @@ const { t } = useI18n();
 const action = useSensitiveAction();
 const KEY = 'access_code_ttl_minutes';
 const setting = ref<PlatformSetting | null>(null);
+const LEVEL_KEY = 'regularisation_default_level';
+const level = ref<'0' | '1'>('0');
+const levelSaved = ref(false);
 const minutes = ref('');
 const invalid = ref(false);
 const info = ref('');
@@ -20,8 +23,10 @@ const loadError = ref<unknown>(null);
 async function load(): Promise<void> {
   loadError.value = null;
   try {
-    setting.value = (await fetchPlatformSettings())[KEY] ?? null;
+    const all = await fetchPlatformSettings();
+    setting.value = all[KEY] ?? null;
     minutes.value = setting.value ? String(setting.value.value) : '';
+    level.value = all[LEVEL_KEY]?.value === 1 ? '1' : '0';
   } catch (e) {
     loadError.value = e;
   }
@@ -44,6 +49,12 @@ async function save(): Promise<void> {
     setting.value = res.data[KEY] ?? setting.value;
     info.value = t('pa.set.saved', { duration: human(value) });
   }
+}
+
+async function saveLevel(): Promise<void> {
+  levelSaved.value = false;
+  const res = await action.run<{ data: Record<string, PlatformSetting> }>(actions.updateSettings({ [LEVEL_KEY]: Number(level.value) }), t('rg.set.title'));
+  if (res) levelSaved.value = true;
 }
 
 onMounted(load);
@@ -73,6 +84,21 @@ onMounted(load);
         <button type="button" class="btn" @click="minutes = '1440'">{{ t('pa.set.hours', { count: 24 }) }}</button>
         <button type="button" class="btn" @click="minutes = '4320'">{{ t('pa.set.days', { count: 3 }) }}</button>
       </div>
+      <button type="submit" class="btn btn--primary" :disabled="action.busy.value">{{ t('admin.save') }}</button>
+    </form>
+
+    <form v-if="setting" class="card stack" novalidate @submit.prevent="saveLevel">
+      <h2>{{ t('rg.set.title') }}</h2>
+      <p class="muted">{{ t('rg.set.lede') }}</p>
+      <div class="field">
+        <label for="reg-level">{{ t('rg.set.label') }}</label>
+        <select id="reg-level" v-model="level">
+          <option value="0">{{ t('rg.level.read_only') }}</option>
+          <option value="1">{{ t('rg.level.locked') }}</option>
+        </select>
+        <span class="hint">{{ t('rg.act.levelHint') }}</span>
+      </div>
+      <p v-if="levelSaved" class="notice notice--success" role="status">{{ t('rg.set.saved') }}</p>
       <button type="submit" class="btn btn--primary" :disabled="action.busy.value">{{ t('admin.save') }}</button>
     </form>
   </section>

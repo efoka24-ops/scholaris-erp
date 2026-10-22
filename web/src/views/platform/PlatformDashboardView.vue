@@ -61,7 +61,10 @@ onMounted(load);
         <p class="lede">{{ t('plat.dash.lede') }}</p>
         <p v-if="data?.as_of" class="muted small">{{ t('plat.dash.asOf', { date: formatDateTime(data.as_of, locale) }) }}</p>
       </div>
-      <router-link v-if="(data?.access_requests_pending?.total ?? 0) > 0" class="btn btn--primary" :to="{ name: 'platform-requests' }">{{ t('plat.dash.seeRequests') }} →</router-link>
+      <div class="row">
+        <router-link v-if="(data?.access_requests_pending?.total ?? 0) > 0" class="btn btn--primary" :to="{ name: 'platform-requests' }">{{ t('plat.dash.seeRequests') }} →</router-link>
+        <router-link class="btn" :to="{ name: 'platform-regularisation' }">{{ t('rg.nav') }} →</router-link>
+      </div>
     </header>
 
     <ErrorNotice :error="error" />

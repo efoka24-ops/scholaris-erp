@@ -58,11 +58,22 @@ final class PlatformAdminController
     public function updateSettings(ServerRequestInterface $request): ResponseInterface
     {
         $principal = $this->guard->platformAdmin($request, 'platform.settings.manage', true);
-        $input = Input::of($request, [PlatformSettings::ACCESS_CODE_TTL]);
-        $ttl = $input->integer(PlatformSettings::ACCESS_CODE_TTL, 5, 10080);
+        $input = Input::of($request, [PlatformSettings::ACCESS_CODE_TTL, PlatformSettings::REGULARISATION_LEVEL]);
+        $changes = [];
+        if ($input->has(PlatformSettings::REGULARISATION_LEVEL)) {
+            $changes[PlatformSettings::REGULARISATION_LEVEL] = $input->integer(PlatformSettings::REGULARISATION_LEVEL, 0, 1);
+        }
+        if ($input->has(PlatformSettings::ACCESS_CODE_TTL) || $changes === []) {
+            $changes[PlatformSettings::ACCESS_CODE_TTL] = $input->integer(PlatformSettings::ACCESS_CODE_TTL, 5, 10080);
+        }
         $input->validate();
 
-        return $this->responder->json(['data' => $this->settings->set(PlatformSettings::ACCESS_CODE_TTL, (int) $ttl, $principal->userId, PlatformGuard::ip($request))]);
+        $all = [];
+        foreach ($changes as $key => $value) {
+            $all = $this->settings->set($key, (int) $value, $principal->userId, PlatformGuard::ip($request));
+        }
+
+        return $this->responder->json(['data' => $all]);
     }
 
     /** GET /platform/applications */

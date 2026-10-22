@@ -302,6 +302,13 @@ export const routes: RouteRecordRaw[] = [
     component: () => import('@/views/platform/MyApplicationsView.vue'),
     meta: { perms: ['applications.manage', 'organisation.manage'], titleKey: 'apps.title', nav: { labelKey: 'nav.applications', order: 4 } },
   },
+  // Écran de régularisation de paiement : seule page ouverte à un client bloqué pour impayé (voir le garde de routes).
+  {
+    path: '/regularisation',
+    name: 'regularisation',
+    component: () => import('@/views/platform/RegularisationView.vue'),
+    meta: { titleKey: 'rg.client.title' },
+  },
   // Administrateur de plateforme (client technique `platform`) : aucun en-tête X-Establishment-Id, aucune donnée métier.
   {
     path: '/platform',
@@ -340,6 +347,12 @@ export const routes: RouteRecordRaw[] = [
     name: 'platform-catalog',
     component: () => import('@/views/platform/PlatformCatalogView.vue'),
     meta: { platform: true, titleKey: 'plat.cat.title', nav: { labelKey: 'nav.platform.catalog', order: 4 } },
+  },
+  {
+    path: '/platform/a-regulariser',
+    name: 'platform-regularisation',
+    component: () => import('@/views/platform/PlatformRegularisationView.vue'),
+    meta: { platform: true, titleKey: 'rg.list.title' },
   },
   {
     path: '/platform/paiements',

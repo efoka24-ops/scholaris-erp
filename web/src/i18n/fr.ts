@@ -4,6 +4,7 @@ import { adminFr } from './admin-fr';
 import { hrFr } from './hr-fr';
 import { platformFr } from './platform-fr';
 import { platformAdminFr } from './platform-admin-fr';
+import { platformRegularisationFr } from './platform-regularisation-fr';
 import { higherFr } from './higher-fr';
 import { higherGradesFr } from './higher-grades-fr';
 import { higherTeachingFr } from './higher-teaching-fr';
@@ -27,6 +28,7 @@ export const fr = {
   ...hrFr,
   ...platformFr,
   ...platformAdminFr,
+  ...platformRegularisationFr,
   ...higherFr,
   ...higherGradesFr,
   ...higherTeachingFr,

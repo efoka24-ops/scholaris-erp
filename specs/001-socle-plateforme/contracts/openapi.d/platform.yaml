@@ -115,7 +115,7 @@ paths:
         required: true
         content:
           application/json:
-            schema: {type: object, properties: {access_code_ttl_minutes: {type: integer, minimum: 5, maximum: 10080}}}
+            schema: {type: object, properties: {access_code_ttl_minutes: {type: integer, minimum: 5, maximum: 10080}, regularisation_default_level: {type: integer, minimum: 0, maximum: 1, description: "Niveau de blocage par défaut d un impayé : 0 lecture et export seulement, 1 tout bloqué sauf la régularisation"}}}
       responses:
         '200': {description: "Réglages mis à jour"}
         '403': {description: "Réservé à l'administrateur de plateforme ; 2FA récente exigée"}
@@ -1186,3 +1186,264 @@ paths:
           description: "Son propre compte"
         '422':
           description: "Canal indisponible, ou code expiré ou remplacé"
+  /api/v1/platform/clients/{tenant}/applications/{key}/terms:
+    patch:
+      summary: "Délais propres au client pour une application : trial_days (0-365), grace_days (0-90), billing_period_months (1, 3 ou 12), regularisation_level (read_only ou locked) ; null remet la valeur du catalogue ; reason obligatoire ; journalisé avant/après (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - {name: tenant, in: path, required: true, schema: {type: string}}
+        - {name: key, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                trial_days: {type: [integer, "null"], minimum: 0, maximum: 365}
+                grace_days: {type: [integer, "null"], minimum: 0, maximum: 90}
+                billing_period_months: {type: [integer, "null"], enum: [1, 3, 12, null]}
+                regularisation_level: {type: [string, "null"], enum: [read_only, locked, null]}
+                reason: {type: string, maxLength: 500}
+      responses:
+        '200': {description: "Droit d'usage mis à jour (terms : valeurs effectives et indicateurs de surcharge)"}
+        '403': {description: "Refusé ou 2FA récente requise"}
+        '404': {description: "Client ou application introuvable"}
+        '409': {description: "Essai non modifiable après un paiement"}
+        '422': {description: "Données invalides"}
+  /api/v1/platform/clients/{tenant}/applications/{key}/options:
+    post:
+      summary: "Souscrit le client à une option de service pour l'application, ou change son prix propre (price_xaf, null : prix de l'option) ; reason obligatoire (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - {name: tenant, in: path, required: true, schema: {type: string}}
+        - {name: key, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [option_key, reason]
+              properties:
+                option_key: {type: string}
+                price_xaf: {type: [integer, "null"], minimum: 0}
+                reason: {type: string, maxLength: 500}
+      responses:
+        '200': {description: "Droit d'usage avec ses options et le montant mensuel dû (monthly_total_xaf)"}
+        '403': {description: "Refusé ou 2FA récente requise"}
+        '404': {description: "Introuvable"}
+        '409': {description: "Option désactivée"}
+        '422': {description: "Option non applicable à cette application ou données invalides"}
+  /api/v1/platform/clients/{tenant}/applications/{key}/options/{option}/remove:
+    post:
+      summary: "Résilie une option de service du client ({ reason } obligatoire) (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - {name: tenant, in: path, required: true, schema: {type: string}}
+        - {name: key, in: path, required: true, schema: {type: string}}
+        - {name: option, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: {type: string, maxLength: 500}
+      responses:
+        '200': {description: "Droit d'usage mis à jour"}
+        '403': {description: "Refusé ou 2FA récente requise"}
+        '404': {description: "Option non souscrite"}
+        '422': {description: "Motif manquant"}
+  /api/v1/platform/service-options:
+    get:
+      summary: "Options de service (clé, libellés fr/en, prix mensuel XAF, applications concernées, actif, nombre de souscripteurs)"
+      security:
+        - bearer: []
+      responses:
+        '200': {description: "Liste des options"}
+        '403': {description: "Réservé à l'administrateur de plateforme"}
+    post:
+      summary: "Crée une option de service (2FA récente)"
+      security:
+        - bearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [option_key, label_fr, label_en, monthly_price_xaf]
+              properties:
+                option_key: {type: string, pattern: "^[a-z][a-z0-9_]+$", maxLength: 30}
+                label_fr: {type: string, maxLength: 120}
+                label_en: {type: string, maxLength: 120}
+                monthly_price_xaf: {type: integer, minimum: 0}
+                app_keys: {type: array, items: {type: string}, description: "Applications concernées ([] : toutes)"}
+      responses:
+        '201': {description: "Option créée"}
+        '403': {description: "Refusé ou 2FA récente requise"}
+        '409': {description: "Clé déjà utilisée"}
+        '422': {description: "Données invalides"}
+  /api/v1/platform/service-options/{key}:
+    patch:
+      summary: "Modifie une option (libellés, prix, applications, active) (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - {name: key, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                label_fr: {type: string, maxLength: 120}
+                label_en: {type: string, maxLength: 120}
+                monthly_price_xaf: {type: integer, minimum: 0}
+                app_keys: {type: array, items: {type: string}}
+                active: {type: boolean}
+      responses:
+        '200': {description: "Option mise à jour"}
+        '403': {description: "Refusé ou 2FA récente requise"}
+        '404': {description: "Introuvable"}
+        '422': {description: "Données invalides"}
+    delete:
+      summary: "Supprime une option que personne n'a souscrite (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - {name: key, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Supprimée"}
+        '403': {description: "Refusé ou 2FA récente requise"}
+        '404': {description: "Introuvable"}
+        '409': {description: "Option souscrite par des clients : la désactiver"}
+  /api/v1/platform/regularisation:
+    get:
+      summary: "Liste « À régulariser » : impayés, applications en régularisation, promesses de paiement en cours (montant dû, jours de retard, niveau) ; filtre filter[bucket] = past_due, regularisation ou promise"
+      security:
+        - bearer: []
+      responses:
+        '200': {description: "Liste, avec meta.total, meta.amount_due_xaf et meta.counts"}
+        '403': {description: "Réservé à l'administrateur de plateforme"}
+        '422': {description: "Filtre invalide"}
+  /api/v1/platform/regularisation/export:
+    get:
+      summary: "Export CSV (ou xlsx avec ?format=xlsx) de la liste « À régulariser »"
+      security:
+        - bearer: []
+      responses:
+        '200': {description: "Fichier CSV"}
+        '403': {description: "Réservé à l'administrateur de plateforme"}
+        '422': {description: "Filtre ou format invalide"}
+  /api/v1/platform/clients/{tenant}/regularisation/lock:
+    post:
+      summary: "Bloque à la main le client (toutes ses applications ouvertes, ou app_key) en mode régularisation de paiement, au niveau demandé (read_only : lecture et export ; locked : tout bloqué sauf la régularisation) ; reason obligatoire ; aucune donnée supprimée (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - {name: tenant, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: {type: string, maxLength: 500}
+                level: {type: string, enum: [read_only, locked]}
+                app_key: {type: string}
+      responses:
+        '200': {description: "Droits d'usage bloqués"}
+        '403': {description: "Refusé ou 2FA récente requise"}
+        '404': {description: "Client ou application introuvable"}
+        '409': {description: "Déjà bloqué à ce niveau ou aucune application ouverte"}
+        '422': {description: "Données invalides"}
+  /api/v1/platform/clients/{tenant}/regularisation/unlock:
+    post:
+      summary: "Débloque le client ou l'application (reason obligatoire) ; si l'impayé le re-bloquerait, une promesse de paiement est posée jusqu'à `until` (7 jours par défaut) (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - {name: tenant, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: {type: string, maxLength: 500}
+                until: {type: string, format: date}
+                app_key: {type: string}
+      responses:
+        '200': {description: "Droits d'usage débloqués"}
+        '403': {description: "Refusé ou 2FA récente requise"}
+        '404': {description: "Client ou application introuvable"}
+        '409': {description: "Aucune application bloquée pour impayé"}
+        '422': {description: "Données invalides"}
+  /api/v1/platform/clients/{tenant}/regularisation/delay:
+    post:
+      summary: "Promesse de paiement : reporte le blocage jusqu'à `until` (au plus 90 jours) ; une application déjà bloquée est débloquée jusqu'à cette date ; reason obligatoire (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - {name: tenant, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [until, reason]
+              properties:
+                until: {type: string, format: date}
+                reason: {type: string, maxLength: 500}
+                app_key: {type: string}
+      responses:
+        '200': {description: "Délai accordé"}
+        '403': {description: "Refusé ou 2FA récente requise"}
+        '404': {description: "Client ou application introuvable"}
+        '409': {description: "Aucune application impayée ou bloquée"}
+        '422': {description: "Date ou motif invalide"}
+  /api/v1/platform/clients/{tenant}/regularisation/level:
+    post:
+      summary: "Niveau de blocage choisi pour tout le client ({ level: read_only | locked | null, reason }) ; null revient au réglage de la plateforme ; appliqué aussitôt aux applications déjà en régularisation (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - {name: tenant, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [level, reason]
+              properties:
+                level: {type: [string, "null"], enum: [read_only, locked, null]}
+                reason: {type: string, maxLength: 500}
+      responses:
+        '200': {description: "Droits d'usage mis à jour"}
+        '403': {description: "Refusé ou 2FA récente requise"}
+        '404': {description: "Client introuvable"}
+        '409': {description: "Aucune application ouverte"}
+        '422': {description: "Données invalides"}
+  /api/v1/me/regularisation:
+    get:
+      summary: "Écran de régularisation du client de l'utilisateur : mode (ok, past_due, read_only, locked), par application montant dû, détail (tarif de base, options), période, jours de retard, promesse, reçus ; can_pay (droit applications.manage) ; contact de la plateforme"
+      security:
+        - bearer: []
+      responses:
+        '200': {description: "Situation de paiement du client (jamais celle d'un autre client)"}
+        '403': {description: "Compte de la plateforme"}

@@ -58,7 +58,7 @@ final class DashboardService
         $mrr = 0;
         $paying = 0;
         foreach ($this->db->all('SELECT * FROM tenant_applications WHERE state = ?', [ApplicationAccess::ACTIVE]) as $row) {
-            $mrr += $this->entitlements->priceOf($row);
+            $mrr += $this->entitlements->totalOf($row);
             $paying++;
         }
 

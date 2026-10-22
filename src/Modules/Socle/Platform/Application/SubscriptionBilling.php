@@ -9,6 +9,7 @@ use Scholaris\Core\Support\Ulid;
 use Scholaris\Modules\Socle\Messaging\Contracts\DeliveryResult;
 use Scholaris\Modules\Socle\Platform\Contracts\ApplicationAccess;
 use Scholaris\Modules\Socle\Platform\Domain\Calendar;
+use Scholaris\Modules\Socle\Platform\Domain\Regularisation;
 use Scholaris\Modules\Socle\Platform\Domain\Subscription;
 use Scholaris\Modules\Socle\Platform\Infrastructure\PlatformDb;
 
@@ -51,7 +52,7 @@ final class SubscriptionBilling
                 'label' => (string) $app['label'],
                 'establishment_name' => $this->entitlements->tenantName($tenantId),
                 'due_on' => Calendar::display($dueOn),
-                'amount' => $this->entitlements->priceOf($row),
+                'amount' => $this->entitlements->totalOf($row),
             ];
 
             $reminder = $this->remind($row, $today, $dueOn, $variables);
@@ -60,7 +61,8 @@ final class SubscriptionBilling
             }
 
             $state = (string) $row['state'];
-            $next = Subscription::nextState($state, $today, $dueOn, (int) $app['grace_days']);
+            $grace = $this->entitlements->graceDaysOf($row);
+            $next = Subscription::nextState($state, $today, $dueOn, $grace, $row['promise_until'] === null ? null : (string) $row['promise_until']);
             if ($next === $state) {
                 continue;
             }
@@ -69,21 +71,27 @@ final class SubscriptionBilling
             if ($state !== ApplicationAccess::PAST_DUE) {
                 $values['past_due_since'] = Calendar::addDays($dueOn, 1);
             }
+            $level = null;
             if ($next === ApplicationAccess::SUSPENDED) {
-                $values += ['suspended_at' => $now, 'state_reason' => 'unpaid'];
+                // Blocage automatique : mode régularisation de paiement, au niveau choisi (client, sinon réglage de la plateforme).
+                $level = $this->entitlements->lockLevelOf($row);
+                $values += [
+                    'suspended_at' => $now, 'state_reason' => 'unpaid', 'regularisation' => $level,
+                    'regularisation_origin' => Regularisation::ORIGIN_AUTO, 'regularisation_since' => $today, 'promise_until' => null, 'promise_reason' => null,
+                ];
             }
             $changed = $this->db->update('tenant_applications', $values, ['tenant_id' => $tenantId, 'id' => (string) $row['id'], 'state' => $state]);
             if ($changed === 0) {
                 continue;
             }
-            $this->audit->record($tenantId, null, 'platform.subscription_' . $next, 'tenant_application', (string) $row['id'], ['app_key' => $row['app_key'], 'due_on' => $dueOn, 'run_date' => $today]);
+            $this->audit->record($tenantId, null, 'platform.subscription_' . $next, 'tenant_application', (string) $row['id'], ['app_key' => $row['app_key'], 'due_on' => $dueOn, 'run_date' => $today] + ($level === null ? [] : ['regularisation_level' => $level, 'before' => ['state' => $state], 'after' => ['state' => $next]]));
             if ($next === ApplicationAccess::SUSPENDED) {
                 $result['suspended']++;
-                $this->notifier->toClient($tenantId, 'platform_subscription_suspended', $variables);
+                $this->notifier->toClient($tenantId, $level === Regularisation::LOCKED ? 'platform_regularisation_locked' : 'platform_subscription_suspended', $variables);
             } else {
                 $result['past_due']++;
                 $this->notifier->toClient($tenantId, 'platform_subscription_past_due', $variables + [
-                    'date' => Calendar::display(Calendar::addDays($dueOn, (int) $app['grace_days'])),
+                    'date' => Calendar::display(Calendar::addDays($dueOn, $grace)),
                 ]);
             }
         }

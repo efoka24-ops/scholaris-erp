@@ -6,6 +6,7 @@ import { useI18n } from '@/i18n';
 import { formatXaf } from '@/lib/format';
 import { appStatusKey, appStatusTone, targetKey } from './display';
 import { useSensitiveAction } from './useSensitiveAction';
+import ServiceOptionsPanel from './ServiceOptionsPanel.vue';
 import TwoFactorPrompt from './TwoFactorPrompt.vue';
 import ReplayNotice from './ReplayNotice.vue';
 
@@ -166,6 +167,8 @@ onMounted(load);
         </form>
       </li>
     </ul>
+
+    <ServiceOptionsPanel />
   </div>
 </template>
 

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import ErrorNotice from '@/components/ErrorNotice.vue';
-import { actions, fetchClient, fetchPlatformCatalog, type CatalogApplication, type Entitlement, type Tenant } from '@/api/platform';
+import { actions, fetchClient, fetchPlatformCatalog, fetchServiceOptions, type CatalogApplication, type Entitlement, type ServiceOption, type Tenant } from '@/api/platform';
 import { useI18n } from '@/i18n';
 import { formatDate, formatXaf } from '@/lib/format';
 import { sourceKey, stateKey, stateTone, targetKey } from './display';
@@ -10,6 +10,7 @@ import TwoFactorPrompt from './TwoFactorPrompt.vue';
 import ReplayNotice from './ReplayNotice.vue';
 import AdministratorsPanel from './AdministratorsPanel.vue';
 import ClientEstablishmentsPanel from './ClientEstablishmentsPanel.vue';
+import ClientBillingPanel from './ClientBillingPanel.vue';
 import ClientProfilePanel from './ClientProfilePanel.vue';
 import ClientUsersPanel from './ClientUsersPanel.vue';
 import WorkflowsPanel from '@/views/admin/workflows/WorkflowsPanel.vue';
@@ -22,6 +23,7 @@ const { t, locale } = useI18n();
 type Kind = 'suspend' | 'close' | 'reactivate' | 'price';
 const client = ref<Tenant | null>(null);
 const catalog = ref<CatalogApplication[]>([]);
+const serviceOptions = ref<ServiceOption[]>([]);
 const loadError = ref<unknown>(null);
 const editing = ref<{ key: string; kind: Kind } | null>(null);
 const reason = ref('');
@@ -48,6 +50,11 @@ async function load(): Promise<void> {
     catalog.value = await fetchPlatformCatalog();
   } catch {
     catalog.value = []; // sans catalogue, seule l'ouverture d'une application est indisponible
+  }
+  try {
+    serviceOptions.value = await fetchServiceOptions();
+  } catch {
+    serviceOptions.value = []; // sans options, seule leur souscription est indisponible
   }
 }
 
@@ -202,6 +209,8 @@ onMounted(load);
                 <button type="button" class="btn btn--quiet" @click="editing = null">{{ t('plat.cancel') }}</button>
               </div>
             </form>
+
+            <ClientBillingPanel v-if="client.state !== 'archived' && app.state !== 'closed'" :tenant="client.id" :client-name="client.name" :app="app" :service-options="serviceOptions" @changed="load" />
           </li>
         </ul>
       </section>

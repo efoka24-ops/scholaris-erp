@@ -41,7 +41,12 @@ final class ManualPayments
         if ($entitlement['state'] === ApplicationAccess::CLOSED) {
             throw HttpException::conflict('Cette application est fermée : rouvrez-la avant d\'enregistrer un paiement.');
         }
-        $amount = $amountXaf ?? $this->entitlements->priceOf($entitlement) * $months;
+        $period = $entitlement['billing_period_months'] ?? null;
+        if ($period !== null && $months % (int) $period !== 0) {
+            throw HttpException::validation(['months' => [sprintf('La périodicité de facturation de ce client est de %d mois : choisissez un multiple.', (int) $period)]]);
+        }
+        $wasSuspended = $entitlement['state'] === ApplicationAccess::SUSPENDED;
+        $amount = $amountXaf ?? $this->entitlements->totalOf($entitlement) * $months;
         if ($amount <= 0) {
             throw HttpException::validation(['amount_xaf' => ['Montant obligatoire : aucun tarif n\'est défini pour cette application.']]);
         }
@@ -64,7 +69,7 @@ final class ManualPayments
             $this->db->update('tenant_applications', [
                 'paid_until' => $coverage['until'], 'state' => ApplicationAccess::ACTIVE, 'past_due_since' => null, 'suspended_at' => null,
                 'state_reason' => null, 'updated_at' => $now,
-            ], ['tenant_id' => $tenantId, 'id' => (string) $entitlement['id']]);
+            ] + EntitlementService::LOCK_CLEARED, ['tenant_id' => $tenantId, 'id' => (string) $entitlement['id']]);
 
             return $receipt;
         });
@@ -73,6 +78,9 @@ final class ManualPayments
             'app_key' => $appKey, 'amount_xaf' => $amount, 'months' => $months, 'channel' => $channel, 'receipt_number' => $receipt,
         ], $ip);
         $this->payments->sendReceipt($payment);
+        if ($wasSuspended) {
+            $this->payments->sendLifted($payment);
+        }
 
         return $this->payments->present($payment);
     }

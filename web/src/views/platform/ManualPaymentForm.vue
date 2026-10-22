@@ -8,11 +8,11 @@ import { useSensitiveAction } from './useSensitiveAction';
 import TwoFactorPrompt from './TwoFactorPrompt.vue';
 
 // Paiement manuel (espèces, virement) : confirmé immédiatement, avec reçu ; la période couverte est prolongée.
-const props = defineProps<{ clients: Tenant[] }>();
+const props = defineProps<{ clients: Tenant[]; /** Client et application déjà choisis (action rapide de la liste « À régulariser »). */ preset?: { tenant_id: string; app_key: string } }>();
 const emit = defineEmits<{ recorded: [payment: SubscriptionPayment] }>();
 const { t } = useI18n();
 const action = useSensitiveAction();
-const form = reactive({ tenant_id: '', app_key: '', months: 1, channel: 'cash' as ManualChannel, amount: '', note: '' });
+const form = reactive({ tenant_id: props.preset?.tenant_id ?? '', app_key: props.preset?.app_key ?? '', months: 1, channel: 'cash' as ManualChannel, amount: '', note: '' });
 const error = ref<string | null>(null);
 const done = ref<string | null>(null);
 
