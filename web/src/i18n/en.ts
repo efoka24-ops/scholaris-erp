@@ -18,6 +18,8 @@ import { higherDashboardsEn } from './higher-dashboards-en';
 import { accountEn } from './account-en';
 import { publicNurseryEn } from './public-nursery-en';
 import { publicSchoolsEn } from './public-schools-en';
+import { primaryEn } from './primary-en';
+import { importsEn } from './imports-en';
 
 export const en: Record<keyof typeof fr, string> = {
   ...adminEn,
@@ -37,6 +39,8 @@ export const en: Record<keyof typeof fr, string> = {
   ...accountEn,
   ...publicNurseryEn,
   ...publicSchoolsEn,
+  ...primaryEn,
+  ...importsEn,
   'nav.reportcards': "Report cards",
   'reportcards.eyebrow': "Results",
   'reportcards.title': "Report cards",
