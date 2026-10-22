@@ -48,6 +48,7 @@ return [
     PersonDirectory::class => autowire(PdoPersonDirectory::class),
     EnrollmentDirectory::class => autowire(PdoEnrollmentDirectory::class),
     EnrollmentWriter::class => autowire(EnrollmentWriterService::class),
+    \Scholaris\Modules\Socle\People\Contracts\EnrollmentStatusWriter::class => autowire(\Scholaris\Modules\Socle\People\Application\EnrollmentStatusWriterService::class),
     BirthDateWriter::class => autowire(BirthDateWriterService::class),
     LearnerNumbering::class => autowire(LearnerNumberingService::class),
     LearnerWriter::class => autowire(LearnerWriterService::class),

@@ -9,11 +9,20 @@ use Scholaris\Core\Security\Principal;
 use Scholaris\Modules\Apps\Primary\Support\Perimeter;
 use Scholaris\Modules\Socle\Identity\Contracts\PermissionScopes;
 use Scholaris\Modules\Socle\Identity\Contracts\Scope;
+use Scholaris\Modules\Socle\Organisation\Contracts\OrgUnitTree;
 
+/**
+ * Périmètre d'une permission dans l'établissement : tout l'établissement, ou les structures couvertes par les affectations de la
+ * personne. Une section (`org_unit`) se développe en toutes ses structures, un niveau (`structure`) en lui-même et ses classes, une
+ * classe (`class`) reste telle quelle. Le développement passe par le contrat OrgUnitTree, borné au client et à l'établissement.
+ */
 final class ScopeResolver
 {
-    public function __construct(private readonly PermissionChecker $permissions, private readonly PermissionScopes $scopes)
-    {
+    public function __construct(
+        private readonly PermissionChecker $permissions,
+        private readonly PermissionScopes $scopes,
+        private readonly OrgUnitTree $tree,
+    ) {
     }
 
     public function resolve(Principal $principal, string $permission, string $establishmentId): Perimeter
@@ -28,6 +37,10 @@ final class ScopeResolver
                 $whole = true;
             } elseif ($scope->type === Scope::CLASS_GROUP) {
                 $classes[] = $scope->id;
+            } elseif ($scope->type === Scope::STRUCTURE) {
+                array_push($classes, ...$this->tree->structureDescendantsOf($principal->tenantId, $establishmentId, $scope->id));
+            } elseif ($scope->type === Scope::ORG_UNIT) {
+                array_push($classes, ...$this->tree->structuresOf($principal->tenantId, $establishmentId, $scope->id));
             }
         }
 

@@ -25,6 +25,7 @@ return [
     EnrolmentGate::class => autowire(PdoEnrolmentGate::class),
     ModuleAvailability::class => autowire(PdoModuleAvailability::class),
     SettingsReader::class => get(SettingsService::class),
+    \Scholaris\Modules\Socle\Organisation\Contracts\SettingsWriter::class => get(SettingsService::class),
     \Scholaris\Modules\Socle\Organisation\Contracts\TerritorySettings::class => autowire(\Scholaris\Modules\Socle\Organisation\Application\TerritorySettingsService::class),
     // Contrats « application » (Supérieur, vague 0) : écriture des structures (D1), autorisations (D2), gardes d'inscription (D3),
     // paramètres par unité (D6), arbre de l'établissement (S15).

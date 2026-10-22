@@ -23,7 +23,7 @@ use Throwable;
  * d'où elle vient et quelles valeurs elle masque. Toute modification est écrite dans le journal d'audit du client (qui, quoi, avant/après).
  * Sans unité demandée, le comportement est celui des trois niveaux historiques.
  */
-final class SettingsService implements OrgUnitSettingsReader
+final class SettingsService implements OrgUnitSettingsReader, \Scholaris\Modules\Socle\Organisation\Contracts\SettingsWriter
 {
     public const KEY_FORMAT = '/^[a-z][a-z0-9_.-]{0,99}$/';
     private const MAX_VALUE_BYTES = 65536;
@@ -121,6 +121,16 @@ final class SettingsService implements OrgUnitSettingsReader
         });
 
         return new SettingEntry(SettingScope::OrgUnit, $key, $value, $actorId, $now, $orgUnitId);
+    }
+
+    public function presetIfAbsent(string $tenantId, string $establishmentId, string $key, mixed $value, string $actorId): bool
+    {
+        if ($this->get(SettingScope::Establishment, $tenantId, $establishmentId, $key) !== null) {
+            return false;
+        }
+        $this->set(SettingScope::Establishment, $tenantId, $establishmentId, $key, $value, $actorId);
+
+        return true;
     }
 
     public function effective(string $tenantId, ?string $establishmentId, string $key, ?string $orgUnitId = null): ?EffectiveSetting

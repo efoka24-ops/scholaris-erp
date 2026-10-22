@@ -35,7 +35,11 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     'organisation.read', 'people.read', 'billing.read', 'billing.cash', 'billing.reversal.request',
     'finance.read', 'finance.collect', 'documents.read',
   ],
-  enseignant: ['organisation.read', 'assessment.enter', 'grades.enter', 'attendance.take', 'staff.leave.request'],
+  enseignant: [
+    'organisation.read', 'assessment.enter', 'grades.enter', 'attendance.take', 'staff.leave.request',
+    'primary.referential.read', 'primary.learner.read', 'primary.competency.enter', 'primary.competency.read', 'primary.conduct.enter', 'primary.conduct.read',
+    'primary.journal.write', 'primary.journal.read',
+  ],
   parent: ['self.read', 'documents.request', 'public_schools.apee.read_receipts'],
   apprenant: ['self.read', 'documents.request'],
   // Écoles publiques (migration 202610152351_roles_public_schools.sql) : R01-R10 et R15-R21 ; R13 est le rôle « parent » ci-dessus.
@@ -90,10 +94,18 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     'public_nursery.need.report', 'public_nursery.transition.opinion',
   ],
   pn_assistant: ['public_nursery.pickup.handover', 'public_nursery.arrival.record'],
-  primary_promoteur: ['primary.dashboard.read', 'reporting.read'],
-  primary_directeur: ['primary.settings.manage', 'primary.council.preside', 'primary.report_card.sign', 'assessment.correction.approve', 'primary.promotion.decide', 'primary.dashboard.read'],
-  primary_adjoint: ['primary.referential.manage', 'assessment.validate', 'scheduling.manage'],
-  primary_secretaire: ['people.manage', 'primary.enrol', 'documents.issue', 'primary.exam.manage'],
+  primary_promoteur: [
+    'primary.dashboard.read', 'reporting.read', 'primary.referential.read', 'primary.learner.read', 'primary.competency.read', 'primary.conduct.read', 'primary.journal.read',
+  ],
+  primary_directeur: [
+    'primary.settings.manage', 'primary.council.preside', 'primary.report_card.sign', 'assessment.correction.approve', 'primary.promotion.decide', 'primary.dashboard.read',
+    'primary.referential.read', 'primary.learner.read', 'primary.competency.read', 'primary.competency.validate', 'primary.conduct.read', 'primary.journal.read',
+  ],
+  primary_adjoint: [
+    'primary.referential.manage', 'assessment.validate', 'scheduling.manage', 'primary.referential.read', 'primary.learner.read', 'primary.competency.read',
+    'primary.competency.validate', 'primary.conduct.read', 'primary.journal.read',
+  ],
+  primary_secretaire: ['people.manage', 'primary.enrol', 'documents.issue', 'primary.exam.manage', 'primary.referential.read', 'primary.learner.read'],
   primary_surveillant: ['attendance.sanction.manage', 'primary.pickup.handover'],
 };
 

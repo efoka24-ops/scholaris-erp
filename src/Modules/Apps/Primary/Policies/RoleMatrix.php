@@ -17,6 +17,20 @@ final class RoleMatrix
         'P09' => ['code' => 'primary_surveillant', 'permissions' => ['attendance.sanction.manage', 'primary.pickup.handover']],
     ];
 
+    /**
+     * Permissions ajoutées par la migration 202610211303 (lecture du référentiel, du profil d'élève, des compétences, de la conduite et du
+     * cahier de liaison ; validation des feuilles de compétences). Elles complètent ROLES : mêmes rôles, mêmes codes.
+     *
+     * @var array<string, list<string>>
+     */
+    public const EXTRA = [
+        'primary_directeur' => ['primary.referential.read', 'primary.learner.read', 'primary.competency.read', 'primary.competency.validate', 'primary.conduct.read', 'primary.journal.read'],
+        'primary_adjoint' => ['primary.referential.read', 'primary.learner.read', 'primary.competency.read', 'primary.competency.validate', 'primary.conduct.read', 'primary.journal.read'],
+        'primary_promoteur' => ['primary.referential.read', 'primary.learner.read', 'primary.competency.read', 'primary.conduct.read', 'primary.journal.read'],
+        'primary_secretaire' => ['primary.referential.read', 'primary.learner.read'],
+        'enseignant' => ['primary.referential.read', 'primary.learner.read', 'primary.competency.enter', 'primary.competency.read', 'primary.conduct.enter', 'primary.conduct.read', 'primary.journal.write', 'primary.journal.read'],
+    ];
+
     /** @var array<string, array<string, array{0: string, 1: string}>> */
     public const MATRIX = [
         'parametrage' => ['P02' => ['V', 'primary.settings.manage'], 'P03' => ['E', 'primary.referential.manage']],
