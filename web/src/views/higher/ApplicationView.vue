@@ -9,6 +9,7 @@ import { useI18n } from '@/i18n';
 import { ulid } from '@/lib/ulid';
 import { formatDate, formatDateTime, formatXaf } from '@/lib/format';
 import HigherFrame from './HigherFrame.vue';
+import { useWorkflow, WF } from '@/lib/useWorkflow';
 import { P } from './access';
 import { k, toneOf } from './display';
 import { useHigherStore } from './store';
@@ -40,7 +41,9 @@ const overRequired = ref(false);
 const withdrawReason = ref('');
 
 const canManage = computed(() => ctx.can(...P.applicationManage) && !higher.readOnly);
-const canDecide = computed(() => ctx.can(...P.admissionDecide) && !higher.readOnly);
+const workflow = useWorkflow();
+// Décision d'admission : la fonction désignée par le circuit de l'établissement (directeur d'école sans réglage).
+const canDecide = computed(() => workflow.canAct(WF.admission, 'decision', P.admissionDecide) && !higher.readOnly);
 const canEnrol = computed(() => ctx.can(...P.enrol) && !higher.readOnly);
 const verified = computed(() => app.value?.documents?.filter((d) => d.status === 'verified').length ?? 0);
 const holdingSeat = computed(() => ['admitted', 'conditional', 'enrolled'].includes(app.value?.status ?? ''));

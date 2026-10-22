@@ -6,6 +6,7 @@ import { useAuthStore } from '@/stores/auth';
 import { useContextStore } from '@/stores/context';
 import { useI18n } from '@/i18n';
 import { ulid } from '@/lib/ulid';
+import { useWorkflow, WF } from '@/lib/useWorkflow';
 import { formatDate, formatDateTime, formatXaf } from '@/lib/format';
 import HigherFrame from './HigherFrame.vue';
 import { P } from './access';
@@ -35,6 +36,9 @@ const sch = reactive({ kind: 'merit' as ScholarshipKind, calc: 'percent' as 'per
 
 const canCash = computed(() => ctx.can(...P.billingCash) && !higher.readOnly);
 const canManage = computed(() => ctx.can(...P.billingManage) && !higher.readOnly);
+// Validation d'une bourse : la fonction désignée par le circuit de l'établissement (comptable sans réglage).
+const workflow = useWorkflow();
+const canApprove = computed(() => workflow.canAct(WF.scholarship, 'approval', P.billingManage) && !higher.readOnly);
 const canCollect = computed(() => (pay.channel === 'cash' ? canCash.value : canCash.value || canManage.value));
 const canIssue = computed(() => ctx.can(...P.documentIssue) && !higher.readOnly);
 const canQuitus = computed(() => ctx.can(...P.quitus) && !higher.readOnly);
@@ -181,7 +185,7 @@ onMounted(async () => {
               <li v-for="s in scholarships" :key="s.id" :data-scholarship="s.id">
                 <span class="tag" :class="`tag--${toneOf(s.status) ?? 'neutral'}`">{{ t(k('hi.fin.sch.st.', s.status)) }}</span>
                 <span class="hi-grow">{{ t(k('hi.fin.sch.', s.scholarship_kind)) }} · {{ s.calc_mode === 'percent' ? `${s.rate_value} %` : formatXaf(s.rate_value, locale) }} · {{ formatXaf(s.amount_xaf, locale) }}<br /><span class="muted hi-small">{{ s.reason }}</span></span>
-                <template v-if="s.status === 'pending' && canManage">
+                <template v-if="s.status === 'pending' && canApprove">
                   <template v-if="s.requested_by !== auth.me?.id">
                     <button type="button" class="btn btn--quiet" :disabled="act.busy.value" @click="decideScholarship(s, true)">{{ t('hi.fin.approve') }}</button>
                     <button type="button" class="hi-linkbtn" :disabled="act.busy.value" @click="decideScholarship(s, false)">{{ t('hi.fin.reject') }}</button>

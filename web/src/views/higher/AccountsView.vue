@@ -9,6 +9,7 @@ import { formatXaf } from '@/lib/format';
 import HigherFrame from './HigherFrame.vue';
 import PersonPicker from './PersonPicker.vue';
 import YearField from './YearField.vue';
+import { useWorkflow, WF } from '@/lib/useWorkflow';
 import { P } from './access';
 import { useHigherStore } from './store';
 import { useHigherAction } from './useHigherAction';
@@ -34,6 +35,9 @@ const decideId = ref('');
 const decided = ref<PaymentPlan | null>(null);
 
 const canManage = computed(() => ctx.can(...P.billingManage) && !higher.readOnly);
+// Validation d'un échéancier : la fonction désignée par le circuit de l'établissement (comptable sans réglage).
+const workflow = useWorkflow();
+const canApprove = computed(() => workflow.canAct(WF.scholarship, 'approval', P.billingManage) && !higher.readOnly);
 const totals = computed(() => accounts.value.reduce((a, x) => ({ net: a.net + x.net_xaf, paid: a.paid + x.paid_xaf, balance: a.balance + x.balance_xaf }), { net: 0, paid: 0, balance: 0 }));
 const formLevels = computed(() => higher.levels.filter((l) => l.program_id === form.program_id));
 
@@ -120,8 +124,8 @@ onMounted(async () => {
     </div>
 
     <ErrorNotice :error="act.error.value" />
-    <div v-if="canManage" class="hi-two hi-section">
-      <form class="card hi-form" novalidate @submit.prevent="open">
+    <div v-if="canManage || canApprove" class="hi-two hi-section">
+      <form v-if="canManage" class="card hi-form" novalidate @submit.prevent="open">
         <h2 class="hi-wide">{{ t('hi.fin.openAccount') }}</h2>
         <PersonPicker id="oa-person" v-model="form.person_id" :label="t('hi.ins.student')" class="hi-wide" />
         <span v-if="touched && !form.person_id" class="error hi-wide">{{ t('hi.required') }}</span>
@@ -136,7 +140,7 @@ onMounted(async () => {
       </form>
 
       <div>
-        <form class="card hi-form" novalidate data-test="plan-request" @submit.prevent="requestPlan">
+        <form v-if="canManage" class="card hi-form" novalidate data-test="plan-request" @submit.prevent="requestPlan">
           <h2 class="hi-wide">{{ t('hi.fin.planNew') }}</h2>
           <p class="muted hi-small hi-wide">{{ t('hi.fin.planHint') }}</p>
           <PersonPicker id="pl-person" v-model="plan.person_id" :label="t('hi.ins.student')" class="hi-wide" />
@@ -156,7 +160,7 @@ onMounted(async () => {
           <p v-if="created" class="notice notice--success hi-wide" role="status">{{ t('hi.fin.planCreated', { id: created.id }) }}</p>
         </form>
 
-        <section class="card hi-section" data-test="plan-decide">
+        <section v-if="canApprove" class="card hi-section" data-test="plan-decide">
           <h2>{{ t('hi.fin.planDecide') }}</h2>
           <p class="muted hi-small">{{ t('hi.fin.planDecideHint') }}</p>
           <div class="field"><label for="pd-id">{{ t('hi.fin.planId2') }}</label><input id="pd-id" v-model="decideId" type="text" /></div>

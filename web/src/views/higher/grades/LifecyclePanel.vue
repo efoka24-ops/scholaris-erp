@@ -7,6 +7,7 @@ import { grades, isMinutesUnsigned, type Assessment, type AssessmentStatus } fro
 import { useContextStore } from '@/stores/context';
 import { formatDate } from '@/lib/format';
 import { useConfirmation } from '@/views/account/useConfirmation';
+import { useWorkflow, WF } from '@/lib/useWorkflow';
 import { useHigherStore } from '../store';
 import { useHigherAction } from '../useHigherAction';
 import { G } from './perms';
@@ -25,6 +26,7 @@ const higher = useHigherStore();
 const route = useRoute();
 const router = useRouter();
 const act = useHigherAction();
+const workflow = useWorkflow();
 
 const pending = ref<Action | null>(null);
 const reason = ref('');
@@ -42,10 +44,16 @@ const actions = computed<Action[]>(() => {
   const out: Action[] = [];
   const s = a.value.status;
   if (s === 'draft' && next.has('submitted') && ctx.can(...G.submit)) out.push('submit');
-  if (s === 'submitted' && next.has('validated') && ctx.can(...G.validate)) out.push('validate');
-  if (s === 'submitted' && next.has('draft') && ctx.can(...G.validate)) out.push('sendBack');
-  if (s === 'validated' && next.has('locked') && ctx.can(...G.validate)) out.push('lock');
-  if (s === 'locked' && next.has('published') && ctx.can(...G.publish)) out.push('publish');
+  // Qui valide, verrouille ou publie : la fonction désignée par le circuit de l'établissement (droits historiques sans réglage).
+  const canValidate = workflow.canAct(WF.grades, 'validate', G.validate);
+  const canLock = workflow.canAct(WF.grades, 'lock', G.validate);
+  // Renvoi à l'enseignant : le validateur, ou à défaut le verrouilleur quand la validation est facultative et sautée.
+  const canSendBack = workflow.stepEnabled(WF.grades, 'validate') ? canValidate : canLock;
+  if (s === 'submitted' && next.has('validated') && canValidate) out.push('validate');
+  if (s === 'submitted' && next.has('draft') && canSendBack) out.push('sendBack');
+  // Validation facultative sautée par le circuit : la saisie soumise se verrouille directement.
+  if ((s === 'validated' || (s === 'submitted' && !workflow.stepEnabled(WF.grades, 'validate'))) && next.has('locked') && canLock) out.push('lock');
+  if (s === 'locked' && next.has('published') && workflow.canAct(WF.grades, 'publish', G.publish)) out.push('publish');
   if (a.value.anonymous && !a.value.anonymity_lifted && (s === 'locked' || s === 'published') && ctx.can(...G.lift)) out.push('lift');
   return out;
 });

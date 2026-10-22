@@ -6,7 +6,6 @@ import { saveBlob } from '@/api/exports';
 import { isSecondFactorRequired } from '@/api/higher';
 import { grades, type Correction, type CorrectionStatus } from '@/api/higher-grades';
 import { useAuthStore } from '@/stores/auth';
-import { useContextStore } from '@/stores/context';
 import { formatDateTime } from '@/lib/format';
 import HigherFrame from '../HigherFrame.vue';
 import { toneOf } from '../display';
@@ -17,17 +16,18 @@ import GradesNav from './GradesNav.vue';
 import MarkHistory from './MarkHistory.vue';
 import { describe } from './marks';
 import { G } from './perms';
+import { useWorkflow, WF } from '@/lib/useWorkflow';
 import { gk, useGradesI18n } from './i18n';
 
 // Corrections de notes verrouillées (EX-NOT-06) : chaîne chef de département puis directeur d'école (2FA récente) ;
 // séparation des tâches : le demandeur ne décide jamais sa propre demande (le serveur refuse aussi : 403).
 const { tg, locale } = useGradesI18n();
 const confirmation = useConfirmation();
-const ctx = useContextStore();
 const auth = useAuthStore();
 const higher = useHigherStore();
 const route = useRoute();
 const router = useRouter();
+const workflow = useWorkflow();
 const list = useHigherAction();
 const act = useHigherAction();
 
@@ -39,7 +39,8 @@ const tried = ref(false);
 const needsTwoFactor = ref(false);
 const historyOf = ref<{ markId: string; title: string } | null>(null);
 
-const canDecide = computed(() => ctx.can(...G.correctionApprove) && !higher.readOnly);
+// Première ou seconde validation : la fonction désignée par le circuit de l'établissement (droits historiques sans réglage).
+const canDecide = computed(() => (workflow.canAct(WF.correction, 'department', G.correctionApprove) || workflow.canAct(WF.correction, 'school', G.correctionApprove)) && !higher.readOnly);
 const mine = (c: Correction): boolean => c.requested_by === auth.me?.id;
 
 async function load(): Promise<void> {
