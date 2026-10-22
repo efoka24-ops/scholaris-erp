@@ -1,6 +1,8 @@
 // Permissions par rôle, miroir des tables role_permissions du serveur (database/migrations).
 // Servent uniquement à adapter l'interface (menus, garde de routes) : le serveur refuse de toute façon (403) une action
 // non autorisée. Si l'API fournit un jour `permissions` dans /me/contexts, cette liste prime et ce miroir disparaît.
+import { NURSERY_ROLE_PERMISSIONS } from '@/views/nursery-private/rolePermissions';
+
 const ALL_ADMIN = [
   'organisation.read', 'organisation.manage', 'settings.manage', 'identity.manage', 'identity.roles.assign',
   'people.read', 'people.manage', 'billing.read', 'billing.manage', 'billing.reversal.approve',
@@ -94,6 +96,7 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     'public_nursery.need.report', 'public_nursery.transition.opinion',
   ],
   pn_assistant: ['public_nursery.pickup.handover', 'public_nursery.arrival.record'],
+  ...NURSERY_ROLE_PERMISSIONS,
   primary_promoteur: [
     'primary.dashboard.read', 'reporting.read', 'primary.referential.read', 'primary.learner.read', 'primary.competency.read', 'primary.conduct.read', 'primary.journal.read',
   ],

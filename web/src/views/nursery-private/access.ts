@@ -1,0 +1,30 @@
+// Permissions utilisées par les écrans de la Maternelle privée. Le serveur reste juge des droits : ces listes adaptent seulement menus et
+// boutons. Toutes préfixées nursery. (les maternelles publiques ont leurs propres permissions, jamais celles-ci) sauf les droits du socle.
+export const P = {
+  sections: ['nursery.child.read', 'nursery.section.manage'],
+  sectionManage: ['nursery.section.manage'],
+  enrol: ['nursery.enrol'],
+  call: ['attendance.take', 'nursery.arrival.record'],
+  handover: ['nursery.pickup.handover'],
+  authorized: ['nursery.pickup.manage', 'nursery.pickup.read'],
+  authorizedManage: ['nursery.pickup.manage'],
+  restrict: ['nursery.pickup.restrict'],
+  register: ['nursery.register.read'],
+  observe: ['nursery.dev.observe'],
+  devRead: ['nursery.dev.read', 'nursery.dev.observe', 'nursery.dev.validate'],
+  devValidate: ['nursery.dev.validate'],
+  frames: ['nursery.frame.manage'],
+  lifebook: ['nursery.lifebook.write', 'nursery.lifebook.read'],
+  lifebookWrite: ['nursery.lifebook.write'],
+  needs: ['nursery.need.report', 'nursery.need.read'],
+  needReport: ['nursery.need.report'],
+  needManage: ['nursery.need.read'],
+  messages: ['nursery.message.send'],
+  fees: ['nursery.enrol', 'billing.manage', 'billing.read'],
+  /** Accès à l'espace : au moins une permission de travail dans la maternelle privée. */
+  space: [
+    'nursery.child.read', 'nursery.section.manage', 'nursery.enrol', 'nursery.pickup.handover', 'nursery.pickup.manage', 'nursery.pickup.read', 'nursery.register.read',
+    'nursery.dev.observe', 'nursery.dev.read', 'nursery.dev.validate', 'nursery.lifebook.write', 'nursery.lifebook.read', 'nursery.need.report', 'nursery.need.read',
+    'nursery.message.send', 'nursery.allergy.read', 'nursery.dashboard.read',
+  ],
+} as const;
