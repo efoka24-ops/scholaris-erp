@@ -66,7 +66,7 @@ const dash = (v: string | null | undefined): string => v ?? '—';
           </thead>
           <tbody>
             <tr v-for="s in staff" :key="s.id">
-              <th scope="row">{{ s.name }}</th>
+              <th scope="row"><router-link :to="{ name: 'ps-staff-profile', params: { id: s.id } }">{{ s.name }}</router-link></th>
               <td>{{ dash(s.grade) }}</td>
               <td>{{ dash(s.public_status) }}</td>
               <td v-if="staff[0]?.civil_service_number !== undefined">{{ dash(s.civil_service_number ?? s.contract_number) }}</td>

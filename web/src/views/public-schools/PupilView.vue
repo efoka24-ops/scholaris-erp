@@ -7,6 +7,7 @@ import { publicSchools, type PupilFile } from '@/api/publicSchools';
 import { useI18n } from '@/i18n';
 import { formatDate } from '@/lib/format';
 import { P } from './access';
+import SchoolPicker from './SchoolPicker.vue';
 import { useAction, usePermissions } from './usePs';
 
 const props = defineProps<{ id: string }>();
@@ -129,11 +130,7 @@ onMounted(() => void load());
       <section v-if="canWrite" class="card stack" aria-labelledby="pf-transfer">
         <h2 id="pf-transfer">{{ t('ps.pupil.transferTitle') }}</h2>
         <form class="form" @submit.prevent="requestTransfer">
-          <div class="field">
-            <label for="pf-target">{{ t('ps.pupil.targetSchool') }}</label>
-            <input id="pf-target" v-model="targetId" type="text" autocomplete="off" aria-describedby="pf-target-hint" />
-            <span id="pf-target-hint" class="hint">{{ t('ps.pupil.targetHint') }}</span>
-          </div>
+          <SchoolPicker id="pf-target" v-model="targetId" />
           <button type="submit" class="btn" :disabled="busy || targetId.trim() === ''">{{ t('ps.pupil.requestTransfer') }}</button>
         </form>
         <p v-if="message === 'transfer'" class="notice notice--success" role="status">{{ t('ps.pupil.transferRequested') }}</p>

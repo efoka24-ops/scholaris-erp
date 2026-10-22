@@ -13,6 +13,7 @@ const { t } = useI18n();
 const { can } = usePermissions();
 const { error, busy, run } = useAction();
 const canWrite = computed(() => can(...P.schoolWrite));
+const canPhotos = computed(() => can(...P.inspectionRead));
 
 const missing = ref(false);
 const savedFiche = ref(false);
@@ -151,6 +152,7 @@ onMounted(() => void load());
       <p class="eyebrow">{{ t('ps.home.eyebrow') }}</p>
       <h1>{{ t('ps.school.title') }}</h1>
       <p class="lede">{{ t('ps.school.intro') }}</p>
+      <p v-if="canPhotos"><router-link :to="{ name: 'ps-photos' }">{{ t('ps.photos.link') }}</router-link></p>
     </header>
     <ErrorNotice :error="error" />
 
@@ -231,9 +233,12 @@ onMounted(() => void load());
             <div class="muted">{{ t('ps.school.summary', { desks: v.desks_count, water: v.water_points, girls: v.latrines_girls, boys: v.latrines_boys }) }}</div>
             <div v-if="v.correction_reason" class="muted">{{ t('ps.school.correctionOf', { reason: v.correction_reason }) }}</div>
           </div>
-          <div v-if="canWrite" class="row">
-            <button type="button" class="btn" @click="edit(v)">{{ v.state === 'draft' ? t('ps.school.edit') : t('ps.school.correct') }}</button>
-            <button v-if="v.state === 'draft'" type="button" class="btn btn--quiet" :disabled="busy" @click="close(v)">{{ t('ps.school.close') }}</button>
+          <div class="row">
+            <router-link class="btn btn--quiet" :to="{ name: 'ps-rooms', params: { id: v.id } }">{{ t('ps.school.rooms', { year: v.year_label, n: v.version }) }}</router-link>
+            <template v-if="canWrite">
+              <button type="button" class="btn" @click="edit(v)">{{ v.state === 'draft' ? t('ps.school.edit') : t('ps.school.correct') }}</button>
+              <button v-if="v.state === 'draft'" type="button" class="btn btn--quiet" :disabled="busy" @click="close(v)">{{ t('ps.school.close') }}</button>
+            </template>
           </div>
         </li>
       </ul>

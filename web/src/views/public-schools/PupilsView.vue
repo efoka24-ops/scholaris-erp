@@ -1,23 +1,25 @@
 <script setup lang="ts">
-// Élèves : accès à l'inscription, ouverture d'un dossier par son identifiant, et liste trimestrielle des élèves sans acte de
+// Élèves : accès à l'inscription, recherche d'un élève pour ouvrir son dossier, et liste trimestrielle des élèves sans acte de
 // naissance (DOC-07, RG-ELV-2) à transmettre à l'inspection.
 import { computed, onMounted, ref } from 'vue';
-import { useRouter } from 'vue-router';
 import ErrorNotice from '@/components/ErrorNotice.vue';
-import { publicSchools, type BirthActTransmission, type WithoutBirthActRow } from '@/api/publicSchools';
+import { publicSchools, type BirthActTransmission, type RosterPupil, type WithoutBirthActRow } from '@/api/publicSchools';
 import { useI18n } from '@/i18n';
 import { formatDate } from '@/lib/format';
 import { P } from './access';
-import { useAction, usePermissions } from './usePs';
+import PurposePicker from './PurposePicker.vue';
+import { fullName, useAction, usePermissions } from './usePs';
 
 const { t, tp } = useI18n();
-const router = useRouter();
 const { can } = usePermissions();
 const { error, busy, run } = useAction();
 
 const rows = ref<WithoutBirthActRow[]>([]);
 const sent = ref<BirthActTransmission[]>([]);
-const openId = ref('');
+const term = ref('');
+const hits = ref<RosterPupil[]>([]);
+const nextHits = ref<string | null>(null);
+const searched = ref(false);
 const forbidden = ref(false);
 const canWrite = computed(() => can(...P.pupilsWrite));
 
@@ -27,7 +29,7 @@ async function load(): Promise<void> {
       rows.value = await publicSchools.withoutBirthAct();
       sent.value = await publicSchools.birthActTransmissions();
     } catch {
-      // L'enseignant n'a pas accès à la liste de l'école entière (404) : l'écran n'en montre que l'ouverture d'un dossier.
+      // L'enseignant n'a pas accès à la liste de l'école entière (404) : l'écran n'en montre que la recherche d'un élève.
       forbidden.value = true;
     }
   });
@@ -38,9 +40,15 @@ async function transmit(): Promise<void> {
   if (done) sent.value = [done, ...sent.value];
 }
 
-function open(): void {
-  const id = openId.value.trim();
-  if (id) void router.push({ name: 'ps-pupil', params: { id } });
+/** Recherche par nom, prénom ou numéro d'apprenant ; « Voir plus » suit le curseur du serveur. */
+async function search(more = false): Promise<void> {
+  const query = term.value.trim();
+  if (query === '') return;
+  const res = await run(() => publicSchools.searchPupils(query, more ? nextHits.value : null));
+  if (!res) return;
+  hits.value = more ? [...hits.value, ...res.items] : res.items;
+  nextHits.value = res.next;
+  searched.value = true;
 }
 
 onMounted(() => void load());
@@ -63,13 +71,25 @@ onMounted(() => void load());
 
     <section class="card" aria-labelledby="pu-open">
       <h2 id="pu-open">{{ t('ps.pupils.openTitle') }}</h2>
-      <form class="row" @submit.prevent="open">
+      <PurposePicker id="pu-purpose" />
+      <form class="row" role="search" @submit.prevent="search()">
         <div class="field grow">
-          <label for="pu-id">{{ t('ps.pupils.openId') }}</label>
-          <input id="pu-id" v-model="openId" type="text" autocomplete="off" />
+          <label for="pu-search">{{ t('ps.pupils.search') }}</label>
+          <input id="pu-search" v-model="term" type="search" autocomplete="off" aria-describedby="pu-search-hint" />
+          <span id="pu-search-hint" class="hint">{{ t('ps.pupils.searchHint') }}</span>
         </div>
-        <button type="submit" class="btn" :disabled="openId.trim() === ''">{{ t('ps.pupils.open') }}</button>
+        <button type="submit" class="btn" :disabled="busy || term.trim() === ''">{{ t('ps.pupils.searchGo') }}</button>
       </form>
+      <p v-if="searched && hits.length === 0" class="muted" role="status">{{ t('ps.pupils.searchNone') }}</p>
+      <ul v-if="hits.length > 0" class="hits" :aria-label="t('ps.pupils.searchResults')">
+        <li v-for="h in hits" :key="h.person_id">
+          <router-link class="hit" :to="{ name: 'ps-pupil', params: { id: h.person_id } }">
+            <strong>{{ fullName(h) }}</strong>
+            <span class="muted">{{ h.learner_number ?? '—' }}</span>
+          </router-link>
+        </li>
+      </ul>
+      <button v-if="nextHits" type="button" class="btn btn--quiet" :disabled="busy" @click="search(true)">{{ t('ps.pupils.searchMore') }}</button>
     </section>
 
     <section v-if="!forbidden" class="card" aria-labelledby="pu-act">
@@ -106,4 +126,7 @@ onMounted(() => void load());
 .grow { flex: 1; margin-bottom: 0; }
 .row { align-items: flex-end; margin-bottom: 12px; }
 .log { margin: 10px 0 0; padding-left: 1.2rem; }
+.hits { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 4px; }
+.hit { display: flex; justify-content: space-between; gap: 12px; min-height: 44px; align-items: center; padding: 6px 10px; border: 1px solid var(--border, #dcdcd8); color: inherit; text-decoration: none; }
+.hit:hover, .hit:focus-visible { border-color: var(--ink); }
 </style>

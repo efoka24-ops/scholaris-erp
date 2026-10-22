@@ -3,6 +3,7 @@
 // l'appel est écrit sur l'appareil (coffre chiffré) puis rejoué dès que le réseau revient. 60 élèves en moins d'une minute.
 import { computed, ref } from 'vue';
 import ErrorNotice from '@/components/ErrorNotice.vue';
+import { ApiError } from '@/api/http';
 import type { AttendanceDay, ClassRow, DayPart, RosterPupil } from '@/api/publicSchools';
 import { useI18n } from '@/i18n';
 import { formatDate, nowHhmm, todayIso } from '@/lib/format';
@@ -29,7 +30,8 @@ const roster = ref<RosterPupil[]>([]);
 const draft = ref<Draft | null>(null);
 const day = ref<AttendanceDay | null>(null);
 const fromCache = ref(false);
-const noRoster = ref(false);
+/** Liste de classe : `unavailable` = le serveur ne la rend pas (404/501) ; `offline` = pas de réseau et rien en cache ; `empty` = classe sans élève. */
+const rosterProblem = ref<'unavailable' | 'offline' | 'empty' | null>(null);
 const reason = ref('');
 const outcome = ref<'sent' | 'queued' | null>(null);
 const announce = ref('');
@@ -74,15 +76,21 @@ async function openClass(): Promise<void> {
   outcome.value = null;
   roster.value = [];
   draft.value = null;
-  noRoster.value = false;
+  rosterProblem.value = null;
   if (!classId.value) return;
   await run(async () => {
     try {
       const res = await loadRoster(est.value, classId.value);
       roster.value = res.roster;
       fromCache.value = fromCache.value || res.fromCache;
-    } catch {
-      noRoster.value = true;
+    } catch (e) {
+      if (e instanceof ApiError && (e.status === 404 || e.status === 501)) rosterProblem.value = 'unavailable';
+      else if (e instanceof ApiError && e.network) rosterProblem.value = 'offline';
+      else throw e;
+      return;
+    }
+    if (roster.value.length === 0) {
+      rosterProblem.value = 'empty';
       return;
     }
     draft.value = await loadDraft(est.value, classId.value, date, dayPart.value);
@@ -153,7 +161,7 @@ async function validate(): Promise<void> {
         <p v-if="partTaken" class="notice notice--warning" role="status">{{ t('ps.call.alreadyTaken') }}</p>
       </section>
 
-      <p v-if="noRoster" class="notice notice--warning" role="alert">{{ t('ps.call.noRoster') }}</p>
+      <p v-if="rosterProblem" class="notice notice--warning" role="alert">{{ t(rosterProblem === 'offline' ? 'ps.call.rosterOffline' : rosterProblem === 'empty' ? 'ps.call.rosterEmpty' : 'ps.call.noRoster') }}</p>
 
       <section v-if="draft && roster.length > 0" class="card" :aria-label="t('ps.call.list')">
         <p class="muted">{{ t('ps.call.hint') }}</p>

@@ -69,8 +69,8 @@ describe('permissions des routes des écoles publiques', () => {
     expect(open('ps-enrol')).toBe(false);
   });
 
-  it('le directeur ouvre tous les écrans', () => {
-    for (const r of psRoutes) expect(((r.meta?.perms ?? []) as string[]).some((p) => DIRECTOR.has(p)), String(r.name)).toBe(true);
+  it('le directeur ouvre tous les écrans, sauf le contrôle de l’inspection qui n’est pas le sien', () => {
+    for (const r of psRoutes.filter((x) => x.name !== 'ps-control')) expect(((r.meta?.perms ?? []) as string[]).some((p) => DIRECTOR.has(p)), String(r.name)).toBe(true);
   });
 });
 

@@ -22,9 +22,12 @@ const tiles: Tile[] = [
   { name: 'ps-transfers', title: 'ps.transfers.title', text: 'ps.home.transfersText', perms: P.pupilsWrite },
   { name: 'ps-dropouts', title: 'ps.dropouts.title', text: 'ps.home.dropoutsText', perms: P.pupilsWrite },
   { name: 'ps-presence', title: 'ps.presence.title', text: 'ps.home.presenceText', perms: P.presenceRead },
+  { name: 'ps-control', title: 'ps.control.title', text: 'ps.home.controlText', perms: P.presenceValidate },
+  { name: 'ps-alerts', title: 'ps.alerts.title', text: 'ps.home.alertsText', perms: P.alerts },
   { name: 'ps-staff', title: 'ps.staff.title', text: 'ps.home.staffText', perms: P.staffRead },
   { name: 'ps-messages', title: 'ps.messages.title', text: 'ps.home.messagesText', perms: P.messagesSend },
   { name: 'ps-school', title: 'ps.school.title', text: 'ps.home.schoolText', perms: P.schoolRead },
+  { name: 'ps-photos', title: 'ps.photos.title', text: 'ps.home.photosText', perms: P.inspectionRead },
   { name: 'ps-device', title: 'ps.device.title', text: 'ps.home.deviceText', perms: P.attendanceWrite },
 ];
 const visible = computed(() => tiles.filter((tile) => ctx.can(...tile.perms)));

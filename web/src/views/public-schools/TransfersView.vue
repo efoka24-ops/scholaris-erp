@@ -3,10 +3,11 @@
 // demandes envoyées (certificat de radiation, exeat). Seule l'école d'accueil décide ; l'élève n'est inscrit nulle part avant l'accord.
 import { computed, onMounted, reactive, ref } from 'vue';
 import ErrorNotice from '@/components/ErrorNotice.vue';
-import { publicSchools, type ClassRow, type Transfer } from '@/api/publicSchools';
+import { publicSchools, type ClassRow, type RosterPupil, type Transfer } from '@/api/publicSchools';
 import { useI18n } from '@/i18n';
 import { formatDate, todayIso } from '@/lib/format';
-import { currentYear, useAction, usePermissions } from './usePs';
+import SchoolPicker from './SchoolPicker.vue';
+import { currentYear, fullName, useAction, usePermissions } from './usePs';
 
 const { t } = useI18n();
 const { establishmentId } = usePermissions();
@@ -18,6 +19,35 @@ const classes = ref<ClassRow[]>([]);
 const open = ref<string | null>(null);
 const form = reactive({ arrivalOn: todayIso(), classId: '', reason: '' });
 const notice = ref('');
+
+// Nouvelle demande : l'élève se cherche par nom ou numéro, l'école d'accueil par nom ou code ; aucun identifiant à saisir.
+const pupilTerm = ref('');
+const pupilHits = ref<RosterPupil[]>([]);
+const pupilSearched = ref(false);
+const pupilId = ref('');
+const targetId = ref('');
+const chosenPupil = computed(() => pupilHits.value.find((p) => p.person_id === pupilId.value) ?? null);
+
+async function findPupil(): Promise<void> {
+  const q = pupilTerm.value.trim();
+  if (q === '') return;
+  const res = await run(() => publicSchools.searchPupils(q));
+  if (!res) return;
+  pupilHits.value = res.items;
+  pupilSearched.value = true;
+  if (!res.items.some((p) => p.person_id === pupilId.value)) pupilId.value = '';
+}
+
+async function requestTransfer(): Promise<void> {
+  if (pupilId.value === '' || targetId.value === '') return;
+  const created = await run(() => publicSchools.requestTransfer(pupilId.value, targetId.value));
+  if (created) {
+    transfers.value = [created, ...transfers.value];
+    notice.value = t('ps.transfers.requested');
+    pupilId.value = '';
+    targetId.value = '';
+  }
+}
 
 const isIncoming = (tr: Transfer): boolean => tr.to_establishment_id === establishmentId.value;
 const shown = computed(() => transfers.value);
@@ -86,6 +116,31 @@ onMounted(() => void load());
     </div>
     <p v-if="notice" class="notice notice--success" role="status">{{ notice }}</p>
 
+    <section class="card stack" aria-labelledby="tr-new">
+      <h2 id="tr-new">{{ t('ps.transfers.newTitle') }}</h2>
+      <form class="newrequest" @submit.prevent="requestTransfer">
+        <div class="row find" role="search">
+          <div class="field grow">
+            <label for="tr-pupil">{{ t('ps.transfers.pupilSearch') }}</label>
+            <input id="tr-pupil" v-model="pupilTerm" type="search" autocomplete="off" @keydown.enter.prevent="findPupil" />
+          </div>
+          <button type="button" class="btn" :disabled="busy || pupilTerm.trim() === ''" @click="findPupil">{{ t('ps.pupils.searchGo') }}</button>
+        </div>
+        <p v-if="pupilSearched && pupilHits.length === 0" class="muted" role="status">{{ t('ps.pupils.searchNone') }}</p>
+        <div v-if="pupilHits.length > 0" class="field">
+          <label for="tr-pick">{{ t('ps.transfers.pupilPick') }}</label>
+          <select id="tr-pick" v-model="pupilId">
+            <option value="" disabled>{{ t('ps.transfers.pupilChoose') }}</option>
+            <option v-for="p in pupilHits" :key="p.person_id" :value="p.person_id">{{ fullName(p) }}<template v-if="p.learner_number"> · {{ p.learner_number }}</template></option>
+          </select>
+        </div>
+        <SchoolPicker id="tr-target" v-model="targetId" />
+        <button type="submit" class="btn btn--primary" :disabled="busy || pupilId === '' || targetId === ''">
+          {{ chosenPupil ? t('ps.transfers.requestFor', { name: fullName(chosenPupil) }) : t('ps.transfers.request') }}
+        </button>
+      </form>
+    </section>
+
     <p v-if="shown.length === 0" class="muted">{{ t('ps.transfers.none') }}</p>
     <ul class="cards">
       <li v-for="tr in shown" :key="tr.id" class="card">
@@ -146,5 +201,7 @@ onMounted(() => void load());
 <style scoped>
 .cards { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
 .filter { max-width: 20rem; }
-.decision { display: grid; gap: 8px; margin-top: 12px; max-width: 28rem; }
+.decision, .newrequest { display: grid; gap: 8px; margin-top: 12px; max-width: 28rem; }
+.find { align-items: flex-end; }
+.grow { flex: 1; margin-bottom: 0; }
 </style>

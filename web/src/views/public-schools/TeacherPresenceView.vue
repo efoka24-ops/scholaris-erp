@@ -42,7 +42,7 @@ async function load(): Promise<void> {
     staff.value = can(...P.staffRead) ? await publicSchools.staff() : [];
     rows.value = await publicSchools.teacherPresence(date.value);
     uncovered.value = await publicSchools.uncoveredClasses(date.value);
-    alerts.value = await publicSchools.alerts();
+    alerts.value = can(...P.attendanceRead) ? await publicSchools.alerts() : [];
     if (classes.value.length === 0) {
       const year = await currentYear();
       if (year) classes.value = await publicSchools.classes(year.id);
@@ -90,6 +90,10 @@ onMounted(() => void load());
       <p class="lede">{{ t('ps.presence.intro') }}</p>
     </header>
     <ErrorNotice :error="error" />
+    <p class="links">
+      <router-link :to="{ name: 'ps-alerts' }">{{ t('ps.presence.alertsLink') }}</router-link>
+      <router-link v-if="can(...P.presenceValidate)" :to="{ name: 'ps-control' }">{{ t('ps.presence.controlLink') }}</router-link>
+    </p>
 
     <div class="field filter">
       <label for="pr-date">{{ t('ps.presence.date') }}</label>
@@ -157,6 +161,7 @@ onMounted(() => void load());
 
 <style scoped>
 .filter { max-width: 14rem; }
+.links { display: flex; flex-wrap: wrap; gap: 8px 20px; }
 .people { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
 .person { padding-top: 12px; border-top: 1px solid var(--border, #dcdcd8); display: grid; gap: 8px; }
 .who { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }

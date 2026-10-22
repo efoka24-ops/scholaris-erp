@@ -3,6 +3,7 @@
 //
 // Le client HTTP n'envoie jamais X-Establishment-Id sous /public (préfixe réservé aux routes sans compte) alors que ces routes-ci
 // l'exigent : il est donc posé ici, explicitement, à chaque appel (établissement actif ou celui de l'élément rejoué).
+import { ref } from 'vue';
 import { http, type QueryValue, type RequestOptions } from '@/api/http';
 import { useContextStore } from '@/stores/context';
 
@@ -13,8 +14,28 @@ function options(establishmentId?: string | null): RequestOptions {
   return id ? { headers: { 'X-Establishment-Id': id } } : {};
 }
 
+/**
+ * Finalité d'une lecture nominative par la supervision territoriale (inspection, délégation) : le serveur l'exige et l'inscrit au
+ * journal des consultations nominatives. Dans l'école (direction, enseignant), elle n'est jamais envoyée.
+ */
+export type Purpose = 'transfer' | 'exam' | 'control';
+export const PURPOSES: readonly Purpose[] = ['transfer', 'exam', 'control'];
+export const supervisionPurpose = ref<Purpose>('control');
+
+/** Vrai pour un rôle de supervision : il lit du nominatif sans exercer dans l'école (ni écriture de la fiche, ni appel). */
+export function isSupervision(): boolean {
+  const ctx = useContextStore();
+  if (ctx.can('public_schools.school.write', 'public_schools.attendance.write')) return false;
+  return ctx.can('public_schools.pupils.named.read', 'public_schools.teacher_presence.validate');
+}
+
+function withPurpose(query?: Record<string, QueryValue>): Record<string, QueryValue> | undefined {
+  if (!isSupervision() || query?.purpose !== undefined) return query;
+  return { ...(query ?? {}), purpose: supervisionPurpose.value };
+}
+
 const get = async <T>(path: string, query?: Record<string, QueryValue>, est?: string | null): Promise<T> =>
-  (await http.get<{ data: T }>(`${ROOT}${path}`, query, options(est))).data;
+  (await http.get<{ data: T }>(`${ROOT}${path}`, withPurpose(query), options(est))).data;
 const post = async <T>(path: string, body?: unknown, est?: string | null): Promise<T> =>
   (await http.post<{ data: T }>(`${ROOT}${path}`, body ?? {}, options(est))).data;
 const put = async <T>(path: string, body?: unknown, est?: string | null): Promise<T> =>
@@ -22,14 +43,29 @@ const put = async <T>(path: string, body?: unknown, est?: string | null): Promis
 const patch = async <T>(path: string, body?: unknown, est?: string | null): Promise<T> =>
   (await http.patch<{ data: T }>(`${ROOT}${path}`, body ?? {}, options(est))).data;
 
+/** Une page d'une liste paginée par curseur. */
+export interface Paged<T> {
+  items: T[];
+  next: string | null;
+}
+
+async function page<T>(path: string, query: Record<string, QueryValue> = {}, cursor?: string | null, est?: string | null): Promise<Paged<T>> {
+  const res: { data: T[]; meta?: { next_cursor?: string | null } } = await http.get(
+    `${ROOT}${path}`,
+    withPurpose({ ...query, ...(cursor ? { cursor } : {}) }),
+    options(est),
+  );
+  return { items: res.data ?? [], next: res.meta?.next_cursor ?? null };
+}
+
 /** Liste paginée par curseur (50 par page) : toutes les pages, jusqu'à 20. */
-async function all<T>(path: string, query: Record<string, QueryValue> = {}): Promise<T[]> {
+async function all<T>(path: string, query: Record<string, QueryValue> = {}, est?: string | null): Promise<T[]> {
   const rows: T[] = [];
   let cursor: string | null = null;
   for (let i = 0; i < 20; i++) {
-    const res: { data: T[]; meta?: { next_cursor?: string | null } } = await http.get(`${ROOT}${path}`, { ...query, ...(cursor ? { cursor } : {}) }, options());
-    rows.push(...res.data);
-    cursor = res.meta?.next_cursor ?? null;
+    const res: Paged<T> = await page<T>(path, query, cursor, est);
+    rows.push(...res.items);
+    cursor = res.next;
     if (!cursor) break;
   }
   return rows;
@@ -65,6 +101,10 @@ export interface Classroom {
   room_state: string;
   in_use: boolean;
 }
+export interface DigitalEquipment {
+  label: string;
+  quantity: number;
+}
 export interface InfrastructureVersion {
   id: string;
   year_label: string;
@@ -79,11 +119,11 @@ export interface InfrastructureVersion {
   has_canteen: boolean;
   has_library: boolean;
   network_observed: 'unknown' | 'none' | 'limited' | 'available';
-  digital_equipment: unknown[];
+  digital_equipment: DigitalEquipment[];
   correction_reason: string | null;
   classrooms?: Classroom[];
 }
-export type InfrastructureInput = Partial<Omit<InfrastructureVersion, 'id' | 'version' | 'state' | 'correction_reason' | 'digital_equipment'>> & {
+export type InfrastructureInput = Partial<Omit<InfrastructureVersion, 'id' | 'version' | 'state' | 'correction_reason'>> & {
   year_label: string;
 };
 
@@ -303,6 +343,90 @@ export interface StaffMember {
   professional_diploma?: string | null;
   service_start_on?: string | null;
 }
+/** École d'accueil possible d'un transfert ou d'une mutation (GET /public/schools/receiving). */
+export interface ReceivingSchool {
+  establishment_id: string;
+  name: string;
+  official_code: string;
+  district_id: string | null;
+  district: string | null;
+}
+
+/** Cahier d'appel mensuel (DOC-06) : une colonne par demi-journée dont l'appel a été fait. */
+export interface AttendanceRegister {
+  month: string;
+  class: { structure_id: string; label: string };
+  days: Array<{ date: string; morning: boolean; afternoon: boolean }>;
+  pupils: Array<{ person_id: string; name: string; marks: Record<string, Partial<Record<DayPart, 'A' | 'P'>>>; absent_half_days: number }>;
+}
+
+export type CheckResult = 'confirmed' | 'discrepancy';
+export type PublicStatus = 'civil_servant' | 'contract' | 'parents_teacher' | 'volunteer';
+export interface StaffProfile {
+  id: string;
+  staff_id: string;
+  grade: string | null;
+  employment: string | null;
+  public_status: PublicStatus | null;
+  civil_service_number?: string | null;
+  contract_number?: string | null;
+  professional_diploma?: string | null;
+  service_start_on?: string | null;
+}
+export interface StaffProfileInput {
+  public_status: PublicStatus;
+  civil_service_number?: string | null;
+  contract_number?: string | null;
+  professional_diploma?: string | null;
+  service_start_on?: string | null;
+}
+export interface Training {
+  id: string;
+  title: string;
+  starts_on: string;
+  ends_on: string | null;
+  organiser: string | null;
+}
+export interface TrainingInput {
+  title: string;
+  starts_on: string;
+  ends_on?: string | null;
+  organiser?: string | null;
+}
+export interface StaffMove {
+  id: string;
+  staff_id: string;
+  from_establishment_id: string;
+  to_establishment_id: string;
+  effective_on: string;
+  reason: string | null;
+  ended_assignments?: unknown;
+}
+export interface StaffMoveInput {
+  to_establishment_id: string;
+  effective_on: string;
+  reason?: string | null;
+}
+
+/** Photo géolocalisée d'une visite d'inspection ; `url` est un lien signé de durée limitée (lecture authentifiée). */
+export interface SchoolPhoto {
+  id: string;
+  establishment_id: string;
+  latitude: string;
+  longitude: string;
+  taken_at: string;
+  visit_id: string | null;
+  taken_by: string;
+  url: string;
+}
+export interface SchoolPhotoInput {
+  content_base64: string;
+  latitude: number;
+  longitude: number;
+  taken_at: string;
+  visit_id?: string | null;
+}
+
 export interface StaffNeeds {
   date: string;
   teachers: number;
@@ -360,10 +484,12 @@ export const publicSchools = {
     put(`/classes/${encodeURIComponent(id)}/homeroom`, { staff_id: staffId, starts_on: startsOn }),
   homeroomHistory: (id: string): Promise<HomeroomEntry[]> => get(`/classes/${encodeURIComponent(id)}/homeroom-history`),
   distributionProposal: (classIds: string[]): Promise<DistributionProposal> => get('/classes/distribution-proposal', { class_ids: classIds.join(',') }),
-  /** Liste nominative d'une classe (appel hors ligne). Absente du contrat actuel : la réponse 404 est gérée par l'écran. */
-  roster: (id: string, establishmentId?: string | null): Promise<RosterPupil[]> => get(`/classes/${encodeURIComponent(id)}/pupils`, undefined, establishmentId),
+  /** Liste nominative d'une classe (appel hors ligne), toutes les pages : le serveur en rend 50 à la fois. */
+  roster: (id: string, establishmentId?: string | null): Promise<RosterPupil[]> => all(`/classes/${encodeURIComponent(id)}/pupils`, {}, establishmentId),
 
   // Élèves
+  /** Recherche par mots dans le nom, le prénom et le numéro d'apprenant ; 422 sous la longueur minimale fixée par le serveur. */
+  searchPupils: (search: string, cursor?: string | null): Promise<Paged<RosterPupil>> => page('/pupils', { search }, cursor),
   registerPupil: (body: PupilRegistration): Promise<PupilRegistered> => post('/pupils', body),
   pupil: (id: string): Promise<PupilFile> => get(`/pupils/${encodeURIComponent(id)}`),
   updatePupil: (id: string, body: PupilProfileInput): Promise<PupilFile> => patch(`/pupils/${encodeURIComponent(id)}`, body),
@@ -372,6 +498,9 @@ export const publicSchools = {
   transmitBirthActList: (quarter?: string): Promise<BirthActTransmission> => post('/pupils/without-birth-act/transmissions', quarter ? { quarter } : {}),
 
   // Transferts et abandons
+  /** Écoles ouvertes du territoire pouvant accueillir un élève ou un enseignant (hors maternelle et hors l'école elle-même). */
+  receivingSchools: (search: string, territoryId?: string | null, cursor?: string | null): Promise<Paged<ReceivingSchool>> =>
+    page('/schools/receiving', { search, territory_id: territoryId ?? undefined }, cursor),
   transfers: (direction?: 'incoming' | 'outgoing'): Promise<Transfer[]> => get('/transfers', direction ? { direction } : {}),
   requestTransfer: (personId: string, toEstablishmentId: string): Promise<Transfer> => post('/transfers', { person_id: personId, to_establishment_id: toEstablishmentId }),
   acceptTransfer: (id: string, arrivalOn: string, classId: string | null): Promise<Transfer> =>
@@ -390,8 +519,13 @@ export const publicSchools = {
     get(`/classes/${encodeURIComponent(classId)}/attendance/${date}`, undefined, establishmentId),
   recordAttendance: (classId: string, date: string, body: CallBody, establishmentId?: string | null): Promise<Record<string, unknown>> =>
     put(`/classes/${encodeURIComponent(classId)}/attendance/${date}`, body, establishmentId),
+  attendanceRegister: (classId: string, month: string): Promise<AttendanceRegister> =>
+    get(`/classes/${encodeURIComponent(classId)}/attendance-register`, { month }),
   alerts: (kind?: string): Promise<AttendanceAlert[]> => all('/attendance-alerts', kind ? { kind } : {}),
   teacherPresence: (date: string): Promise<TeacherPresence[]> => all('/teacher-presence', { date }),
+  controlSample: (date: string): Promise<TeacherPresence[]> => get('/teacher-presence/control-sample', { date, purpose: 'control' }),
+  checkPresence: (personId: string, date: string, result: CheckResult): Promise<TeacherPresence> =>
+    put(`/staff/${encodeURIComponent(personId)}/presence/${date}/check`, { result, purpose: 'control' }),
   declarePresence: (personId: string, date: string, body: PresenceInput): Promise<TeacherPresence> =>
     put(`/staff/${encodeURIComponent(personId)}/presence/${date}`, body),
   uncoveredClasses: (date: string): Promise<UncoveredClass[]> => all('/uncovered-classes', { date }),
@@ -400,6 +534,21 @@ export const publicSchools = {
   // Personnel
   staff: (): Promise<StaffMember[]> => all('/staff'),
   staffNeeds: (): Promise<StaffNeeds> => get('/staff/needs'),
+  staffProfile: (id: string): Promise<StaffProfile> => get(`/staff/${encodeURIComponent(id)}/profile`),
+  saveStaffProfile: (id: string, body: StaffProfileInput): Promise<StaffProfile> => put(`/staff/${encodeURIComponent(id)}/profile`, body),
+  trainings: (id: string): Promise<Training[]> => all(`/staff/${encodeURIComponent(id)}/trainings`),
+  addTraining: (id: string, body: TrainingInput): Promise<Training> => post(`/staff/${encodeURIComponent(id)}/trainings`, body),
+  staffMoves: (id: string): Promise<StaffMove[]> => get(`/staff/${encodeURIComponent(id)}/moves`),
+  moveStaff: (id: string, body: StaffMoveInput): Promise<StaffMove> => post(`/staff/${encodeURIComponent(id)}/moves`, body),
+
+  // Photos géolocalisées de l'école (inspection)
+  photos: (): Promise<SchoolPhoto[]> => get('/schools/photos'),
+  addPhoto: (body: SchoolPhotoInput): Promise<SchoolPhoto> => post('/schools/photos', body),
+  /** Contenu d'une photo par son lien signé ; lecture authentifiée, donc pas d'élément <img> direct sur l'adresse. */
+  photoContent: (signedUrl: string): Promise<Blob> => {
+    const url = new URL(signedUrl, window.location.origin);
+    return http.get<Blob>(url.pathname.replace(/^\/api\/v1/, ''), Object.fromEntries(url.searchParams.entries()), { ...options(), expect: 'blob' });
+  },
 
   // Messages aux parents
   sendMessage: (body: MessageInput): Promise<MessageBatch> => post('/messages', body),

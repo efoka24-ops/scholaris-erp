@@ -33,6 +33,7 @@ const selection = ref<string[]>([]);
 const proposal = ref<DistributionProposal | null>(null);
 const form = reactive({ name: '', orgUnitId: '', levels: '', shift: 'full_day' as 'full_day' | 'morning' | 'afternoon', capacity: '' });
 const canWrite = computed(() => can(...P.pupilsWrite));
+const canRegister = computed(() => can(...P.attendanceRead));
 
 const staffName = (id: string | null): string => (id ? (staff.value.find((s) => s.staff_id === id)?.name ?? id) : t('ps.classes.noHomeroom'));
 
@@ -132,6 +133,9 @@ onMounted(() => void load());
           </div>
 
           <div v-if="opened === c.structure_id" class="detail">
+            <p v-if="canRegister">
+              <router-link :to="{ name: 'ps-register', params: { id: c.structure_id } }">{{ t('ps.classes.register', { name: c.label }) }}</router-link>
+            </p>
             <div v-if="headcount">
               <h3>{{ t('ps.classes.breakdown') }}</h3>
               <p>
