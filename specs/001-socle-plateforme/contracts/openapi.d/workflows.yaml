@@ -6,6 +6,10 @@
 # Ordre d'application : valeurs de l'application < plateforme < client < établissement ; un niveau supérieur peut IMPOSER une étape
 # (enforced) : aucun niveau inférieur ne la modifie.
 # Corps de PUT : { steps: { <étape>: { actor?, enabled?, recent_confirmation?, enforced? } }, reason }.
+# Circuits déclarés (application/circuit) : higher/grades_lifecycle, higher/grades_correction, higher/billing_scholarship,
+# higher/admissions_decision, organisation/year_closure, et billing/billing_reversal (W-002, socle de facturation : le caissier
+# demande l'annulation d'un paiement, un comptable ou la direction (acteurs `comptable` / `direction`) la valide, jamais le demandeur ;
+# confirmation récente facultative ; motif, reçu conservé et audit verrouillés). Défaut = comportement historique.
 paths:
   /api/v1/workflows:
     get:
@@ -36,9 +40,27 @@ paths:
           description: "Client ou établissement introuvable"
         '422':
           description: "Paramètre de liste invalide"
+  /api/v1/workflows/effective:
+    get:
+      summary: "Circuits EFFECTIFS de l'établissement actif, forme minimale (qui valide à chaque étape) pour adapter les boutons des écrans : tout le personnel, sans la permission workflows.manage (W-002)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "data = [{id (application:circuit), application, key, customised, steps[{key, enabled, recent_confirmation, source (default|platform|client|establishment), actor{key, permission, role}}]}] ; aucun motif, auteur ni historique"
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          description: "En-tête X-Establishment-Id manquant"
+        '403':
+          description: "Compte de plateforme (réservé au personnel d'un établissement)"
   /api/v1/workflows/{application}:
     get:
-      summary: "Circuits de l'établissement actif d'une application (ex. higher, organisation)"
+      summary: "Circuits de l'établissement actif d'une application (ex. higher, organisation, billing)"
       security:
         - bearer: []
       parameters:
@@ -230,7 +252,7 @@ paths:
           description: "Paramètre de liste invalide"
   /api/v1/platform/clients/{tenant}/workflows/{application}:
     get:
-      summary: "Circuits d'un client (fiche client de la plateforme) d'une application (ex. higher, organisation)"
+      summary: "Circuits d'un client (fiche client de la plateforme) d'une application (ex. higher, organisation, billing)"
       security:
         - bearer: []
       parameters:

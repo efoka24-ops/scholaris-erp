@@ -56,6 +56,34 @@ final class WorkflowService implements WorkflowResolver
     }
 
     /**
+     * Circuits EFFECTIFS de l'établissement, forme minimale pour adapter les écrans (boutons) : qui valide à chaque étape,
+     * étape activée ou non, confirmation récente. Aucun motif, auteur ni historique : lisible par tout le personnel.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function effective(string $tenantId, string $establishmentId): array
+    {
+        $type = $this->typeOf(WorkflowStore::ESTABLISHMENT, $tenantId, $establishmentId);
+        $out = [];
+        foreach ($this->registry->all() as $circuit) {
+            if ($type !== null && !$circuit->appliesTo($type)) {
+                continue;
+            }
+            $resolved = $this->resolve($tenantId, $establishmentId, $circuit->application, $circuit->key);
+            $steps = [];
+            foreach ($resolved->steps as $step) {
+                $steps[] = [
+                    'key' => $step->key, 'enabled' => $step->enabled, 'recent_confirmation' => $step->recentConfirmation, 'source' => $step->source,
+                    'actor' => ['key' => $step->actor->key, 'permission' => $step->actor->permission, 'role' => $step->actor->role],
+                ];
+            }
+            $out[] = ['id' => $circuit->application . ':' . $circuit->key, 'application' => $circuit->application, 'key' => $circuit->key, 'customised' => $resolved->customised, 'steps' => $steps];
+        }
+
+        return $out;
+    }
+
+    /**
      * Circuits applicables, avec défauts, valeurs effectives et verrous.
      *
      * @param string $level niveau édité : establishment (établissement actif), client (fiche client) ou platform

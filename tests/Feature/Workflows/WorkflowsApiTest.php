@@ -42,8 +42,8 @@ final class WorkflowsApiTest extends WorkflowsTestCase
         $list = $this->ok('GET', '/workflows', null, self::WF_ADMIN);
         $keys = array_map(static fn (array $c): string => $c['application'] . '/' . $c['key'], $list);
 
-        self::assertSame(['higher/admissions_decision', 'higher/billing_scholarship', 'higher/grades_correction', 'higher/grades_lifecycle', 'organisation/year_closure'], $keys);
-        $grades = $list[3];
+        self::assertSame(['billing/billing_reversal', 'higher/admissions_decision', 'higher/billing_scholarship', 'higher/grades_correction', 'higher/grades_lifecycle', 'organisation/year_closure'], $keys);
+        $grades = $list[4];
         self::assertFalse($grades['customised']);
         self::assertNull($grades['override']);
         self::assertGreaterThanOrEqual(4, count($grades['invariants']));
@@ -171,7 +171,7 @@ final class WorkflowsApiTest extends WorkflowsTestCase
 
         [$status, $body] = $this->platform('GET', '/platform/clients/' . self::T . '/workflows');
         self::assertSame(200, $status);
-        self::assertCount(5, $body['data']);
+        self::assertCount(6, $body['data']);
         self::assertSame('client', $body['data'][0]['level']);
 
         $put = ['steps' => ['publish' => ['actor' => 'examens', 'enforced' => true]], 'reason' => 'Politique du groupe.'];
@@ -216,5 +216,29 @@ final class WorkflowsApiTest extends WorkflowsTestCase
             self::assertStringContainsString('plateforme', $problem['errors']['steps.publish'][0]);
         }
         self::assertSame(403, $this->platform('PUT', '/platform/workflows/higher/grades_lifecycle', $floor, 'intrus')[0]);
+    }
+
+    public function testLesCircuitsEffectifsSontLisiblesParToutLePersonnelSansLesMotifs(): void
+    {
+        self::assertSame(403, $this->call('GET', '/workflows', null, self::ADMIN)[0], 'La liste complète reste réservée à workflows.manage.');
+
+        $default = $this->ok('GET', '/workflows/effective', null, self::ADMIN);
+        self::assertSame('billing:billing_reversal', $default[0]['id']);
+        self::assertSame([false], array_unique(array_column($default, 'customised')));
+        $approval = $default[0]['steps'][1];
+        self::assertSame('default', $approval['source']);
+        self::assertSame(['key' => 'comptable', 'permission' => 'billing.reversal.approve', 'role' => null], $approval['actor']);
+
+        $this->confirm();
+        self::assertSame(200, $this->put(['publish' => ['actor' => 'examens']])[0]);
+        $after = $this->ok('GET', '/workflows/effective', null, self::ADMIN);
+        $grades = array_values(array_filter($after, static fn (array $c): bool => $c['id'] === 'higher:grades_lifecycle'))[0];
+        self::assertTrue($grades['customised']);
+        self::assertSame('higher.exam.manage', array_values(array_filter($grades['steps'], static fn (array $s): bool => $s['key'] === 'publish'))[0]['actor']['permission']);
+        self::assertStringNotContainsString('Le chef de département est absent', json_encode($after, JSON_THROW_ON_ERROR), 'Aucun motif exposé.');
+
+        $other = $this->ok('GET', '/workflows/effective', null, self::WF_ADMIN_B, self::TB, self::EB);
+        $gradesB = array_values(array_filter($other, static fn (array $c): bool => $c['id'] === 'higher:grades_lifecycle'))[0];
+        self::assertFalse($gradesB['customised'], 'Le réglage du client A ne se lit pas chez le client B.');
     }
 }

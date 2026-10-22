@@ -10,13 +10,21 @@ use Scholaris\Modules\Socle\Audit\Contracts\Approvals;
 use Scholaris\Modules\Socle\Audit\Contracts\AuditLog;
 use Scholaris\Modules\Socle\Billing\Infrastructure\Db;
 use Scholaris\Modules\Socle\Billing\Infrastructure\PaymentRepository;
+use Scholaris\Modules\Socle\Identity\Contracts\RecentSecondFactor;
+use Scholaris\Modules\Socle\Workflows\Contracts\WorkflowResolver;
 
 /**
  * Annulation d'un paiement : écriture inverse motivée, validée par une AUTRE personne (module Audit, Approvals).
  * Tant que la validation manque, le paiement garde ses effets ; le reçu n'est jamais supprimé, il est marqué annulé.
+ *
+ * Qui peut demander et valider est lu dans le circuit configurable `billing/billing_reversal` (ReversalWorkflows) ; sans réglage,
+ * c'est exactement le comportement historique. Les verrous (demandeur jamais validateur, motif, audit) ne dépendent pas du réglage.
  */
 final class ReversalService
 {
+    /** Âge maximal, en secondes, de la double authentification quand le circuit exige la confirmation récente. */
+    public const SECOND_FACTOR_MAX_AGE = 600;
+
     public function __construct(
         private readonly Db $db,
         private readonly PaymentRepository $payments,
@@ -24,7 +32,21 @@ final class ReversalService
         private readonly Approvals $approvals,
         private readonly AuditLog $audit,
         private readonly BillingClock $clock,
+        private readonly WorkflowResolver $workflows,
+        private readonly RecentSecondFactor $secondFactor,
     ) {
+    }
+
+    /** Droit exigé pour DEMANDER une annulation dans cet établissement (étape verrouillée : toujours celui de la caisse). */
+    public function requestPermission(string $tenantId, string $establishmentId): string
+    {
+        return $this->workflows->resolve($tenantId, $establishmentId, ReversalWorkflows::APPLICATION, ReversalWorkflows::REVERSAL)->step('request')->permission();
+    }
+
+    /** Droit exigé pour VALIDER ou refuser une annulation : celui de la fonction désignée par le circuit de l'établissement. */
+    public function approvePermission(string $tenantId, string $establishmentId): string
+    {
+        return $this->workflows->resolve($tenantId, $establishmentId, ReversalWorkflows::APPLICATION, ReversalWorkflows::REVERSAL)->step('approval')->permission();
     }
 
     /** @return array<string, mixed> */
@@ -61,6 +83,10 @@ final class ReversalService
         $reversal = $this->pending($tenantId, $establishmentId, $reversalId);
         if ($reversal['requested_by'] === $approverId) {
             throw HttpException::forbidden('La validation doit être faite par une autre personne que le demandeur.');
+        }
+        $approval = $this->workflows->resolve($tenantId, $establishmentId, ReversalWorkflows::APPLICATION, ReversalWorkflows::REVERSAL)->step('approval');
+        if ($approval->recentConfirmation && !$this->secondFactor->hasRecent($tenantId, $approverId, self::SECOND_FACTOR_MAX_AGE)) {
+            throw new HttpException(403, 'Double authentification requise', 'Ressaisissez votre code de double authentification pour valider cette annulation.', 'https://api.scholaris.cm/errors/second-factor-required');
         }
 
         return $this->db->transaction(function () use ($tenantId, $approverId, $reversal, $reversalId): array {

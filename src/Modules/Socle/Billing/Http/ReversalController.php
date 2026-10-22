@@ -49,7 +49,7 @@ final class ReversalController extends BillingController
 
     public function store(ServerRequestInterface $request): ResponseInterface
     {
-        $principal = $this->authorize($request, BillingPolicy::REVERSAL_REQUEST);
+        $principal = $this->authorize($request, $this->service->requestPermission($this->context->tenantId(), $this->context->establishmentId()));
         $data = (new ReversalRequest())->fromHttp($request);
         $reversal = $this->service->request($this->context->tenantId(), $this->context->establishmentId(), $principal->userId, (string) $data['payment_id'], (string) $data['reason']);
 
@@ -58,7 +58,7 @@ final class ReversalController extends BillingController
 
     public function approve(ServerRequestInterface $request): ResponseInterface
     {
-        $principal = $this->authorize($request, BillingPolicy::REVERSAL_APPROVE);
+        $principal = $this->authorize($request, $this->service->approvePermission($this->context->tenantId(), $this->context->establishmentId()));
         $reversal = $this->service->approve($this->context->tenantId(), $this->context->establishmentId(), $principal->userId, $this->param($request, 'id'));
 
         return $this->responder->json(['data' => Resource::reversal()->toArray($reversal)]);
@@ -66,7 +66,7 @@ final class ReversalController extends BillingController
 
     public function reject(ServerRequestInterface $request): ResponseInterface
     {
-        $principal = $this->authorize($request, BillingPolicy::REVERSAL_APPROVE);
+        $principal = $this->authorize($request, $this->service->approvePermission($this->context->tenantId(), $this->context->establishmentId()));
         $reversal = $this->service->reject($this->context->tenantId(), $this->context->establishmentId(), $principal->userId, $this->param($request, 'id'));
 
         return $this->responder->json(['data' => Resource::reversal()->toArray($reversal)]);

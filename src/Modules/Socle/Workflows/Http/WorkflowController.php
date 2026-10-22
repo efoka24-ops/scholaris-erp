@@ -67,6 +67,27 @@ final class WorkflowController
         return $this->noStore($this->responder->json(['data' => $page, 'meta' => ['next_cursor' => $next, 'per_page' => $query->perPage]]));
     }
 
+    /**
+     * GET /workflows/effective : circuits effectifs de l'établissement actif, forme minimale, pour tout le personnel (les écrans
+     * adaptent leurs boutons à la fonction désignée). Pas de permission `workflows.manage` : rien de plus que l'effet des réglages.
+     */
+    public function effective(ServerRequestInterface $request): ResponseInterface
+    {
+        $principal = $request->getAttribute('principal');
+        if (!$principal instanceof Principal) {
+            throw HttpException::unauthorized();
+        }
+        $establishmentId = $request->getAttribute('establishment_id');
+        if (!is_string($establishmentId) || $establishmentId === '') {
+            throw HttpException::badRequest('L\'en-tête X-Establishment-Id est obligatoire.');
+        }
+        if ($principal->tenantId === WorkflowStore::PLATFORM_TENANT) {
+            throw HttpException::forbidden('Réservé au personnel d\'un établissement.');
+        }
+
+        return $this->noStore($this->responder->json(['data' => $this->service->effective($principal->tenantId, $establishmentId)]));
+    }
+
     /** GET .../{application}/{circuit} */
     public function show(ServerRequestInterface $request): ResponseInterface
     {

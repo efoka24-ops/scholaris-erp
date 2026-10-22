@@ -27,6 +27,9 @@ return [
     'organisation.closure.checks.billing' => [YearClosureCheck::class],
     'organisation.closure.carry_over.billing' => [YearBalanceCarryOver::class],
 
+    // Circuit de validation configurable de l'annulation d'un paiement (déclaration du socle, lue par Workflows).
+    'workflows.definitions.billing' => [\Scholaris\Modules\Socle\Billing\Application\ReversalWorkflows::class],
+
     // Export complet du client (tenant:export) : liste blanche de colonnes, aucun secret.
     'privacy.tenant_data_source.billing' => \DI\autowire(\Scholaris\Modules\Socle\Billing\Infrastructure\PrivacyExportSource::class),
 ];
