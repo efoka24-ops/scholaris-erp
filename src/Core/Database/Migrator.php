@@ -92,6 +92,11 @@ final class Migrator
         foreach ($paths as $path) {
             $name = basename($path);
             if (isset($files[$name])) {
+                // Une migration déplacée d'un module à un autre peut subsister à son ancien emplacement (déploiement par envoi de
+                // fichiers, sans suppression) : deux copies au contenu identique ne sont pas un conflit. Un contenu différent l'est.
+                if (hash_file('sha256', $files[$name]) === hash_file('sha256', $path)) {
+                    continue;
+                }
                 throw new RuntimeException('Nom de migration en double : ' . $name);
             }
             $files[$name] = $path;
