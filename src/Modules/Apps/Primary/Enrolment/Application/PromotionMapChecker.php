@@ -32,7 +32,18 @@ final class PromotionMapChecker
     public function check(Principal $principal, string $establishmentId): array
     {
         $this->access->require($principal, $establishmentId, self::READ);
-        $t = $principal->tenantId;
+
+        return $this->evaluate($principal->tenantId, $establishmentId);
+    }
+
+    /**
+     * Même contrôle sans utilisateur (clôture d'année) : le contrôle d'accès est fait par l'appelant.
+     *
+     * @return array{ok: bool, errors: list<array{code: string, class_structure_id: string, target_structure_id: ?string}>, classes: int}
+     */
+    public function evaluate(string $tenantId, string $establishmentId): array
+    {
+        $t = $tenantId;
         $raw = $this->settings->value($t, $establishmentId, self::SETTING, []);
         $map = is_array($raw) ? $raw : [];
         $rank = [];

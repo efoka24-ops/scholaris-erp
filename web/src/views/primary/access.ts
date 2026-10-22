@@ -15,6 +15,9 @@ export const P = {
   conductRead: ['primary.conduct.read', 'primary.conduct.enter'],
   journalWrite: ['primary.journal.write'],
   journalRead: ['primary.journal.read', 'primary.journal.write'],
+  dashboardRead: ['primary.dashboard.read'],
+  /** Contrôles avant clôture : mêmes permissions que le serveur (sur tout l'établissement). */
+  closureRead: ['primary.settings.manage', 'primary.promotion.decide', 'primary.dashboard.read'],
   /** Accès à l'espace : au moins une permission de travail dans l'école primaire privée. */
   space: [
     'primary.referential.read', 'primary.referential.manage', 'primary.settings.manage', 'primary.learner.read', 'primary.enrol',

@@ -1,0 +1,26 @@
+# Contrat OpenAPI 3.1 du tableau de bord du directeur et des controles avant cloture (application Primaire privee, EX-PRI-43, 44, 46).
+# Lectures seules. Toutes les routes : authentification, en-tete X-Establishment-Id ; GET -> 404 si l'application est fermee (WriteGate,
+# voir primary-core.yaml). Aucune donnee nominative : agregats par classe seulement. Aucun seuil dans le code : les dates limites de
+# saisie des feuilles de competences sont le parametre d'ecole primary.sheets.entry_deadlines ({identifiant de periode: AAAA-MM-JJ}).
+# Les memes chiffres alimentent GET /dashboards/primary du socle (permission primary.dashboard.read) et les controles de cloture
+# organisation.closure.checks.primary (primary.competency_sheets, primary.promotion_map) de GET /academic-years/{id}/closure-check.
+paths:
+  /api/v1/primary/dashboard:
+    get:
+      summary: "Tableau de bord du directeur : par classe, effectif, absents du jour par demi-journee (appels valides), eleves en retard de paiement et solde, suivi de saisie des feuilles de competences (permission primary.dashboard.read)"
+      description: "Reponse {date, period, perimeter (establishment|classes), totals{classes, learners, absent_morning, absent_afternoon, late_payers, late_balance_xaf, sheets_late}, classes[{class_id, name, level_id, capacity, learners, over_capacity, absent_morning, absent_afternoon, late_payers, late_balance_xaf, sheet{current{period_id, expected, entered, status, deadline, late}, overdue_periods[], late}}], meta}. Les classes sont limitees au perimetre de la permission."
+      responses:
+        '200': {description: "Tableau de bord"}
+        '403': {description: "Permission primary.dashboard.read absente"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+  /api/v1/primary/closure/check:
+    get:
+      summary: "Controles propres au primaire avant la cloture d'une annee : feuilles de competences non verrouillees, table de passage incoherente (permissions primary.settings.manage, primary.promotion.decide ou primary.dashboard.read, sur tout l'etablissement)"
+      description: "Reponse {academic_year_id, ready, blocking_count, checks[{key, label, status (ok|blocking|not_evaluable), blocking_count, detail}], sheets_to_lock[{class_id, name, periods[]}], promotion_map_errors[{code, class_structure_id, target_structure_id}]}. Un etablissement sans niveau primaire recoit 'sans objet' (aucun blocage). Les bulletins et conseils ne sont pas controles (questions du client sans reponse)."
+      parameters:
+        - {name: academic_year_id, in: query, required: false, schema: {type: string}, description: "Annee a cloturer ; par defaut, celle de la periode en cours"}
+      responses:
+        '200': {description: "Controles avant cloture"}
+        '403': {description: "Permission absente ou perimetre limite a des classes"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '422': {description: "Annee non indiquee et aucune periode en cours pour la deduire"}

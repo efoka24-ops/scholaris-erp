@@ -23,6 +23,7 @@ interface Tile {
   perms: readonly string[];
 }
 const tiles: Tile[] = [
+  { name: 'pri-dashboard', title: 'pri.dash.title', text: 'pri.home.dashText', perms: P.dashboardRead },
   { name: 'pri-levels', title: 'pri.levels.title', text: 'pri.home.levelsText', perms: P.referentialRead },
   { name: 'pri-referential', title: 'pri.ref.title', text: 'pri.home.refText', perms: P.referentialRead },
   { name: 'pri-desk', title: 'pri.desk.title', text: 'pri.home.deskText', perms: P.learnerRead },

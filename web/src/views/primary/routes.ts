@@ -7,6 +7,7 @@ import { P } from './access';
 type Screen = [path: string, name: string, view: () => Promise<unknown>, perms: readonly string[], titleKey: MessageKey];
 
 const screens: Screen[] = [
+  ['tableau-de-bord', 'pri-dashboard', () => import('./DashboardView.vue'), P.dashboardRead, 'pri.dash.title'],
   ['niveaux', 'pri-levels', () => import('./LevelsView.vue'), P.referentialRead, 'pri.levels.title'],
   ['referentiel', 'pri-referential', () => import('./ReferentialView.vue'), P.referentialRead, 'pri.ref.title'],
   ['inscriptions', 'pri-desk', () => import('./DeskView.vue'), P.learnerRead, 'pri.desk.title'],

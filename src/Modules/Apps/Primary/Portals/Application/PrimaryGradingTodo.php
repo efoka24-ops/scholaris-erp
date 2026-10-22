@@ -36,7 +36,8 @@ final class PrimaryGradingTodo implements GradingTodo
     ) {
     }
 
-    public function pendingFor(string $tenantId, string $teacherPersonId): ?array
+    /** Toujours évaluable pour le primaire : une liste (vide si tout est saisi), jamais « non évaluable ». */
+    public function pendingFor(string $tenantId, string $teacherPersonId): array
     {
         /** @var array<string, array{establishment: string, year: string, learners: list<string>}> $classes */
         $classes = [];

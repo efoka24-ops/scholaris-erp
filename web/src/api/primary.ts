@@ -140,9 +140,52 @@ export interface ConductSheet {
 export type DocumentKind = 'certificate' | 'attendance' | 'school_card' | 'info_sheet';
 export const DOCUMENT_KINDS: readonly DocumentKind[] = ['certificate', 'attendance', 'school_card', 'info_sheet'];
 
+export interface SheetFollowUp {
+  current: { period_id: string; expected: number; entered: number; status: string; deadline: string | null; late: boolean } | null;
+  overdue_periods: string[];
+  late: boolean;
+}
+export interface DashboardClass {
+  class_id: string;
+  name: string;
+  level_id: string;
+  capacity: number | null;
+  learners: number;
+  over_capacity: boolean;
+  absent_morning: number;
+  absent_afternoon: number;
+  late_payers: number;
+  late_balance_xaf: number;
+  sheet: SheetFollowUp;
+}
+export interface Dashboard {
+  date: string;
+  period: { id: string; kind: string; starts_on: string; ends_on: string; academic_year_id: string } | null;
+  perimeter: 'establishment' | 'classes';
+  totals: { classes: number; learners: number; absent_morning: number; absent_afternoon: number; late_payers: number; late_balance_xaf: number; sheets_late: number };
+  classes: DashboardClass[];
+}
+export interface ClosureCheckItem {
+  key: string;
+  label: string;
+  status: 'ok' | 'blocking' | 'not_evaluable';
+  blocking_count: number;
+  detail: string | null;
+}
+export interface ClosureReport {
+  academic_year_id: string;
+  ready: boolean;
+  blocking_count: number;
+  checks: ClosureCheckItem[];
+  sheets_to_lock: { class_id: string; name: string; periods: string[] }[];
+  promotion_map_errors: { code: string; class_structure_id: string; target_structure_id: string | null }[];
+}
+
 export const primary = {
   setup: (): Promise<SetupStatus> => get('/setup'),
   applySetup: (): Promise<SetupStatus> => post('/setup/apply'),
+  dashboard: (): Promise<Dashboard> => get('/dashboard'),
+  closureCheck: (yearId?: string): Promise<ClosureReport> => get('/closure/check', { academic_year_id: yearId }),
 
   profiles: (): Promise<LevelProfile[]> => all('/level-profiles', { sort: 'sort_order' }),
   createProfile: (body: { level_structure_id?: string; name?: string; sort_order?: number; cycle_code?: string | null; is_final_level?: boolean; is_exam_level?: boolean; language?: 'fr' | 'en' }): Promise<LevelProfile> => post('/level-profiles', body),
