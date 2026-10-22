@@ -23,6 +23,7 @@ final class TeacherPortalTest extends ReportingTestCase
             TeacherWorkload::class => $this->doubles,
             'portals.grading_todo.test' => [$this->doubles],
             'portals.grading_todo.assessment' => [], // le fournisseur réel est testé dans Assessment
+            'portals.grading_todo.primary' => [], // idem pour le primaire (testé dans Primary)
         ]);
         $this->actors->link('t1', 'prof', 'tp1');
         $this->actors->link('t1', 'sansfiche', 'p-quelconque');

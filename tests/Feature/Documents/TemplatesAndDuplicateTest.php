@@ -103,7 +103,8 @@ final class TemplatesAndDuplicateTest extends DocumentsTestCase
     {
         $list = $this->api('GET', '/document-templates', 'alice', 't1')[1]['data'];
         $system = array_values(array_filter($list, static fn (array $t): bool => $t['system'] === true));
-        self::assertCount(2, $system);
+        // Au moins les deux modèles d'origine : d'autres applications (primaire, maternelle) en ajoutent par migration.
+        self::assertGreaterThanOrEqual(2, count($system));
 
         self::assertSame(403, $this->api('PATCH', '/document-templates/' . $system[0]['id'], 'alice', 't1', 'e1', ['html' => '<p>x</p>'])[0]->getStatusCode());
         self::assertSame(403, $this->api('PATCH', '/document-types/01JZ0000000000000000000001', 'alice', 't1', 'e1', ['label' => 'x'])[0]->getStatusCode());

@@ -119,7 +119,9 @@ final class SettingsInheritanceTest extends OrganisationTestCase
         self::assertSame([[7, 14], 'tenant'], [$e2['data']['value'], $e2['data']['source']]);
 
         [, $all] = $this->api('GET', '/settings/effective', 'alice', 't1', 'e1');
-        self::assertSame(['fees.reminder_days'], array_column($all['data'], 'key'));
+        // Les valeurs par défaut de la plateforme (ex. nursery.dev.*, posées par migration) sont hors sujet : on ne regarde que ce que le client a réglé.
+        $own = array_values(array_filter($all['data'], static fn (array $i): bool => $i['source'] !== 'platform'));
+        self::assertSame(['fees.reminder_days'], array_column($own, 'key'));
 
         [, $list] = $this->api('GET', '/settings?filter[scope]=tenant', 'alice', 't1', 'e1');
         self::assertSame([[7, 14]], array_column($list['data'], 'value'));
@@ -170,7 +172,8 @@ final class SettingsInheritanceTest extends OrganisationTestCase
 
         self::assertSame([], $tenant['data']);
         self::assertSame([], $establishment['data']);
-        self::assertSame([], $effective['data']);
+        // Les valeurs par défaut de la plateforme sont visibles de tous les clients ; aucun réglage d'un autre client ne l'est.
+        self::assertSame([], array_values(array_filter($effective['data'], static fn (array $i): bool => $i['source'] !== 'platform')));
         // Bob ne peut pas se servir de l'établissement d'Alice.
         self::assertSame(403, $this->code('GET', '/settings', 'bob', 't2', 'e1'));
     }
