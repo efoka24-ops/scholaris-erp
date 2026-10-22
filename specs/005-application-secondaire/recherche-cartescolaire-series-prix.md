@@ -44,3 +44,6 @@ Réponse du propriétaire : **90 000 FCFA**. L'unité n'est pas précisée (par 
 - [La série E (mathématiques et techniques) créée au secondaire (Journal du Cameroun)](https://fr.journalducameroun.com/cameroun-la-serie-e-mathematiques-et-techniques-creee-au-secondaire/)
 - [Enseignements secondaires : le nouveau visage des séries (Cameroon Tribune)](https://www.cameroon-tribune.cm/article.html/20201/fr.html/details_2)
 - [Guide sur l'éducation internationale, Cameroun (Alberta)](https://www.alberta.ca/fr/iqas-education-guide-cameroon)
+
+## 6. Décision sur le prix (22 octobre 2026)
+Le propriétaire précise : **la base reste à 60 000 FCFA par mois** pour l'enseignement secondaire (valeur du catalogue, inchangée). Le chiffre de **90 000 FCFA** évoqué plus haut est **mis de côté** (non retenu pour la base) ; il pourra servir de total avec des options de service ou d'un autre tarif si le propriétaire le précise. Le prix par client reste modifiable par le super admin dans la fiche client, et les options de service s'ajoutent à la base (voir le lot « régularisation de paiement »).
