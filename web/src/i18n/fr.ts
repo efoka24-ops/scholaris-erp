@@ -17,8 +17,10 @@ import { higherDashboardsFr } from './higher-dashboards-fr';
 import { accountFr } from './account-fr';
 import { publicNurseryFr } from './public-nursery-fr';
 import { publicSchoolsFr } from './public-schools-fr';
+import { nurseryPrivateFr } from './nursery-private-fr';
 import { primaryFr } from './primary-fr';
 import { importsFr } from './imports-fr';
+import { workflowsFr } from './workflows-fr';
 
 export const fr = {
   ...adminFr,
@@ -38,8 +40,10 @@ export const fr = {
   ...accountFr,
   ...publicNurseryFr,
   ...publicSchoolsFr,
+  ...nurseryPrivateFr,
   ...primaryFr,
   ...importsFr,
+  ...workflowsFr,
   'nav.reportcards': "Bulletins",
   'reportcards.eyebrow': "Résultats",
   'reportcards.title': "Bulletins de notes",

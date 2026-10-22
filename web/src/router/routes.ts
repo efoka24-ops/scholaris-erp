@@ -16,8 +16,10 @@ import { higherTutelageRoutes } from '@/views/higher/tutelage/routes';
 import { higherDeliberationRoutes } from '@/views/higher/deliberation/routes';
 import { accountRoutes } from '@/views/account/routes';
 import { publicSchoolsRoutes } from '@/views/public-schools/routes';
+import { nurseryPrivateRoutes } from '@/views/nursery-private/routes';
 import { primaryRoutes } from '@/views/primary/routes';
 import { importRoutes } from '@/views/admin/import/routes';
+import { workflowRoutes } from '@/views/admin/workflows/routes';
 
 declare module 'vue-router' {
   interface RouteMeta {
@@ -379,8 +381,10 @@ export const routes: RouteRecordRaw[] = [
   ...higherDeliberationRoutes,
   ...accountRoutes,
   ...publicSchoolsRoutes,
+  ...nurseryPrivateRoutes,
   ...primaryRoutes,
   ...importRoutes,
+  ...workflowRoutes,
   { path: '/interdit', name: 'forbidden', component: () => import('@/views/ForbiddenView.vue'), meta: { titleKey: 'forbidden.title' } },
   { path: '/:pathMatch(.*)*', name: 'not-found', component: () => import('@/views/NotFoundView.vue'), meta: { public: true, titleKey: 'notFound.title' } },
 ];

@@ -12,6 +12,7 @@ import AdministratorsPanel from './AdministratorsPanel.vue';
 import ClientEstablishmentsPanel from './ClientEstablishmentsPanel.vue';
 import ClientProfilePanel from './ClientProfilePanel.vue';
 import ClientUsersPanel from './ClientUsersPanel.vue';
+import WorkflowsPanel from '@/views/admin/workflows/WorkflowsPanel.vue';
 
 // Fiche d'un client : établissements (nom, type) et applications : ouvrir, suspendre, fermer, réactiver (motif), tarif spécifique.
 // Design : Dashboard.html (tableau), Fondations.html (formulaires). Chaque action exige une 2FA récente.
@@ -224,6 +225,7 @@ onMounted(load);
       <ClientEstablishmentsPanel :tenant="client.id" :establishments="client.establishments ?? []" :readonly="client.state === 'archived'" @changed="load" />
       <AdministratorsPanel :tenant="client.id" :readonly="client.state === 'archived'" />
       <ClientUsersPanel :tenant="client.id" :readonly="client.state === 'archived'" />
+      <WorkflowsPanel :scope="{ kind: 'client', tenant: client.id }" :readonly="client.state === 'archived'" />
     </template>
   </div>
 </template>
