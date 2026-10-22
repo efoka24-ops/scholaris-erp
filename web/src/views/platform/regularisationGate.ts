@@ -48,7 +48,22 @@ export async function refreshRegularisation(userId?: string): Promise<MyRegulari
 
 export const regularisationState = state;
 
+/** Augmente à chaque invalidation : le bandeau d'abonnement se relit sans attendre la navigation suivante. */
+export const regularisationVersion = ref(0);
+/** Message du serveur après une écriture refusée en lecture seule (423 subscription-suspended), montré par le bandeau. */
+export const regularisationNotice = ref<string | null>(null);
+
+/**
+ * Oublie la situation en cache (après un 423 du serveur) : le prochain passage du garde de routes ou du bandeau la relit.
+ */
+export function invalidateRegularisation(): void {
+  checkedFor.value = null;
+  lockedCheckedAt = 0;
+  regularisationVersion.value++;
+}
+
 export function clearRegularisation(): void {
   state.value = null;
   checkedFor.value = null;
+  regularisationNotice.value = null;
 }

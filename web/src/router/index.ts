@@ -4,7 +4,9 @@ import { useAuthStore } from '@/stores/auth';
 import { useContextStore } from '@/stores/context';
 import { usePlatformStore } from '@/stores/platform';
 import { translate } from '@/i18n';
-import { isLockedForRegularisation } from '@/views/platform/regularisationGate';
+import { http, type RegularisationLevel } from '@/api/http';
+import type { Problem } from '@/api/types';
+import { invalidateRegularisation, isLockedForRegularisation, regularisationNotice } from '@/views/platform/regularisationGate';
 
 /**
  * Décide où envoyer la personne pour une destination donnée (true = laisser passer).
@@ -59,9 +61,36 @@ export async function guard(to: RouteLocationNormalized): Promise<RouteLocationR
   return true;
 }
 
+/** Routeurs dont une redirection vers l'écran de régularisation est en cours. */
+const redirecting = new WeakSet<Router>();
+
+/**
+ * Réponse 423 du blocage central reçue par un onglet déjà ouvert (sans attendre la navigation suivante) :
+ * - `locked` : le cache du garde est oublié et la personne est envoyée TOUT DE SUITE vers l'écran de régularisation, sauf si elle
+ *   y est déjà, sur un écran public, sans cadre (connexion, double authentification) ou de plateforme, ou si une redirection est
+ *   en cours (plusieurs appels refusés en même temps) : jamais de boucle ;
+ * - `read_only` : pas de redirection ; le message du serveur est montré par le bandeau d'abonnement, qui se relit.
+ */
+export function handleRegularisationProblem(router: Router, level: RegularisationLevel, problem: Problem): void {
+  invalidateRegularisation();
+  if (level === 'read_only') {
+    regularisationNotice.value = problem.detail || problem.title || null;
+    return;
+  }
+  const current = router.currentRoute.value;
+  if (redirecting.has(router) || current.name === 'regularisation' || current.meta.public || current.meta.bare || current.meta.platform) return;
+  redirecting.add(router);
+  void router.replace({ name: 'regularisation' }).finally(() => redirecting.delete(router));
+}
+
 export function createAppRouter(history = createWebHistory(import.meta.env.BASE_URL)): Router {
   const router = createRouter({ history, routes });
+  http.configure({ onRegularisation: (level, problem) => handleRegularisationProblem(router, level, problem) });
   router.beforeEach(guard);
+  // Le message d'une écriture refusée (lecture seule) ne survit pas au changement d'écran.
+  router.afterEach((to, from) => {
+    if (to.path !== from.path) regularisationNotice.value = null;
+  });
   router.afterEach((to) => {
     const title = to.meta.titleKey ? `${translate(to.meta.titleKey)} · SCHOLARIS` : 'SCHOLARIS';
     if (typeof document !== 'undefined') document.title = title;

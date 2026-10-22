@@ -6,7 +6,7 @@ import { useAuthStore } from '@/stores/auth';
 import { usePlatformStore } from '@/stores/platform';
 import { useI18n } from '@/i18n';
 import { formatDate } from '@/lib/format';
-import { cachedRegularisation } from '@/views/platform/regularisationGate';
+import { cachedRegularisation, regularisationNotice, regularisationVersion } from '@/views/platform/regularisationGate';
 
 // Bandeau d'abonnement, persistant sur tous les écrans d'un établissement dont le client est en retard de paiement (avec la date et
 // les jours restants avant le blocage) ou en lecture seule. Le bouton « Régulariser » n'est montré qu'aux personnes concernées par
@@ -29,7 +29,8 @@ async function refresh(): Promise<void> {
 }
 
 // Relu à chaque navigation (cache d'une minute côté garde de routes) : un paiement confirmé fait disparaître le bandeau.
-watch(() => [auth.me?.id, platform.isAdmin, route.fullPath], refresh, { immediate: true });
+// Relu aussi tout de suite après un refus 423 du serveur (version incrémentée par le client HTTP via le routeur).
+watch(() => [auth.me?.id, platform.isAdmin, route.fullPath, regularisationVersion.value], refresh, { immediate: true });
 
 /** Application la plus proche du blocage parmi celles en retard. */
 const pastDue = computed<RegularisationItem | null>(() => {
@@ -44,12 +45,14 @@ const kind = computed<'past_due' | 'read_only' | null>(() => {
 });
 const pending = computed(() => (data.value?.requests ?? []).some((r) => r.state === 'declared'));
 // L'écran de régularisation dit déjà tout ; en niveau « bloqué », il est le seul écran ouvert.
-const visible = computed(() => kind.value !== null && route.name !== 'regularisation');
+const notice = computed(() => (platform.isAdmin ? null : regularisationNotice.value));
+const visible = computed(() => (kind.value !== null || notice.value !== null) && route.name !== 'regularisation');
 </script>
 
 <template>
   <div v-if="visible" class="sub-banner" :class="`sub-banner--${kind}`" role="region" :aria-label="t('rg.banner.label')">
-    <p class="sub-banner__text">
+    <p v-if="notice" class="sub-banner__notice" role="alert">{{ notice }}</p>
+    <p v-if="kind !== null" class="sub-banner__text">
       <strong v-if="kind === 'past_due' && pastDue">
         {{ t('rg.banner.pastDue', { date: formatDate(pastDue.blocks_on, locale) }) }}
       </strong>
@@ -75,8 +78,13 @@ const visible = computed(() => kind.value !== null && route.name !== 'regularisa
   background: var(--surface);
   font-size: 13px;
 }
-.sub-banner__text {
+.sub-banner__text,
+.sub-banner__notice {
   margin: 0;
+}
+.sub-banner__notice {
+  flex-basis: 100%;
+  font-weight: 600;
 }
 .sub-banner__action {
   white-space: nowrap;

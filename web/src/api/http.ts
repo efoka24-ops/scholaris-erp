@@ -13,6 +13,27 @@ export interface HttpConfig {
   getToken?: () => string | null;
   /** Appelé sur un 401 hors connexion : la session a expiré. */
   onUnauthorized?: () => void;
+  /**
+   * Appelé sur un 423 de régularisation de paiement (hors liste blanche) : `locked` = accès bloqué (écran de régularisation),
+   * `read_only` = abonnement suspendu, écriture refusée (lecture et export permis).
+   */
+  onRegularisation?: (level: RegularisationLevel, problem: Problem) => void;
+}
+
+export type RegularisationLevel = 'locked' | 'read_only';
+
+/** Types d'erreur 423 du blocage central (middleware serveur EnforceTenantRestriction). */
+export const REGULARISATION_REQUIRED = 'https://api.scholaris.cm/errors/regularisation-required';
+export const SUBSCRIPTION_SUSPENDED = 'https://api.scholaris.cm/errors/subscription-suspended';
+/** Liste blanche du serveur (EnforceTenantRestriction::ALLOWED), chemins sous /api/v1 : jamais de redirection pour ces appels. */
+const REGULARISATION_ALLOWED = /^\/(auth\/|me$|me\/contexts?$|me\/regularisation(\/|$)|applications\/[^/]+\/payments$|application-payments\/[^/]+\/receipt$|public\/|health$|platform\/|webhooks?\/)/;
+
+/** Niveau de restriction porté par une réponse 423, ou null (autre erreur, ou appel de la liste blanche). */
+export function regularisationLevel(status: number, problem: Problem | null, path: string): RegularisationLevel | null {
+  if (status !== 423 || !problem || REGULARISATION_ALLOWED.test(path.split('?')[0] ?? path)) return null;
+  if (problem.type === REGULARISATION_REQUIRED) return 'locked';
+  if (problem.type === SUBSCRIPTION_SUSPENDED) return 'read_only';
+  return null;
 }
 
 export interface RequestOptions {
@@ -152,6 +173,8 @@ export class HttpClient {
     if (response.status === 401 && !path.startsWith('/auth/login') && !path.startsWith('/auth/activation')) {
       this.cfg.onUnauthorized?.();
     }
+    const level = regularisationLevel(response.status, problem, path);
+    if (level && problem) this.cfg.onRegularisation?.(level, problem);
     throw error;
   }
 
