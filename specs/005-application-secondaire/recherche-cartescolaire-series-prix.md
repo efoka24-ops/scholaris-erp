@@ -18,7 +18,10 @@ Date : 22 octobre 2026. Réponses du propriétaire aux questions Q1, Q2, Q22 et 
 
 **Conséquence pour SCHOLARIS (à valider)** : ne pas promettre une intégration automatique. Prévoir, par ordre de priorité : (1) champ **matricule unique** sur chaque élève, avec contrôle de format paramétrable et saisie manuelle ; (2) **import d'un fichier** de matricules (CSV) fourni par l'établissement après extraction sur la plateforme, avec rapprochement par nom et date de naissance et rapport d'écarts ; (3) **rapprochement des paiements** par import du relevé de l'économe ; (4) un connecteur direct seulement si le MINESEC fournit une API et une convention d'accès : question à poser formellement au ministère. Voir aussi les tâches T828, T829 et T971 de [tasks.md](tasks.md).
 
-## 3. Séries et spécialités (Q22) : ce que la recherche établit
+## 3. Séries et spécialités (Q22) : source officielle trouvée
+**Mise à jour du 22 octobre 2026** : le propriétaire a indiqué la page officielle du MINESEC « Diversité de l'offre de formation (sous-système francophone) ». Elle liste les séries générales et les séries et spécialités techniques (STT, IND, avec leurs cycles). Le catalogue complet, les écarts avec un texte externe et les incohérences de la source sont dans **[catalogue-series-minesec.md](catalogue-series-minesec.md)**, qui prévaut sur le résumé ci-dessous (rédigé avant cette source, d'après la presse).
+
+### Résumé initial (presse), conservé pour mémoire
 **Enseignement secondaire général (second cycle, sous-système francophone)**, d'après la presse camerounaise (arrêté du 17 mars 2022) :
 - Séries scientifiques et technologiques : **C, D, E (mathématiques et techniques, créée en 2022), TI**.
 - Séries littéraires : **A1** (lettres, latin et grec), **A2** (lettres, latin, langue vivante 2), **A3** (lettres et latin), **A4** (lettres et langue vivante 2, avec philosophie), **A5** (lettres, langue vivante 2 et 3), **ABI** (A4 bilingue).
