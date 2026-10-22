@@ -1,0 +1,644 @@
+# Contrat OpenAPI 3.1 de la Maternelle privée, sous-module Pickup (application nursery). Fusionné avec openapi.yaml par le test de contrat.
+# Erreurs au format RFC 9457. Toutes les routes exigent l'authentification (401) et X-Establishment-Id ; application suspendue : 423 en écriture.
+paths:
+  /api/v1/nursery/pickup/authorized-persons:
+    get:
+      summary: 'GET /nursery/pickup/authorized-persons'
+      security:
+        -
+          bearer: {  }
+      parameters:
+        -
+          $ref: '#/components/parameters/EstablishmentId'
+        -
+          name: per_page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+        -
+          name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+        -
+          name: learner_id
+          in: query
+          required: true
+          schema:
+            type: string
+        -
+          name: date
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        200:
+          description: 'Succès : enveloppe JSON {data}, avec meta {next_cursor, per_page} (pagination par curseur)'
+        400:
+          description: 'Requête invalide (en-tête X-Establishment-Id manquant, JSON illisible)'
+        403:
+          description: 'Accès refusé (permission, application fermée)'
+        404:
+          description: 'Ressource introuvable ou hors périmètre'
+        422:
+          description: 'Données invalides ou refus métier (RFC 9457)'
+    post:
+      summary: 'POST /nursery/pickup/authorized-persons'
+      security:
+        -
+          bearer: {  }
+      parameters:
+        -
+          $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        201:
+          description: 'Succès : enveloppe JSON {data}'
+        400:
+          description: 'Requête invalide (en-tête X-Establishment-Id manquant, JSON illisible)'
+        403:
+          description: 'Accès refusé (permission, application fermée)'
+        404:
+          description: 'Ressource introuvable ou hors périmètre'
+        409:
+          description: 'Conflit (doublon, version du serveur)'
+        422:
+          description: 'Données invalides ou refus métier (RFC 9457)'
+        423:
+          description: 'Application suspendue : lecture et export seulement, écriture refusée'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                learner_id:
+                  type: string
+                name:
+                  type: string
+                  maxLength: 160
+                relationship:
+                  type: string
+                  maxLength: 60
+                phone:
+                  type: string
+                  maxLength: 30
+                grant_type:
+                  type: string
+                  enum:
+                    - permanent
+                    - day
+                valid_on:
+                  type: string
+                  format: date
+                photo_base64:
+                  type: string
+              required:
+                - learner_id
+                - name
+                - relationship
+                - grant_type
+  '/api/v1/nursery/pickup/authorized-persons/{id}/revoke':
+    post:
+      summary: 'POST /nursery/pickup/authorized-persons/{id}/revoke'
+      security:
+        -
+          bearer: {  }
+      parameters:
+        -
+          $ref: '#/components/parameters/EstablishmentId'
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        201:
+          description: 'Succès : enveloppe JSON {data}'
+        400:
+          description: 'Requête invalide (en-tête X-Establishment-Id manquant, JSON illisible)'
+        403:
+          description: 'Accès refusé (permission, application fermée)'
+        404:
+          description: 'Ressource introuvable ou hors périmètre'
+        409:
+          description: 'Conflit (doublon, version du serveur)'
+        422:
+          description: 'Données invalides ou refus métier (RFC 9457)'
+        423:
+          description: 'Application suspendue : lecture et export seulement, écriture refusée'
+  /api/v1/nursery/pickup/requests:
+    get:
+      summary: 'GET /nursery/pickup/requests'
+      security:
+        -
+          bearer: {  }
+      parameters:
+        -
+          $ref: '#/components/parameters/EstablishmentId'
+        -
+          name: per_page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+        -
+          name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        200:
+          description: 'Succès : enveloppe JSON {data}, avec meta {next_cursor, per_page} (pagination par curseur)'
+        400:
+          description: 'Requête invalide (en-tête X-Establishment-Id manquant, JSON illisible)'
+        403:
+          description: 'Accès refusé (permission, application fermée)'
+        404:
+          description: 'Ressource introuvable ou hors périmètre'
+        422:
+          description: 'Données invalides ou refus métier (RFC 9457)'
+  '/api/v1/nursery/pickup/requests/{id}/approve':
+    post:
+      summary: 'POST /nursery/pickup/requests/{id}/approve'
+      security:
+        -
+          bearer: {  }
+      parameters:
+        -
+          $ref: '#/components/parameters/EstablishmentId'
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        201:
+          description: 'Succès : enveloppe JSON {data}'
+        400:
+          description: 'Requête invalide (en-tête X-Establishment-Id manquant, JSON illisible)'
+        403:
+          description: 'Accès refusé (permission, application fermée)'
+        404:
+          description: 'Ressource introuvable ou hors périmètre'
+        409:
+          description: 'Conflit (doublon, version du serveur)'
+        422:
+          description: 'Données invalides ou refus métier (RFC 9457)'
+        423:
+          description: 'Application suspendue : lecture et export seulement, écriture refusée'
+  '/api/v1/nursery/pickup/requests/{id}/reject':
+    post:
+      summary: 'POST /nursery/pickup/requests/{id}/reject'
+      security:
+        -
+          bearer: {  }
+      parameters:
+        -
+          $ref: '#/components/parameters/EstablishmentId'
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        201:
+          description: 'Succès : enveloppe JSON {data}'
+        400:
+          description: 'Requête invalide (en-tête X-Establishment-Id manquant, JSON illisible)'
+        403:
+          description: 'Accès refusé (permission, application fermée)'
+        404:
+          description: 'Ressource introuvable ou hors périmètre'
+        409:
+          description: 'Conflit (doublon, version du serveur)'
+        422:
+          description: 'Données invalides ou refus métier (RFC 9457)'
+        423:
+          description: 'Application suspendue : lecture et export seulement, écriture refusée'
+  /api/v1/nursery/pickup/restrictions:
+    get:
+      summary: 'GET /nursery/pickup/restrictions'
+      security:
+        -
+          bearer: {  }
+      parameters:
+        -
+          $ref: '#/components/parameters/EstablishmentId'
+        -
+          name: per_page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+        -
+          name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+        -
+          name: learner_id
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        200:
+          description: 'Succès : enveloppe JSON {data}, avec meta {next_cursor, per_page} (pagination par curseur)'
+        400:
+          description: 'Requête invalide (en-tête X-Establishment-Id manquant, JSON illisible)'
+        403:
+          description: 'Accès refusé (permission, application fermée)'
+        404:
+          description: 'Ressource introuvable ou hors périmètre'
+        422:
+          description: 'Données invalides ou refus métier (RFC 9457)'
+    post:
+      summary: 'POST /nursery/pickup/restrictions'
+      security:
+        -
+          bearer: {  }
+      parameters:
+        -
+          $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        201:
+          description: 'Succès : enveloppe JSON {data}'
+        400:
+          description: 'Requête invalide (en-tête X-Establishment-Id manquant, JSON illisible)'
+        403:
+          description: 'Accès refusé (permission, application fermée)'
+        404:
+          description: 'Ressource introuvable ou hors périmètre'
+        409:
+          description: 'Conflit (doublon, version du serveur)'
+        422:
+          description: 'Données invalides ou refus métier (RFC 9457)'
+        423:
+          description: 'Application suspendue : lecture et export seulement, écriture refusée'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                learner_id:
+                  type: string
+                restricted_name:
+                  type: string
+                  maxLength: 160
+                restricted_person_id:
+                  type: string
+                restricted_pickup_id:
+                  type: string
+                nature:
+                  type: string
+                  enum:
+                    - no_pickup
+                    - no_contact
+                    - other
+                decision_reference:
+                  type: string
+                  maxLength: 120
+                valid_from:
+                  type: string
+                  format: date
+                valid_to:
+                  type: string
+                  format: date
+              required:
+                - learner_id
+                - restricted_name
+                - nature
+                - decision_reference
+                - valid_from
+  '/api/v1/nursery/pickup/restrictions/{id}/lift':
+    post:
+      summary: 'POST /nursery/pickup/restrictions/{id}/lift'
+      security:
+        -
+          bearer: {  }
+      parameters:
+        -
+          $ref: '#/components/parameters/EstablishmentId'
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        201:
+          description: 'Succès : enveloppe JSON {data}'
+        400:
+          description: 'Requête invalide (en-tête X-Establishment-Id manquant, JSON illisible)'
+        403:
+          description: 'Accès refusé (permission, application fermée)'
+        404:
+          description: 'Ressource introuvable ou hors périmètre'
+        409:
+          description: 'Conflit (doublon, version du serveur)'
+        422:
+          description: 'Données invalides ou refus métier (RFC 9457)'
+        423:
+          description: 'Application suspendue : lecture et export seulement, écriture refusée'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                reason:
+                  type: string
+                  maxLength: 500
+              required:
+                - reason
+  /api/v1/nursery/pickup/handovers:
+    post:
+      summary: 'POST /nursery/pickup/handovers'
+      security:
+        -
+          bearer: {  }
+      parameters:
+        -
+          $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        201:
+          description: 'Succès : enveloppe JSON {data}'
+        400:
+          description: 'Requête invalide (en-tête X-Establishment-Id manquant, JSON illisible)'
+        403:
+          description: 'Accès refusé (permission, application fermée)'
+        404:
+          description: 'Ressource introuvable ou hors périmètre'
+        409:
+          description: 'Conflit (doublon, version du serveur)'
+        422:
+          description: 'Données invalides ou refus métier (RFC 9457)'
+        423:
+          description: 'Application suspendue : lecture et export seulement, écriture refusée'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                learner_id:
+                  type: string
+                pickup_id:
+                  type: string
+                code:
+                  type: string
+                  maxLength: 20
+                declared_name:
+                  type: string
+                  maxLength: 160
+                pickup_person_id:
+                  type: string
+                school_day:
+                  type: string
+                  format: date
+                origin:
+                  type: string
+                  enum:
+                    - online
+                    - offline
+                client_uuid:
+                  type: string
+                  maxLength: 40
+                occurred_at:
+                  type: string
+                  maxLength: 32
+              required:
+                - learner_id
+  /api/v1/nursery/pickup/refusals:
+    post:
+      summary: 'POST /nursery/pickup/refusals'
+      security:
+        -
+          bearer: {  }
+      parameters:
+        -
+          $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        201:
+          description: 'Succès : enveloppe JSON {data}'
+        400:
+          description: 'Requête invalide (en-tête X-Establishment-Id manquant, JSON illisible)'
+        403:
+          description: 'Accès refusé (permission, application fermée)'
+        404:
+          description: 'Ressource introuvable ou hors périmètre'
+        409:
+          description: 'Conflit (doublon, version du serveur)'
+        422:
+          description: 'Données invalides ou refus métier (RFC 9457)'
+        423:
+          description: 'Application suspendue : lecture et export seulement, écriture refusée'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                learner_id:
+                  type: string
+                declared_name:
+                  type: string
+                  maxLength: 160
+                school_day:
+                  type: string
+                  format: date
+                origin:
+                  type: string
+                  enum:
+                    - online
+                    - offline
+                client_uuid:
+                  type: string
+                  maxLength: 40
+                occurred_at:
+                  type: string
+                  maxLength: 32
+              required:
+                - learner_id
+  /api/v1/nursery/pickup/holds:
+    post:
+      summary: 'POST /nursery/pickup/holds'
+      security:
+        -
+          bearer: {  }
+      parameters:
+        -
+          $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        201:
+          description: 'Succès : enveloppe JSON {data}'
+        400:
+          description: 'Requête invalide (en-tête X-Establishment-Id manquant, JSON illisible)'
+        403:
+          description: 'Accès refusé (permission, application fermée)'
+        404:
+          description: 'Ressource introuvable ou hors périmètre'
+        409:
+          description: 'Conflit (doublon, version du serveur)'
+        422:
+          description: 'Données invalides ou refus métier (RFC 9457)'
+        423:
+          description: 'Application suspendue : lecture et export seulement, écriture refusée'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                learner_id:
+                  type: string
+                remark:
+                  type: string
+                  maxLength: 500
+                school_day:
+                  type: string
+                  format: date
+                origin:
+                  type: string
+                  enum:
+                    - online
+                    - offline
+                client_uuid:
+                  type: string
+                  maxLength: 40
+                occurred_at:
+                  type: string
+                  maxLength: 32
+              required:
+                - learner_id
+                - remark
+  /api/v1/nursery/pickup/codes:
+    post:
+      summary: 'POST /nursery/pickup/codes'
+      security:
+        -
+          bearer: {  }
+      parameters:
+        -
+          $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        201:
+          description: 'Succès : enveloppe JSON {data}'
+        400:
+          description: 'Requête invalide (en-tête X-Establishment-Id manquant, JSON illisible)'
+        403:
+          description: 'Accès refusé (permission, application fermée)'
+        404:
+          description: 'Ressource introuvable ou hors périmètre'
+        409:
+          description: 'Conflit (doublon, version du serveur)'
+        422:
+          description: 'Données invalides ou refus métier (RFC 9457)'
+        423:
+          description: 'Application suspendue : lecture et export seulement, écriture refusée'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                learner_id:
+                  type: string
+                pickup_id:
+                  type: string
+                valid_on:
+                  type: string
+                  format: date
+              required:
+                - learner_id
+                - pickup_id
+  /api/v1/nursery/register:
+    get:
+      summary: 'GET /nursery/register'
+      security:
+        -
+          bearer: {  }
+      parameters:
+        -
+          $ref: '#/components/parameters/EstablishmentId'
+        -
+          name: date
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        200:
+          description: 'Succès : enveloppe JSON {data}'
+        400:
+          description: 'Requête invalide (en-tête X-Establishment-Id manquant, JSON illisible)'
+        403:
+          description: 'Accès refusé (permission, application fermée)'
+        404:
+          description: 'Ressource introuvable ou hors périmètre'
+        422:
+          description: 'Données invalides ou refus métier (RFC 9457)'
+  '/api/v1/nursery/sections/{id}/pickup-package':
+    get:
+      summary: 'GET /nursery/sections/{id}/pickup-package'
+      security:
+        -
+          bearer: {  }
+      parameters:
+        -
+          $ref: '#/components/parameters/EstablishmentId'
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        -
+          name: date
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        200:
+          description: 'Succès : enveloppe JSON {data}'
+        400:
+          description: 'Requête invalide (en-tête X-Establishment-Id manquant, JSON illisible)'
+        403:
+          description: 'Accès refusé (permission, application fermée)'
+        404:
+          description: 'Ressource introuvable ou hors périmètre'
+        422:
+          description: 'Données invalides ou refus métier (RFC 9457)'
