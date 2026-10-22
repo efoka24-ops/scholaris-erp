@@ -49,7 +49,7 @@ paths:
         - $ref: '#/components/parameters/EstablishmentId'
       responses:
         '200':
-          description: "data = [{id (application:circuit), application, key, customised, steps[{key, enabled, recent_confirmation, source (default|platform|client|establishment), actor{key, permission, role}}]}] ; aucun motif, auteur ni historique"
+          description: "data = [{id (application:circuit), application, key, customised, steps[{key, enabled, recent_confirmation, source (default|platform|client|establishment), actor{key, permission, role}}]}] ; aucun motif, auteur ni historique ; pagination par curseur"
           content:
             application/json:
               schema:

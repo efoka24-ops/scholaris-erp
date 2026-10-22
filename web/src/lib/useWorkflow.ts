@@ -58,10 +58,10 @@ export const useWorkflowStore = defineStore('workflow', () => {
     const mine = key;
     inflight = (async () => {
       try {
-        const res = await http.get<{ data: EffectiveCircuit[] }>('/workflows/effective');
+        const all = await http.all<EffectiveCircuit>('/workflows/effective');
         if (owner !== mine) return;
         const next: Record<string, EffectiveCircuit> = {};
-        for (const c of res.data) next[c.id] = c;
+        for (const c of all) next[c.id] = c;
         circuits.value = next;
         state.value = 'ready';
       } catch {

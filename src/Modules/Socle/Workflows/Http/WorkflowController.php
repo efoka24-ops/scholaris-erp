@@ -85,7 +85,24 @@ final class WorkflowController
             throw HttpException::forbidden('Réservé au personnel d\'un établissement.');
         }
 
-        return $this->noStore($this->responder->json(['data' => $this->service->effective($principal->tenantId, $establishmentId)]));
+        $query = ListQuery::fromRequest($request);
+        $after = ListQuery::decodeCursor($query->cursor);
+        $page = [];
+        $more = false;
+        foreach ($this->service->effective($principal->tenantId, $establishmentId) as $circuit) {
+            if ($after !== null && strcmp($circuit['id'], $after) <= 0) {
+                continue;
+            }
+            if (count($page) === $query->perPage) {
+                $more = true;
+
+                break;
+            }
+            $page[] = $circuit;
+        }
+        $next = $more && $page !== [] ? ListQuery::encodeCursor($page[count($page) - 1]['id']) : null;
+
+        return $this->noStore($this->responder->json(['data' => $page, 'meta' => ['next_cursor' => $next, 'per_page' => $query->perPage]]));
     }
 
     /** GET .../{application}/{circuit} */
