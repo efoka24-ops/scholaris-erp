@@ -8,13 +8,15 @@ use Scholaris\Core\Http\HttpException;
 use Scholaris\Core\Numbering\SequenceService;
 use Scholaris\Core\Support\Ulid;
 use Scholaris\Modules\Socle\Platform\Contracts\ApplicationAccess;
+use Scholaris\Modules\Socle\Platform\Domain\Calendar;
+use Scholaris\Modules\Socle\Platform\Domain\Regularisation;
 use Scholaris\Modules\Socle\Platform\Domain\Subscription;
 use Scholaris\Modules\Socle\Platform\Infrastructure\PlatformDb;
 
 /**
  * Paiements enregistrés à la main par l'administrateur de plateforme (espèces, virement) : confirmés immédiatement,
- * avec reçu, prolongation de la période couverte et réactivation comme un paiement mobile money. Annulation motivée :
- * un paiement confirmé n'est annulable que s'il est le dernier de l'application (la couverture revient à l'état antérieur).
+ * avec reçu, prolongation de la période couverte et réactivation comme un paiement mobile money. Annulation motivée de tout
+ * paiement (manuel, passerelle ou partiel d'une déclaration) : voir cancel().
  */
 final class ManualPayments
 {
@@ -28,6 +30,7 @@ final class ManualPayments
         private readonly SequenceService $sequences,
         private readonly PlatformAudit $audit,
         private readonly PlatformClock $clock,
+        private readonly PlatformNotifier $notifier,
     ) {
     }
 
@@ -89,52 +92,187 @@ final class ManualPayments
         return $this->payments->present($payment);
     }
 
-    /** @return array<string, mixed> */
+    /**
+     * Annule un paiement (motif obligatoire). Un paiement confirmé n'est annulable que s'il est le dernier de l'application ;
+     * la situation est alors recalculée à partir des paiements qui restent : couverture, crédit des paiements partiels du cycle
+     * impayé (jamais négatif), état d'après les règles de suspension (re-blocage au niveau du client si le solde n'est plus
+     * couvert et le délai de grâce passé). La déclaration de paiement liée passe à `cancelled` avec le motif ; le client est
+     * prévenu ; le journal garde l'avant et l'après. Annuler un paiement déjà annulé ne change rien (idempotent).
+     *
+     * @return array<string, mixed>
+     */
     public function cancel(string $paymentId, string $reason, string $actorId, ?string $ip): array
     {
         $payment = $this->db->one('SELECT * FROM platform_payments WHERE id = ?', [$paymentId]) ?? throw HttpException::notFound('Paiement introuvable.');
         $tenantId = (string) $payment['tenant_id'];
         $status = (string) $payment['status'];
+        if ($status === self::CANCELLED) {
+            return $this->payments->present($payment);
+        }
         if (!in_array($status, [SubscriptionPayments::PENDING, SubscriptionPayments::SUCCEEDED], true)) {
             throw HttpException::conflict('Ce paiement est déjà échoué ou annulé.');
         }
         $now = $this->clock->iso();
-        $this->db->transaction(function () use ($payment, $tenantId, $status, $reason, $actorId, $now): void {
-            if ($status === SubscriptionPayments::SUCCEEDED) {
-                $this->revertCoverage($payment, $now);
-            }
-            $this->db->update('platform_payments', [
+        $outcome = $this->db->transaction(function () use ($payment, $paymentId, $tenantId, $status, $reason, $actorId, $now): ?array {
+            // Condition sur l'ancien statut : de deux annulations simultanées, une seule s'applique.
+            $changed = $this->db->update('platform_payments', [
                 'status' => self::CANCELLED, 'cancelled_at' => $now, 'cancelled_by' => $actorId, 'cancel_reason' => $reason, 'updated_at' => $now,
-            ], ['tenant_id' => $tenantId, 'id' => (string) $payment['id']]);
+            ], ['tenant_id' => $tenantId, 'id' => $paymentId, 'status' => $status]);
+            if ($changed === 0) {
+                return null;
+            }
+            $outcome = ['before' => null, 'after' => null, 'relocked' => null, 'balance_xaf' => null, 'declaration' => null];
+            if ($status === SubscriptionPayments::SUCCEEDED) {
+                $outcome = $this->revertCoverage($payment, $now) + $outcome;
+            }
+            $declaration = $this->db->one('SELECT id, state FROM platform_regularisation_requests WHERE tenant_id = ? AND payment_id = ?', [$tenantId, $paymentId]);
+            if ($declaration !== null && $declaration['state'] !== RegularisationRequests::CANCELLED) {
+                $this->db->update('platform_regularisation_requests', [
+                    'state' => RegularisationRequests::CANCELLED, 'open_key' => null, 'decision_reason' => 'Paiement annulé : ' . $reason, 'updated_at' => $now,
+                ], ['tenant_id' => $tenantId, 'id' => (string) $declaration['id']]);
+                $outcome['declaration'] = ['id' => (string) $declaration['id'], 'before' => (string) $declaration['state'], 'after' => RegularisationRequests::CANCELLED];
+            }
+
+            return $outcome;
         });
+        if (!is_array($outcome)) {
+            return $this->payments->present($this->payments->findOrFail($tenantId, $paymentId));
+        }
         $this->audit->record($tenantId, $actorId, 'platform.payment_cancelled', 'platform_payment', $paymentId, [
             'previous_status' => $status, 'amount_xaf' => (int) $payment['amount_xaf'], 'receipt_number' => $payment['receipt_number'], 'reason' => $reason,
+            'partial' => self::isPartial($payment), 'before' => $outcome['before'], 'after' => $outcome['after'], 'request_state' => $outcome['declaration'],
+            'relocked' => $outcome['relocked'],
         ], $ip);
+        if ($status === SubscriptionPayments::SUCCEEDED) {
+            $this->notifyCancelled($payment, $reason, $outcome['balance_xaf'], $outcome['relocked']);
+        }
 
         return $this->payments->present($this->payments->findOrFail($tenantId, $paymentId));
     }
 
-    /** @param array<string, mixed> $payment */
-    private function revertCoverage(array $payment, string $now): void
+    /**
+     * Paiement partiel d'une déclaration de régularisation (porté au crédit du solde, sans mois entiers couverts).
+     *
+     * @param array<string, mixed> $payment
+     */
+    public static function isPartial(array $payment): bool
+    {
+        return (int) $payment['months'] === 0 && str_starts_with((string) $payment['reference'], 'PRT-');
+    }
+
+    /**
+     * Recalcule la situation de l'application sans le paiement annulé (déjà marqué annulé dans la transaction).
+     *
+     * @param array<string, mixed> $payment
+     * @return array{before: array<string, mixed>, after: array<string, mixed>, relocked: ?string, balance_xaf: int}
+     */
+    private function revertCoverage(array $payment, string $now): array
     {
         $tenantId = (string) $payment['tenant_id'];
         $entitlement = $this->entitlements->rowOrFail($tenantId, (string) $payment['app_key']);
-        if ($entitlement['paid_until'] !== $payment['covered_until']) {
+        $applicationId = (string) $entitlement['id'];
+        if ($payment['covered_until'] !== null && $entitlement['paid_until'] !== $payment['covered_until']) {
             throw HttpException::conflict('Un paiement plus récent couvre cette application : annulez d\'abord le plus récent.');
         }
-        $previous = $this->db->scalar(
-            'SELECT MAX(covered_until) FROM platform_payments WHERE tenant_id = ? AND tenant_application_id = ? AND status = ? AND id <> ?',
-            [$tenantId, (string) $entitlement['id'], SubscriptionPayments::SUCCEEDED, (string) $payment['id']],
+        $later = $this->db->scalar(
+            'SELECT COUNT(*) FROM platform_payments WHERE tenant_id = ? AND tenant_application_id = ? AND status = ? AND (created_at > ? OR (created_at = ? AND id > ?))',
+            [$tenantId, $applicationId, SubscriptionPayments::SUCCEEDED, (string) $payment['created_at'], (string) $payment['created_at'], (string) $payment['id']],
         );
-        $paidUntil = is_string($previous) && $previous !== '' ? $previous : null;
-        $values = ['paid_until' => $paidUntil, 'updated_at' => $now];
-        if (in_array($entitlement['state'], [ApplicationAccess::TRIAL, ApplicationAccess::ACTIVE, ApplicationAccess::PAST_DUE], true)) {
-            $today = $this->clock->today();
-            $dueOn = Subscription::dueOn($paidUntil, (string) $entitlement['trial_ends_on']);
-            $values += strcmp($today, $dueOn) <= 0
-                ? ['state' => $paidUntil === null ? ApplicationAccess::TRIAL : ApplicationAccess::ACTIVE, 'past_due_since' => null]
-                : ['state' => ApplicationAccess::PAST_DUE, 'past_due_since' => $today];
+        if (is_numeric($later) && (int) $later > 0) {
+            throw HttpException::conflict('Un paiement plus récent existe pour cette application : annulez d\'abord le plus récent.');
         }
-        $this->db->update('tenant_applications', $values, ['tenant_id' => $tenantId, 'id' => (string) $entitlement['id']]);
+
+        // Paiements restants : les paiements ordinaires fixent la couverture du dernier cycle payé ; les paiements partiels faits
+        // depuis le dernier paiement ordinaire forment le crédit du cycle impayé (et, au prorata, sa prolongation).
+        $base = null;
+        $partials = [];
+        foreach ($this->db->all('SELECT * FROM platform_payments WHERE tenant_id = ? AND tenant_application_id = ? AND status = ? ORDER BY created_at, id', [$tenantId, $applicationId, SubscriptionPayments::SUCCEEDED]) as $row) {
+            if (self::isPartial($row)) {
+                $partials[] = $row;
+                continue;
+            }
+            $partials = [];
+            $base = self::later($base, $row['covered_until']);
+        }
+        $credit = 0;
+        $paidUntil = $base;
+        foreach ($partials as $row) {
+            $credit += (int) $row['amount_xaf'];
+            $paidUntil = self::later($paidUntil, $row['covered_until']);
+        }
+        $anchor = $credit > 0 ? Subscription::dueOn($base, (string) $entitlement['trial_ends_on']) : null;
+        $values = ['paid_until' => $paidUntil, 'regularisation_credit_xaf' => $credit > 0 ? $credit : null, 'regularisation_credit_anchor' => $anchor, 'updated_at' => $now];
+
+        $relocked = null;
+        $state = (string) $entitlement['state'];
+        if (in_array($state, [ApplicationAccess::TRIAL, ApplicationAccess::ACTIVE, ApplicationAccess::PAST_DUE], true)) {
+            $today = $this->clock->today();
+            // Avec un crédit partiel, la prolongation au prorata ne lève pas le blocage : l'échéance qui compte est celle du cycle impayé.
+            $dueOn = $anchor ?? Subscription::dueOn($paidUntil, (string) $entitlement['trial_ends_on']);
+            $promise = $entitlement['promise_until'] === null ? null : (string) $entitlement['promise_until'];
+            $next = Subscription::nextState(ApplicationAccess::ACTIVE, $today, $dueOn, $this->entitlements->graceDaysOf($entitlement), $promise);
+            if ($next === ApplicationAccess::SUSPENDED) {
+                // Mêmes valeurs que le blocage automatique de la commande quotidienne (SubscriptionBilling).
+                $relocked = $this->entitlements->lockLevelOf($entitlement);
+                $values += [
+                    'state' => ApplicationAccess::SUSPENDED, 'past_due_since' => Calendar::addDays($dueOn, 1), 'suspended_at' => $now, 'state_reason' => 'unpaid',
+                    'regularisation' => $relocked, 'regularisation_origin' => Regularisation::ORIGIN_AUTO, 'regularisation_since' => $today,
+                    'promise_until' => null, 'promise_reason' => null,
+                ];
+            } elseif ($next === ApplicationAccess::PAST_DUE) {
+                $values += ['state' => ApplicationAccess::PAST_DUE, 'past_due_since' => Calendar::addDays($dueOn, 1)];
+            } else {
+                $values += ['state' => $paidUntil === null ? ApplicationAccess::TRIAL : ApplicationAccess::ACTIVE, 'past_due_since' => null];
+            }
+        }
+        $this->db->update('tenant_applications', $values, ['tenant_id' => $tenantId, 'id' => $applicationId]);
+        $after = $this->entitlements->rowOrFail($tenantId, (string) $payment['app_key']);
+        $months = $after['billing_period_months'] === null ? 1 : (int) $after['billing_period_months'];
+
+        return [
+            'before' => self::snapshot($entitlement),
+            'after' => self::snapshot($after),
+            'relocked' => $relocked,
+            'balance_xaf' => max(0, $this->entitlements->totalOf($after) * $months - $credit),
+        ];
+    }
+
+    private static function later(?string $current, mixed $candidate): ?string
+    {
+        if (!is_string($candidate) || $candidate === '') {
+            return $current;
+        }
+
+        return $current === null || strcmp($candidate, $current) > 0 ? $candidate : $current;
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     * @return array<string, mixed>
+     */
+    private static function snapshot(array $row): array
+    {
+        return [
+            'state' => $row['state'], 'regularisation' => $row['regularisation'] ?? null, 'paid_until' => $row['paid_until'],
+            'credit_xaf' => (int) ($row['regularisation_credit_xaf'] ?? 0), 'credit_anchor' => $row['regularisation_credit_anchor'] ?? null,
+        ];
+    }
+
+    /** @param array<string, mixed> $payment */
+    private function notifyCancelled(array $payment, string $reason, ?int $balance, ?string $relocked): void
+    {
+        $tenantId = (string) $payment['tenant_id'];
+        $entitlement = $this->entitlements->present($this->entitlements->rowOrFail($tenantId, (string) $payment['app_key']));
+        $details = 'Motif : ' . rtrim($reason, '. ') . '.';
+        if ($balance !== null && $balance > 0) {
+            $details .= sprintf(' Solde restant : %d FCFA.', $balance);
+        }
+        if ($relocked !== null) {
+            $details .= $relocked === Regularisation::LOCKED ? ' Accès bloqué jusqu\'à la régularisation.' : ' Accès en lecture seule jusqu\'à la régularisation.';
+        }
+        $this->notifier->toClient($tenantId, 'platform_payment_cancelled', [
+            'label' => (string) $entitlement['label'], 'establishment_name' => $this->entitlements->tenantName($tenantId),
+            'amount' => (int) $payment['amount_xaf'], 'receipt_number' => (string) ($payment['receipt_number'] ?? ''), 'details' => $details,
+        ]);
     }
 }

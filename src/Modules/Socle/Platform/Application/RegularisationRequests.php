@@ -35,7 +35,9 @@ final class RegularisationRequests
     public const VERIFIED = 'verified';
     public const REJECTED = 'rejected';
     public const EXPIRED = 'expired';
-    public const STATES = [self::DECLARED, self::VERIFIED, self::REJECTED, self::EXPIRED];
+    /** Paiement confirmé puis annulé par le super admin (motif dans decision_reason) : voir ManualPayments::cancel(). */
+    public const CANCELLED = 'cancelled';
+    public const STATES = [self::DECLARED, self::VERIFIED, self::REJECTED, self::EXPIRED, self::CANCELLED];
     public const TOTAL = 'total';
     public const PARTIAL = 'partial';
     public const KINDS = [self::TOTAL, self::PARTIAL];

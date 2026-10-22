@@ -81,8 +81,11 @@ final class BackOfficeOperationsTest extends PlatformTestCase
         self::assertSame('cancelled', $json['data']['status']);
         self::assertNull($this->entitlement($tenant)['paid_until']);
         self::assertSame('trial', $this->entitlement($tenant)['state']);
-        [$twice] = $this->api('POST', '/platform/payments/' . $paymentId . '/cancel', self::ROOT, null, ['reason' => 'Encore']);
-        self::assertSame(409, $twice->getStatusCode());
+        // Double annulation idempotente : même réponse, rien n'est rejoué (F-001).
+        [$twice, $again] = $this->api('POST', '/platform/payments/' . $paymentId . '/cancel', self::ROOT, null, ['reason' => 'Encore']);
+        self::assertSame(200, $twice->getStatusCode());
+        self::assertSame('cancelled', $again['data']['status']);
+        self::assertSame('Chèque sans provision', $again['data']['cancel_reason']);
     }
 
     public function testAdministrateursDePlateformeJamaisSoiMemeNiLeDernier(): void
