@@ -37,7 +37,9 @@ final class CampaignController
         [$sql, $params] = $this->access->sqlFilter($perimeter);
         $rows = $this->store->select(CampaignService::TABLE, $principal->tenantId, $establishmentId, $query->filters, 'opens_on DESC, id', $query->perPage + 1, $sql, $params, $offset);
 
-        return $this->responder->json(AdmissionsResources::page($rows, $query->perPage, $offset, AdmissionsResources::campaign(...)));
+        $page = AdmissionsResources::page($rows, $query->perPage, $offset, AdmissionsResources::campaign(...));
+
+        return $this->responder->json($page);
     }
 
     public function create(ServerRequestInterface $request): ResponseInterface

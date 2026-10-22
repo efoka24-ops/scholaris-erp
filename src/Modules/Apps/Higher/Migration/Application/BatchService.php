@@ -306,7 +306,9 @@ final class BatchService
             }
         }
         if ($kinds !== []) {
-            throw HttpException::conflict('Annulation impossible : des lots appliqués dépendent de ces étudiants (' . implode(', ', array_map(ImportKind::label(...), array_keys($kinds))) . '). Annulez-les d\'abord.');
+            $labels = array_map(ImportKind::label(...), array_keys($kinds));
+
+            throw HttpException::conflict('Annulation impossible : des lots appliqués dépendent de ces étudiants (' . implode(', ', $labels) . '). Annulez-les d\'abord.');
         }
     }
 

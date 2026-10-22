@@ -86,7 +86,9 @@ final class AssiduityController
         $establishmentId = AttendanceAccess::establishmentId($request);
         $perimeter = $this->access->require($principal, $establishmentId, array_merge(AttendancePermissions::READ, AttendancePermissions::MANAGE, AttendancePermissions::EXAMS), AttendanceAccess::selectedSchool($request));
 
-        return $this->responder->json(Listing::of($request, $this->store, AssiduityService::LISTS, $principal->tenantId, $establishmentId, ['element_id', 'group_id', 'academic_year_id'], 'transmitted_at DESC, id', $this->access->sqlFilter($perimeter), AttendanceResources::of(...)));
+        $page = Listing::of($request, $this->store, AssiduityService::LISTS, $principal->tenantId, $establishmentId, ['element_id', 'group_id', 'academic_year_id'], 'transmitted_at DESC, id', $this->access->sqlFilter($perimeter), AttendanceResources::of(...));
+
+        return $this->responder->json($page);
     }
 
     public function transmit(ServerRequestInterface $request): ResponseInterface
@@ -124,7 +126,9 @@ final class AssiduityController
         $establishmentId = AttendanceAccess::establishmentId($request);
         $perimeter = $this->access->require($principal, $establishmentId, array_merge(AttendancePermissions::READ, AttendancePermissions::MANAGE, AttendancePermissions::EXAMS), AttendanceAccess::selectedSchool($request));
 
-        return $this->responder->json(Listing::of($request, $this->store, ReplacementExamService::TABLE, $principal->tenantId, $establishmentId, ['person_id', 'element_id', 'group_id', 'status'], 'created_at DESC, id', $this->access->sqlFilter($perimeter), AttendanceResources::of(...)));
+        $page = Listing::of($request, $this->store, ReplacementExamService::TABLE, $principal->tenantId, $establishmentId, ['person_id', 'element_id', 'group_id', 'status'], 'created_at DESC, id', $this->access->sqlFilter($perimeter), AttendanceResources::of(...));
+
+        return $this->responder->json($page);
     }
 
     public function requestReplacement(ServerRequestInterface $request): ResponseInterface

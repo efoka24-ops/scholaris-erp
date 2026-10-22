@@ -29,7 +29,9 @@ final class DisciplineController
         $establishmentId = AttendanceAccess::establishmentId($request);
         $perimeter = $this->access->require($principal, $establishmentId, array_merge(AttendancePermissions::DISCIPLINE_READ, AttendancePermissions::READ), AttendanceAccess::selectedSchool($request));
 
-        return $this->responder->json(Listing::of($request, $this->store, DisciplineService::SANCTIONS, $principal->tenantId, $establishmentId, ['person_id', 'sanction_kind', 'status', 'council_id'], 'decided_at DESC, id', $this->access->sqlFilter($perimeter), AttendanceResources::of(...)));
+        $page = Listing::of($request, $this->store, DisciplineService::SANCTIONS, $principal->tenantId, $establishmentId, ['person_id', 'sanction_kind', 'status', 'council_id'], 'decided_at DESC, id', $this->access->sqlFilter($perimeter), AttendanceResources::of(...));
+
+        return $this->responder->json($page);
     }
 
     public function sanction(ServerRequestInterface $request): ResponseInterface
@@ -57,7 +59,9 @@ final class DisciplineController
         $establishmentId = AttendanceAccess::establishmentId($request);
         $perimeter = $this->access->require($principal, $establishmentId, AttendancePermissions::DISCIPLINE_READ, AttendanceAccess::selectedSchool($request));
 
-        return $this->responder->json(Listing::of($request, $this->store, DisciplineService::COUNCILS, $principal->tenantId, $establishmentId, ['person_id', 'status', 'decision'], 'hearing_date DESC, id', $this->access->sqlFilter($perimeter), AttendanceResources::of(...)));
+        $page = Listing::of($request, $this->store, DisciplineService::COUNCILS, $principal->tenantId, $establishmentId, ['person_id', 'status', 'decision'], 'hearing_date DESC, id', $this->access->sqlFilter($perimeter), AttendanceResources::of(...));
+
+        return $this->responder->json($page);
     }
 
     public function council(ServerRequestInterface $request): ResponseInterface

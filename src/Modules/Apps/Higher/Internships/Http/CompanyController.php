@@ -31,7 +31,9 @@ final class CompanyController
         $establishmentId = InternshipAccess::establishmentId($request);
         $this->access->require($principal, $establishmentId, InternshipAccess::READ);
 
-        return $this->responder->json(Listing::of($request, $this->store, CompanyService::TABLE, $principal->tenantId, $establishmentId, self::FILTERS, 'name, id', ['1 = 1', []], InternshipResources::company(...)));
+        $page = Listing::of($request, $this->store, CompanyService::TABLE, $principal->tenantId, $establishmentId, self::FILTERS, 'name, id', ['1 = 1', []], InternshipResources::company(...));
+
+        return $this->responder->json($page);
     }
 
     public function create(ServerRequestInterface $request): ResponseInterface

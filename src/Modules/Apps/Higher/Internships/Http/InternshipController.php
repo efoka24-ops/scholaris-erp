@@ -35,7 +35,9 @@ final class InternshipController
         $establishmentId = InternshipAccess::establishmentId($request);
         $scope = $this->access->sqlFilter($this->access->require($principal, $establishmentId, InternshipAccess::READ, InternshipAccess::selectedSchool($request)));
 
-        return $this->responder->json(Listing::of($request, $this->store, ConventionService::TABLE, $principal->tenantId, $establishmentId, self::FILTERS, 'starts_on DESC, id', $scope, InternshipResources::internship(...)));
+        $page = Listing::of($request, $this->store, ConventionService::TABLE, $principal->tenantId, $establishmentId, self::FILTERS, 'starts_on DESC, id', $scope, InternshipResources::internship(...));
+
+        return $this->responder->json($page);
     }
 
     public function show(ServerRequestInterface $request): ResponseInterface
@@ -144,7 +146,9 @@ final class InternshipController
         $id = Listing::arg($request, 'id');
         $this->conventions->readable($principal, $establishmentId, $id);
 
-        return $this->responder->json(Listing::of($request, $this->store, FollowUpService::TABLE, $principal->tenantId, $establishmentId, ['kind'], 'occurred_on, created_at', ['internship_id = ?', [$id]], InternshipResources::followup(...)));
+        $page = Listing::of($request, $this->store, FollowUpService::TABLE, $principal->tenantId, $establishmentId, ['kind'], 'occurred_on, created_at', ['internship_id = ?', [$id]], InternshipResources::followup(...));
+
+        return $this->responder->json($page);
     }
 
     public function addFollowup(ServerRequestInterface $request): ResponseInterface

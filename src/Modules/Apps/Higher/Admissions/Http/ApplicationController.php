@@ -44,7 +44,9 @@ final class ApplicationController
             AdmissionsAccess::selectedSchool($request),
         );
 
-        return $this->responder->json(AdmissionsResources::page($rows, $query->perPage, $offset, AdmissionsResources::application(...)));
+        $page = AdmissionsResources::page($rows, $query->perPage, $offset, AdmissionsResources::application(...));
+
+        return $this->responder->json($page);
     }
 
     public function create(ServerRequestInterface $request): ResponseInterface

@@ -114,7 +114,11 @@ final class RegisterController extends Controller
 
     public function showTutelage(ServerRequestInterface $request): ResponseInterface
     {
-        return $this->json(Resources::tutelage($this->readable($request, 'hi_tutelages', self::id($request), Permissions::READ_REGISTERS, AuthorizationService::scope(...), 'Tutelle introuvable.')));
+        // Lecture d'abord dans une variable : un callable de première classe dans un appel imbriqué fait planter PHP 8.1 quand
+        // l'appel intérieur lève une exception (404 ici). Voir tests/Architecture/NoNestedFirstClassCallableTest.php.
+        $row = $this->readable($request, 'hi_tutelages', self::id($request), Permissions::READ_REGISTERS, AuthorizationService::scope(...), 'Tutelle introuvable.');
+
+        return $this->json(Resources::tutelage($row));
     }
 
     public function createTutelage(ServerRequestInterface $request): ResponseInterface
