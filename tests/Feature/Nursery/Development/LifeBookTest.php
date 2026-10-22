@@ -88,7 +88,7 @@ final class LifeBookTest extends DevelopmentTestCase
 
         $view = $this->parentView();
         self::assertSame([$landscape], array_column($view['media'], 'id'));
-        self::assertSame(1, $view['withheld_media']);
+        self::assertSame(0, $view['withheld_media'], 'La photo non étiquetée n’est pas publiée : elle n’est pas comptée.');
         self::assertSame(404, $this->code('GET', '/nursery/portal/lifebook/media/' . $untagged, null, $this->parent), 'Non étiquetée : jamais publiée.');
         self::assertSame(200, $this->code('GET', '/nursery/portal/lifebook/media/' . $landscape, null, $this->parent));
     }
@@ -151,6 +151,7 @@ final class LifeBookTest extends DevelopmentTestCase
         $entry = $this->entry();
         $media = $this->addPhoto((string) $entry['id'], [], true);
         $this->grantAll(self::TB, 'directrice-b', self::EB);
+        $this->grant(self::TB, 'directrice-b', self::EB, 'nursery.lifebook.write');
         self::assertSame(404, $this->code('GET', '/nursery/lifebook/media/' . $media, null, 'directrice-b', self::TB, self::EB));
         self::assertSame(404, $this->code('POST', '/nursery/lifebook/entries/' . $entry['id'] . '/publish', [], 'directrice-b', self::TB, self::EB));
         self::assertSame(404, $this->code('POST', '/nursery/lifebook/entries', ['section_id' => $this->sectionA, 'title' => 'Pirate'], 'directrice-b', self::TB, self::EB));

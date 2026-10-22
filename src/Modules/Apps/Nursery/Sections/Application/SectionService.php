@@ -161,6 +161,18 @@ final class SectionService
         ];
     }
 
+    /** @return list<array{0: string, 1: string}> couples (client, établissement) qui ont des sections (cron) */
+    public function establishments(): array
+    {
+        $rows = $this->store->pdo()->query('SELECT DISTINCT tenant_id, establishment_id FROM ' . self::TABLE . ' ORDER BY tenant_id, establishment_id');
+        $out = [];
+        foreach ($rows !== false ? $rows->fetchAll(\PDO::FETCH_ASSOC) : [] as $row) {
+            $out[] = [(string) $row['tenant_id'], (string) $row['establishment_id']];
+        }
+
+        return $out;
+    }
+
     /** Une section de cet établissement (registre), pour les services qui reçoivent un identifiant de section. */
     public function exists(string $tenantId, string $establishmentId, string $id): bool
     {

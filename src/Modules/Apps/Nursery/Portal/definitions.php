@@ -8,4 +8,5 @@ use Scholaris\Modules\Apps\Nursery\Portal\Http\PortalController;
 
 return [
     PortalController::class => autowire(),
+    \Scholaris\Modules\Apps\Nursery\Portal\Http\GrowthPortalController::class => autowire(),
 ];

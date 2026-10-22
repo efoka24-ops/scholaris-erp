@@ -46,7 +46,8 @@ final class FramesAndObservationsTest extends DevelopmentTestCase
         $withDomain = $this->ok('POST', '/nursery/frames/' . $copy['id'] . '/domains', ['code' => 'ECOLE', 'label_fr' => 'Domaine de l’école', 'label_en' => 'School domain']);
         $newDomain = end($withDomain['domains']);
         $this->ok('POST', '/nursery/frames/' . $copy['id'] . '/items', ['domain_id' => $newDomain['id'], 'code' => 'ECOLE-1', 'label_fr' => 'Item propre', 'label_en' => 'Own item']);
-        $this->ok('PATCH', '/nursery/frames/' . $copy['id'] . '/items/' . $domain['items'][0]['id'], ['active' => false, 'label_fr' => 'Libellé adapté']);
+        $copyDetail = $this->ok('GET', '/nursery/frames/' . $copy['id']);
+        $this->ok('PATCH', '/nursery/frames/' . $copy['id'] . '/items/' . array_values(array_filter($copyDetail['domains'], static fn (array $d): bool => $d['code'] === 'LANG'))[0]['items'][0]['id'], ['active' => false, 'label_fr' => 'Libellé adapté']);
         $this->ok('POST', '/nursery/frames/' . $copy['id'] . '/activate', []);
 
         self::assertSame('archived', $this->ok('GET', '/nursery/frames/' . $this->frameId)['status']);
@@ -110,6 +111,7 @@ final class FramesAndObservationsTest extends DevelopmentTestCase
         self::assertSame(404, $this->code('GET', '/nursery/observations?learner_id=' . $this->bao['child'], null, 'educatrice-a'));
         $this->ok('POST', '/nursery/observations', ['learner_id' => $this->ada['child']] + $body, 'educatrice-a');
         $this->grantAll(self::TB, 'directrice-b', self::EB);
+        $this->grant(self::TB, 'directrice-b', self::EB, 'nursery.dev.observe');
         self::assertSame(404, $this->code('GET', '/nursery/observations?learner_id=' . $this->ada['child'], null, 'directrice-b', self::TB, self::EB));
         self::assertSame(404, $this->code('POST', '/nursery/observations', ['learner_id' => $this->ada['child']] + $body, 'directrice-b', self::TB, self::EB));
     }

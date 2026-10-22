@@ -7,6 +7,8 @@ namespace Tests\Support\Nursery;
 use Scholaris\Modules\Socle\Attendance\Contracts\AttendanceRecorder;
 use Scholaris\Modules\Socle\Attendance\Contracts\AuthorizedPickupRegistry;
 use Scholaris\Modules\Socle\Attendance\Contracts\DailyPresence;
+use Scholaris\Modules\Socle\Billing\Contracts\DebtorDirectory;
+use Scholaris\Modules\Socle\Billing\Contracts\InvoiceIssuer;
 use Scholaris\Modules\Socle\Identity\Contracts\RoleDirectory;
 use Scholaris\Modules\Socle\Identity\Contracts\UserPersonLink;
 use Scholaris\Modules\Socle\People\Contracts\BirthInfo;
@@ -31,6 +33,7 @@ final class NurseryWorld
     public readonly WorldAttendance $attendance;
     public readonly WorldRoles $roles;
     public readonly WorldMedia $media;
+    public readonly WorldBilling $billing;
 
     public function __construct()
     {
@@ -40,6 +43,7 @@ final class NurseryWorld
         $this->attendance = new WorldAttendance();
         $this->roles = new WorldRoles();
         $this->media = new WorldMedia();
+        $this->billing = new WorldBilling();
     }
 
     /** @return array<string, object> */
@@ -60,6 +64,8 @@ final class NurseryWorld
             DailyPresence::class => $this->attendance,
             RoleDirectory::class => $this->roles,
             MediaStore::class => $this->media,
+            InvoiceIssuer::class => $this->billing,
+            DebtorDirectory::class => $this->billing,
         ];
     }
 
