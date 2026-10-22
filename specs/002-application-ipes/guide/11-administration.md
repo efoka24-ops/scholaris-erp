@@ -10,9 +10,11 @@ Ce chapitre s'adresse à l'**administrateur de l'institut** : le premier adminis
 | **Administration > Utilisateurs et rôles** | oui | oui |
 | **Administration > Paramètres** | oui | oui |
 | **IPES > Paramétrage académique** (chapitre 02) | selon ses rôles | oui |
-| **Mes applications** (abonnement, paiement) | oui | lecture seule si son rôle le permet |
+| **Administration > Circuits de validation** | oui | oui |
+| **Administration > Importer des personnes** | oui | oui |
+| **Mes applications** (abonnement, paiement), **Régularisation de paiement** | oui | lecture seule si son rôle le permet |
 
-Le menu **Administration** (`/administration`) s'ouvre sur une **Vue d'ensemble** avec les sections : **Établissements**, **Années et périodes**, **Structures**, **Utilisateurs et rôles**, **Paramètres**. Choisissez d'abord l'établissement (l'institut) dans la barre du haut.
+Le menu **Administration** (`/administration`) s'ouvre sur une **Vue d'ensemble** avec les sections : **Établissements**, **Années et périodes**, **Structures**, **Utilisateurs et rôles**, **Paramètres**, **Circuits de validation**, **Importer des personnes**. Choisissez d'abord l'établissement (l'institut) dans la barre du haut.
 
 ## 11.1 Première connexion de l'administrateur
 
@@ -129,11 +131,95 @@ Si vous cliquez deux fois : « Ce paiement avait déjà été demandé (référe
 
 ### Que se passe-t-il si l'abonnement n'est pas payé ?
 
-1. **En retard** : tout fonctionne encore pendant le délai de grâce ; des relances sont envoyées.
-2. **Suspendu** : bandeau « Abonnement suspendu : lecture et export seulement » sur tous les écrans IPES. Les modifications sont refusées (erreur 423) ; la consultation et l'export restent possibles. **Aucune donnée n'est perdue.**
-3. Dès le paiement confirmé, l'application redevient normale.
+1. **En retard** : tout fonctionne encore pendant le délai de grâce ; des relances sont envoyées. Un **bandeau** jaune apparaît en haut de tous les écrans : « Abonnement en retard : régularisez avant le 21/01/2027 pour éviter la suspension. (5 jour(s) restant(s)) ».
+2. **Mode régularisation** : à la fin du délai de grâce, l'institut passe en régularisation de paiement, à l'un des deux niveaux choisis par TRU GROUP :
+   - **Lecture seule** : bandeau « Abonnement suspendu : lecture et export seulement. » La consultation et l'export restent possibles ; toute modification est refusée (erreur 423). Si vous essayez d'enregistrer quelque chose, le bandeau affiche aussitôt le message du serveur, sans changer d'écran.
+   - **Bloqué** : seul l'écran **Régularisation de paiement** (`/regularisation`) reste ouvert, avec le paiement et **Se déconnecter**. Si l'institut est bloqué pendant que vous travaillez, SCHOLARIS vous y conduit tout de suite, sans attendre que vous changiez d'écran.
+3. **Aucune donnée n'est perdue**, à aucun niveau.
+4. Dès le paiement confirmé, l'application redevient normale (déblocage automatique) et le bandeau disparaît.
 
-## 11.8 Routines de l'administrateur
+**Qui peut payer ?** Seuls la **direction** et le **super administrateur** du client (droit de gérer les applications). Les autres personnes voient le bandeau avec « Prévenez la direction de votre établissement : seul le responsable peut régulariser. » et, sur l'écran de régularisation, le contact de TRU GROUP.
+
+### L'écran Régularisation de paiement
+
+**Où** : bouton **Régulariser** du bandeau, ou `/regularisation`. L'écran montre :
+- le **Montant à régler**, le **Total mensuel**, la **Période réglée** et la date de début de la régularisation ;
+- **Où payer** : les numéros Orange Money et MTN MoMo de TRU GROUP, avec le bénéficiaire (par exemple « Orange Money : payez au 6 99 00 00 02 (bénéficiaire : TRU GROUP SARL) ») ;
+- **Payer par Orange Money** ou **Payer par MTN MoMo** : la demande arrive sur votre téléphone, comme au paragraphe « Payer l'abonnement » ;
+- les **Derniers reçus** (**Voir le reçu**) et **Contacter TRU GROUP**.
+
+### J'ai déjà payé : déclarer mon paiement
+
+Si vous avez envoyé l'argent directement (transfert Orange Money ou MTN MoMo vers le numéro de TRU GROUP), déclarez-le pour que la plateforme le vérifie. **Déclarer ne débloque pas à lui seul** : seule la vérification débloque.
+
+1. Sur l'écran de régularisation, cliquez sur **Déclarer mon paiement**.
+2. **Type de paiement** :
+   - **Total : le solde dû** (le montant est rempli pour vous) ;
+   - **Partiel : un montant à saisir** : **Montant payé (FCFA)**, entre le minimum indiqué (1 000 FCFA par défaut) et le solde moins 1 FCFA.
+3. **Moyen de paiement** : Orange Money ou MTN MoMo. Le **Numéro de TRU GROUP à créditer** est rappelé.
+4. **Numéro payeur** : le numéro qui a envoyé l'argent, par exemple `6 99 00 00 01` (il est enregistré au format `+237…` et n'est jamais affiché en entier : `+2376*****001`).
+5. **Motif ou référence du paiement** : la référence reçue par SMS, par exemple `OM240301.AB12` (4 lettres ou chiffres au moins).
+6. **Valider ma déclaration**. Message : « Déclaration enregistrée. Nous vérifions votre paiement : l'accès sera rétabli dès sa confirmation. »
+
+Une seule déclaration peut être en cours par application (« Une déclaration est déjà en cours de vérification pour cette application. »). Si vous cliquez deux fois, la déclaration n'est pas dupliquée.
+
+**Suivi de vos déclarations** : chaque déclaration affiche son état : **Déclarée, en cours de vérification** (vérification attendue avant une date, 7 jours par défaut), **Confirmée** (« Confirmé automatiquement » ou « Confirmé par la plateforme »), **Rejetée** (avec le motif) ou **Expirée** (« Non confirmée à temps : déclarez à nouveau ou contactez-nous. »). Le bandeau indique aussi « Votre paiement déclaré est en cours de vérification. »
+
+### Vérification par TRU GROUP, déblocage et notification
+
+- **Vérification automatique** : quand l'opérateur mobile confirme un paiement dont la référence, le montant (à 100 FCFA près par défaut) et le numéro payeur correspondent à votre déclaration, elle est confirmée sans intervention.
+- **Vérification par TRU GROUP** : sinon, l'équipe TRU GROUP compare la déclaration à son relevé, puis la **confirme** (avec le montant réellement reçu) ou la **rejette** avec un motif. Une même référence ne peut valider qu'une seule déclaration.
+- **Paiement total confirmé** : l'accès est **rétabli tout de suite**, un reçu est émis et la direction reçoit un message (e-mail ou SMS) « paiement confirmé, accès rétabli ».
+- **Paiement partiel confirmé** : le montant est porté au crédit (« Déjà versé : 20 000 FCFA ») et le **Solde à régler** diminue ; un reçu est émis et un message indique le solde restant. L'institut reste en régularisation jusqu'au paiement du solde, sauf promesse de paiement.
+- **Paiement annulé** : si TRU GROUP annule un paiement déjà confirmé (par exemple un transfert jamais reçu), le montant est retiré du crédit, la déclaration correspondante est marquée annulée avec le motif, et l'institut revient en régularisation si le solde n'est plus couvert. La direction reçoit un message « paiement annulé » avec le motif et le solde restant.
+
+### Promesse de paiement
+
+Vous avez besoin de quelques jours ? Contactez TRU GROUP (**Contacter TRU GROUP** sur l'écran de régularisation). TRU GROUP peut accorder une **promesse de paiement** jusqu'à une date précise (90 jours au plus), par exemple avec un paiement partiel : l'accès est rétabli jusqu'à cette date. Si le solde n'est pas payé à la date promise, l'institut repasse en régularisation.
+
+## 11.8 Circuits de validation
+
+**Où** : **Administration > Circuits de validation** (`/administration/circuits`). **Qui** : le super administrateur, la direction et l'Administrateur fonctionnel (droit de gérer les circuits).
+
+« Chaque circuit est livré avec le fonctionnement habituel de l'application. Vous pouvez l'ajuster dans les limites de sécurité indiquées : qui valide, étapes facultatives, confirmation récente. Sans réglage, rien ne change. »
+
+Circuits de l'application IPES :
+
+| Circuit | Étapes (par défaut) |
+|---|---|
+| **Notes : saisie, validation, verrouillage et publication** | Soumission par l'enseignant affecté ; validation par le chef de département (facultative) ; verrouillage par le chef de département ; publication par le service de la scolarité |
+| **Correction d'une note verrouillée** | Demande motivée avec pièce par l'enseignant ; première validation par le chef de département ; seconde validation par le directeur d'école (facultative) |
+| **Bourses, remises et échéanciers négociés** | Demande par un comptable ; validation par un comptable (ou la direction générale) |
+| **Décision d'admission** | Décision motivée par le directeur d'école (ou la scolarité) |
+| **Annulation d'un paiement** | Demande motivée par la caisse ; validation par le comptable (ou la direction uniquement) |
+
+Chaque étape indique **Qui valide**, « Par défaut : … » et « Actuellement : … », et des badges (**Par défaut**, **Personnalisé**, **Facultative**, **Confirmation récente**, **Imposée**, **Étape désactivée**).
+
+**Ajuster un circuit**
+
+1. Cliquez sur **Ajuster** sur le circuit.
+2. Pour chaque étape modifiable : **Qui valide cette étape** (choix parmi les fonctions proposées), **Étape active** (seulement pour une étape facultative), **Exiger une confirmation récente**.
+3. **Motif du changement** (5 à 500 caractères, conservé dans l'historique), puis **Vérifier**.
+4. Relisez « Voici ce qui va changer… », puis **Enregistrer le circuit**. Une double authentification récente est demandée (**Confirmer mon identité**).
+
+**Revenir au défaut** rétablit le fonctionnement d'origine. **Historique** montre chaque version, sa date, son auteur et son motif.
+
+**Règles verrouillées** (cadenas) : elles valent quel que soit le réglage et ne se modifient pas, par exemple : « Séparation des tâches : qui a saisi une note de l'évaluation ne la verrouille pas. », « Les notes d'examen ne sont publiées qu'après la signature du procès-verbal du jury. », « Le demandeur ne valide jamais sa propre demande. », le verrouillage des notes et la clôture d'une année exigent toujours une confirmation récente. Une étape **Imposée** par votre organisation ou par la plateforme ne se modifie pas au niveau de l'établissement.
+
+## 11.9 Importer des personnes (fichier Excel)
+
+**Où** : **Administration > Importer des personnes** (`/administration/import`). **Qui** : super administrateur, direction, Administrateur fonctionnel. Choisissez d'abord l'institut dans la barre du haut.
+
+« Créez d'un coup les comptes du personnel et des autres acteurs de l'établissement à partir d'un fichier. Rien n'est créé avant votre validation. »
+
+1. **Fichier** : téléchargez le **Modèle Excel (.xlsx)** ou le **Modèle CSV**. Remplissez une ligne par personne : nom, prénoms, e-mail ou téléphone, langue (fr ou en), rôle, périmètre (établissement, unité ou structure), code du périmètre, date de début, date de fin (obligatoire pour Membre de jury, Université de tutelle et Auditeur, 90 jours au plus), note. **Supprimez les deux lignes d'exemple.** Déposez le fichier (.csv ou .xlsx, 2 Mo et 1000 lignes au plus) puis cliquez sur **Analyser le fichier**.
+2. **Vérification** : « 120 lignes : 112 valides, 5 en erreur, 3 doublons. » Filtrez **Valides**, **Erreurs**, **Doublons**. **Télécharger les erreurs (CSV)** donne les lignes à corriger ; corrigez-les et déposez un nouveau fichier. Les doublons (personne déjà connue) sont ignorés : aucun compte existant n'est modifié.
+3. **Identifiants** : **Mot de passe provisoire (recommandé)** ou **Code d'activation** (avec la case **Envoyer les codes** par SMS ou e-mail). Cliquez sur **Valider l'import**, puis confirmez « Créer 112 comptes maintenant ? ».
+4. **Bilan** : les mots de passe provisoires s'affichent **une seule fois** : copiez-les, téléchargez-les en CSV ou imprimez les fiches, puis remettez-les en main propre. Ils ne seront plus affichables (en cas de perte : **Nouveau mot de passe**, section 11.4).
+
+Vous ne pouvez importer que les rôles que vous pouvez déjà attribuer à la main (section 11.3), une personne par ligne avec un rôle ; les rôles supplémentaires s'ajoutent ensuite dans **Utilisateurs et rôles**.
+
+## 11.10 Routines de l'administrateur
 
 Chaque semaine :
 1. Regarder les **alertes d'expiration** des autorisations MINESUP et des conventions de tutelle (chapitre 02).

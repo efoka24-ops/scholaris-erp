@@ -20,7 +20,8 @@ L'application affiche parfois un code (le « statut »). Voici ce qu'il veut dir
 | 404 | « Cet élément est introuvable. » ou page **Page introuvable** | L'élément n'existe pas, a été supprimé, ou appartient à un autre institut (vous n'y avez jamais accès). | « Vérifiez l'adresse ou revenez à l'accueil. » Vérifiez l'établissement choisi. |
 | 409 | « Cet élément a été modifié entre-temps. » / « Conflit de version : rien n'a été enregistré » | Quelqu'un a modifié la même chose pendant que vous travailliez. Rien n'a été écrasé. | « Rechargez la page, comparez les deux versions, puis décidez. » Pour les notes, voir 13.6. |
 | 422 | « Certaines informations sont incorrectes. » | Un champ est vide ou mal rempli. Les règles métier (autorisation absente, frais non payés…) donnent aussi ce type de refus avec une explication. | « Corrigez les champs signalés, puis validez à nouveau. » |
-| 423 | « Abonnement suspendu : lecture et export seulement » | L'abonnement de l'institut n'est pas réglé : les modifications sont refusées. Rien n'est perdu. | Consultez et exportez normalement. Le responsable de l'abonnement paie dans **Mes applications** (chapitre 11). |
+| 423 | « Abonnement suspendu : lecture et export seulement » | L'abonnement de l'institut n'est pas réglé (régularisation en lecture seule) : les modifications sont refusées. Rien n'est perdu. | Consultez et exportez normalement. La direction ou le super administrateur paie ou déclare son paiement avec le bouton **Régulariser** du bandeau (chapitre 11, 11.7). |
+| 423 | « Régularisation de paiement requise » (écran **Régularisation de paiement**) | L'institut est bloqué pour impayé : seul l'écran de régularisation reste ouvert. Rien n'est perdu. | La direction paie ou déclare son paiement sur cet écran ; les autres personnes la préviennent ou contactent TRU GROUP (chapitre 11, 11.7). |
 | 423 | « Votre compte est verrouillé. » | Trop d'essais de connexion ou de code. | « Attendez la fin du délai ou réinitialisez votre mot de passe. » |
 | 429 | « Trop de tentatives. Patientez N secondes avant de réessayer. » | Vous (ou votre réseau) avez fait trop de demandes à la suite. | « Rien ne sera perdu : relancez simplement une fois le délai écoulé. » |
 | 500 | « Le service rencontre une difficulté. » | Problème du serveur. | Réessayez dans quelques minutes ; si cela continue, transmettez la référence affichée. |
@@ -89,6 +90,18 @@ Ne tentez rien vous-même : prévenez le comptable. L'annulation passe par une o
 
 **Le paiement mobile reste « En attente ».**
 Le payeur doit confirmer sur son téléphone (code secret mobile money). Attendez la confirmation : le reçu s'émet alors automatiquement. Ne refaites pas le paiement.
+
+**J'ai payé l'abonnement par transfert, mais l'accès n'est pas rétabli.**
+Un transfert direct doit être **déclaré** : écran **Régularisation de paiement**, **Déclarer mon paiement** (numéro payeur, montant total ou partiel, Orange Money ou MTN MoMo, référence reçue par SMS). L'accès revient dès que TRU GROUP a vérifié le paiement ; la déclaration seule ne débloque pas. Suivez l'état dans **Suivi de vos déclarations** (chapitre 11, 11.7).
+
+**Ma déclaration est « Rejetée » ou « Expirée ».**
+Lisez le motif affiché, vérifiez la référence et le numéro payeur, puis déclarez à nouveau ou contactez TRU GROUP.
+
+**J'ai payé une partie seulement.**
+Déclarez un paiement **Partiel**. Une fois confirmé, il est porté au crédit (« Déjà versé ») et le solde diminue ; l'accès revient au paiement du solde ou si TRU GROUP accorde une promesse de paiement.
+
+**Je n'arrive pas à enregistrer : le bandeau dit « Abonnement suspendu ».**
+L'institut est en lecture seule : consultez et exportez, rien n'est perdu. Prévenez la direction, seule habilitée à régulariser.
 
 **L'étudiant ne paie pas : que se passe-t-il ?**
 Des relances partent automatiquement. Les blocages choisis par l'institut (consultation des notes, documents, réinscription) peuvent s'appliquer, mais **jamais** aux cours ni aux compositions, ni au certificat de scolarité, au reçu, au relevé de compte et à l'attestation de paiement.

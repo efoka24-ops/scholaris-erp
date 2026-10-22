@@ -43,7 +43,7 @@ Dans le menu de gauche, l'application s'appelle **IPES**. Son accueil (adresse `
 | 08 | [Fin d'études](08-fin-d-etudes.md) | stages, soutenances, examens nationaux BTS/HND, tutelle, vacations |
 | 09 | [Pilotage](09-pilotage.md) | tableaux de bord, exports, reprise de données |
 | 10 | [Portails](10-portails.md) | espace étudiant, espace garant, membre de jury, espace enseignant |
-| 11 | [Administration](11-administration.md) | utilisateurs, rôles, périmètres, activation des comptes, paramètres, abonnement et paiement de l'application |
+| 11 | [Administration](11-administration.md) | utilisateurs, rôles, périmètres, activation des comptes, paramètres, abonnement, régularisation et déclaration de paiement, circuits de validation, import des personnes |
 | 12 | [Fiches par rôle](12-roles.md) | les 23 rôles R01 à R23 : ce que chacun peut et ne peut pas faire |
 | 13 | [FAQ et dépannage](13-faq-depannage.md) | questions fréquentes et messages d'erreur |
 | 14 | [Glossaire](14-glossaire.md) | LMD, UE, EC, crédits, MGP, HETD, PV, DOC-xx… |
