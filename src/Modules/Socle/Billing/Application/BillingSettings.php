@@ -6,6 +6,7 @@ namespace Scholaris\Modules\Socle\Billing\Application;
 
 use Scholaris\Modules\Socle\Billing\Domain\AllocationRule;
 use Scholaris\Modules\Socle\Billing\Domain\AllocationRules;
+use Scholaris\Modules\Socle\Billing\Domain\KindPriorityRule;
 use Scholaris\Modules\Socle\Organisation\Contracts\SettingsReader;
 
 /** Paramètres du module (clés billing.*), lus avec leur héritage plateforme, client, établissement. */
@@ -20,7 +21,34 @@ final class BillingSettings
 
     public function allocationRule(string $tenantId, string $establishmentId): AllocationRule
     {
-        return AllocationRules::byName((string) $this->settings->value($tenantId, $establishmentId, 'billing.allocation_rule', ''));
+        $name = (string) $this->settings->value($tenantId, $establishmentId, 'billing.allocation_rule', '');
+
+        return AllocationRules::byName($name, $name === KindPriorityRule::NAME ? $this->allocationKindOrder($tenantId, $establishmentId) : []);
+    }
+
+    /** @return list<string> ordre des natures de la règle « kind_priority » (`billing.allocation_kind_order`) ; vide = ordre par défaut */
+    public function allocationKindOrder(string $tenantId, string $establishmentId): array
+    {
+        $raw = $this->settings->value($tenantId, $establishmentId, 'billing.allocation_kind_order', null);
+        if (!is_array($raw)) {
+            return [];
+        }
+        $kinds = [];
+        foreach ($raw as $kind) {
+            if (is_string($kind) && ($kind === KindPriorityRule::WILDCARD || preg_match(FeeKinds::FORMAT, $kind) === 1)) {
+                $kinds[] = $kind;
+            }
+        }
+
+        return $kinds;
+    }
+
+    /** Ordre des enfants d'une famille (`billing.allocation_sibling_order`) : « enrolled_first » (défaut) ou « eldest_first ». */
+    public function allocationSiblingOrder(string $tenantId, string $establishmentId): string
+    {
+        $raw = $this->settings->value($tenantId, $establishmentId, 'billing.allocation_sibling_order', null);
+
+        return is_string($raw) && in_array($raw, KindPriorityRule::SIBLING_ORDERS, true) ? $raw : KindPriorityRule::SIBLING_ENROLLED_FIRST;
     }
 
     /** @return array{mode: string, value: int} remise de fratrie accordée à partir du deuxième enfant (0 = désactivée) */

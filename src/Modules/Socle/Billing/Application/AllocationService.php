@@ -7,9 +7,11 @@ namespace Scholaris\Modules\Socle\Billing\Application;
 use Scholaris\Core\Support\Ulid;
 use Scholaris\Modules\Socle\Billing\Domain\AllocationPlan;
 use Scholaris\Modules\Socle\Billing\Domain\AllocationPlanner;
+use Scholaris\Modules\Socle\Billing\Domain\KindPriorityRule;
 use Scholaris\Modules\Socle\Billing\Infrastructure\Db;
 use Scholaris\Modules\Socle\Billing\Infrastructure\InvoiceRepository;
 use Scholaris\Modules\Socle\Billing\Infrastructure\PaymentRepository;
+use Scholaris\Modules\Socle\People\Contracts\PersonDemographics;
 use Scholaris\Modules\Socle\People\Contracts\PersonDirectory;
 
 /**
@@ -28,6 +30,7 @@ final class AllocationService
         private readonly PersonDirectory $people,
         private readonly BillingSettings $settings,
         private readonly BillingClock $clock,
+        private readonly PersonDemographics $demographics,
     ) {
         $this->planner = new AllocationPlanner();
     }
@@ -106,12 +109,36 @@ final class AllocationService
         }
     }
 
+    /**
+     * Rangs des enfants, de l'aîné au plus jeune ; date de naissance inconnue en dernier.
+     *
+     * @param list<string> $learners
+     * @return array<string, int>
+     */
+    private function eldestFirst(string $tenantId, array $learners): array
+    {
+        $births = $this->demographics->ofPersons($tenantId, $learners);
+        $key = static fn (string $id): array => [isset($births[$id]['birth_date']) ? 0 : 1, (string) ($births[$id]['birth_date'] ?? ''), $id];
+        usort($learners, static fn (string $a, string $b): int => $key($a) <=> $key($b));
+        $ranks = [];
+        foreach ($learners as $rank => $learner) {
+            $ranks[$learner] = $rank;
+        }
+
+        return $ranks;
+    }
+
     /** @param array<string, mixed> $payment */
     private function distribute(string $tenantId, array $payment, int $amount): AllocationPlan
     {
         $rule = $this->settings->allocationRule($tenantId, (string) $payment['establishment_id']);
         $invoiceId = $payment['payer_reference_id'] === null && $payment['invoice_id'] !== null ? (string) $payment['invoice_id'] : null;
-        $dues = $this->invoices->dues($tenantId, $this->learnersOf($tenantId, $payment), $invoiceId);
+        $learners = $this->learnersOf($tenantId, $payment);
+        $dues = $this->invoices->dues($tenantId, $learners, $invoiceId);
+        if ($rule instanceof KindPriorityRule && count($learners) > 1
+            && $this->settings->allocationSiblingOrder($tenantId, (string) $payment['establishment_id']) === KindPriorityRule::SIBLING_ELDEST_FIRST) {
+            $rule = $rule->withSiblingRanks($this->eldestFirst($tenantId, $learners));
+        }
         $plan = $this->planner->plan($amount, $dues, $rule, $this->clock->today());
 
         $now = $this->clock->now();
