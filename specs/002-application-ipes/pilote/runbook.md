@@ -5,7 +5,7 @@ Public : l'équipe SCHOLARIS (opérations sur Camoo) et l'administrateur de chaq
 1. Institut Supérieur du Septentrion de Garoua (ISSEG) ;
 2. Institut de Formation Professionnelle les Étoiles du Septentrion (IFPES).
 
-Les deux font partie du Complexe de Formation les Étoiles du Septentrion (quartier Ouro Mal-Amadou, Garoua). Le site est en HTTPS, l'e-mail SMTP est actif, les SMS ne sont pas branchés (les messages SMS restent en file ou en échec : ne pas promettre de SMS aux étudiants).
+Les deux font partie du Complexe de Formation les Étoiles du Septentrion (quartier Ouro Mal-Amadou, Garoua). Le site est en HTTPS, l'e-mail SMTP est actif, les SMS partent par la passerelle TeeeOTP (quota de 500 par jour : prévenir TRU GROUP avant un envoi de masse ; vérifier la réception sur un numéro de test avant le pilote).
 
 Règles de sécurité de ce runbook : aucun mot de passe, clé ou identifiant de connexion n'est écrit dans le dépôt ni dans ce document ; les noms et téléphones de personnes réelles non plus. Les identifiants sont échangés hors dépôt et changés après la première connexion. Les opérations sur Camoo (migrate, création des clients, import réel) sont faites par l'équipe, jamais par un assistant automatique.
 
