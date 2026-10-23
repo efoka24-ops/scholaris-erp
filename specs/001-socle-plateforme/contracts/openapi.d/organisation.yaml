@@ -513,7 +513,7 @@ paths:
         '422':
           description: "Filtre ou tri hors liste blanche"
     post:
-      summary: "Crée une période ; une séquence peut déclarer parent_id vers un trimestre de la même année"
+      summary: "Crée une période (kind : year, trimester, sequence ; semester au supérieur seulement, qui refuse year) ; une seule période year par année scolaire ; une séquence déclare parent_id vers un trimestre de la même année et reste dans ses dates ; un trimestre peut déclarer parent_id vers la période year"
       security:
         - bearer: []
       parameters:

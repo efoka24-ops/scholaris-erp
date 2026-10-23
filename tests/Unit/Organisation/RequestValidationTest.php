@@ -105,6 +105,14 @@ final class RequestValidationTest extends TestCase
         self::assertFalse(PeriodKind::Trimester->allowedFor(EstablishmentType::Higher));
         self::assertFalse(PeriodKind::Semester->allowedFor(EstablishmentType::Secondary));
         self::assertTrue(PeriodKind::Sequence->allowedFor(EstablishmentType::Primary));
+        self::assertFalse(PeriodKind::Year->allowedFor(EstablishmentType::Higher));
+        self::assertTrue(PeriodKind::Year->allowedFor(EstablishmentType::Secondary));
+        self::assertSame(PeriodKind::Year, PeriodKind::Trimester->parentKind());
+        self::assertSame(PeriodKind::Trimester, PeriodKind::Sequence->parentKind());
+        self::assertNull(PeriodKind::Year->parentKind());
+        self::assertNull(PeriodKind::Semester->parentKind());
+        self::assertTrue(PeriodKind::Sequence->requiresParent());
+        self::assertFalse(PeriodKind::Trimester->requiresParent());
         self::assertTrue(StructureKind::Track->allowedFor(EstablishmentType::Higher));
         self::assertFalse(StructureKind::Track->allowedFor(EstablishmentType::Nursery));
         self::assertTrue(StructureKind::SchoolClass->allowedFor(EstablishmentType::Nursery));

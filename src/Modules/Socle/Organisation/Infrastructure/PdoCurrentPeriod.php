@@ -10,10 +10,13 @@ use Scholaris\Modules\Socle\Organisation\Contracts\PeriodInfo;
 /**
  * Période en cours lue dans les tables `periods` et `academic_years` du client et de l'établissement demandés.
  * Le trimestre ou le semestre l'emporte sur la séquence (qui n'est qu'une subdivision) ; à défaut, la séquence.
+ * La période « année » n'est jamais la période en cours de at() (simple conteneur) mais figure dans allAt().
  */
 final class PdoCurrentPeriod implements CurrentPeriod
 {
     private const PRIORITY = ['semester' => 0, 'trimester' => 0, 'sequence' => 1];
+
+    private const DEPTH = ['year' => 0, 'semester' => 1, 'trimester' => 1, 'sequence' => 2];
 
     public function __construct(private readonly Repositories $repositories)
     {
@@ -27,7 +30,7 @@ final class PdoCurrentPeriod implements CurrentPeriod
         }
         $covering = array_values(array_filter(
             $this->repositories->explicit('periods', $tenantId, $establishmentId)->all(),
-            static fn (array $row): bool => substr((string) $row['starts_on'], 0, 10) <= $day && $day <= substr((string) $row['ends_on'], 0, 10),
+            static fn (array $row): bool => $row['kind'] !== 'year' && substr((string) $row['starts_on'], 0, 10) <= $day && $day <= substr((string) $row['ends_on'], 0, 10),
         ));
         if ($covering === []) {
             return null;
@@ -63,7 +66,9 @@ final class PdoCurrentPeriod implements CurrentPeriod
             $byId[(string) $period['id']] = $period;
         }
         $covering = array_values(array_filter($periods, static fn (array $row): bool => substr((string) $row['starts_on'], 0, 10) <= $day && $day <= substr((string) $row['ends_on'], 0, 10)));
-        usort($covering, static fn (array $a, array $b): int => [(string) $a['starts_on'], (int) $a['ordinal']] <=> [(string) $b['starts_on'], (int) $b['ordinal']]);
+        // À début et rang égaux, l'englobante passe avant l'englobée (année, trimestre ou semestre, séquence).
+        usort($covering, static fn (array $a, array $b): int => [(string) $a['starts_on'], (int) $a['ordinal'], self::DEPTH[(string) $a['kind']] ?? 3]
+            <=> [(string) $b['starts_on'], (int) $b['ordinal'], self::DEPTH[(string) $b['kind']] ?? 3]);
         $result = [];
         foreach ($covering as $row) {
             $year = $years->find((string) $row['academic_year_id']);
