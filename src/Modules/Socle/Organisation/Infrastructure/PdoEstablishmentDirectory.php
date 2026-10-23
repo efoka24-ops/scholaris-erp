@@ -16,7 +16,8 @@ final class PdoEstablishmentDirectory implements EstablishmentDirectory
 
     public function forTenant(string $tenantId): array
     {
-        $rows = array_values(array_filter($this->repositories->explicit('establishments', $tenantId)->all(), self::open(...)));
+        $open = array_filter($this->repositories->explicit('establishments', $tenantId)->all(), self::open(...));
+        $rows = array_values($open);
         usort($rows, static fn (array $a, array $b): int => strcmp((string) $a['name'], (string) $b['name']));
 
         return array_map(EstablishmentMapper::toInfo(...), $rows);

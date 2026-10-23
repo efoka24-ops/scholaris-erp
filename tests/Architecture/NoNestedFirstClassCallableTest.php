@@ -23,23 +23,14 @@ use RecursiveIteratorIterator;
  *
  * Règle : un callable de première classe ne figure jamais dans le deuxième argument (ou un suivant) d'un appel lui-même imbriqué
  * dans les arguments d'un autre appel (ou d'un `new`). Il suffit de sortir l'appel intérieur dans une variable locale.
- *
- * KNOWN : occurrences du noyau et du socle, hors du périmètre de la correction F-001, à corriger par leurs responsables ; la
- * liste ne peut que diminuer (une entrée disparue doit être retirée).
+ * La règle vaut pour tout `src/`, sans exception.
  */
 final class NoNestedFirstClassCallableTest extends TestCase
 {
-    /** Fichiers (chemin sous src/) hors périmètre encore concernés ; l'appel intérieur n'y lève pas d'exception en pratique. */
-    private const KNOWN = [
-        'Modules/Socle/Audit/Application/BackupService.php',
-        'Modules/Socle/Organisation/Infrastructure/PdoEstablishmentDirectory.php',
-    ];
-
     public function testAucunCallableDePremiereClasseDansUnAppelImbrique(): void
     {
         $root = dirname(__DIR__, 2) . '/src';
         $offenders = [];
-        $known = [];
         $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root, RecursiveDirectoryIterator::SKIP_DOTS));
         foreach ($files as $file) {
             if (!$file instanceof \SplFileInfo || $file->getExtension() !== 'php') {
@@ -47,15 +38,10 @@ final class NoNestedFirstClassCallableTest extends TestCase
             }
             $relative = str_replace('\\', '/', substr($file->getPathname(), strlen($root) + 1));
             foreach (self::offendingLines((string) file_get_contents($file->getPathname())) as $line) {
-                if (in_array($relative, self::KNOWN, true)) {
-                    $known[$relative] = true;
-                } else {
-                    $offenders[] = $relative . ':' . $line;
-                }
+                $offenders[] = $relative . ':' . $line;
             }
         }
 
-        self::assertSame(self::KNOWN, array_values(array_intersect(self::KNOWN, array_keys($known))), 'Entrée de KNOWN corrigée : la retirer de la liste.');
         self::assertSame([], $offenders, "Callable de première classe dans un appel imbriqué (plantage de PHP 8.1 si l'appel intérieur lève une exception) ; sortir l'appel intérieur dans une variable :\n" . implode("\n", $offenders));
     }
 

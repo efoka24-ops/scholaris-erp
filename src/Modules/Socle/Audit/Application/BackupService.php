@@ -152,7 +152,8 @@ final class BackupService
                             throw new RuntimeException(sprintf('La table %s n\'a pas les colonnes %s : migrez la base avant de restaurer.', $current, implode(', ', $missing)));
                         }
                         $columnsOf[$current] = $columns;
-                        $prepared = $pdo->prepare(sprintf('INSERT INTO %s (%s) VALUES (%s)', self::quote($current), implode(', ', array_map(self::quote(...), $columns)), implode(', ', array_fill(0, count($columns), '?'))));
+                        $quotedColumns = implode(', ', array_map(self::quote(...), $columns));
+                        $prepared = $pdo->prepare(sprintf('INSERT INTO %s (%s) VALUES (%s)', self::quote($current), $quotedColumns, implode(', ', array_fill(0, count($columns), '?'))));
                         if ($prepared === false) {
                             throw new RuntimeException('Insertion impossible dans ' . $current);
                         }
