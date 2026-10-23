@@ -1091,7 +1091,7 @@ paths:
           description: "Motif manquant"
   /api/v1/platform/payments/{id}/cancel:
     post:
-      summary: "Annule un paiement ({ reason } obligatoire) ; un paiement confirmé n'est annulable que s'il est le dernier de l'application (couverture rétablie) (2FA récente)"
+      summary: "Annule un paiement ({ reason } obligatoire) ; un paiement confirmé (ordinaire ou partiel) n'est annulable que s'il est le dernier de l'application ; la situation est recalculée (couverture, crédit partiel, ancre, état et niveau de blocage, re-blocage si le solde n'est plus couvert), la déclaration liée passe à cancelled et le client reçoit le message platform_payment_cancelled ; une nouvelle annulation d'un paiement déjà annulé est idempotente (200, même réponse, rien n'est rejoué) (2FA récente)"
       security:
         - bearer: []
       parameters:
@@ -1101,13 +1101,13 @@ paths:
           schema: {type: string}
       responses:
         '200':
-          description: "Paiement annulé"
+          description: "Paiement annulé, ou déjà annulé (idempotent : même réponse)"
         '403':
           description: "Refusé ou 2FA récente requise"
         '404':
           description: "Introuvable"
         '409':
-          description: "Déjà annulé ou échoué, ou paiement plus récent"
+          description: "Paiement échoué, ou paiement plus récent pour la même application"
         '422':
           description: "Motif manquant"
   /api/v1/platform/payments/{id}/receipt:
@@ -1514,7 +1514,7 @@ paths:
       security:
         - bearer: []
       responses:
-        '200': {description: "Situation de paiement du client (jamais celle d'un autre client) ; contact et payment_numbers (numéros de paiement mobile money de la plateforme) viennent des réglages du back-office, avec repli sur l'environnement ; par application balance_xaf (solde) et credit_xaf ; partial_min_xaf ; requests : suivi des déclarations (declared = en vérification, verified, rejected, expired ; numéro payeur masqué)"}
+        '200': {description: "Situation de paiement du client (jamais celle d'un autre client) ; contact et payment_numbers (numéros de paiement mobile money de la plateforme) viennent des réglages du back-office, avec repli sur l'environnement ; par application balance_xaf (solde) et credit_xaf ; partial_min_xaf ; requests : suivi des déclarations (declared = en vérification, verified, rejected, expired, cancelled = paiement confirmé puis annulé par la plateforme, motif dans decision_reason ; numéro payeur masqué)"}
         '403': {description: "Compte de la plateforme"}
   /api/v1/me/regularisation/declarations:
     post:
@@ -1544,7 +1544,7 @@ paths:
         '422': {description: "Montant, numéro, type ou référence invalide"}
   /api/v1/platform/regularisation/declarations:
     get:
-      summary: "Paiements déclarés à vérifier (numéro payeur masqué) ; filtres filter[state] = declared, verified, rejected, expired, filter[channel], filter[tenant_id] ; meta.counts par état"
+      summary: "Paiements déclarés à vérifier (numéro payeur masqué) ; filtres filter[state] = declared, verified, rejected, expired, cancelled, filter[channel], filter[tenant_id] ; meta.counts par état"
       security:
         - bearer: []
       responses:
