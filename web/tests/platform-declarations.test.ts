@@ -258,6 +258,27 @@ describe('déclaration d’un paiement (écran de régularisation)', () => {
     wrapper.unmount();
   });
 
+  it('déclaration annulée (paiement confirmé puis annulé) : libellé « Annulée » et motif, en français et en anglais', async () => {
+    signIn(directorMe, [directorTile], 'directeur');
+    const cancelled = declaration({ id: 'D5', state: 'cancelled', decision_reason: 'Paiement annulé : relevé erroné', reference: 'REF-0005' });
+    mockApi({ 'GET /me/regularisation': { data: mine({ requests: [cancelled] }) } });
+    const { wrapper } = await mountView(RegularisationView, {}, '/regularisation');
+    const tag = wrapper.findAll('.tag').find((t) => t.text() === 'Annulée');
+    expect(tag?.classes()).toContain('tag--warning');
+    expect(wrapper.text()).toContain('Annulée par la plateforme. Paiement annulé : relevé erroné — le montant reste dû');
+    expect(wrapper.text()).not.toContain('rg.decl.');
+    expect(wrapper.text()).not.toContain('Non confirmée à temps');
+    wrapper.unmount();
+
+    clearRegularisation();
+    setLocale('en');
+    const second = await mountView(RegularisationView, {}, '/regularisation');
+    expect(second.wrapper.text()).toContain('Cancelled');
+    expect(second.wrapper.text()).toContain('Cancelled by the platform. Paiement annulé : relevé erroné — the amount is still due');
+    expect(second.wrapper.text()).not.toContain('rg.decl.');
+    second.wrapper.unmount();
+  });
+
   it('sans droit de paiement : ni bouton de déclaration, ni numéros de paiement', async () => {
     signIn(teacherMe, [tile()], 'enseignant');
     mockApi({ 'GET /me/regularisation': { data: mine({ can_pay: false }) } });
@@ -315,6 +336,18 @@ describe('paiements déclarés à vérifier (super admin)', () => {
     await wrapper.find('#rg-dadm-channel').setValue('mtn_momo');
     await flushPromises();
     expect(calls.filter((c) => c.path === '/platform/regularisation/declarations').at(-1)?.query['filter[channel]']).toBe('mtn_momo');
+    wrapper.unmount();
+  });
+
+  it('filtre « Annulée » : libellé, compteur (0 si le serveur ne le renvoie pas) et requête filtrée', async () => {
+    const { wrapper, calls } = await setup();
+    const radio = wrapper.findAll('input[name="rg-dadm-state"]').find((i) => (i.element as HTMLInputElement).value === 'cancelled');
+    expect(radio).toBeDefined();
+    expect(wrapper.text()).toContain('Annulée (0)');
+    expect(wrapper.text()).not.toContain('rg.decl.');
+    await radio!.setValue(true);
+    await flushPromises();
+    expect(calls.filter((c) => c.path === '/platform/regularisation/declarations').at(-1)?.query['filter[state]']).toBe('cancelled');
     wrapper.unmount();
   });
 

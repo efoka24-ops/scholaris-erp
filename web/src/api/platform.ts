@@ -187,9 +187,10 @@ export interface RegularisationOverview {
 }
 
 export type DeclarationKind = 'total' | 'partial';
-/** declared : déclarée, en vérification par la plateforme ; verified : confirmée ; rejected : rejetée ; expired : non confirmée à temps. */
-export type DeclarationState = 'declared' | 'verified' | 'rejected' | 'expired';
-export const DECLARATION_STATES: DeclarationState[] = ['declared', 'verified', 'rejected', 'expired'];
+/** declared : déclarée, en vérification par la plateforme ; verified : confirmée ; rejected : rejetée ; expired : non confirmée à temps ;
+ * cancelled : paiement confirmé puis annulé par la plateforme (motif dans decision_reason). */
+export type DeclarationState = 'declared' | 'verified' | 'rejected' | 'expired' | 'cancelled';
+export const DECLARATION_STATES: DeclarationState[] = ['declared', 'verified', 'rejected', 'expired', 'cancelled'];
 export type MobileMoneyChannel = 'orange_money' | 'mtn_momo';
 
 /** Demande de régularisation (paiement déclaré) ; le numéro payeur n'est jamais renvoyé en clair. */
@@ -507,8 +508,9 @@ const declarationQuery = (f: DeclarationFilters): Record<string, string> => ({
   ...(f.channel ? { 'filter[channel]': f.channel } : {}),
 });
 export async function fetchDeclarations(filters: DeclarationFilters = {}): Promise<{ items: RegularisationDeclaration[]; counts: Record<DeclarationState, number> }> {
-  const res = await http.get<{ data: RegularisationDeclaration[]; meta?: { counts?: Record<DeclarationState, number> } }>('/platform/regularisation/declarations', declarationQuery(filters), NO_ESTABLISHMENT);
-  return { items: res.data ?? [], counts: res.meta?.counts ?? { declared: 0, verified: 0, rejected: 0, expired: 0 } };
+  const res = await http.get<{ data: RegularisationDeclaration[]; meta?: { counts?: Partial<Record<DeclarationState, number>> } }>('/platform/regularisation/declarations', declarationQuery(filters), NO_ESTABLISHMENT);
+  // Un état absent des compteurs du serveur vaut 0.
+  return { items: res.data ?? [], counts: { declared: 0, verified: 0, rejected: 0, expired: 0, cancelled: 0, ...res.meta?.counts } };
 }
 export const fetchDeclarationsCsv = (filters: DeclarationFilters = {}): Promise<Blob> =>
   http.get<Blob>('/platform/regularisation/declarations/export', declarationQuery(filters), { expect: 'blob', ...NO_ESTABLISHMENT });

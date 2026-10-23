@@ -4,7 +4,8 @@ import { useI18n } from '@/i18n';
 import { formatDate, formatDateTime, formatXaf } from '@/lib/format';
 import { channelKey } from './display';
 
-// Suivi côté établissement des paiements déclarés : déclarée (en vérification), confirmée, rejetée (avec le motif), expirée.
+// Suivi côté établissement des paiements déclarés : déclarée (en vérification), confirmée, rejetée (avec le motif), expirée, annulée
+// (paiement confirmé puis annulé par la plateforme, avec le motif).
 defineProps<{ requests: RegularisationDeclaration[] }>();
 const { t, locale } = useI18n();
 
@@ -30,6 +31,7 @@ const tone = (state: string): string => (state === 'verified' ? 'tag--success' :
           <template v-if="r.verified_via"> {{ t(`rg.decl.via.${r.verified_via}`) }}</template>
         </p>
         <p v-else-if="r.state === 'rejected'" class="hint">{{ t('rg.decl.hint.rejected', { reason: r.decision_reason ?? '—' }) }}</p>
+        <p v-else-if="r.state === 'cancelled'" class="hint">{{ t('rg.decl.hint.cancelled', { reason: r.decision_reason ?? '—' }) }}</p>
         <p v-else class="hint">{{ t('rg.decl.hint.expired') }}</p>
       </li>
     </ul>

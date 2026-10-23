@@ -25,7 +25,7 @@ const { t, locale } = useI18n();
 const action = useSensitiveAction();
 
 const items = ref<RegularisationDeclaration[]>([]);
-const counts = ref<Record<DeclarationState, number>>({ declared: 0, verified: 0, rejected: 0, expired: 0 });
+const counts = ref<Record<DeclarationState, number>>({ declared: 0, verified: 0, rejected: 0, expired: 0, cancelled: 0 });
 const state = ref<DeclarationState | ''>('declared');
 const channel = ref<MobileMoneyChannel | ''>('');
 const loading = ref(true);
