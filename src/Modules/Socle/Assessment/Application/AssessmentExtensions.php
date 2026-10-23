@@ -21,6 +21,8 @@ final class AssessmentExtensions
     public const GUARDS = 'assessment.deliberation_guards.';
     public const COUNCIL_LINES = 'assessment.council_line_providers.';
     public const REPORT_CARD_VARIABLES = 'assessment.report_card_variables.';
+    /** Sources d'admissions de fin d'année tenues par une application (Contracts\AdmissionDirectory), réunies à celles des résultats. */
+    public const ADMISSION_SOURCES = 'assessment.admission_sources.';
 
     /**
      * @template T of object

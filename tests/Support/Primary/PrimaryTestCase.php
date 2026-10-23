@@ -105,7 +105,41 @@ abstract class PrimaryTestCase extends TestCase
         'primary.competency.read', 'primary.competency.enter', 'primary.competency.validate', 'primary.conduct.read', 'primary.conduct.enter',
         'primary.journal.read', 'primary.journal.write', 'primary.dashboard.read', 'documents.issue', 'documents.read',
         'attendance.take', 'attendance.read', 'assessment.correction.approve',
+        'primary.council.read', 'primary.council.preside', 'primary.report_card.read', 'primary.report_card.sign', 'primary.remediation.read',
+        'primary.remediation.write', 'primary.exam.read', 'primary.exam.manage', 'primary.tutelage.export', 'primary.promotion.decide',
+        'primary.services.read', 'primary.services.manage', 'primary.pickup.read', 'primary.pickup.handover',
     ];
+
+    /**
+     * Année scolaire et trimestres (avec deux séquences chacun) dans les tables du socle, pour que CurrentPeriod authentifie les
+     * périodes : identifiants « <année>-T<n> » et « <année>-T<n>S<m> ». Dates fictives de l'année 2026-2027.
+     *
+     * @return array<int, array{id: string, starts_on: string, ends_on: string, sequences: list<array{id: string, starts_on: string}>}>
+     */
+    protected function seedYear(string $tenantId, string $establishmentId, string $yearId = self::YEAR, string $label = '2026-2027'): array
+    {
+        $pdo = $this->service(ConnectionFactory::class)->pdo();
+        $now = '2026-09-01T08:00:00+01:00';
+        $pdo->prepare('INSERT INTO academic_years (id, tenant_id, establishment_id, label, starts_on, ends_on, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
+            ->execute([$yearId, $tenantId, $establishmentId, $label, '2026-09-07', '2027-06-11', 'open', $now, $now]);
+        $terms = [1 => ['2026-09-07', '2026-11-27'], 2 => ['2026-11-30', '2027-03-05'], 3 => ['2027-03-08', '2027-06-11']];
+        $insert = $pdo->prepare('INSERT INTO periods (id, tenant_id, establishment_id, academic_year_id, kind, ordinal, starts_on, ends_on, parent_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+        $out = [];
+        foreach ($terms as $n => [$from, $to]) {
+            $id = $yearId . '-T' . $n;
+            $insert->execute([$id, $tenantId, $establishmentId, $yearId, 'trimester', $n, $from, $to, null, $now, $now]);
+            $middle = (new \DateTimeImmutable($from))->modify('+5 weeks')->format('Y-m-d');
+            $sequences = [];
+            foreach ([1 => [$from, $middle], 2 => [(new \DateTimeImmutable($middle))->modify('+1 day')->format('Y-m-d'), $to]] as $m => [$sFrom, $sTo]) {
+                $sid = $id . 'S' . $m;
+                $insert->execute([$sid, $tenantId, $establishmentId, $yearId, 'sequence', ($n - 1) * 2 + $m, $sFrom, $sTo, $id, $now, $now]);
+                $sequences[] = ['id' => $sid, 'starts_on' => $sFrom];
+            }
+            $out[$n] = ['id' => $id, 'starts_on' => $from, 'ends_on' => $to, 'sequences' => $sequences];
+        }
+
+        return $out;
+    }
 
     /** Affecte une permission avec un périmètre et donne l'accès à l'établissement. */
     protected function assign(string $tenantId, string $userId, string $establishmentId, string $permission, string $scopeType, ?string $scopeId = null, string $role = 'test_role'): void

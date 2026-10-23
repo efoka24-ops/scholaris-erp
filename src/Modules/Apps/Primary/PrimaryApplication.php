@@ -12,7 +12,7 @@ final class PrimaryApplication
     public const KEY = 'primary';
     public const CONTAINER_KEY = 'platform.applications.primary';
     public const PERMISSION_PREFIX = 'primary.';
-    public const MODULES = ['Academic', 'Enrolment', 'Grades', 'Attendance', 'Billing', 'Documents', 'ClassLife', 'Dashboards', 'Portals', 'Notifications'];
+    public const MODULES = ['Academic', 'Enrolment', 'Grades', 'Attendance', 'Billing', 'Documents', 'ClassLife', 'Dashboards', 'Portals', 'Notifications', 'Councils', 'ReportCards', 'Remediation', 'Exams', 'Tutelage', 'Services', 'Pickup', 'Settings'];
 
     private function __construct()
     {

@@ -47,8 +47,15 @@ return [
     RecentSecondFactor::class => autowire(IdentityRecentSecondFactor::class),
     AttendanceSummaryProvider::class => autowire(NoAttendanceSummary::class),
 
-    // Passage en classe supérieure : admissions de l'année lues par People.
-    AdmissionDirectory::class => autowire(PdoAdmissionDirectory::class),
+    // Passage en classe supérieure : admissions de l'année lues par People. Les applications qui arrêtent leurs décisions de fin
+    // d'année ailleurs (primaire privé) ajoutent leurs sources sous `assessment.admission_sources.*` (réunion, rétrocompatible).
+    PdoAdmissionDirectory::class => autowire(),
+    AdmissionDirectory::class => factory(static fn (ContainerInterface $c): AdmissionDirectory => new \Scholaris\Modules\Socle\Assessment\Infrastructure\CompositeAdmissionDirectory(
+        $c->get(PdoAdmissionDirectory::class),
+        AssessmentExtensions::collect($c, AssessmentExtensions::ADMISSION_SOURCES, AdmissionDirectory::class),
+    )),
+    // Résultats chiffrés d'une classe pour les applications qui tiennent leur propre conseil (primaire privé).
+    \Scholaris\Modules\Socle\Assessment\Contracts\ClassResults::class => autowire(\Scholaris\Modules\Socle\Assessment\Infrastructure\EngineClassResults::class),
 
     // Clôture d'année (contrats sortants de l'Organisation) : notes non verrouillées, délibérations ouvertes.
     'organisation.closure.checks.assessment' => [UnlockedGradesCheck::class, OpenDeliberationsCheck::class],

@@ -24,6 +24,20 @@ final class PrimaryRolesMigrationTest extends TestCase
         self::assertSame(array_keys(RoleMatrix::EXTRA), array_keys($granted));
     }
 
+    public function testMigrationP002EtMatriceConcordent(): void
+    {
+        $sql = (string) file_get_contents(dirname(__DIR__, 4) . '/database/migrations/202610231411_primary_permissions_p002.sql');
+        preg_match_all("/VALUES \('([a-z_]+)', '([a-z_.]+)'\)/", $sql, $matches, PREG_SET_ORDER);
+        $granted = [];
+        foreach ($matches as $m) {
+            $granted[$m[1]][] = $m[2];
+        }
+        foreach (RoleMatrix::EXTRA_P002 as $role => $permissions) {
+            self::assertEqualsCanonicalizing($permissions, $granted[$role] ?? [], $role);
+        }
+        self::assertSame(array_keys(RoleMatrix::EXTRA_P002), array_keys($granted));
+    }
+
     public function testToutePermissionDeLaMatriceEstDansUneMigration(): void
     {
         $all = '';

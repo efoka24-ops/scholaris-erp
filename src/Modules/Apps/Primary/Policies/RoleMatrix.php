@@ -31,6 +31,21 @@ final class RoleMatrix
         'enseignant' => ['primary.referential.read', 'primary.learner.read', 'primary.competency.enter', 'primary.competency.read', 'primary.conduct.enter', 'primary.conduct.read', 'primary.journal.write', 'primary.journal.read'],
     ];
 
+    /**
+     * Permissions ajoutées par la migration 202610231411 (P-002 : conseil, bulletins, remédiation, examen, tutelle, services, sortie).
+     *
+     * @var array<string, list<string>>
+     */
+    public const EXTRA_P002 = [
+        'primary_directeur' => ['primary.council.read', 'primary.report_card.read', 'primary.remediation.read', 'primary.remediation.write', 'primary.exam.read', 'primary.exam.manage', 'primary.tutelage.export', 'primary.services.read', 'primary.pickup.read', 'primary.pickup.handover'],
+        'primary_adjoint' => ['primary.council.read', 'primary.report_card.read', 'primary.remediation.read', 'primary.remediation.write', 'primary.exam.read'],
+        'primary_promoteur' => ['primary.council.read', 'primary.report_card.read', 'primary.remediation.read', 'primary.exam.read', 'primary.tutelage.export', 'primary.services.read'],
+        'primary_secretaire' => ['primary.report_card.read', 'primary.exam.read', 'primary.tutelage.export', 'primary.services.read'],
+        'primary_surveillant' => ['primary.pickup.read'],
+        'enseignant' => ['primary.council.read', 'primary.report_card.read', 'primary.remediation.read', 'primary.remediation.write'],
+        'comptable' => ['primary.services.read', 'primary.services.manage'],
+    ];
+
     /** @var array<string, array<string, array{0: string, 1: string}>> */
     public const MATRIX = [
         'parametrage' => ['P02' => ['V', 'primary.settings.manage'], 'P03' => ['E', 'primary.referential.manage']],
