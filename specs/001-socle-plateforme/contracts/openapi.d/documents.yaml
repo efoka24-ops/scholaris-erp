@@ -2,7 +2,7 @@
 paths:
   /api/v1/public/verify/{token}:
     get:
-      summary: "Vérification publique d'un document (titulaire masqué, aucune note) ; journalise la consultation ; champ state (valid, cancelled, replaced) si documents.verification.detailed_status est actif"
+      summary: "Vérification publique d'un document (titulaire masqué, aucune note) ; journalise la consultation ; champ state (valid, cancelled, replaced) si documents.verification.detailed_status est actif ; rectifies_number (numéro d'origine) pour un rectificatif émis sous un nouveau numéro (SS12)"
       security: []
       parameters:
         - name: token
@@ -15,6 +15,31 @@ paths:
           description: "Document valide ou révoqué (motif et remplacement)"
         '404':
           description: "Introuvable : ce document n'a pas été émis par SCHOLARIS"
+        '429':
+          description: "Limite de débit"
+  /api/v1/public/documents/{token}:
+    get:
+      summary: "Téléchargement public du PDF d'un document par lien à durée limitée (SS14) : jeton créé par POST /documents/{id}/download-link, durée documents.download_link_ttl_hours (défaut 24), utilisations documents.download_link_max_uses (défaut 5) ; chaque tentative est journalisée (IP hachée) ; aucune donnée sans jeton valide ; liste blanche du blocage de régularisation (/public/**)"
+      security: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: '^[a-f0-9]{48}$'
+      responses:
+        '200':
+          description: "PDF du document (Cache-Control no-store)"
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: "Lien inconnu"
+        '410':
+          description: "Lien expiré, déjà utilisé le nombre de fois permis, ou document remplacé ou annulé (type errors/link-expired, sans donnée)"
         '429':
           description: "Limite de débit"
   /api/v1/document-types:
@@ -360,6 +385,48 @@ paths:
           description: "Déjà révoqué"
         '422':
           description: "Motif manquant ou remplacement invalide"
+  /api/v1/documents/{id}/rectify:
+    post:
+      summary: "Rectificatif (SS12, RG-DOC-6) : motif obligatoire (reason), nouvelles valeurs facultatives (data, sinon valeurs d'origine) ; droit dédié documents.rectify ; l'ancien document est révoqué et passe à l'état replaced à la vérification ; même numéro (révision + 1) par défaut, nouveau numéro avec mention du numéro d'origine si documents.rectify_numbering = new_number ; réponse : nouveau document et rectifies {id, number}"
+      security:
+        - bearer: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '201':
+          description: "Rectificatif émis"
+        '403':
+          description: "Accès refusé (documents.rectify requis)"
+        '404':
+          description: "Introuvable"
+        '409':
+          description: "Document déjà rectifié ou révoqué"
+        '422':
+          description: "Motif manquant, données invalides ou garde d'émission"
+  /api/v1/documents/{id}/download-link:
+    post:
+      summary: "Crée un lien de téléchargement à durée limitée et à usage borné (SS14) : url, token, expires_at, max_uses ; seule l'empreinte du jeton est conservée ; création tracée dans l'audit"
+      security:
+        - bearer: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '201':
+          description: "Lien créé"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable"
+        '409':
+          description: "Document révoqué : aucun lien"
   /api/v1/document-batches:
     get:
       summary: "Lots de génération"

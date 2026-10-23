@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Scholaris\Core\Http\RouteRegistry;
 use Scholaris\Modules\Socle\Documents\Http\Controllers\BatchController;
 use Scholaris\Modules\Socle\Documents\Http\Controllers\DocumentController;
+use Scholaris\Modules\Socle\Documents\Http\Controllers\DownloadLinkController;
 use Scholaris\Modules\Socle\Documents\Http\Controllers\RequestController;
 use Scholaris\Modules\Socle\Documents\Http\Controllers\SealController;
 use Scholaris\Modules\Socle\Documents\Http\Controllers\TemplateController;
@@ -14,6 +15,8 @@ use Scholaris\Modules\Socle\Documents\Http\Controllers\VerifyController;
 /** Routes du service S06 Documents. Toutes exigent un établissement actif, sauf la vérification publique. */
 return static function (RouteRegistry $routes): void {
     $routes->add('GET', '/public/verify/{token}', [VerifyController::class, 'show'], ['public' => true]);
+    // SS14 : téléchargement public par lien à durée limitée et à usage borné (aucune donnée sans jeton valide).
+    $routes->add('GET', '/public/documents/{token}', [DownloadLinkController::class, 'show'], ['public' => true]);
 
     $routes->add('GET', '/document-types', [TypeController::class, 'index']);
     $routes->add('POST', '/document-types', [TypeController::class, 'store']);
@@ -39,6 +42,8 @@ return static function (RouteRegistry $routes): void {
     $routes->add('GET', '/documents/{id}/preview', [DocumentController::class, 'preview']);
     $routes->add('POST', '/documents/{id}/duplicate', [DocumentController::class, 'duplicate']);
     $routes->add('POST', '/documents/{id}/revoke', [DocumentController::class, 'revoke']);
+    $routes->add('POST', '/documents/{id}/rectify', [DocumentController::class, 'rectify']);
+    $routes->add('POST', '/documents/{id}/download-link', [DownloadLinkController::class, 'store']);
 
     $routes->add('GET', '/document-batches', [BatchController::class, 'index']);
     $routes->add('GET', '/document-batches/export', [BatchController::class, 'export']);

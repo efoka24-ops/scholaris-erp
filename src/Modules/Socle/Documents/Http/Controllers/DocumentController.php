@@ -15,7 +15,7 @@ use Scholaris\Modules\Socle\Documents\Http\Requests\Validator;
 use Scholaris\Modules\Socle\Documents\Http\Resources\Resources;
 use Scholaris\Modules\Socle\Documents\Infrastructure\DocumentRepository;
 
-/** Registre et émission : liste filtrée, export CSV, émission, détail, aperçu PDF, duplicata, révocation. */
+/** Registre et émission : liste filtrée, export CSV, émission, détail, aperçu PDF, duplicata, révocation, rectificatif. */
 final class DocumentController extends BaseController
 {
     private const FILTERS = ['view', 'status', 'type', 'subject_person_id', 'issued_via', 'number'];
@@ -120,6 +120,25 @@ final class DocumentController extends BaseController
         $this->documents->revoke($this->tenant(), (string) $document['id'], (string) $reason, $principal->userId, $replacedBy);
 
         return $this->responder->json(['data' => Resources::document($this->find($request), $this->clock->verificationBase())]);
+    }
+
+    /**
+     * SS12 : rectificatif (motif obligatoire, droit documents.rectify) ; l'ancien document passe à l'état « remplacé ».
+     * Nouveau numéro et mention du numéro d'origine si `documents.rectify_numbering` = « new_number », sinon même numéro (PP15).
+     */
+    public function rectify(ServerRequestInterface $request): ResponseInterface
+    {
+        $principal = $this->authorize($request, DocumentPolicy::RECTIFY);
+        $v = new Validator(Validator::body($request), ['reason', 'data']);
+        $reason = $v->string('reason', 500, true);
+        $data = $v->values('data');
+        $v->done();
+
+        $document = $this->find($request);
+        $issued = $this->documents->reissue($this->tenant(), $this->establishment(), (string) $document['id'], $data, (string) $reason, $principal->userId);
+        $row = $this->repository->find($this->tenant(), $issued->id, $this->establishment()) ?? [];
+
+        return $this->responder->json(['data' => Resources::document($row, $this->clock->verificationBase()) + ['rectifies' => ['id' => (string) $document['id'], 'number' => (string) $document['number']]]], 201);
     }
 
     /** @return array<string, mixed> */

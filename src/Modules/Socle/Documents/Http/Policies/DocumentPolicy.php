@@ -14,6 +14,8 @@ final class DocumentPolicy
     public const READ = 'documents.read';
     public const ISSUE = 'documents.issue';
     public const REVOKE = 'documents.revoke';
+    /** Rectificatif d'un document (SS12, décision du chef d'établissement). */
+    public const RECTIFY = 'documents.rectify';
     public const TEMPLATES = 'documents.templates.manage';
     public const REQUEST = 'documents.request';
 

@@ -28,6 +28,9 @@ final class PrivacyExportSource extends TableExportSource
             'document_jobs' => self::table('id tenant_id establishment_id batch_id status attempts locked_at last_error created_at updated_at finished_at'),
             'document_seals' => self::table('tenant_id establishment_id signer_name signer_title signature_image stamp_image updated_at', ['order' => ['establishment_id']]),
             'verification_log' => self::table('id tenant_id token outcome ip_hash consulted_at'),
+            // Liens de téléchargement (SS14) : l'empreinte du jeton n'est pas exportée.
+            'document_download_links' => self::table('id tenant_id establishment_id document_id expires_at max_uses use_count created_by created_at last_used_at'),
+            'document_download_log' => self::table('id tenant_id link_id outcome ip_hash accessed_at'),
         ];
     }
 }

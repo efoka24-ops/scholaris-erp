@@ -25,6 +25,7 @@ final class VerificationService
     public const STATE_REPLACED = 'replaced';
     public const NOT_FOUND = 'Ce document n\'a pas été émis par SCHOLARIS.';
     public const RECTIFIED_REASON = 'Remplacé par un rectificatif sous le même numéro.';
+    public const RECTIFIED_RENUMBERED_REASON = 'Remplacé par un rectificatif sous un nouveau numéro.';
 
     public function __construct(
         private readonly DocumentRepository $documents,
@@ -73,8 +74,17 @@ final class VerificationService
             $replacement = $document['replaced_by'] !== null ? $this->documents->find($tenantId, (string) $document['replaced_by']) : null;
             // RG-DOC-2 : le motif d'un rectificatif (PP15) peut citer une mention ; la page publique n'en donne que la nature.
             $rectified = $replacement !== null && ($replacement['reissue_of'] ?? null) === $document['id'];
-            $out['revoke_reason'] = $rectified ? self::RECTIFIED_REASON : (string) $document['revoke_reason'];
+            $renumbered = $rectified && (string) $replacement['number'] !== (string) $document['number'];
+            $out['revoke_reason'] = $rectified ? ($renumbered ? self::RECTIFIED_RENUMBERED_REASON : self::RECTIFIED_REASON) : (string) $document['revoke_reason'];
             $out['replaced_by_number'] = $replacement !== null ? (string) $replacement['number'] : null;
+        }
+
+        if (($document['reissue_of'] ?? null) !== null) {
+            // Rectificatif sous un nouveau numéro (SS12, RG-DOC-6) : la page publique cite le numéro d'origine.
+            $original = $this->documents->find($tenantId, (string) $document['reissue_of']);
+            if ($original !== null && (string) $original['number'] !== (string) $document['number']) {
+                $out['rectifies_number'] = (string) $original['number'];
+            }
         }
 
         if ($this->detailedStatus($tenantId, (string) $document['establishment_id'])) {

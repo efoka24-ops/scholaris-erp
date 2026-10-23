@@ -33,6 +33,12 @@ final class DocumentClock
         return (int) $this->moment()->format('Y');
     }
 
+    /** Préfixe des liens de téléchargement à durée limitée (SS14). */
+    public function downloadBase(): string
+    {
+        return rtrim((string) $this->config->get('app.url', ''), '/') . (string) $this->config->get('app.api_prefix', '/api/v1') . '/public/documents/';
+    }
+
     public function verificationBase(): string
     {
         return rtrim((string) $this->config->get('app.url', ''), '/') . (string) $this->config->get('app.api_prefix', '/api/v1') . '/public/verify/';

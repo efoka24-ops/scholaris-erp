@@ -43,6 +43,8 @@ final class DocumentService implements ExtendedDocumentIssuer, DocumentReissuer
 {
     public const LOCALES = ['fr', 'en'];
     public const BLOCKED_REASON = 'Pension impayée : blocage financier paramétré pour les documents.';
+    public const RECTIFY_SAME_NUMBER = 'same_number';
+    public const RECTIFY_NEW_NUMBER = 'new_number';
 
     public function __construct(
         private readonly SequenceService $sequences,
@@ -91,7 +93,8 @@ final class DocumentService implements ExtendedDocumentIssuer, DocumentReissuer
     /**
      * @param array<string, scalar|null> $data
      * @param (callable(string): void)|null $within exécuté dans la transaction d'émission (reçoit l'identifiant du document)
-     * @param array{number: string, revision: int, of: string, reason: string}|null $reissue réédition : numéro conservé, pas de nouveau numéro de séquence
+     * @param array{number: string, revision: int, of: string, reason: string, new_number?: bool}|null $reissue réédition : numéro conservé (pas de
+     *        nouveau numéro de séquence), ou nouveau numéro portant la mention du numéro d'origine si `new_number` (SS12)
      */
     public function issueVia(
         string $tenantId,
@@ -152,6 +155,7 @@ final class DocumentService implements ExtendedDocumentIssuer, DocumentReissuer
         $kind = $school === null ? 'doc:' . $type : self::schoolKind($type, $school);
         $extra = array_filter(['org_unit_id' => $options->orgUnitId, 'signer_role' => $signer !== null ? $signerRole : null], static fn (?string $v): bool => $v !== null);
 
+        $renumbered = $reissue !== null && ($reissue['new_number'] ?? false) === true;
         $result = $this->sequences->transaction(function (PDO $pdo) use (
             $tenantId,
             $establishmentId,
@@ -178,8 +182,9 @@ final class DocumentService implements ExtendedDocumentIssuer, DocumentReissuer
             $school,
             $extra,
             $reissue,
+            $renumbered,
         ): array {
-            if ($reissue === null) {
+            if ($reissue === null || $renumbered) {
                 $counter = $this->sequences->next($tenantId, $establishmentId, $kind, $year);
                 $number = NumberPattern::format(
                     $pattern,
@@ -204,7 +209,7 @@ final class DocumentService implements ExtendedDocumentIssuer, DocumentReissuer
                 'year' => (string) $year,
             ], $safe);
             if ($reissue !== null) {
-                $content = self::withRectificatif($content, $locale, $reissue['reason'], $this->clock->moment());
+                $content = self::withRectificatif($content, $locale, $reissue['reason'], $this->clock->moment(), $renumbered ? $reissue['number'] : null);
                 $extra += ['revision' => $reissue['revision'], 'reissue_of' => $reissue['of']];
             }
             $this->documents->insert([
@@ -291,6 +296,8 @@ final class DocumentService implements ExtendedDocumentIssuer, DocumentReissuer
         $stored = json_decode((string) $old['data_json'], true);
         $values = $data === [] ? (is_array($stored) ? $stored : []) : $data;
         $at = $this->clock->now();
+        $renumber = $this->rectifyWithNewNumber($tenantId, $establishmentId);
+        $revision = $renumber ? 1 : (int) $old['revision'] + 1;
 
         $issued = $this->issueVia(
             $tenantId,
@@ -307,20 +314,21 @@ final class DocumentService implements ExtendedDocumentIssuer, DocumentReissuer
                 }
             },
             null,
-            ['number' => (string) $old['number'], 'revision' => (int) $old['revision'] + 1, 'of' => $documentId, 'reason' => $reason],
+            ['number' => (string) $old['number'], 'revision' => $revision, 'of' => $documentId, 'reason' => $reason, 'new_number' => $renumber],
         );
         $this->audit->append($tenantId, $reissuedBy, 'document.reissued', 'document', $issued->id, ['status' => IssuedDocument::VALID, 'replaces' => $documentId], [
-            'number' => $issued->number, 'revision' => (int) $old['revision'] + 1, 'reason' => $reason,
+            'number' => $issued->number, 'revision' => $revision, 'reason' => $reason, 'original_number' => (string) $old['number'],
         ]);
 
         return $issued;
     }
 
-    private static function withRectificatif(string $html, string $locale, string $reason, \DateTimeImmutable $moment): string
+    /** Mention « Rectificatif » ; avec un nouveau numéro (SS12), elle cite le numéro du document d'origine (RG-DOC-6). */
+    private static function withRectificatif(string $html, string $locale, string $reason, \DateTimeImmutable $moment, ?string $originalNumber = null): string
     {
         $banner = $locale === 'en'
-            ? 'Corrected version — issued on ' . $moment->format('Y-m-d') . ' (reason: ' . $reason . ')'
-            : 'Rectificatif — émis le ' . $moment->format('d/m/Y') . ' (motif : ' . $reason . ')';
+            ? 'Corrected version' . ($originalNumber !== null ? ' of document No. ' . $originalNumber : '') . ' — issued on ' . $moment->format('Y-m-d') . ' (reason: ' . $reason . ')'
+            : 'Rectificatif' . ($originalNumber !== null ? ' du document n° ' . $originalNumber : '') . ' — émis le ' . $moment->format('d/m/Y') . ' (motif : ' . $reason . ')';
         $notice = '<p class="rectificatif"><strong>' . htmlspecialchars($banner, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</strong></p>';
         $count = 0;
         $withBanner = (string) preg_replace('/(<body\b[^>]*>)/i', '$1' . $notice, $html, 1, $count);
@@ -444,6 +452,19 @@ final class DocumentService implements ExtendedDocumentIssuer, DocumentReissuer
         $refusal = $this->guards->refusal(new IssuanceContext($tenantId, $establishmentId, $type, $subjectPersonId, $values, $locale, $issuedBy, $via, $options->orgUnitId));
         if ($refusal !== null) {
             throw HttpException::validation(['issuance' => [$refusal]]);
+        }
+    }
+
+    /**
+     * Paramètre `documents.rectify_numbering` (SS12) : « same_number » (défaut, PP15 : même numéro, révision + 1) ou « new_number »
+     * (nouveau numéro de la séquence, mention du numéro d'origine).
+     */
+    private function rectifyWithNewNumber(string $tenantId, string $establishmentId): bool
+    {
+        try {
+            return $this->settings->value($tenantId, $establishmentId, 'documents.rectify_numbering', self::RECTIFY_SAME_NUMBER) === self::RECTIFY_NEW_NUMBER;
+        } catch (HttpException) {
+            return false;
         }
     }
 
