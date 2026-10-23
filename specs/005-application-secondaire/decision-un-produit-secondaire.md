@@ -94,3 +94,7 @@ Toujours actifs pour tous les types (noyau) : paramétrage, inscriptions, matric
 | [wave-plan.md](wave-plan.md) | Squelette et profil dès la vague 0 ; 3 agents au plus avec dossiers exclusifs |
 | [questions.md](questions.md) | Questions par type (Q18 à Q33) avec réponse par défaut et interlocuteur |
 | [audit-reutilisation.md](audit-reutilisation.md) | Ce qui existe déjà et les écarts réels au 22 octobre 2026 |
+
+## Décisions du 23 octobre 2026
+- **Série E du technique** : la série « E, technique et mathématiques » (industriel, génie mécanique, 2nd cycle), publiée par le MINESEC, est ajoutée au catalogue de la plateforme (migration `202610231300_secondary_catalogue_minesec_e.sql`, marquée « à confirmer »). ABI, SH (2nd cycle général), MAGE, TEP et ISRH restent non amorcés.
+- **Rôles** : validé de les créer au tour b (W0S-5, T808). Choix retenu pour l'enseignant (R09) : **réutiliser le rôle commun `enseignant`** du socle, comme le primaire privé et l'IPES, plutôt qu'un rôle `sec_enseignant` ; les rôles propres au secondaire (`sec_*` de `RoleMatrix`) couvrent les fonctions qui n'existent pas ailleurs.

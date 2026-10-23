@@ -27,7 +27,7 @@ final class StreamCatalogueTest extends SecondaryTestCase
     public function testAmorcageDuCatalogueMinesec(): void
     {
         $rows = $this->pdo()->query("SELECT code, cycle_code, teaching_kind, track_code, origin, confirmation, label_fr FROM se_stream_refs WHERE tenant_id = '*'")->fetchAll(\PDO::FETCH_ASSOC);
-        self::assertCount(107, $rows);
+        self::assertCount(108, $rows);
         $keys = array_map(static fn (array $r): string => $r['code'] . '/' . $r['cycle_code'], $rows);
         self::assertSame($keys, array_values(array_unique($keys)), 'Clé (code, cycle) unique.');
         foreach (['ESF', 'PA', 'PV', 'CERAM', 'PEINT', 'SCULP'] as $code) {
@@ -35,7 +35,9 @@ final class StreamCatalogueTest extends SecondaryTestCase
             self::assertContains($code . '/second', $keys);
         }
         $codes = array_column($rows, 'code');
-        foreach (['MAGE', 'TEP', 'ISRH', 'E', 'ABI'] as $absent) {
+        // Série E « technique et mathématiques » (industriel, 2nd cycle) ajoutée sur décision du propriétaire (23/10/2026).
+        self::assertContains('E/second', $keys);
+        foreach (['MAGE', 'TEP', 'ISRH', 'ABI'] as $absent) {
             self::assertNotContains($absent, $codes, $absent . ' ne doit pas être amorcé (décision du propriétaire).');
         }
         self::assertNotContains('SH/second', $keys, 'Série SH (sciences humaines) non amorcée.');
@@ -67,11 +69,11 @@ final class StreamCatalogueTest extends SecondaryTestCase
         self::assertSame(['series'], array_values(array_unique(array_map(static fn ($s): string => $s->streamKind, $leg))));
 
         $technique = $directory->forEstablishment(self::TA, $this->factory->establishment(self::TA, 'lycee_technique'));
-        self::assertCount(97, $technique);
+        self::assertCount(98, $technique);
         self::assertSame(['IND', 'STT'], array_values(array_unique(array_map(static fn ($s): string => $s->trackCode, $technique))));
 
         $autre = $directory->forEstablishment(self::TA, $this->factory->establishment(self::TA, 'autre'));
-        self::assertCount(107, $autre, 'Profil « autre » pas encore réglé : aucun filtre.');
+        self::assertCount(108, $autre, 'Profil « autre » pas encore réglé : aucun filtre.');
     }
 
     public function testListePagineeEtFiltrable(): void
@@ -180,11 +182,11 @@ final class StreamCatalogueTest extends SecondaryTestCase
         self::assertSame(403, $this->call('GET', '/platform/secondary/streams')[0], 'Un administrateur de client n\'administre pas la liste de la plateforme.');
         [$status, $page] = $this->call('GET', '/platform/secondary/streams?per_page=200', null, self::PLATFORM_ADMIN, 'platform');
         self::assertSame(200, $status);
-        self::assertCount(107, $page['data']);
+        self::assertCount(108, $page['data']);
 
-        $created = $this->ok('POST', '/platform/secondary/streams', ['code' => 'E', 'cycle_code' => 'second', 'teaching_kind' => 'general', 'label_fr' => 'Mathématiques et techniques', 'source_ref' => 'Source fictive de test (arrêté à fournir)'], self::PLATFORM_ADMIN, 'platform');
+        $created = $this->ok('POST', '/platform/secondary/streams', ['code' => 'SH', 'cycle_code' => 'second', 'teaching_kind' => 'general', 'label_fr' => 'Sciences humaines', 'source_ref' => 'Source fictive de test (arrêté à fournir)'], self::PLATFORM_ADMIN, 'platform');
         self::assertSame(['platform', 'platform', 'custom', 1], [$created['scope'], $created['origin'], $created['confirmation'], $created['version_no']]);
-        self::assertSame(422, $this->call('POST', '/platform/secondary/streams', ['code' => 'E', 'cycle_code' => 'second', 'teaching_kind' => 'general', 'label_fr' => 'Doublon', 'source_ref' => 'x'], self::PLATFORM_ADMIN, 'platform')[0]);
+        self::assertSame(422, $this->call('POST', '/platform/secondary/streams', ['code' => 'SH', 'cycle_code' => 'second', 'teaching_kind' => 'general', 'label_fr' => 'Doublon', 'source_ref' => 'x'], self::PLATFORM_ADMIN, 'platform')[0]);
 
         $d = (string) $this->pdo()->query("SELECT id FROM se_stream_refs WHERE code = 'D' AND tenant_id = '*'")->fetchColumn();
         $changed = $this->ok('PATCH', '/platform/secondary/streams/' . $d, ['label_fr' => 'Sciences de la vie et de la Terre, mathématiques', 'confirmation' => 'confirmed', 'reason' => 'Texte fourni par le client (fictif)'], self::PLATFORM_ADMIN, 'platform');
@@ -196,7 +198,7 @@ final class StreamCatalogueTest extends SecondaryTestCase
         $leg = $this->factory->establishment(self::TA, 'leg');
         $this->grant(self::TA, self::ADMIN, $leg, self::READ);
         $codes = array_column($this->call('GET', '/secondary/catalogue/streams?per_page=50', null, self::ADMIN, self::TA, $leg)[1]['data'], 'code');
-        self::assertContains('E', $codes, 'Ajout de la plateforme proposé aux établissements.');
+        self::assertContains('SH', $codes, 'Ajout de la plateforme proposé aux établissements.');
         self::assertNotContains('D', $codes, 'Ligne retirée par la plateforme : plus proposée.');
         self::assertSame(404, $this->call('GET', '/secondary/catalogue/streams/' . $d, null, self::ADMIN, self::TA, $leg)[0]);
 
