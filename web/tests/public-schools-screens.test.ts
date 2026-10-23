@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { routes } from '@/router/routes';
 import { todayIso } from '@/lib/format';
 import { permissionsForRoles } from '@/lib/permissions';
@@ -344,8 +344,11 @@ describe('barrière du code personnel', () => {
     await type(wrapper, '654321', 0);
     await type(wrapper, '654321', 1);
     await wrapper.get('form').trigger('submit');
-    await flushPromises(12);
-    expect(wrapper.text()).not.toContain('Créez votre code personnel');
-    expect(wrapper.find('#ps-class').exists()).toBe(true);
+    // La dérivation du code est une vraie opération cryptographique : sa durée dépend de la machine. On attend le résultat, pas un nombre de tours.
+    await vi.waitFor(async () => {
+      await flushPromises(2);
+      expect(wrapper.text()).not.toContain('Créez votre code personnel');
+      expect(wrapper.find('#ps-class').exists()).toBe(true);
+    }, { timeout: 15_000, interval: 100 });
   }, 20_000);
 });
