@@ -1,0 +1,9 @@
+-- Modèle de message « paiement annulé » envoyé au client quand le super admin annule un paiement confirmé (paiement manuel,
+-- passerelle ou paiement partiel d'une déclaration de régularisation). E-mail et SMS, FR/EN. Variables de la liste blanche de
+-- Messaging ; :details porte le motif, le solde restant et, s'il y a lieu, le niveau de blocage rétabli.
+
+INSERT INTO message_templates (id, tenant_id, establishment_id, template_key, locale, channel, subject, body, variables, created_at, updated_at) VALUES
+('01J9T000000000000000PF0221', 'platform', 'platform', 'platform_payment_cancelled', 'fr', 'email', 'SCHOLARIS : paiement annulé', 'Le paiement de :amount FCFA pour :label (:establishment_name), reçu :receipt_number, a été annulé. :details Pour toute question, contactez-nous.', '["label","establishment_name","amount","receipt_number","details"]', '2026-10-22T00:00:00+01:00', '2026-10-22T00:00:00+01:00'),
+('01J9T000000000000000PF0222', 'platform', 'platform', 'platform_payment_cancelled', 'en', 'email', 'SCHOLARIS: payment cancelled', 'The payment of :amount FCFA for :label (:establishment_name), receipt :receipt_number, has been cancelled. :details For any question, contact us.', '["label","establishment_name","amount","receipt_number","details"]', '2026-10-22T00:00:00+01:00', '2026-10-22T00:00:00+01:00'),
+('01J9T000000000000000PF0223', 'platform', 'platform', 'platform_payment_cancelled', 'fr', 'sms', NULL, 'SCHOLARIS : paiement de :amount FCFA annulé pour :label (reçu :receipt_number). :details', '["label","amount","receipt_number","details"]', '2026-10-22T00:00:00+01:00', '2026-10-22T00:00:00+01:00'),
+('01J9T000000000000000PF0224', 'platform', 'platform', 'platform_payment_cancelled', 'en', 'sms', NULL, 'SCHOLARIS: payment of :amount FCFA cancelled for :label (receipt :receipt_number). :details', '["label","amount","receipt_number","details"]', '2026-10-22T00:00:00+01:00', '2026-10-22T00:00:00+01:00');

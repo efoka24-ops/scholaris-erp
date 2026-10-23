@@ -1,0 +1,26 @@
+# Seule la réécriture d'URL est utilisée : l'hébergement de recette (Camoo) renvoie une erreur 500
+# pour les directives Options, FilesMatch ou Require.
+RewriteEngine On
+
+# Transmet l'en-tête Authorization à PHP.
+RewriteCond %{HTTP:Authorization} .
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+# Le lien du code QR d'un document (/api/v1/public/verify/<code>) ouvert dans un navigateur affiche la page de vérification
+# de l'application web ; l'application et les outils (en-tête Accept: application/json) continuent de recevoir le JSON.
+RewriteCond %{HTTP_ACCEPT} text/html
+RewriteCond %{HTTP_ACCEPT} !application/json
+RewriteRule ^api/v1/public/verify/([A-Za-z0-9_-]+)$ /verification/$1 [R=302,L]
+
+# L'API (/api/...) passe par le contrôleur frontal PHP.
+RewriteRule ^api(/|$) index.php [L]
+
+# La racine du site ouvre l'application web.
+RewriteRule ^$ index.html [L]
+
+# Un fichier existant (application web, scripts, icônes, index.php) est servi tel quel.
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule ^ - [L]
+
+# Toute autre adresse est une page de l'application web (routage côté navigateur).
+RewriteRule ^ index.html [L]

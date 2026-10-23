@@ -1,0 +1,1609 @@
+# Contrat OpenAPI 3.1 du module Platform : catalogue d'applications, droits d'usage par client, demandes d'accès publiques,
+# administrateur de plateforme et abonnements (fusionné avec openapi.yaml par le test de contrat).
+# Erreurs au format RFC 9457 (components/schemas/Problem). Montants entiers en XAF, dates AAAA-MM-JJ ou ISO 8601.
+# Routes /platform/** : compte du client technique `platform` avec le rôle platform_admin ; les actions marquées
+# « 2FA récente » exigent une double authentification validée depuis moins de 15 minutes (403 two-factor-recent-required).
+# Blocage central d'un client en régularisation de paiement (middleware du noyau, avant tout contrôleur), pour TOUTES les routes
+# authentifiées du socle et des applications, quel que soit le client HTTP :
+#  - niveau `locked` : tout est refusé, 423 de type https://api.scholaris.cm/errors/regularisation-required, sauf la liste blanche ;
+#  - niveau `read_only` : les requêtes qui modifient (hors GET, HEAD, OPTIONS) sont refusées, 423 de type
+#    https://api.scholaris.cm/errors/subscription-suspended ; lecture et exports restent permis.
+# Liste blanche (chemins sous /api/v1) : /auth/**, /me, /me/context, /me/contexts, /me/regularisation/**,
+# /applications/{key}/payments, /application-payments/{id}/receipt, /public/**, /health, /platform/** (compte de plateforme, jamais
+# restreint) et les webhooks de paiement. Le niveau du client est celui de TOUTES ses applications non fermées bloquées pour impayé
+# (une application à jour suffit à ne rien restreindre au niveau du socle). Le déblocage est immédiat (paiement vérifié).
+# La réponse 423 est commune (components/responses/RegularisationBlocked) : titre et détail en français ou en anglais
+# (Accept-Language), membres `level` et `regularisation_url` (écran de régularisation), jamais de donnée du client. Elle n'est pas
+# répétée sur chaque opération.
+components:
+  responses:
+    RegularisationBlocked:
+      description: "Client en régularisation de paiement : locked (type regularisation-required, toute route hors liste blanche) ou read_only (type subscription-suspended, écritures seulement)"
+      content:
+        application/problem+json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/Problem'
+              - type: object
+                properties:
+                  level: {type: string, enum: [read_only, locked]}
+                  regularisation_url: {type: string, example: "/regularisation"}
+paths:
+  /api/v1/public/applications:
+    get:
+      summary: "Catalogue public : une application par niveau (family : higher, nursery, primary, secondary) et par régime (sector : private, public). Champs : clé, libellé, cible (= family), régime, statut, tarif mensuel XAF, jours d'essai"
+      security: []
+      responses:
+        '200':
+          description: "Liste des applications, par niveau (higher, nursery, primary, secondary) puis privé avant public ; les applications retirées et non listées (module commun public_schools) sont exclues"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      required: [key, label, target, family, sector, status, version, monthly_price_xaf, trial_days]
+                      properties:
+                        key: {type: string, description: "Clé technique de l'application à ouvrir pour ce régime"}
+                        label: {type: string, description: "Libellé du niveau, sans le régime (ex. École primaire)"}
+                        target: {type: string, enum: [higher, secondary, primary, nursery]}
+                        family: {type: string, enum: [higher, secondary, primary, nursery], description: "Niveau (identique à target)"}
+                        sector: {type: string, enum: [private, public]}
+                        status: {type: string, enum: [available, coming_soon]}
+                        version: {type: string}
+                        monthly_price_xaf: {type: integer}
+                        trial_days: {type: integer}
+  /api/v1/public/access-requests:
+    post:
+      summary: "Demande d'accès sans compte. Limitation : 5 par heure et par IP, 3 par jour et par e-mail ; champ piège `website` ; champs inconnus refusés"
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [institution_name, target_type, city, region, contact_first_name, contact_last_name, contact_email, app_key]
+              properties:
+                institution_name: {type: string, minLength: 3, maxLength: 160}
+                target_type: {type: string, enum: [higher, secondary, primary, nursery]}
+                city: {type: string, minLength: 2, maxLength: 80}
+                region: {type: string, minLength: 2, maxLength: 80}
+                country: {type: string, pattern: '^[A-Z]{2}$', default: CM}
+                contact_first_name: {type: string, maxLength: 80}
+                contact_last_name: {type: string, maxLength: 80}
+                contact_email: {type: string, format: email, maxLength: 190}
+                contact_phone: {type: string, description: "Format international, 8 à 15 chiffres"}
+                contact_position: {type: string, maxLength: 80}
+                ministerial_authorization: {type: string, maxLength: 120, description: "Référence de l'autorisation ministérielle, facultative"}
+                app_key: {type: string, description: "Application du régime choisi (privé ou public) ; sa cible doit être target_type ; refusée (422) si retirée ou non listée (public_schools)."}
+                establishment_subtype: {type: string, enum: [leg, lycee_technique, ces, cetic, college_prive, lycee_prive, autre], description: "Type d'établissement : OBLIGATOIRE pour le secondaire (liste fermée, 422 sinon), refusé pour les autres niveaux. Repris sur l'établissement créé à l'acceptation"}
+                message: {type: string, maxLength: 2000}
+                locale: {type: string, enum: [fr, en]}
+                website: {type: string, description: "Champ piège : doit rester vide (réponse leurre sinon)"}
+      responses:
+        '202':
+          description: "Demande enregistrée : jeton de suivi (affiché une seule fois). Réponse identique que l'e-mail soit connu ou non"
+        '400':
+          description: "Corps JSON invalide"
+        '422':
+          description: "Données invalides"
+        '429':
+          description: "Limite de débit atteinte (Retry-After)"
+  /api/v1/public/access-requests/{token}:
+    get:
+      summary: "Suivi d'une demande par son jeton (statut, complément demandé, motif de refus ; aucune donnée de contact)"
+      security: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema: {type: string, pattern: '^[a-f0-9]{48}$'}
+      responses:
+        '200':
+          description: "État de la demande"
+        '404':
+          description: "Jeton inconnu"
+        '429':
+          description: "Limite de débit atteinte"
+  /api/v1/public/access-requests/{token}/complement:
+    post:
+      summary: "Réponse du demandeur à une demande de complément ({ message }) ; la demande repasse en attente"
+      security: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Demande mise à jour"
+        '404':
+          description: "Jeton inconnu"
+        '409':
+          description: "Aucun complément attendu"
+        '422':
+          description: "Données invalides"
+  /api/v1/platform/settings:
+    get:
+      summary: "Réglages de la plateforme : valeur, défaut, bornes (access_code_ttl_minutes : validité des codes d'accès créés depuis le back-office)"
+      responses:
+        '200': {description: "Réglages"}
+        '403': {description: "Réservé à l'administrateur de plateforme"}
+    patch:
+      summary: "Modifier un réglage (2FA récente, journalisé)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                access_code_ttl_minutes: {type: integer, minimum: 5, maximum: 10080}
+                regularisation_default_level: {type: integer, minimum: 0, maximum: 1, description: "Niveau de blocage par défaut d un impayé : 0 lecture et export seulement, 1 tout bloqué sauf la régularisation"}
+                regularisation_request_expiry_days: {type: integer, minimum: 1, maximum: 60, description: "Jours avant qu une déclaration de paiement non confirmée expire (défaut 7)"}
+                regularisation_amount_tolerance_xaf: {type: integer, minimum: 0, maximum: 10000, description: "Écart toléré entre montant déclaré et reçu (défaut 100)"}
+                regularisation_partial_min_xaf: {type: integer, minimum: 100, maximum: 1000000, description: "Montant minimum d un paiement partiel déclaré (défaut 1000)"}
+                regularisation_partial_mode: {type: integer, minimum: 0, maximum: 1, description: "Paiement partiel confirmé : 0 période prolongée proportionnellement (défaut), 1 crédit du solde seulement ; dans les deux cas le niveau ne change qu à la couverture du solde"}
+      responses:
+        '200': {description: "Réglages mis à jour"}
+        '403': {description: "Réservé à l'administrateur de plateforme ; 2FA récente exigée"}
+        '422': {description: "Valeur hors bornes"}
+  /api/v1/platform/settings/contact:
+    get:
+      summary: "Contact et numéros de paiement mobile money de la plateforme : valeurs saisies (stored) et valeurs effectives (effective) avec repli sur les variables d environnement PLATFORM_CONTACT_* et PLATFORM_PAY_*"
+      security:
+        - bearer: []
+      responses:
+        '200': {description: "stored {name, email, phone, payments[]}, effective, updated_at"}
+        '403': {description: "Réservé à l'administrateur de plateforme"}
+    patch:
+      summary: "Remplace le contact saisi : nom, e-mail valide, téléphone camerounais normalisé +237, et 0 à 2 numéros de paiement (Orange Money, MTN MoMo, un par moyen) avec le nom du bénéficiaire ; un champ vide se replie sur l environnement (2FA récente, permission platform.settings.manage, journalisé sans numéro en clair)"
+      security:
+        - bearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: {type: [string, "null"], maxLength: 120}
+                email: {type: [string, "null"], format: email}
+                phone: {type: [string, "null"], example: "+237 6 99 00 00 01"}
+                payments:
+                  type: array
+                  maxItems: 2
+                  items:
+                    type: object
+                    required: [channel, phone, holder]
+                    properties:
+                      channel: {type: string, enum: [orange_money, mtn_momo]}
+                      phone: {type: string}
+                      holder: {type: string, maxLength: 120}
+      responses:
+        '200': {description: "Contact enregistré"}
+        '403': {description: "Refusé ou 2FA récente requise"}
+        '422': {description: "E-mail, téléphone, moyen ou bénéficiaire invalide"}
+  /api/v1/platform/dashboard:
+    get:
+      summary: "Tableau de bord de la plateforme : clients, demandes en attente, applications ouvertes, essais qui se terminent (14 j), impayés, MRR ; indicateur sans source = available:false"
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: "Indicateurs"
+        '403':
+          description: "Réservé à l'administrateur de plateforme"
+  /api/v1/platform/applications:
+    get:
+      summary: "Catalogue complet (y compris retirées et non listées), modules du socle requis, tarif, essai, délai de grâce, régime (sector), famille (family) et listed (false : application technique absente des catalogues)"
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: "Applications"
+        '403':
+          description: "Réservé à l'administrateur de plateforme"
+  /api/v1/platform/applications/{key}:
+    patch:
+      summary: "Modifie libellé, statut (available, coming_soon, retired), version, tarif mensuel XAF, jours d'essai, délai de grâce (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Application mise à jour"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Application inconnue"
+        '422':
+          description: "Données invalides"
+  /api/v1/platform/clients:
+    get:
+      summary: "Clients de la plateforme : fiche (état active|suspended|archived, contact, ville, région) et droits d'usage (aucune donnée métier). filter[state] : par défaut tous sauf les archivés"
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: "Clients"
+        '403':
+          description: "Réservé à l'administrateur de plateforme"
+        '422':
+          description: "Filtre invalide"
+    post:
+      summary: "Crée un client directement, sans demande d'accès, avec son premier établissement si establishment_type est donné (2FA récente ; platform.clients.manage)"
+      security:
+        - bearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [name, contact_name]
+              properties:
+                name: {type: string, minLength: 3, maxLength: 160}
+                contact_name: {type: string, minLength: 2, maxLength: 160}
+                contact_email: {type: string, format: email, description: "E-mail ou téléphone obligatoire"}
+                contact_phone: {type: string}
+                city: {type: string, maxLength: 80}
+                region: {type: string, maxLength: 80}
+                locale: {type: string, enum: [fr, en]}
+                establishment_type: {type: string, enum: [higher, secondary, primary, nursery]}
+      responses:
+        '201':
+          description: "Client créé"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '422':
+          description: "Données invalides"
+  /api/v1/platform/clients/{tenant}:
+    get:
+      summary: "Détail d'un client : fiche, établissements (nom, type, fermeture) et droits d'usage"
+      security:
+        - bearer: []
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Client"
+        '403':
+          description: "Réservé à l'administrateur de plateforme"
+        '404':
+          description: "Client introuvable"
+    patch:
+      summary: "Modifie la fiche ({ name?, contact_name?, contact_email?, contact_phone?, city?, region?, locale? }) (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Client modifié"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Client introuvable"
+        '409':
+          description: "Client archivé"
+        '422':
+          description: "Données invalides ou aucune modification"
+  /api/v1/platform/clients/{tenant}/applications:
+    post:
+      summary: "Ouvre une application à un client ({ app_key }), en essai gratuit ; active les modules requis (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '201':
+          description: "Droit d'usage ouvert"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Client ou application introuvable"
+        '409':
+          description: "Déjà ouverte ou application retirée"
+  /api/v1/platform/clients/{tenant}/applications/{key}:
+    patch:
+      summary: "Tarif mensuel propre au client ({ monthly_price_xaf: entier | null }) (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema: {type: string}
+        - name: key
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Droit d'usage mis à jour"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Introuvable"
+        '422':
+          description: "Données invalides"
+  /api/v1/platform/clients/{tenant}/applications/{key}/suspend:
+    post:
+      summary: "Suspend l'application ({ reason } obligatoire) : écritures refusées, lecture et export conservés (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema: {type: string}
+        - name: key
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Suspendue"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Introuvable"
+        '409':
+          description: "État incompatible"
+  /api/v1/platform/clients/{tenant}/applications/{key}/close:
+    post:
+      summary: "Ferme l'application ({ reason } obligatoire) (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema: {type: string}
+        - name: key
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Fermée"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Introuvable"
+        '409':
+          description: "Déjà fermée"
+  /api/v1/platform/clients/{tenant}/applications/{key}/reactivate:
+    post:
+      summary: "Réactive une application suspendue ({ reason?, until?: AAAA-MM-JJ pour couvrir jusqu'à cette date }) (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema: {type: string}
+        - name: key
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Réactivée"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Introuvable"
+        '409':
+          description: "Non suspendue"
+  /api/v1/platform/access-requests:
+    get:
+      summary: "Demandes d'accès, la plus récente d'abord (filter[status]=pending|info_requested|accepted|rejected, filter[archived]=0|1 (0 par défaut), pagination par curseur)"
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: "Page de demandes"
+        '403':
+          description: "Réservé à l'administrateur de plateforme"
+        '422':
+          description: "Filtre invalide"
+  /api/v1/platform/access-requests/{id}:
+    get:
+      summary: "Détail d'une demande d'accès"
+      security:
+        - bearer: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Demande"
+        '403':
+          description: "Réservé à l'administrateur de plateforme"
+        '404':
+          description: "Introuvable"
+    delete:
+      summary: "Supprime définitivement une demande ARCHIVÉE qui n'a créé aucun client (journalisé) (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Demande supprimée"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Introuvable"
+        '409':
+          description: "Demande non archivée ou ayant créé un client"
+  /api/v1/platform/access-requests/{id}/accept:
+    post:
+      summary: "Accepte ({ tenant_id?, force_reason?, share_send?: none|email|sms } ; tenant_id pour rattacher à un client existant) : crée client et établissement, ouvre l'application en essai de 90 jours, invite le premier administrateur (activation par code) (2FA récente)"
+      description: "Une application à venir (coming_soon) ou retirée n'est pas ouverte en essai : refus 422 sur app_key, sauf si l'administrateur force explicitement avec un motif force_reason (tracé dans l'audit). Pour un nouveau client, la réponse porte data.access : code d'activation de l'administrateur invité (rendu une seule fois, Cache-Control no-store) et récapitulatif à partager (même forme que POST /platform/clients/{tenant}/users/{user}/access-code) ; share_send l'envoie aussitôt (canal indisponible signalé delivery.status = unavailable, échec = failed, sans annuler l'acceptation)."
+      security:
+        - bearer: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Demande acceptée, droit d'usage, administrateur invité et data.access (ou null si rattachement à un client existant)"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Introuvable"
+        '409':
+          description: "Déjà traitée"
+        '422':
+          description: "Client de rattachement introuvable, ou application à venir (coming_soon) ou retirée sans force_reason (F2)"
+  /api/v1/platform/access-requests/{id}/reject:
+    post:
+      summary: "Refuse ({ reason } obligatoire, transmis au demandeur) (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Demande refusée"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Introuvable"
+        '409':
+          description: "Déjà traitée"
+        '422':
+          description: "Motif manquant"
+  /api/v1/platform/access-requests/{id}/request-info:
+    post:
+      summary: "Demande un complément au demandeur ({ message })"
+      security:
+        - bearer: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Complément demandé"
+        '403':
+          description: "Réservé à l'administrateur de plateforme"
+        '404':
+          description: "Introuvable"
+        '409':
+          description: "Déjà traitée"
+  /api/v1/platform/payments:
+    get:
+      summary: "Paiements d'abonnement de tous les clients, le plus récent d'abord (filter[status]=pending|succeeded|failed|cancelled, filter[tenant_id], curseur)"
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: "Page de paiements"
+        '403':
+          description: "Réservé à l'administrateur de plateforme"
+    post:
+      summary: "Enregistre un paiement manuel confirmé (espèces ou virement) avec reçu ; prolonge la période couverte (2FA récente ; platform.payments.manage)"
+      security:
+        - bearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [tenant_id, app_key, months, channel]
+              properties:
+                tenant_id: {type: string}
+                app_key: {type: string}
+                months: {type: integer, minimum: 1, maximum: 12}
+                channel: {type: string, enum: [cash, bank_transfer]}
+                amount_xaf: {type: integer, minimum: 1, description: "Par défaut : tarif effectif × mois"}
+                note: {type: string, maxLength: 500}
+      responses:
+        '201':
+          description: "Paiement enregistré"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Client ou application introuvable"
+        '409':
+          description: "Application fermée ou client archivé"
+        '422':
+          description: "Données invalides"
+  /api/v1/platform/payments/webhook:
+    post:
+      summary: "Webhook de l'agrégateur de paiement (signature vérifiée par la passerelle ; idempotent par event_id)"
+      security: []
+      responses:
+        '200':
+          description: "Événement traité (outcome : succeeded, failed, duplicate, unknown_reference, amount_mismatch, already_*)"
+        '401':
+          description: "Signature absente ou invalide"
+        '422':
+          description: "Corps invalide"
+  /api/v1/me/applications:
+    get:
+      summary: "Lanceur : applications ouvertes aux établissements de l'utilisateur (état, jours d'essai restants, échéance) ; meta.catalog : applications listées non ouvertes, avec family et sector, par niveau puis régime"
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: "Applications de l'utilisateur"
+        '403':
+          description: "Compte de la plateforme"
+  /api/v1/applications/{key}/open:
+    post:
+      summary: "Libre-service : ouvre l'application pour le client (essai gratuit de 90 jours) ; permission applications.manage"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: key
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '201':
+          description: "Droit d'usage ouvert"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Application inconnue"
+        '409':
+          description: "Déjà ouverte"
+        '422':
+          description: "Application à venir (coming_soon) ou retirée : non ouvrable en libre-service (F2)"
+  /api/v1/applications/{key}/payments:
+    post:
+      summary: "Paie l'abonnement ({ months: 1..12, channel: mtn_momo|orange_money, payer_phone }) ; Idempotency-Key facultatif ; confirmation par webhook"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: key
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '202':
+          description: "Paiement demandé (en attente de confirmation)"
+        '200':
+          description: "Même clé d'idempotence : paiement déjà créé"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Application non ouverte"
+        '409':
+          description: "Application fermée"
+        '422':
+          description: "Données invalides"
+    get:
+      summary: "Historique des paiements de l'application et état du droit d'usage"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: key
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Paiements"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Application non ouverte"
+  /api/v1/application-payments/{id}/receipt:
+    get:
+      summary: "Reçu simple d'un paiement confirmé (aucune facture Billing)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Reçu"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '409':
+          description: "Paiement non confirmé"
+  /api/v1/platform/clients/{tenant}/suspend:
+    post:
+      summary: "Suspend le client ({ reason } obligatoire) : toutes ses applications ouvertes passent en lecture seule (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Client suspendu"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Client introuvable"
+        '409':
+          description: "Client non actif"
+        '422':
+          description: "Motif manquant"
+  /api/v1/platform/clients/{tenant}/reactivate:
+    post:
+      summary: "Réactive un client suspendu ({ reason? }) et les applications suspendues avec lui (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Client réactivé"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Client introuvable"
+        '409':
+          description: "Client non suspendu"
+  /api/v1/platform/clients/{tenant}/archive:
+    post:
+      summary: "Archive un client suspendu ({ reason } obligatoire) : applications fermées, données conservées, aucune suppression (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Client archivé"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Client introuvable"
+        '409':
+          description: "Client non suspendu"
+        '422':
+          description: "Motif manquant"
+  /api/v1/platform/clients/{tenant}/establishments:
+    get:
+      summary: "Établissements du client, fermés compris (nom, type, closed_at)"
+      security:
+        - bearer: []
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Établissements"
+        '403':
+          description: "Réservé à l'administrateur de plateforme"
+        '404':
+          description: "Client introuvable"
+    post:
+      summary: "Crée un établissement ({ name, type: nursery|primary|secondary|higher }) (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '201':
+          description: "Établissement créé"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Client introuvable"
+        '409':
+          description: "Nom déjà utilisé ou client archivé"
+        '422':
+          description: "Données invalides"
+  /api/v1/platform/clients/{tenant}/establishments/{establishment}:
+    patch:
+      summary: "Renomme un établissement ({ name }) (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema: {type: string}
+        - name: establishment
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Établissement renommé"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Introuvable"
+        '409':
+          description: "Nom déjà utilisé ou client archivé"
+        '422':
+          description: "Nom invalide"
+  /api/v1/platform/clients/{tenant}/establishments/{establishment}/close:
+    post:
+      summary: "Ferme un établissement ({ reason } obligatoire) : il n'est plus proposé aux utilisateurs, ses données restent (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema: {type: string}
+        - name: establishment
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Établissement fermé"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Introuvable"
+        '409':
+          description: "Déjà fermé ou client archivé"
+        '422':
+          description: "Motif manquant"
+  /api/v1/platform/clients/{tenant}/establishments/{establishment}/reopen:
+    post:
+      summary: "Rouvre un établissement fermé (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema: {type: string}
+        - name: establishment
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Établissement rouvert"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Introuvable"
+        '409':
+          description: "Déjà ouvert ou client archivé"
+  /api/v1/platform/clients/{tenant}/administrators:
+    get:
+      summary: "Liste des super administrateurs du client (jamais ses autres utilisateurs)"
+      security:
+        - bearer: []
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Administrateurs"
+        '403':
+          description: "Réservé à l'administrateur de plateforme"
+        '404':
+          description: "Client introuvable"
+    post:
+      summary: "Invite un administrateur ({ first_name, last_name, email?, phone?, locale? } ; e-mail ou téléphone obligatoire) : compte en attente, invitation par e-mail vers l'activation par code (SMS non branché) (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '201':
+          description: "Administrateur invité"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Client introuvable"
+        '409':
+          description: "Identifiant déjà utilisé ou client archivé"
+        '422':
+          description: "Données invalides"
+  /api/v1/platform/clients/{tenant}/administrators/{user}/resend-invitation:
+    post:
+      summary: "Renvoie l'invitation d'un compte en attente (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema: {type: string}
+        - name: user
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Invitation renvoyée"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Administrateur introuvable"
+        '409':
+          description: "Compte déjà activé ou bloqué"
+  /api/v1/platform/clients/{tenant}/administrators/{user}/block:
+    post:
+      summary: "Bloque (désactive) un administrateur : sessions révoquées ; jamais soi-même ni le dernier administrateur de plateforme actif (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema: {type: string}
+        - name: user
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Administrateur bloqué"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Administrateur introuvable"
+        '409':
+          description: "Soi-même ou dernier administrateur actif"
+  /api/v1/platform/clients/{tenant}/administrators/{user}/unblock:
+    post:
+      summary: "Débloque un administrateur (actif, ou en attente s'il n'a jamais activé son compte) (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema: {type: string}
+        - name: user
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Administrateur débloqué"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Administrateur introuvable"
+  /api/v1/platform/clients/{tenant}/administrators/{user}/reset-access:
+    post:
+      summary: "Réinitialise l'accès : mot de passe et 2FA effacés, sessions révoquées, nouvelle invitation (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema: {type: string}
+        - name: user
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Accès réinitialisé"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Administrateur introuvable"
+        '409':
+          description: "Son propre accès"
+  /api/v1/platform/administrators:
+    get:
+      summary: "Liste des administrateurs de plateforme (2FA obligatoire pour ce rôle)"
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: "Administrateurs"
+        '403':
+          description: "Réservé à l'administrateur de plateforme"
+        '404':
+          description: "Client introuvable"
+    post:
+      summary: "Invite un administrateur ({ first_name, last_name, email?, phone?, locale? } ; e-mail ou téléphone obligatoire) : compte en attente, invitation par e-mail vers l'activation par code (SMS non branché) (2FA récente)"
+      security:
+        - bearer: []
+      responses:
+        '201':
+          description: "Administrateur invité"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Client introuvable"
+        '409':
+          description: "Identifiant déjà utilisé ou client archivé"
+        '422':
+          description: "Données invalides"
+  /api/v1/platform/administrators/{user}/resend-invitation:
+    post:
+      summary: "Renvoie l'invitation d'un compte en attente (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - name: user
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Invitation renvoyée"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Administrateur introuvable"
+        '409':
+          description: "Compte déjà activé ou bloqué"
+  /api/v1/platform/administrators/{user}/block:
+    post:
+      summary: "Bloque (désactive) un administrateur : sessions révoquées ; jamais soi-même ni le dernier administrateur de plateforme actif (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - name: user
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Administrateur bloqué"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Administrateur introuvable"
+        '409':
+          description: "Soi-même ou dernier administrateur actif"
+  /api/v1/platform/administrators/{user}/unblock:
+    post:
+      summary: "Débloque un administrateur (actif, ou en attente s'il n'a jamais activé son compte) (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - name: user
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Administrateur débloqué"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Administrateur introuvable"
+  /api/v1/platform/administrators/{user}/reset-access:
+    post:
+      summary: "Réinitialise l'accès : mot de passe et 2FA effacés, sessions révoquées, nouvelle invitation (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - name: user
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Accès réinitialisé"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Administrateur introuvable"
+        '409':
+          description: "Son propre accès"
+  /api/v1/platform/access-requests/{id}/archive:
+    post:
+      summary: "Archive une demande refusée ou de test ({ reason } obligatoire) : retirée des files, conservée et tracée (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Demande archivée"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Introuvable"
+        '409':
+          description: "Déjà archivée ou acceptée"
+        '422':
+          description: "Motif manquant"
+  /api/v1/platform/payments/{id}/cancel:
+    post:
+      summary: "Annule un paiement ({ reason } obligatoire) ; un paiement confirmé (ordinaire ou partiel) n'est annulable que s'il est le dernier de l'application ; la situation est recalculée (couverture, crédit partiel, ancre, état et niveau de blocage, re-blocage si le solde n'est plus couvert), la déclaration liée passe à cancelled et le client reçoit le message platform_payment_cancelled ; une nouvelle annulation d'un paiement déjà annulé est idempotente (200, même réponse, rien n'est rejoué) (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Paiement annulé, ou déjà annulé (idempotent : même réponse)"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Introuvable"
+        '409':
+          description: "Paiement échoué, ou paiement plus récent pour la même application"
+        '422':
+          description: "Motif manquant"
+  /api/v1/platform/payments/{id}/receipt:
+    get:
+      summary: "Reçu d'un paiement confirmé (vue plateforme)"
+      security:
+        - bearer: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Reçu"
+        '403':
+          description: "Réservé à l'administrateur de plateforme"
+        '404':
+          description: "Introuvable"
+        '409':
+          description: "Paiement non confirmé"
+  /api/v1/platform/audit:
+    get:
+      summary: "Journal d'audit de la plateforme, le plus récent d'abord (filter[action] préfixe, filter[actor_id], filter[object_type], filter[object_id], filter[from], filter[to] AAAA-MM-JJ ; curseur)"
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: "Page d'entrées"
+        '403':
+          description: "Réservé à l'administrateur de plateforme"
+        '422':
+          description: "Filtre invalide"
+  /api/v1/platform/clients/{tenant}/users:
+    get:
+      summary: "Comptes du client, en lecture seule, pour dépanner leur accès : identité, e-mail, téléphone, statut, rôles, 2FA, dernière connexion (aucune donnée métier)"
+      security:
+        - bearer: []
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Comptes ({ data: [{ id, person_id, first_name, last_name, email, phone, status, roles, two_factor_enabled, last_login_at }] })"
+        '403':
+          description: "Réservé à l'administrateur de plateforme"
+        '404':
+          description: "Client introuvable (le client technique platform n'est pas listé)"
+  /api/v1/platform/clients/{tenant}/users/{user}/access-code:
+    post:
+      summary: "Crée un code d'accès à usage unique pour un compte du client ({ send?: none|email|sms }, none par défaut) : activation si le compte est en attente, réinitialisation s'il est actif ; même mécanisme que /auth/activation (le code se saisit tel quel sur /activation ou /mot-de-passe-oublie) ; codes précédents invalidés ; code en clair rendu une seule fois (Cache-Control no-store), jamais stocké ni journalisé ; 5 par heure et par compte (2FA récente)"
+      description: "Réponse { data: { code, purpose: activation|reset, expires_at, expires_in, login, delivery: { channel: none|email|sms, status: not_sent|sent|failed, masked_to }, share: { establishment_name, login, login_url, activation_url, locale, channels, message: { subject, text, sms } } } }. Le message (FR/EN selon la langue du compte) est prêt à copier ; le SMS (≤ 480 caractères) n'est proposé que pour un mobile camerounais (+237 6…). Un envoi en échec n'annule pas le code."
+      security:
+        - bearer: []
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema: {type: string}
+        - name: user
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '201':
+          description: "Code créé, récapitulatif et résultat de l'envoi"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Client ou compte introuvable (un compte d'un autre client est introuvable)"
+        '409':
+          description: "Compte bloqué, ou client archivé"
+        '422':
+          description: "Canal inconnu, ou compte sans mobile camerounais (sms) ou sans e-mail (email)"
+        '429':
+          description: "Trop de codes pour ce compte (Retry-After)"
+  /api/v1/platform/clients/{tenant}/users/{user}/access-code/send:
+    post:
+      summary: "Renvoie le code encore ouvert du compte, sans le régénérer ({ channel: email|sms, code }) : même message prêt que la création (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema: {type: string}
+        - name: user
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "{ data: { delivery: { channel, status: sent|failed, masked_to } } }"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Client ou compte introuvable"
+        '409':
+          description: "Client archivé"
+        '422':
+          description: "Canal indisponible pour ce compte, ou code expiré ou remplacé"
+  /api/v1/platform/administrators/{user}/access-code:
+    post:
+      summary: "Crée un code d'accès à usage unique pour un autre administrateur de plateforme ({ send?: none|email|sms }) ; jamais pour son propre compte ; mêmes règles et même réponse que pour un compte de client (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - name: user
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '201':
+          description: "Code créé (même forme que pour un compte de client)"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Administrateur de plateforme introuvable"
+        '409':
+          description: "Son propre compte, ou compte bloqué"
+        '422':
+          description: "Canal inconnu ou contact manquant"
+        '429':
+          description: "Trop de codes pour ce compte (Retry-After)"
+  /api/v1/platform/administrators/{user}/access-code/send:
+    post:
+      summary: "Renvoie le code encore ouvert d'un autre administrateur de plateforme ({ channel: email|sms, code }) (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - name: user
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Résultat de l'envoi"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Administrateur de plateforme introuvable"
+        '409':
+          description: "Son propre compte"
+        '422':
+          description: "Canal indisponible, ou code expiré ou remplacé"
+  /api/v1/platform/clients/{tenant}/applications/{key}/terms:
+    patch:
+      summary: "Délais propres au client pour une application : trial_days (0-365), grace_days (0-90), billing_period_months (1, 3 ou 12), regularisation_level (read_only ou locked) ; null remet la valeur du catalogue ; reason obligatoire ; journalisé avant/après (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - {name: tenant, in: path, required: true, schema: {type: string}}
+        - {name: key, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                trial_days: {type: [integer, "null"], minimum: 0, maximum: 365}
+                grace_days: {type: [integer, "null"], minimum: 0, maximum: 90}
+                billing_period_months: {type: [integer, "null"], enum: [1, 3, 12, null]}
+                regularisation_level: {type: [string, "null"], enum: [read_only, locked, null]}
+                reason: {type: string, maxLength: 500}
+      responses:
+        '200': {description: "Droit d'usage mis à jour (terms : valeurs effectives et indicateurs de surcharge)"}
+        '403': {description: "Refusé ou 2FA récente requise"}
+        '404': {description: "Client ou application introuvable"}
+        '409': {description: "Essai non modifiable après un paiement"}
+        '422': {description: "Données invalides"}
+  /api/v1/platform/clients/{tenant}/applications/{key}/options:
+    post:
+      summary: "Souscrit le client à une option de service pour l'application, ou change son prix propre (price_xaf, null : prix de l'option) ; reason obligatoire (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - {name: tenant, in: path, required: true, schema: {type: string}}
+        - {name: key, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [option_key, reason]
+              properties:
+                option_key: {type: string}
+                price_xaf: {type: [integer, "null"], minimum: 0}
+                reason: {type: string, maxLength: 500}
+      responses:
+        '200': {description: "Droit d'usage avec ses options et le montant mensuel dû (monthly_total_xaf)"}
+        '403': {description: "Refusé ou 2FA récente requise"}
+        '404': {description: "Introuvable"}
+        '409': {description: "Option désactivée"}
+        '422': {description: "Option non applicable à cette application ou données invalides"}
+  /api/v1/platform/clients/{tenant}/applications/{key}/options/{option}/remove:
+    post:
+      summary: "Résilie une option de service du client ({ reason } obligatoire) (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - {name: tenant, in: path, required: true, schema: {type: string}}
+        - {name: key, in: path, required: true, schema: {type: string}}
+        - {name: option, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: {type: string, maxLength: 500}
+      responses:
+        '200': {description: "Droit d'usage mis à jour"}
+        '403': {description: "Refusé ou 2FA récente requise"}
+        '404': {description: "Option non souscrite"}
+        '422': {description: "Motif manquant"}
+  /api/v1/platform/service-options:
+    get:
+      summary: "Options de service (clé, libellés fr/en, prix mensuel XAF, applications concernées, actif, nombre de souscripteurs)"
+      security:
+        - bearer: []
+      responses:
+        '200': {description: "Liste des options"}
+        '403': {description: "Réservé à l'administrateur de plateforme"}
+    post:
+      summary: "Crée une option de service (2FA récente)"
+      security:
+        - bearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [option_key, label_fr, label_en, monthly_price_xaf]
+              properties:
+                option_key: {type: string, pattern: "^[a-z][a-z0-9_]+$", maxLength: 30}
+                label_fr: {type: string, maxLength: 120}
+                label_en: {type: string, maxLength: 120}
+                monthly_price_xaf: {type: integer, minimum: 0}
+                app_keys: {type: array, items: {type: string}, description: "Applications concernées ([] : toutes)"}
+      responses:
+        '201': {description: "Option créée"}
+        '403': {description: "Refusé ou 2FA récente requise"}
+        '409': {description: "Clé déjà utilisée"}
+        '422': {description: "Données invalides"}
+  /api/v1/platform/service-options/{key}:
+    patch:
+      summary: "Modifie une option (libellés, prix, applications, active) (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - {name: key, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                label_fr: {type: string, maxLength: 120}
+                label_en: {type: string, maxLength: 120}
+                monthly_price_xaf: {type: integer, minimum: 0}
+                app_keys: {type: array, items: {type: string}}
+                active: {type: boolean}
+      responses:
+        '200': {description: "Option mise à jour"}
+        '403': {description: "Refusé ou 2FA récente requise"}
+        '404': {description: "Introuvable"}
+        '422': {description: "Données invalides"}
+    delete:
+      summary: "Supprime une option que personne n'a souscrite (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - {name: key, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Supprimée"}
+        '403': {description: "Refusé ou 2FA récente requise"}
+        '404': {description: "Introuvable"}
+        '409': {description: "Option souscrite par des clients : la désactiver"}
+  /api/v1/platform/regularisation:
+    get:
+      summary: "Liste « À régulariser » : impayés, applications en régularisation, promesses de paiement en cours (montant dû, jours de retard, niveau) ; filtre filter[bucket] = past_due, regularisation ou promise"
+      security:
+        - bearer: []
+      responses:
+        '200': {description: "Liste, avec meta.total, meta.amount_due_xaf et meta.counts"}
+        '403': {description: "Réservé à l'administrateur de plateforme"}
+        '422': {description: "Filtre invalide"}
+  /api/v1/platform/regularisation/export:
+    get:
+      summary: "Export CSV (ou xlsx avec ?format=xlsx) de la liste « À régulariser »"
+      security:
+        - bearer: []
+      responses:
+        '200': {description: "Fichier CSV"}
+        '403': {description: "Réservé à l'administrateur de plateforme"}
+        '422': {description: "Filtre ou format invalide"}
+  /api/v1/platform/clients/{tenant}/regularisation/lock:
+    post:
+      summary: "Bloque à la main le client (toutes ses applications ouvertes, ou app_key) en mode régularisation de paiement, au niveau demandé (read_only : lecture et export ; locked : tout bloqué sauf la régularisation) ; reason obligatoire ; aucune donnée supprimée (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - {name: tenant, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: {type: string, maxLength: 500}
+                level: {type: string, enum: [read_only, locked]}
+                app_key: {type: string}
+      responses:
+        '200': {description: "Droits d'usage bloqués"}
+        '403': {description: "Refusé ou 2FA récente requise"}
+        '404': {description: "Client ou application introuvable"}
+        '409': {description: "Déjà bloqué à ce niveau ou aucune application ouverte"}
+        '422': {description: "Données invalides"}
+  /api/v1/platform/clients/{tenant}/regularisation/unlock:
+    post:
+      summary: "Débloque le client ou l'application (reason obligatoire) ; si l'impayé le re-bloquerait, une promesse de paiement est posée jusqu'à `until` (7 jours par défaut) (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - {name: tenant, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: {type: string, maxLength: 500}
+                until: {type: string, format: date}
+                app_key: {type: string}
+      responses:
+        '200': {description: "Droits d'usage débloqués"}
+        '403': {description: "Refusé ou 2FA récente requise"}
+        '404': {description: "Client ou application introuvable"}
+        '409': {description: "Aucune application bloquée pour impayé"}
+        '422': {description: "Données invalides"}
+  /api/v1/platform/clients/{tenant}/regularisation/delay:
+    post:
+      summary: "Promesse de paiement : reporte le blocage jusqu'à `until` (au plus 90 jours) ; une application déjà bloquée est débloquée jusqu'à cette date ; reason obligatoire (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - {name: tenant, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [until, reason]
+              properties:
+                until: {type: string, format: date}
+                reason: {type: string, maxLength: 500}
+                app_key: {type: string}
+      responses:
+        '200': {description: "Délai accordé"}
+        '403': {description: "Refusé ou 2FA récente requise"}
+        '404': {description: "Client ou application introuvable"}
+        '409': {description: "Aucune application impayée ou bloquée"}
+        '422': {description: "Date ou motif invalide"}
+  /api/v1/platform/clients/{tenant}/regularisation/level:
+    post:
+      summary: "Niveau de blocage choisi pour tout le client ({ level: read_only | locked | null, reason }) ; null revient au réglage de la plateforme ; appliqué aussitôt aux applications déjà en régularisation (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - {name: tenant, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [level, reason]
+              properties:
+                level: {type: [string, "null"], enum: [read_only, locked, null]}
+                reason: {type: string, maxLength: 500}
+      responses:
+        '200': {description: "Droits d'usage mis à jour"}
+        '403': {description: "Refusé ou 2FA récente requise"}
+        '404': {description: "Client introuvable"}
+        '409': {description: "Aucune application ouverte"}
+        '422': {description: "Données invalides"}
+  /api/v1/me/regularisation:
+    get:
+      summary: "Écran de régularisation du client de l'utilisateur : mode (ok, past_due, read_only, locked), par application montant dû, détail (tarif de base, options), période, jours de retard, promesse, reçus ; can_pay (droit applications.manage) ; contact de la plateforme"
+      security:
+        - bearer: []
+      responses:
+        '200': {description: "Situation de paiement du client (jamais celle d'un autre client) ; contact et payment_numbers (numéros de paiement mobile money de la plateforme) viennent des réglages du back-office, avec repli sur l'environnement ; par application balance_xaf (solde) et credit_xaf ; partial_min_xaf ; requests : suivi des déclarations (declared = en vérification, verified, rejected, expired, cancelled = paiement confirmé puis annulé par la plateforme, motif dans decision_reason ; numéro payeur masqué)"}
+        '403': {description: "Compte de la plateforme"}
+  /api/v1/me/regularisation/declarations:
+    post:
+      summary: "Le responsable de l'établissement (applications.manage) déclare un paiement mobile money fait à la plateforme : application, type total (solde dû) ou partial (amount_xaf entre le minimum et le solde moins 1), moyen (orange_money, mtn_momo), numéro payeur (mobile camerounais, normalisé +237, jamais renvoyé en clair), référence de la transaction ; crée une demande à l'état declared (en vérification). Idempotente : même idempotency_key = même demande ; une seule demande ouverte à la fois par application. NE DÉBLOQUE JAMAIS : seul un paiement vérifié (webhook ou confirmation du super admin) débloque. Prévient le super admin."
+      security:
+        - bearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [app_key, kind, channel, payer_phone, reference]
+              properties:
+                app_key: {type: string}
+                kind: {type: string, enum: [total, partial]}
+                amount_xaf: {type: integer, description: "Obligatoire pour partial, interdit pour total"}
+                channel: {type: string, enum: [orange_money, mtn_momo]}
+                payer_phone: {type: string}
+                reference: {type: string, minLength: 3, maxLength: 120}
+                idempotency_key: {type: string, minLength: 8, maxLength: 80}
+      responses:
+        '200': {description: "Même clé d'idempotence : demande déjà créée"}
+        '201': {description: "Demande créée (declared)"}
+        '403': {description: "Réservé au responsable (applications.manage) d'un client"}
+        '409': {description: "Demande déjà ouverte, aucun solde à régulariser, application fermée ou référence déjà utilisée"}
+        '422': {description: "Montant, numéro, type ou référence invalide"}
+  /api/v1/platform/regularisation/declarations:
+    get:
+      summary: "Paiements déclarés à vérifier (numéro payeur masqué) ; filtres filter[state] = declared, verified, rejected, expired, cancelled, filter[channel], filter[tenant_id] ; meta.counts par état"
+      security:
+        - bearer: []
+      responses:
+        '200': {description: "Liste, avec meta.total et meta.counts"}
+        '403': {description: "Réservé à l'administrateur de plateforme"}
+        '422': {description: "Filtre invalide"}
+  /api/v1/platform/regularisation/declarations/export:
+    get:
+      summary: "Export CSV (ou xlsx avec ?format=xlsx) des paiements déclarés (mêmes filtres)"
+      security:
+        - bearer: []
+      responses:
+        '200': {description: "Fichier CSV"}
+        '403': {description: "Réservé à l'administrateur de plateforme"}
+        '422': {description: "Filtre ou format invalide"}
+  /api/v1/platform/regularisation/declarations/{id}/confirm:
+    post:
+      summary: "Confirme le paiement constaté sur le relevé : montant réellement reçu, référence constatée facultative, note, promise_until facultatif (promesse de paiement accordée avec un paiement partiel). Un paiement qui couvre le solde (tolérance comprise) débloque aussitôt par le chemin des paiements manuels (état actif, période prolongée, reçu, blocage levé) et prévient le client ; sinon le montant est porté au crédit du solde et le niveau est conservé. Une même référence ne valide qu'une demande (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [received_amount_xaf]
+              properties:
+                received_amount_xaf: {type: integer, minimum: 1}
+                reference: {type: string}
+                note: {type: string, maxLength: 500}
+                promise_until: {type: string, format: date}
+      responses:
+        '200': {description: "Demande vérifiée ; unlocked indique si le solde est couvert"}
+        '403': {description: "Refusé ou 2FA récente requise"}
+        '404': {description: "Demande introuvable"}
+        '409': {description: "Demande déjà traitée, référence déjà utilisée ou application fermée"}
+        '422': {description: "Montant, référence ou date invalide"}
+  /api/v1/platform/regularisation/declarations/{id}/reject:
+    post:
+      summary: "Rejette la demande (reason obligatoire) et prévient le client avec le motif (2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: {type: string, maxLength: 500}
+      responses:
+        '200': {description: "Demande rejetée"}
+        '403': {description: "Refusé ou 2FA récente requise"}
+        '404': {description: "Demande introuvable"}
+        '409': {description: "Demande déjà traitée"}
+        '422': {description: "Motif obligatoire"}

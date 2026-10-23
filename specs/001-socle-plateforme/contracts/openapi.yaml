@@ -1,0 +1,55 @@
+openapi: 3.1.0
+info:
+  title: API SCHOLARIS
+  version: 1.0.0
+  description: >
+    Contrat de l'API du socle. Maintenu à la main et vérifié par le test de contrat
+    (tests/Architecture/OpenApiContractTest.php) : toute route enregistrée doit y figurer.
+servers:
+  - url: https://scholaris-erp.trugroup.cm
+paths:
+  /api/v1/health:
+    get:
+      summary: État du service et de la base
+      security: []
+      responses:
+        '200':
+          description: Service opérationnel
+        '503':
+          description: Service dégradé (base indisponible)
+components:
+  securitySchemes:
+    bearer:
+      type: http
+      scheme: bearer
+  parameters:
+    EstablishmentId:
+      name: X-Establishment-Id
+      in: header
+      required: true
+      schema:
+        type: string
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema:
+        type: string
+        minLength: 8
+        maxLength: 128
+  schemas:
+    Problem:
+      type: object
+      description: Erreur au format RFC 9457
+      required: [type, title, status, detail, trace_id]
+      properties:
+        type: {type: string}
+        title: {type: string}
+        status: {type: integer}
+        detail: {type: string}
+        trace_id: {type: string}
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items: {type: string}

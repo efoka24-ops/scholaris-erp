@@ -1,0 +1,1284 @@
+# Contrat OpenAPI 3.1 du service S09 Évaluation, notes, bulletins et délibérations (fusionné avec openapi.yaml par le test de contrat).
+paths:
+  /api/v1/subjects:
+    get:
+      summary: "Référentiel : matières et unités d'enseignement (filter[kind|active])"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Page de matières"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '422':
+          description: "Paramètres invalides"
+    post:
+      summary: "Crée une matière ou une unité d'enseignement (coefficient, crédits, éléments)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: "Matière créée"
+        '400':
+          description: "Requête invalide"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '409':
+          description: "Conflit (verrouillage, version, quorum)"
+        '422':
+          description: "Données invalides"
+  /api/v1/subjects/{id}:
+    get:
+      summary: "Détail d'une matière avec ses éléments"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Matière"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '422':
+          description: "Paramètres invalides"
+    patch:
+      summary: "Modifie ou désactive une matière"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: "Matière modifiée"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '409':
+          description: "Conflit (verrouillage)"
+        '422':
+          description: "Données invalides"
+  /api/v1/subjects/{id}/elements:
+    post:
+      summary: "Ajoute un élément (coefficient ou crédits) à une matière"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: "Matière avec ses éléments"
+        '400':
+          description: "Requête invalide"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '409':
+          description: "Conflit (verrouillage, version, quorum)"
+        '422':
+          description: "Données invalides"
+  /api/v1/assessments:
+    get:
+      summary: "Épreuves de l'établissement (filter[subject_id|structure_id|period_id|status|kind])"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Page d'épreuves"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '422':
+          description: "Paramètres invalides"
+    post:
+      summary: "Crée une épreuve pondérée (poids, barème, mode numérique ou qualitatif, anonymat, score_step = pas de saisie, exam_session normal|resit). Un enseignant ne crée que pour ses classes"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: "Épreuve créée"
+        '400':
+          description: "Requête invalide"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '409':
+          description: "Conflit (verrouillage, version, quorum)"
+        '422':
+          description: "Données invalides"
+  /api/v1/assessments/{id}:
+    get:
+      summary: "Détail d'une épreuve, cycle de vie et échelle qualitative effective"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Épreuve"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '422':
+          description: "Paramètres invalides"
+    patch:
+      summary: "Modifie une épreuve tant que la saisie est ouverte (barème jamais sous une note saisie)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: "Épreuve modifiée"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '409':
+          description: "Conflit (verrouillage)"
+        '422':
+          description: "Données invalides"
+  /api/v1/assessments/{id}/transition:
+    post:
+      summary: "Fait passer l'épreuve à l'état suivant du cycle (droit et 2FA récente selon l'application) ; 422 si des notes manquent"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: "Épreuve à son nouvel état"
+        '400':
+          description: "Requête invalide"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '409':
+          description: "Conflit (verrouillage, version, quorum)"
+        '422':
+          description: "Données invalides"
+  /api/v1/assessments/{id}/reveal:
+    post:
+      summary: "Lève l'anonymat des copies (irréversible)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: "Épreuve non anonyme"
+        '400':
+          description: "Requête invalide"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '409':
+          description: "Conflit (verrouillage, version, quorum)"
+        '422':
+          description: "Données invalides"
+  /api/v1/calculation-rules:
+    get:
+      summary: "Versions des règles de calcul (filter[academic_year_id|structure_id])"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Page de versions"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '422':
+          description: "Paramètres invalides"
+    post:
+      summary: "Publie une nouvelle version de règles déclaratives pour une année, éventuellement rattachée à une structure (structure_id) ; definition accepte strategy, strategy_options, decision_labels, absence_effects (jamais de modification d'une version existante ; stratégie inconnue = 422)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: "Version publiée"
+        '400':
+          description: "Requête invalide"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '409':
+          description: "Conflit (verrouillage, version, quorum)"
+        '422':
+          description: "Données invalides"
+  /api/v1/calculation-rules/{id}:
+    get:
+      summary: "Une version de règles avec les règles effectives"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Version de règles"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '422':
+          description: "Paramètres invalides"
+  /api/v1/grade-sheets:
+    get:
+      summary: "Grille de saisie d'une classe : colonnes (poids, barème), moyenne de séquence, appréciation, compteurs d'erreurs et de notes manquantes (structure_id et period_id obligatoires, subject_id facultatif)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Grille"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '422':
+          description: "Paramètres invalides"
+  /api/v1/grade-sheets/transition:
+    post:
+      summary: "Fait passer toutes les épreuves d'une classe et d'une période à l'état demandé (« Valider la grille »)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: "Épreuves à leur nouvel état"
+        '400':
+          description: "Requête invalide"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '409':
+          description: "Conflit (verrouillage, version, quorum)"
+        '422':
+          description: "Données invalides"
+  /api/v1/grade-sheets/{id}:
+    get:
+      summary: "Fiche d'une épreuve, identité masquée si elle est anonyme"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Fiche de l'épreuve"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '422':
+          description: "Paramètres invalides"
+  /api/v1/grades:
+    get:
+      summary: "Notes (filter[assessment_id|person_id])"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Page de notes"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '422':
+          description: "Paramètres invalides"
+    post:
+      summary: "Saisit une note, un absent justifié ou non, ou une appréciation ; expected_version et client_uuid facultatifs ; 409 avec les deux versions en cas de conflit"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: "Note enregistrée"
+        '400':
+          description: "Requête invalide"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '409':
+          description: "Conflit (verrouillage, version, quorum)"
+        '422':
+          description: "Données invalides"
+  /api/v1/grades/batch:
+    post:
+      summary: "Saisie en lot atomique d'une épreuve : « Ligne 4 · Devoir : 22 dépasse le maximum de 20. Corrigez avant de valider. »"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: "Compteurs created, updated, unchanged"
+        '400':
+          description: "Requête invalide"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '409':
+          description: "Conflit (verrouillage, version, quorum)"
+        '422':
+          description: "Données invalides"
+  /api/v1/grades/sync:
+    post:
+      summary: "Synchronisation hors ligne (client_uuid et base_version par note) : idempotente ; 409 avec les deux versions des notes en conflit, les autres sont enregistrées"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: "Résultat par note (created, updated, unchanged, duplicate, rejected)"
+        '400':
+          description: "Requête invalide"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '409':
+          description: "Conflit (verrouillage, version, quorum)"
+        '422':
+          description: "Données invalides"
+  /api/v1/grades/import:
+    post:
+      summary: "Import CSV (corps text/csv, paramètre assessment_id) : séparateur « ; » ou « , », UTF-8 ou Windows-1252 ; atomique, erreurs rapportées ligne par ligne"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      requestBody:
+        required: true
+        content:
+          text/csv:
+            schema:
+              type: string
+      responses:
+        '200':
+          description: "Compteurs created, updated, unchanged"
+        '400':
+          description: "Requête invalide"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '409':
+          description: "Conflit (verrouillage, version, quorum)"
+        '422':
+          description: "Données invalides"
+  /api/v1/grades/import-template:
+    get:
+      summary: "Modèle CSV à remplir pour une épreuve (paramètre assessment_id)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Fichier CSV"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '422':
+          description: "Paramètres invalides"
+  /api/v1/grades/{id}:
+    get:
+      summary: "Détail d'une note"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Note"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '422':
+          description: "Paramètres invalides"
+  /api/v1/grades/{id}/events:
+    get:
+      summary: "Historique complet d'une note (ancienne et nouvelle valeur, auteur, motif, approbateur)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Historique"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '422':
+          description: "Paramètres invalides"
+  /api/v1/grade-corrections:
+    get:
+      summary: "Demandes de correction (filter[status|assessment_id|person_id])"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Page de demandes"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '422':
+          description: "Paramètres invalides"
+    post:
+      summary: "Demande motivée de correction d'une note verrouillée ; la note ne change qu'après approbation par une autre personne"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '202':
+          description: "Demande en attente"
+        '400':
+          description: "Requête invalide"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '409':
+          description: "Conflit (verrouillage, version, quorum)"
+        '422':
+          description: "Données invalides"
+  /api/v1/grade-corrections/{id}:
+    get:
+      summary: "Détail d'une demande de correction"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Demande"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '422':
+          description: "Paramètres invalides"
+  /api/v1/grade-corrections/{id}/approve:
+    post:
+      summary: "Approuve l'étape en cours de la correction (chaîne assessment.correction.chain, droit et 2FA par étape, jamais par le demandeur ni deux fois par la même personne) ; la note change à la dernière étape"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: "Demande approuvée"
+        '400':
+          description: "Requête invalide"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '409':
+          description: "Conflit (verrouillage, version, quorum)"
+        '422':
+          description: "Données invalides"
+  /api/v1/grade-corrections/{id}/reject:
+    post:
+      summary: "Rejette la demande de correction"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: "Demande rejetée"
+        '400':
+          description: "Requête invalide"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '409':
+          description: "Conflit (verrouillage, version, quorum)"
+        '422':
+          description: "Données invalides"
+  /api/v1/sequence-statistics:
+    get:
+      summary: "Statistiques de séquence : moyenne, taux de réussite, minimum, maximum par épreuve et pour les moyennes des élèves"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Statistiques"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '422':
+          description: "Paramètres invalides"
+  /api/v1/class-councils:
+    get:
+      summary: "Conseils de classe (filter[structure_id|period_id|status])"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Page de conseils"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '422':
+          description: "Paramètres invalides"
+    post:
+      summary: "Ouvre le conseil d'une classe pour une période : résultats calculés, proposition par élève, absences non justifiées (Attendance)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: "Conseil ouvert"
+        '400':
+          description: "Requête invalide"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '409':
+          description: "Conflit (verrouillage, version, quorum)"
+        '422':
+          description: "Données invalides"
+  /api/v1/class-councils/{id}:
+    get:
+      summary: "Conseil avec ses lignes (rang, moyenne, proposition, décision) et ses indicateurs"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Conseil"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '422':
+          description: "Paramètres invalides"
+  /api/v1/class-councils/{id}/lines/{line_id}:
+    patch:
+      summary: "Décision du conseil pour un élève : motif obligatoire si elle diffère de la proposition"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: line_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: "Conseil"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '409':
+          description: "Conflit (verrouillage)"
+        '422':
+          description: "Données invalides"
+  /api/v1/class-councils/{id}/refresh:
+    post:
+      summary: "Recalcule moyennes, rangs et propositions sans écraser les décisions modifiées"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: "Conseil"
+        '400':
+          description: "Requête invalide"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '409':
+          description: "Conflit (verrouillage, version, quorum)"
+        '422':
+          description: "Données invalides"
+  /api/v1/class-councils/{id}/validate:
+    post:
+      summary: "Valide les décisions, génère le procès-verbal (Documents) et met les bulletins en file de génération"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: "Conseil validé"
+        '400':
+          description: "Requête invalide"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '409':
+          description: "Conflit (verrouillage, version, quorum)"
+        '422':
+          description: "Données invalides"
+  /api/v1/class-councils/{id}/report-cards:
+    get:
+      summary: "File de génération des bulletins du conseil"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Demandes de bulletins"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '422':
+          description: "Paramètres invalides"
+    post:
+      summary: "Génère les bulletins en attente ou en échec via Documents (jamais deux fois le même bulletin)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: "Demandes de bulletins"
+        '400':
+          description: "Requête invalide"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '409':
+          description: "Conflit (verrouillage, version, quorum)"
+        '422':
+          description: "Données invalides"
+  /api/v1/deliberations:
+    get:
+      summary: "Délibérations (filter[structure_id|period_id|status|exam_session])"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Page de délibérations"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '422':
+          description: "Paramètres invalides"
+    post:
+      summary: "Prépare la délibération d'une session (exam_session normal|resit) : unités d'enseignement, crédits, proposition du jury par étudiant ; gardes assessment.deliberation.* (notes verrouillées : 409)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: "Délibération"
+        '400':
+          description: "Requête invalide"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '409':
+          description: "Conflit (verrouillage, version, quorum)"
+        '422':
+          description: "Données invalides"
+  /api/v1/deliberations/{id}:
+    get:
+      summary: "Délibération avec tableau, synthèse, quorum et signatures"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Délibération"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '422':
+          description: "Paramètres invalides"
+  /api/v1/deliberations/{id}/attendance:
+    post:
+      summary: "Enregistre les membres présents et calcule le quorum"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: "Délibération"
+        '400':
+          description: "Requête invalide"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '409':
+          description: "Conflit (verrouillage, version, quorum)"
+        '422':
+          description: "Données invalides"
+  /api/v1/deliberations/{id}/start:
+    post:
+      summary: "Ouvre la séance (409 si le quorum n'est pas atteint)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: "Délibération ouverte"
+        '400':
+          description: "Requête invalide"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '409':
+          description: "Conflit (verrouillage, version, quorum)"
+        '422':
+          description: "Données invalides"
+  /api/v1/deliberations/{id}/lines/{line_id}:
+    patch:
+      summary: "Décision du jury : motif au procès-verbal obligatoire si elle diffère de la proposition"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: line_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: "Délibération"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '409':
+          description: "Conflit (verrouillage)"
+        '422':
+          description: "Données invalides"
+  /api/v1/deliberations/{id}/close:
+    post:
+      summary: "Clôture : décisions reportées, empreinte SHA-256 (minutes_fingerprint), procès-verbal numéroté (minutes_version) ; décisions ensuite non modifiables ; 2FA si assessment.deliberation.require_2fa"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: "Délibération close"
+        '400':
+          description: "Requête invalide"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '409':
+          description: "Conflit (verrouillage, version, quorum)"
+        '422':
+          description: "Données invalides"
+  /api/v1/deliberations/{id}/sign:
+    post:
+      summary: "Signature électronique du procès-verbal par un membre présent (droit assessment.deliberation.sign accepté) ; refusée si les décisions ne correspondent plus à l'empreinte (option)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: "Délibération"
+        '400':
+          description: "Requête invalide"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '409':
+          description: "Conflit (verrouillage, version, quorum)"
+        '422':
+          description: "Données invalides"
+  /api/v1/deliberations/{id}/reopen:
+    post:
+      summary: "Réouverture exceptionnelle motivée (droit assessment.deliberation.reopen_permission) : PV précédent archivé dans minutes_history, nouveau PV à la clôture, alerte éventuelle"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: "Délibération rouverte"
+        '400':
+          description: "Requête invalide"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '409':
+          description: "Conflit (verrouillage, version, quorum)"
+        '422':
+          description: "Données invalides"
+  /api/v1/results:
+    get:
+      summary: "Résultats : l'équipe pédagogique voit tout ; une famille ne voit que les résultats publiés de ses enfants (filter[structure_id|period_id|person_id|status|exam_session])"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Page de résultats"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '422':
+          description: "Paramètres invalides"
+  /api/v1/results/publish:
+    post:
+      summary: "Publie aux familles les résultats d'une classe pour une période et une session (exam_session) : épreuves publiées selon le cycle, conseil validé, délibération close, gardes (signature du président, 2FA, empreinte) selon les paramètres"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: "Résultats publiés"
+        '400':
+          description: "Requête invalide"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '409':
+          description: "Conflit (verrouillage, version, quorum)"
+        '422':
+          description: "Données invalides"
+  /api/v1/results/{id}:
+    get:
+      summary: "Détail d'un résultat (une famille ne lit que les résultats publiés de ses enfants)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Résultat"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '422':
+          description: "Paramètres invalides"
+  /api/v1/grades/export:
+    get:
+      summary: "Export CSV (UTF-8 avec BOM, séparateur « ; ») des notes : mêmes filtres et même permission de lecture que GET /grades, plafonné à 5 000 lignes"
+      security:
+        - bearer: []
+      parameters:
+        - name: format
+          in: query
+          required: false
+          description: "Format du fichier : csv (défaut ; UTF-8 avec BOM, séparateur « ; ») ou xlsx (Excel)"
+          schema: {type: string, enum: [csv, xlsx], default: csv}
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Fichier CSV"
+          content:
+            text/csv:
+              schema: {type: string}
+        '403':
+          description: "Permission de lecture manquante"
+        '422':
+          description: "Filtre non autorisé"
+  /api/v1/results/export:
+    get:
+      summary: "Export CSV (UTF-8 avec BOM, séparateur « ; ») des résultats : équipe pédagogique (tous) ou famille (résultats publiés de ses enfants), mêmes filtres et mêmes règles que GET /results, plafonné à 5 000 lignes"
+      security:
+        - bearer: []
+      parameters:
+        - name: format
+          in: query
+          required: false
+          description: "Format du fichier : csv (défaut ; UTF-8 avec BOM, séparateur « ; ») ou xlsx (Excel)"
+          schema: {type: string, enum: [csv, xlsx], default: csv}
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Fichier CSV"
+          content:
+            text/csv:
+              schema: {type: string}
+        '403':
+          description: "Permission de lecture manquante"
+        '422':
+          description: "Filtre non autorisé"

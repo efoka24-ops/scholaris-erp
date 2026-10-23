@@ -1,0 +1,390 @@
+# Contrat OpenAPI 3.1 du Primaire public (application public_primary, registre des écoles). Fusionné avec openapi.yaml par le test de contrat.
+# Erreurs au format RFC 9457. Toutes les routes exigent l'authentification (401) et X-Establishment-Id.
+paths:
+  /api/v1/public/schools/current:
+    get:
+      summary: Fiche de l’école publique de l’établissement actif
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: Fiche école
+        '401':
+          description: Authentification requise
+        '404':
+          description: Fiche ou permission indisponible dans cet établissement
+    put:
+      summary: "Créer ou mettre à jour la fiche de l’école"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200': { description: "Succès : enveloppe JSON {data}" }
+        '201': { description: "Fiche créée" }
+        '400': { description: "Requête invalide (JSON illisible)" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission insuffisante ou application non ouverte au rôle" }
+        '404': { description: "Ressource inconnue, hors client, hors arrondissement ou hors classe (isolation)" }
+        '409': { description: "Conflit d’état (version close, doublon, transition interdite)" }
+        '422': { description: "Données invalides ou règle métier (RFC 9457, errors par champ)" }
+        '423': { description: "Application en lecture seule (écriture fermée)" }
+  /api/v1/public-primary/registry/profile:
+    get:
+      summary: 'GET /public-primary/registry/profile'
+      security:
+        -
+          bearer: {  }
+      parameters:
+        -
+          $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        200:
+          description: 'Succès : enveloppe JSON {data}'
+        400:
+          description: 'Requête invalide (en-tête X-Establishment-Id manquant, JSON illisible)'
+        403:
+          description: 'Accès refusé (permission, application suspendue ou fermée)'
+        404:
+          description: 'Ressource introuvable ou hors périmètre'
+        422:
+          description: 'Données invalides ou refus métier (RFC 9457)'
+    put:
+      summary: 'PUT /public-primary/registry/profile'
+      security:
+        -
+          bearer: {  }
+      parameters:
+        -
+          $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        200:
+          description: 'Succès : enveloppe JSON {data}'
+        400:
+          description: 'Requête invalide (en-tête X-Establishment-Id manquant, JSON illisible)'
+        403:
+          description: 'Accès refusé (permission, application suspendue ou fermée)'
+        404:
+          description: 'Ressource introuvable ou hors périmètre'
+        422:
+          description: 'Données invalides ou refus métier (RFC 9457)'
+  '/api/v1/public-primary/registry/territories/{id}/lineage':
+    get:
+      summary: 'GET /public-primary/registry/territories/{id}/lineage'
+      security:
+        -
+          bearer: {  }
+      parameters:
+        -
+          $ref: '#/components/parameters/EstablishmentId'
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: 'Succès : enveloppe JSON {data}'
+        400:
+          description: 'Requête invalide (en-tête X-Establishment-Id manquant, JSON illisible)'
+        403:
+          description: 'Accès refusé (permission, application suspendue ou fermée)'
+        404:
+          description: 'Ressource introuvable ou hors périmètre'
+        422:
+          description: 'Données invalides ou refus métier (RFC 9457)'
+  /api/v1/public-primary/registry/infrastructure:
+    get:
+      summary: 'GET /public-primary/registry/infrastructure'
+      security:
+        -
+          bearer: {  }
+      parameters:
+        -
+          $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        200:
+          description: 'Succès : enveloppe JSON {data}'
+        400:
+          description: 'Requête invalide (en-tête X-Establishment-Id manquant, JSON illisible)'
+        403:
+          description: 'Accès refusé (permission, application suspendue ou fermée)'
+        404:
+          description: 'Ressource introuvable ou hors périmètre'
+        422:
+          description: 'Données invalides ou refus métier (RFC 9457)'
+    post:
+      summary: 'POST /public-primary/registry/infrastructure'
+      security:
+        -
+          bearer: {  }
+      parameters:
+        -
+          $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        201:
+          description: 'Succès : enveloppe JSON {data}'
+        400:
+          description: 'Requête invalide (en-tête X-Establishment-Id manquant, JSON illisible)'
+        403:
+          description: 'Accès refusé (permission, application suspendue ou fermée)'
+        404:
+          description: 'Ressource introuvable ou hors périmètre'
+        422:
+          description: 'Données invalides ou refus métier (RFC 9457)'
+  '/api/v1/public-primary/registry/infrastructure/{id}':
+    get:
+      summary: 'GET /public-primary/registry/infrastructure/{id}'
+      security:
+        -
+          bearer: {  }
+      parameters:
+        -
+          $ref: '#/components/parameters/EstablishmentId'
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: 'Succès : enveloppe JSON {data}'
+        400:
+          description: 'Requête invalide (en-tête X-Establishment-Id manquant, JSON illisible)'
+        403:
+          description: 'Accès refusé (permission, application suspendue ou fermée)'
+        404:
+          description: 'Ressource introuvable ou hors périmètre'
+        422:
+          description: 'Données invalides ou refus métier (RFC 9457)'
+    patch:
+      summary: 'PATCH /public-primary/registry/infrastructure/{id}'
+      security:
+        -
+          bearer: {  }
+      parameters:
+        -
+          $ref: '#/components/parameters/EstablishmentId'
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: 'Succès : enveloppe JSON {data}'
+        400:
+          description: 'Requête invalide (en-tête X-Establishment-Id manquant, JSON illisible)'
+        403:
+          description: 'Accès refusé (permission, application suspendue ou fermée)'
+        404:
+          description: 'Ressource introuvable ou hors périmètre'
+        422:
+          description: 'Données invalides ou refus métier (RFC 9457)'
+  '/api/v1/public-primary/registry/infrastructure/{id}/corrections':
+    post:
+      summary: 'POST /public-primary/registry/infrastructure/{id}/corrections'
+      security:
+        -
+          bearer: {  }
+      parameters:
+        -
+          $ref: '#/components/parameters/EstablishmentId'
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        201:
+          description: 'Succès : enveloppe JSON {data}'
+        400:
+          description: 'Requête invalide (en-tête X-Establishment-Id manquant, JSON illisible)'
+        403:
+          description: 'Accès refusé (permission, application suspendue ou fermée)'
+        404:
+          description: 'Ressource introuvable ou hors périmètre'
+        422:
+          description: 'Données invalides ou refus métier (RFC 9457)'
+  '/api/v1/public-primary/registry/infrastructure/{id}/close':
+    post:
+      summary: 'POST /public-primary/registry/infrastructure/{id}/close'
+      security:
+        -
+          bearer: {  }
+      parameters:
+        -
+          $ref: '#/components/parameters/EstablishmentId'
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        201:
+          description: 'Succès : enveloppe JSON {data}'
+        400:
+          description: 'Requête invalide (en-tête X-Establishment-Id manquant, JSON illisible)'
+        403:
+          description: 'Accès refusé (permission, application suspendue ou fermée)'
+        404:
+          description: 'Ressource introuvable ou hors périmètre'
+        422:
+          description: 'Données invalides ou refus métier (RFC 9457)'
+
+  /api/v1/public/schools/current/infrastructure:
+    get:
+      summary: "Versions d’infrastructure de l’année"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200': { description: "Succès : enveloppe JSON {data}" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission insuffisante ou application non ouverte au rôle" }
+        '404': { description: "Ressource inconnue, hors client, hors arrondissement ou hors classe (isolation)" }
+        '422': { description: "Paramètre invalide" }
+    post:
+      summary: "Ouvrir une version d’infrastructure"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '201': { description: "Succès : enveloppe JSON {data}" }
+        '400': { description: "Requête invalide (JSON illisible)" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission insuffisante ou application non ouverte au rôle" }
+        '404': { description: "Ressource inconnue, hors client, hors arrondissement ou hors classe (isolation)" }
+        '409': { description: "Conflit d’état (version close, doublon, transition interdite)" }
+        '422': { description: "Données invalides ou règle métier (RFC 9457, errors par champ)" }
+        '423': { description: "Application en lecture seule (écriture fermée)" }
+  /api/v1/public/schools/current/infrastructure/{id}:
+    get:
+      summary: "Lire une version d’infrastructure"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: "Succès : enveloppe JSON {data}" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission insuffisante ou application non ouverte au rôle" }
+        '404': { description: "Ressource inconnue, hors client, hors arrondissement ou hors classe (isolation)" }
+        '422': { description: "Paramètre invalide" }
+    patch:
+      summary: "Modifier une version ouverte"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: "Succès : enveloppe JSON {data}" }
+        '400': { description: "Requête invalide (JSON illisible)" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission insuffisante ou application non ouverte au rôle" }
+        '404': { description: "Ressource inconnue, hors client, hors arrondissement ou hors classe (isolation)" }
+        '409': { description: "Conflit d’état (version close, doublon, transition interdite)" }
+        '422': { description: "Données invalides ou règle métier (RFC 9457, errors par champ)" }
+        '423': { description: "Application en lecture seule (écriture fermée)" }
+  /api/v1/public/schools/current/infrastructure/{id}/close:
+    post:
+      summary: "Clore une version (immuable ensuite)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: "Succès : enveloppe JSON {data}" }
+        '400': { description: "Requête invalide (JSON illisible)" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission insuffisante ou application non ouverte au rôle" }
+        '404': { description: "Ressource inconnue, hors client, hors arrondissement ou hors classe (isolation)" }
+        '409': { description: "Conflit d’état (version close, doublon, transition interdite)" }
+        '422': { description: "Données invalides ou règle métier (RFC 9457, errors par champ)" }
+        '423': { description: "Application en lecture seule (écriture fermée)" }
+  /api/v1/public/schools/current/infrastructure/{id}/corrections:
+    post:
+      summary: "Corriger une version close (version n+1 motivée)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '201': { description: "Succès : enveloppe JSON {data}" }
+        '400': { description: "Requête invalide (JSON illisible)" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission insuffisante ou application non ouverte au rôle" }
+        '404': { description: "Ressource inconnue, hors client, hors arrondissement ou hors classe (isolation)" }
+        '409': { description: "Conflit d’état (version close, doublon, transition interdite)" }
+        '422': { description: "Données invalides ou règle métier (RFC 9457, errors par champ)" }
+        '423': { description: "Application en lecture seule (écriture fermée)" }
+  /api/v1/public/schools/photos:
+    get:
+      summary: "Photos géolocalisées de l’école"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200': { description: "Succès : enveloppe JSON {data}" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission insuffisante ou application non ouverte au rôle" }
+        '404': { description: "Ressource inconnue, hors client, hors arrondissement ou hors classe (isolation)" }
+        '422': { description: "Paramètre invalide" }
+    post:
+      summary: "Ajouter une photo géolocalisée"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '201': { description: "Succès : enveloppe JSON {data}" }
+        '400': { description: "Requête invalide (JSON illisible)" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission insuffisante ou application non ouverte au rôle" }
+        '404': { description: "Ressource inconnue, hors client, hors arrondissement ou hors classe (isolation)" }
+        '409': { description: "Conflit d’état (version close, doublon, transition interdite)" }
+        '422': { description: "Données invalides ou règle métier (RFC 9457, errors par champ)" }
+        '423': { description: "Application en lecture seule (écriture fermée)" }
+  /api/v1/public/schools/photos/{id}/content:
+    get:
+      summary: "Contenu binaire d’une photo"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: "Succès : enveloppe JSON {data}" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission insuffisante ou application non ouverte au rôle" }
+        '404': { description: "Ressource inconnue, hors client, hors arrondissement ou hors classe (isolation)" }
+        '422': { description: "Paramètre invalide" }

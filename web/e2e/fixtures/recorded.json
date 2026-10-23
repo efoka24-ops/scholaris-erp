@@ -1,0 +1,1588 @@
+{
+    "recorded_at": "2026-10-12T13:04:29+01:00",
+    "note": "Réponses de la pile réelle (SQLite, données fictives). Régénérer : RECORD_UI_FIXTURES=1 php vendor/bin/phpunit tests/E2E/UiFixturesRecorderTest.php",
+    "calls": {
+        "admin.me": {
+            "request": "GET /me",
+            "status": 200,
+            "content_type": "application/json; charset=utf-8",
+            "body": {
+                "data": {
+                    "id": "01M4QZZVK4DVDF5NG6RNFXGGYS",
+                    "person_id": "01M4QZZVK4DVDF5NG6RNFXGGYR",
+                    "first_name": "Awa",
+                    "last_name": "Admin",
+                    "locale": "fr",
+                    "status": "active",
+                    "greeting": "Awa",
+                    "two_factor": {
+                        "enabled": true,
+                        "required": true,
+                        "verified": true
+                    },
+                    "context": {
+                        "establishment_id": null,
+                        "role": null
+                    }
+                }
+            }
+        },
+        "admin.contexts": {
+            "request": "GET /me/contexts",
+            "status": 200,
+            "content_type": "application/json; charset=utf-8",
+            "body": {
+                "data": [
+                    {
+                        "kind": "establishment",
+                        "id": "01M4QZZXCHCVFYYB52PZJW9DQ5",
+                        "name": "Collège Bilingue Démo",
+                        "type": "secondary",
+                        "accent": "#F26B1D",
+                        "logo": null,
+                        "roles": [
+                            {
+                                "code": "super_admin",
+                                "label": "Super administrateur"
+                            }
+                        ],
+                        "period": {
+                            "id": "01M4QZZXE0QBMQ01E3HQ6VRQ3S",
+                            "kind": "trimester",
+                            "ordinal": 1,
+                            "starts_on": "2026-09-01",
+                            "ends_on": "2026-12-18",
+                            "academic_year": "2026-2027"
+                        },
+                        "indicators": [
+                            {
+                                "key": "people.enrolled",
+                                "label": "Inscrits",
+                                "value": 3,
+                                "unit": "count"
+                            },
+                            {
+                                "key": "billing.outstanding_xaf",
+                                "label": "Solde restant dû (FCFA)",
+                                "value": 300000,
+                                "unit": "xaf"
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        "admin.applications": {
+            "request": "GET /me/applications",
+            "status": 200,
+            "content_type": "application/json; charset=utf-8",
+            "body": {
+                "data": [],
+                "meta": {
+                    "catalog": [
+                        {
+                            "key": "higher",
+                            "label": "IPES - Enseignement supérieur",
+                            "target": "higher",
+                            "status": "available",
+                            "monthly_price_xaf": 60000,
+                            "trial_days": 90
+                        },
+                        {
+                            "key": "nursery",
+                            "label": "Maternelle",
+                            "target": "nursery",
+                            "status": "coming_soon",
+                            "monthly_price_xaf": 60000,
+                            "trial_days": 90
+                        },
+                        {
+                            "key": "primary",
+                            "label": "Enseignement primaire",
+                            "target": "primary",
+                            "status": "coming_soon",
+                            "monthly_price_xaf": 60000,
+                            "trial_days": 90
+                        },
+                        {
+                            "key": "secondary",
+                            "label": "Enseignement secondaire",
+                            "target": "secondary",
+                            "status": "coming_soon",
+                            "monthly_price_xaf": 60000,
+                            "trial_days": 90
+                        }
+                    ]
+                }
+            }
+        },
+        "admin.context": {
+            "request": "POST /me/context",
+            "status": 200,
+            "content_type": "application/json; charset=utf-8",
+            "body": {
+                "data": {
+                    "context": {
+                        "kind": "establishment",
+                        "id": "01M4QZZXCHCVFYYB52PZJW9DQ5",
+                        "name": "Collège Bilingue Démo",
+                        "type": "secondary",
+                        "accent": "#F26B1D",
+                        "logo": null,
+                        "roles": [
+                            {
+                                "code": "super_admin",
+                                "label": "Super administrateur"
+                            }
+                        ]
+                    },
+                    "role": "super_admin"
+                }
+            }
+        },
+        "admin.establishments": {
+            "request": "GET /establishments?per_page=1",
+            "status": 200,
+            "content_type": "application/json; charset=utf-8",
+            "body": {
+                "data": [
+                    {
+                        "id": "01M4QZZXCHCVFYYB52PZJW9DQ5",
+                        "name": "Collège Bilingue Démo",
+                        "type": "secondary",
+                        "branding": {
+                            "accent": "#F26B1D",
+                            "logo": null,
+                            "initial": "C",
+                            "headers": [],
+                            "signatories": [],
+                            "authorization_numbers": []
+                        },
+                        "modules_enabled": [
+                            "people",
+                            "billing",
+                            "messaging",
+                            "documents",
+                            "scheduling",
+                            "attendance",
+                            "assessment",
+                            "staff",
+                            "reporting"
+                        ],
+                        "created_at": "2026-10-13T10:00:01+01:00",
+                        "updated_at": "2026-10-13T10:00:01+01:00"
+                    }
+                ],
+                "links": {
+                    "next": null
+                },
+                "meta": {
+                    "next_cursor": null
+                }
+            }
+        },
+        "admin.establishments.all": {
+            "request": "GET /establishments",
+            "status": 200,
+            "content_type": "application/json; charset=utf-8",
+            "body": {
+                "data": [
+                    {
+                        "id": "01M4QZZXCHCVFYYB52PZJW9DQ5",
+                        "name": "Collège Bilingue Démo",
+                        "type": "secondary",
+                        "branding": {
+                            "accent": "#F26B1D",
+                            "logo": null,
+                            "initial": "C",
+                            "headers": [],
+                            "signatories": [],
+                            "authorization_numbers": []
+                        },
+                        "modules_enabled": [
+                            "people",
+                            "billing",
+                            "messaging",
+                            "documents",
+                            "scheduling",
+                            "attendance",
+                            "assessment",
+                            "staff",
+                            "reporting"
+                        ],
+                        "created_at": "2026-10-13T10:00:01+01:00",
+                        "updated_at": "2026-10-13T10:00:01+01:00"
+                    }
+                ],
+                "links": {
+                    "next": null
+                },
+                "meta": {
+                    "next_cursor": null
+                }
+            }
+        },
+        "admin.establishment.created": {
+            "request": "POST /establishments",
+            "status": 201,
+            "content_type": "application/json; charset=utf-8",
+            "body": {
+                "data": {
+                    "id": "01M4QZZZFKPZAB0FJQKC4VPG49",
+                    "name": "École Primaire Démo",
+                    "type": "primary",
+                    "branding": {
+                        "accent": "#F26B1D",
+                        "logo": null,
+                        "initial": "É",
+                        "headers": [],
+                        "signatories": [],
+                        "authorization_numbers": []
+                    },
+                    "modules_enabled": [
+                        "people",
+                        "billing",
+                        "messaging",
+                        "documents",
+                        "scheduling",
+                        "attendance",
+                        "assessment",
+                        "staff",
+                        "reporting"
+                    ],
+                    "created_at": "2026-10-13T10:02:03+01:00",
+                    "updated_at": "2026-10-13T10:02:03+01:00"
+                }
+            }
+        },
+        "admin.todo": {
+            "request": "GET /me/todo",
+            "status": 200,
+            "content_type": "application/json; charset=utf-8",
+            "body": {
+                "data": [],
+                "meta": {
+                    "count": 0
+                }
+            }
+        },
+        "admin.vocabulary": {
+            "request": "GET /vocabulary",
+            "status": 200,
+            "content_type": "application/json; charset=utf-8",
+            "body": {
+                "data": [
+                    {
+                        "type": "nursery",
+                        "label": "Maternelle",
+                        "terms": {
+                            "learner": "enfant",
+                            "grouping": "section",
+                            "period": "trimestre",
+                            "document": "carnet de suivi"
+                        }
+                    },
+                    {
+                        "type": "primary",
+                        "label": "Primaire",
+                        "terms": {
+                            "learner": "élève",
+                            "grouping": "classe",
+                            "period": "séquence",
+                            "document": "bulletin APC"
+                        }
+                    },
+                    {
+                        "type": "secondary",
+                        "label": "Secondaire",
+                        "terms": {
+                            "learner": "élève",
+                            "grouping": "classe",
+                            "period": "trimestre",
+                            "document": "bulletin"
+                        }
+                    },
+                    {
+                        "type": "higher",
+                        "label": "Supérieur",
+                        "terms": {
+                            "learner": "étudiant",
+                            "grouping": "filière",
+                            "period": "semestre",
+                            "document": "relevé"
+                        }
+                    }
+                ]
+            }
+        },
+        "admin.people": {
+            "request": "GET /people",
+            "status": 200,
+            "content_type": "application/json; charset=utf-8",
+            "body": {
+                "data": [
+                    {
+                        "id": "01M4QZZVK4DVDF5NG6RNFXGGYR",
+                        "first_name": "Awa",
+                        "last_name": "Admin",
+                        "birth_date": null,
+                        "birth_place": null,
+                        "gender": null,
+                        "nationality": null,
+                        "phone": "+237699000001",
+                        "email": null,
+                        "locale": "fr",
+                        "national_id": null,
+                        "has_photo": false,
+                        "created_at": "2026-10-12T13:04:24+01:00",
+                        "updated_at": null
+                    },
+                    {
+                        "id": "01M4QZZXGYAV03ZPAG8RQ6SM0P",
+                        "first_name": "Thérèse",
+                        "last_name": "Mbarga",
+                        "birth_date": null,
+                        "birth_place": null,
+                        "gender": null,
+                        "nationality": null,
+                        "phone": "+237699000002",
+                        "email": null,
+                        "locale": "fr",
+                        "national_id": null,
+                        "has_photo": false,
+                        "created_at": "2026-10-13T10:00:01+01:00",
+                        "updated_at": null
+                    },
+                    {
+                        "id": "01M4QZZXKN5F8B3GGVCC3HF80X",
+                        "first_name": "Paul",
+                        "last_name": "Foka",
+                        "birth_date": null,
+                        "birth_place": null,
+                        "gender": null,
+                        "nationality": null,
+                        "phone": "+237699000003",
+                        "email": null,
+                        "locale": "fr",
+                        "national_id": null,
+                        "has_photo": false,
+                        "created_at": "2026-10-13T10:01:02+01:00",
+                        "updated_at": null
+                    },
+                    {
+                        "id": "01M4QZZXRFY2WVGSMS99WGEGZT",
+                        "first_name": "Nadia",
+                        "last_name": "Foka",
+                        "birth_date": "2011-01-12",
+                        "birth_place": null,
+                        "gender": "female",
+                        "nationality": null,
+                        "phone": null,
+                        "email": null,
+                        "locale": "fr",
+                        "national_id": null,
+                        "has_photo": true,
+                        "created_at": "2026-10-13T10:02:03+01:00",
+                        "updated_at": "2026-10-13T10:02:03+01:00"
+                    },
+                    {
+                        "id": "01M4QZZYBT6S52XF0P9SZ0B2JN",
+                        "first_name": "Yann",
+                        "last_name": "Ewane",
+                        "birth_date": "2011-02-12",
+                        "birth_place": null,
+                        "gender": "male",
+                        "nationality": null,
+                        "phone": null,
+                        "email": null,
+                        "locale": "fr",
+                        "national_id": null,
+                        "has_photo": true,
+                        "created_at": "2026-10-13T10:02:03+01:00",
+                        "updated_at": "2026-10-13T10:02:03+01:00"
+                    },
+                    {
+                        "id": "01M4QZZYC9XZQ5SFXCNX6Q20GC",
+                        "first_name": "Garant",
+                        "last_name": "Ewane",
+                        "birth_date": null,
+                        "birth_place": null,
+                        "gender": null,
+                        "nationality": null,
+                        "phone": "+237699000004",
+                        "email": null,
+                        "locale": "fr",
+                        "national_id": null,
+                        "has_photo": false,
+                        "created_at": "2026-10-13T10:02:03+01:00",
+                        "updated_at": "2026-10-13T10:02:03+01:00"
+                    },
+                    {
+                        "id": "01M4QZZYPWY5BQJS4SVFPK410B",
+                        "first_name": "Chloé",
+                        "last_name": "Ngo",
+                        "birth_date": "2011-03-12",
+                        "birth_place": null,
+                        "gender": "female",
+                        "nationality": null,
+                        "phone": null,
+                        "email": null,
+                        "locale": "fr",
+                        "national_id": null,
+                        "has_photo": true,
+                        "created_at": "2026-10-13T10:02:03+01:00",
+                        "updated_at": "2026-10-13T10:02:03+01:00"
+                    },
+                    {
+                        "id": "01M4QZZYQC9QGZEE572HYC5HB2",
+                        "first_name": "Garant",
+                        "last_name": "Ngo",
+                        "birth_date": null,
+                        "birth_place": null,
+                        "gender": null,
+                        "nationality": null,
+                        "phone": "+237699000005",
+                        "email": null,
+                        "locale": "fr",
+                        "national_id": null,
+                        "has_photo": false,
+                        "created_at": "2026-10-13T10:02:03+01:00",
+                        "updated_at": "2026-10-13T10:02:03+01:00"
+                    }
+                ],
+                "links": {
+                    "next": null
+                },
+                "meta": {
+                    "next_cursor": null
+                }
+            }
+        },
+        "admin.people.csv": {
+            "request": "GET /people/export?format=csv",
+            "status": 200,
+            "content_type": "text/csv; charset=utf-8",
+            "body": "﻿Identifiant;Prénom;Nom;\"Date de naissance\";\"Lieu de naissance\";Genre;Nationalité;Téléphone;E-mail;Langue;\"Identifiant national\";\"Créée le\";\"Modifiée le\"\n01M4QZZVK4DVDF5NG6RNFXGGYR;Awa;Admin;;;;;'+237699000001;;fr;;2026-10-12T13:04:24+01:00;\n01M4QZZXGYAV03ZPAG8RQ6SM0P;Thérèse;Mbarga;;;;;'+237699000002;;fr;;2026-10-13T10:00:01+01:00;\n01M4QZZXKN5F8B3GGVCC3HF80X;Paul;Foka;;;;;'+237699000003;;fr;;2026-10-13T10:01:02+01:00;\n01M4QZZXRFY2WVGSMS99WGEGZT;Nadia;Foka;2011-01-12;;female;;;;fr;;2026-10-13T10:02:03+01:00;2026-10-13T10:02:03+01:00\n01M4QZZYBT6S52XF0P9SZ0B2JN;Yann;Ewane;2011-02-12;;male;;;;fr;;2026-10-13T10:02:03+01:00;2026-10-13T10:02:03+01:00\n01M4QZZYC9XZQ5SFXCNX6Q20GC;Garant;Ewane;;;;;'+237699000004;;fr;;2026-10-13T10:02:03+01:00;2026-10-13T10:02:03+01:00\n01M4QZZYPWY5BQJS4SVFPK410B;Chloé;Ngo;2011-03-12;;female;;;;fr;;2026-10-13T10:02:03+01:00;2026-10-13T10:02:03+01:00\n01M4QZZYQC9QGZEE572HYC5HB2;Garant;Ngo;;;;;'+237699000005;;fr;;2026-10-13T10:02:03+01:00;2026-10-13T10:02:03+01:00\n"
+        },
+        "admin.people.xlsx": {
+            "request": "GET /people/export?format=xlsx",
+            "status": 200,
+            "content_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "body": "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"
+        },
+        "admin.structures": {
+            "request": "GET /structures",
+            "status": 200,
+            "content_type": "application/json; charset=utf-8",
+            "body": {
+                "data": [
+                    {
+                        "id": "01M4QZZXFTSAFRD7YEFBARCV9Y",
+                        "establishment_id": "01M4QZZXCHCVFYYB52PZJW9DQ5",
+                        "org_unit_id": null,
+                        "parent_id": null,
+                        "kind": "class",
+                        "name": "3e A",
+                        "capacity": 50,
+                        "created_at": "2026-10-13T10:00:01+01:00",
+                        "updated_at": "2026-10-13T10:00:01+01:00"
+                    }
+                ],
+                "links": {
+                    "next": null
+                },
+                "meta": {
+                    "next_cursor": null
+                }
+            }
+        },
+        "admin.periods": {
+            "request": "GET /periods",
+            "status": 200,
+            "content_type": "application/json; charset=utf-8",
+            "body": {
+                "data": [
+                    {
+                        "id": "01M4QZZXE0QBMQ01E3HQ6VRQ3S",
+                        "establishment_id": "01M4QZZXCHCVFYYB52PZJW9DQ5",
+                        "academic_year_id": "01M4QZZXDGQ8MXHYB96BBR7DK8",
+                        "kind": "trimester",
+                        "ordinal": 1,
+                        "starts_on": "2026-09-01",
+                        "ends_on": "2026-12-18",
+                        "created_at": "2026-10-13T10:00:01+01:00",
+                        "updated_at": "2026-10-13T10:00:01+01:00"
+                    },
+                    {
+                        "id": "01M4QZZXED4NZFY89ZTVRVJNG1",
+                        "establishment_id": "01M4QZZXCHCVFYYB52PZJW9DQ5",
+                        "academic_year_id": "01M4QZZXDGQ8MXHYB96BBR7DK8",
+                        "kind": "trimester",
+                        "ordinal": 2,
+                        "starts_on": "2027-01-04",
+                        "ends_on": "2027-03-26",
+                        "created_at": "2026-10-13T10:00:01+01:00",
+                        "updated_at": "2026-10-13T10:00:01+01:00"
+                    },
+                    {
+                        "id": "01M4QZZXEZQ5XR3DHVAQ2ZQXZ5",
+                        "establishment_id": "01M4QZZXCHCVFYYB52PZJW9DQ5",
+                        "academic_year_id": "01M4QZZXDGQ8MXHYB96BBR7DK8",
+                        "kind": "trimester",
+                        "ordinal": 3,
+                        "starts_on": "2027-04-06",
+                        "ends_on": "2027-06-30",
+                        "created_at": "2026-10-13T10:00:01+01:00",
+                        "updated_at": "2026-10-13T10:00:01+01:00"
+                    }
+                ],
+                "links": {
+                    "next": null
+                },
+                "meta": {
+                    "next_cursor": null
+                }
+            }
+        },
+        "admin.years": {
+            "request": "GET /academic-years",
+            "status": 200,
+            "content_type": "application/json; charset=utf-8",
+            "body": {
+                "data": [
+                    {
+                        "id": "01M4QZZXDGQ8MXHYB96BBR7DK8",
+                        "establishment_id": "01M4QZZXCHCVFYYB52PZJW9DQ5",
+                        "label": "2026-2027",
+                        "starts_on": "2026-09-01",
+                        "ends_on": "2027-06-30",
+                        "status": "open",
+                        "closed_at": null,
+                        "created_at": "2026-10-13T10:00:01+01:00",
+                        "updated_at": "2026-10-13T10:00:01+01:00"
+                    }
+                ],
+                "links": {
+                    "next": null
+                },
+                "meta": {
+                    "next_cursor": null
+                }
+            }
+        },
+        "login.bad": {
+            "request": "POST /auth/login",
+            "status": 401,
+            "content_type": "application/problem+json; charset=utf-8",
+            "body": {
+                "type": "https://api.scholaris.cm/errors/invalid-credentials",
+                "title": "Identifiants incorrects",
+                "status": 401,
+                "detail": "Mot de passe incorrect. Il vous reste 4 essais avant un verrouillage de 15 minutes.",
+                "trace_id": "01M4QZZZQ8KTPDW2SSJY5DT2PT",
+                "attempts_left": 4
+            }
+        },
+        "teacher.me": {
+            "request": "GET /me",
+            "status": 200,
+            "content_type": "application/json; charset=utf-8",
+            "body": {
+                "data": {
+                    "id": "01M4QZZXGYAV03ZPAG8RQ6SM0Q",
+                    "person_id": "01M4QZZXGYAV03ZPAG8RQ6SM0P",
+                    "first_name": "Thérèse",
+                    "last_name": "Mbarga",
+                    "locale": "fr",
+                    "status": "active",
+                    "greeting": "Thérèse",
+                    "two_factor": {
+                        "enabled": true,
+                        "required": true,
+                        "verified": true
+                    },
+                    "context": {
+                        "establishment_id": null,
+                        "role": null
+                    }
+                }
+            }
+        },
+        "teacher.contexts": {
+            "request": "GET /me/contexts",
+            "status": 200,
+            "content_type": "application/json; charset=utf-8",
+            "body": {
+                "data": [
+                    {
+                        "kind": "establishment",
+                        "id": "01M4QZZXCHCVFYYB52PZJW9DQ5",
+                        "name": "Collège Bilingue Démo",
+                        "type": "secondary",
+                        "accent": "#F26B1D",
+                        "logo": null,
+                        "roles": [
+                            {
+                                "code": "enseignant",
+                                "label": "Enseignant"
+                            }
+                        ],
+                        "period": {
+                            "id": "01M4QZZXE0QBMQ01E3HQ6VRQ3S",
+                            "kind": "trimester",
+                            "ordinal": 1,
+                            "starts_on": "2026-09-01",
+                            "ends_on": "2026-12-18",
+                            "academic_year": "2026-2027"
+                        }
+                    }
+                ]
+            }
+        },
+        "teacher.applications": {
+            "request": "GET /me/applications",
+            "status": 200,
+            "content_type": "application/json; charset=utf-8",
+            "body": {
+                "data": [],
+                "meta": {
+                    "catalog": [
+                        {
+                            "key": "higher",
+                            "label": "IPES - Enseignement supérieur",
+                            "target": "higher",
+                            "status": "available",
+                            "monthly_price_xaf": 60000,
+                            "trial_days": 90
+                        },
+                        {
+                            "key": "nursery",
+                            "label": "Maternelle",
+                            "target": "nursery",
+                            "status": "coming_soon",
+                            "monthly_price_xaf": 60000,
+                            "trial_days": 90
+                        },
+                        {
+                            "key": "primary",
+                            "label": "Enseignement primaire",
+                            "target": "primary",
+                            "status": "coming_soon",
+                            "monthly_price_xaf": 60000,
+                            "trial_days": 90
+                        },
+                        {
+                            "key": "secondary",
+                            "label": "Enseignement secondaire",
+                            "target": "secondary",
+                            "status": "coming_soon",
+                            "monthly_price_xaf": 60000,
+                            "trial_days": 90
+                        }
+                    ]
+                }
+            }
+        },
+        "teacher.context": {
+            "request": "POST /me/context",
+            "status": 200,
+            "content_type": "application/json; charset=utf-8",
+            "body": {
+                "data": {
+                    "context": {
+                        "kind": "establishment",
+                        "id": "01M4QZZXCHCVFYYB52PZJW9DQ5",
+                        "name": "Collège Bilingue Démo",
+                        "type": "secondary",
+                        "accent": "#F26B1D",
+                        "logo": null,
+                        "roles": [
+                            {
+                                "code": "enseignant",
+                                "label": "Enseignant"
+                            }
+                        ]
+                    },
+                    "role": "enseignant"
+                }
+            }
+        },
+        "teacher.todo": {
+            "request": "GET /me/todo",
+            "status": 200,
+            "content_type": "application/json; charset=utf-8",
+            "body": {
+                "data": [],
+                "meta": {
+                    "count": 0
+                }
+            }
+        },
+        "teacher.timetable": {
+            "request": "GET /timetable?teacher_person_id=01M4QZZXGYAV03ZPAG8RQ6SM0P&week=2026-10-13",
+            "status": 200,
+            "content_type": "application/json; charset=utf-8",
+            "body": {
+                "data": {
+                    "view": {
+                        "type": "teacher_person_id",
+                        "id": "01M4QZZXGYAV03ZPAG8RQ6SM0P"
+                    },
+                    "week_start": "2026-10-12",
+                    "week_end": "2026-10-18",
+                    "days": [
+                        {
+                            "date": "2026-10-12",
+                            "weekday": 1,
+                            "entries": []
+                        },
+                        {
+                            "date": "2026-10-13",
+                            "weekday": 2,
+                            "entries": [
+                                {
+                                    "slot_id": "01M4QZZZ43MQK4SW1Q5PRWVQT3",
+                                    "structure_ids": [
+                                        "01M4QZZXFTSAFRD7YEFBARCV9Y"
+                                    ],
+                                    "subject_label": "Mathématiques",
+                                    "teacher_person_id": "01M4QZZXGYAV03ZPAG8RQ6SM0P",
+                                    "original_teacher_person_id": null,
+                                    "room_id": null,
+                                    "start_time": "08:00",
+                                    "end_time": "10:00",
+                                    "status": "planned",
+                                    "change_id": null
+                                }
+                            ]
+                        },
+                        {
+                            "date": "2026-10-14",
+                            "weekday": 3,
+                            "entries": []
+                        },
+                        {
+                            "date": "2026-10-15",
+                            "weekday": 4,
+                            "entries": []
+                        },
+                        {
+                            "date": "2026-10-16",
+                            "weekday": 5,
+                            "entries": []
+                        },
+                        {
+                            "date": "2026-10-17",
+                            "weekday": 6,
+                            "entries": []
+                        },
+                        {
+                            "date": "2026-10-18",
+                            "weekday": 7,
+                            "entries": []
+                        }
+                    ]
+                }
+            }
+        },
+        "teacher.structures": {
+            "request": "GET /structures",
+            "status": 200,
+            "content_type": "application/json; charset=utf-8",
+            "body": {
+                "data": [
+                    {
+                        "id": "01M4QZZXFTSAFRD7YEFBARCV9Y",
+                        "establishment_id": "01M4QZZXCHCVFYYB52PZJW9DQ5",
+                        "org_unit_id": null,
+                        "parent_id": null,
+                        "kind": "class",
+                        "name": "3e A",
+                        "capacity": 50,
+                        "created_at": "2026-10-13T10:00:01+01:00",
+                        "updated_at": "2026-10-13T10:00:01+01:00"
+                    }
+                ],
+                "links": {
+                    "next": null
+                },
+                "meta": {
+                    "next_cursor": null
+                }
+            }
+        },
+        "teacher.enrollments": {
+            "request": "GET /enrollments?filter[structure_id]=01M4QZZXFTSAFRD7YEFBARCV9Y",
+            "status": 200,
+            "content_type": "application/json; charset=utf-8",
+            "body": {
+                "data": [
+                    {
+                        "id": "01M4QZZY3G8785MTZAB9XZY8EV",
+                        "person_id": "01M4QZZXRFY2WVGSMS99WGEGZT",
+                        "establishment_id": "01M4QZZXCHCVFYYB52PZJW9DQ5",
+                        "structure_id": "01M4QZZXFTSAFRD7YEFBARCV9Y",
+                        "academic_year_id": "01M4QZZXDGQ8MXHYB96BBR7DK8",
+                        "status": "active",
+                        "internal_number": "MAT-2026-00001",
+                        "completeness": 89,
+                        "documents_due_on": null,
+                        "validated_at": "2026-10-13T10:02:03+01:00",
+                        "created_at": "2026-10-13T10:02:03+01:00",
+                        "updated_at": "2026-10-13T10:02:03+01:00"
+                    },
+                    {
+                        "id": "01M4QZZYMW510EDANH06D9GA11",
+                        "person_id": "01M4QZZYBT6S52XF0P9SZ0B2JN",
+                        "establishment_id": "01M4QZZXCHCVFYYB52PZJW9DQ5",
+                        "structure_id": "01M4QZZXFTSAFRD7YEFBARCV9Y",
+                        "academic_year_id": "01M4QZZXDGQ8MXHYB96BBR7DK8",
+                        "status": "active",
+                        "internal_number": "MAT-2026-00002",
+                        "completeness": 89,
+                        "documents_due_on": null,
+                        "validated_at": "2026-10-13T10:02:03+01:00",
+                        "created_at": "2026-10-13T10:02:03+01:00",
+                        "updated_at": "2026-10-13T10:02:03+01:00"
+                    },
+                    {
+                        "id": "01M4QZZZ1834Y738SAP1CQ2ECK",
+                        "person_id": "01M4QZZYPWY5BQJS4SVFPK410B",
+                        "establishment_id": "01M4QZZXCHCVFYYB52PZJW9DQ5",
+                        "structure_id": "01M4QZZXFTSAFRD7YEFBARCV9Y",
+                        "academic_year_id": "01M4QZZXDGQ8MXHYB96BBR7DK8",
+                        "status": "active",
+                        "internal_number": "MAT-2026-00003",
+                        "completeness": 89,
+                        "documents_due_on": null,
+                        "validated_at": "2026-10-13T10:02:03+01:00",
+                        "created_at": "2026-10-13T10:02:03+01:00",
+                        "updated_at": "2026-10-13T10:02:03+01:00"
+                    }
+                ],
+                "links": {
+                    "next": null
+                },
+                "meta": {
+                    "next_cursor": null
+                }
+            }
+        },
+        "teacher.people": {
+            "request": "GET /people",
+            "status": 200,
+            "content_type": "application/json; charset=utf-8",
+            "body": {
+                "data": [
+                    {
+                        "id": "01M4QZZXGYAV03ZPAG8RQ6SM0P",
+                        "first_name": "Thérèse",
+                        "last_name": "Mbarga",
+                        "birth_date": null,
+                        "birth_place": null,
+                        "gender": null,
+                        "nationality": null,
+                        "phone": "+237699000002",
+                        "email": null,
+                        "locale": "fr",
+                        "national_id": null,
+                        "has_photo": false,
+                        "created_at": "2026-10-13T10:00:01+01:00",
+                        "updated_at": null
+                    },
+                    {
+                        "id": "01M4QZZXRFY2WVGSMS99WGEGZT",
+                        "first_name": "Nadia",
+                        "last_name": "Foka",
+                        "birth_date": "2011-01-12",
+                        "birth_place": null,
+                        "gender": "female",
+                        "nationality": null,
+                        "phone": null,
+                        "email": null,
+                        "locale": "fr",
+                        "national_id": null,
+                        "has_photo": true,
+                        "created_at": "2026-10-13T10:02:03+01:00",
+                        "updated_at": "2026-10-13T10:02:03+01:00"
+                    },
+                    {
+                        "id": "01M4QZZYBT6S52XF0P9SZ0B2JN",
+                        "first_name": "Yann",
+                        "last_name": "Ewane",
+                        "birth_date": "2011-02-12",
+                        "birth_place": null,
+                        "gender": "male",
+                        "nationality": null,
+                        "phone": null,
+                        "email": null,
+                        "locale": "fr",
+                        "national_id": null,
+                        "has_photo": true,
+                        "created_at": "2026-10-13T10:02:03+01:00",
+                        "updated_at": "2026-10-13T10:02:03+01:00"
+                    },
+                    {
+                        "id": "01M4QZZYPWY5BQJS4SVFPK410B",
+                        "first_name": "Chloé",
+                        "last_name": "Ngo",
+                        "birth_date": "2011-03-12",
+                        "birth_place": null,
+                        "gender": "female",
+                        "nationality": null,
+                        "phone": null,
+                        "email": null,
+                        "locale": "fr",
+                        "national_id": null,
+                        "has_photo": true,
+                        "created_at": "2026-10-13T10:02:03+01:00",
+                        "updated_at": "2026-10-13T10:02:03+01:00"
+                    }
+                ],
+                "links": {
+                    "next": null
+                },
+                "meta": {
+                    "next_cursor": null
+                }
+            }
+        },
+        "teacher.periods": {
+            "request": "GET /periods",
+            "status": 200,
+            "content_type": "application/json; charset=utf-8",
+            "body": {
+                "data": [
+                    {
+                        "id": "01M4QZZXE0QBMQ01E3HQ6VRQ3S",
+                        "establishment_id": "01M4QZZXCHCVFYYB52PZJW9DQ5",
+                        "academic_year_id": "01M4QZZXDGQ8MXHYB96BBR7DK8",
+                        "kind": "trimester",
+                        "ordinal": 1,
+                        "starts_on": "2026-09-01",
+                        "ends_on": "2026-12-18",
+                        "created_at": "2026-10-13T10:00:01+01:00",
+                        "updated_at": "2026-10-13T10:00:01+01:00"
+                    },
+                    {
+                        "id": "01M4QZZXED4NZFY89ZTVRVJNG1",
+                        "establishment_id": "01M4QZZXCHCVFYYB52PZJW9DQ5",
+                        "academic_year_id": "01M4QZZXDGQ8MXHYB96BBR7DK8",
+                        "kind": "trimester",
+                        "ordinal": 2,
+                        "starts_on": "2027-01-04",
+                        "ends_on": "2027-03-26",
+                        "created_at": "2026-10-13T10:00:01+01:00",
+                        "updated_at": "2026-10-13T10:00:01+01:00"
+                    },
+                    {
+                        "id": "01M4QZZXEZQ5XR3DHVAQ2ZQXZ5",
+                        "establishment_id": "01M4QZZXCHCVFYYB52PZJW9DQ5",
+                        "academic_year_id": "01M4QZZXDGQ8MXHYB96BBR7DK8",
+                        "kind": "trimester",
+                        "ordinal": 3,
+                        "starts_on": "2027-04-06",
+                        "ends_on": "2027-06-30",
+                        "created_at": "2026-10-13T10:00:01+01:00",
+                        "updated_at": "2026-10-13T10:00:01+01:00"
+                    }
+                ],
+                "links": {
+                    "next": null
+                },
+                "meta": {
+                    "next_cursor": null
+                }
+            }
+        },
+        "teacher.attendance.sync": {
+            "request": "POST /attendance-sessions/sync",
+            "status": 200,
+            "content_type": "application/json; charset=utf-8",
+            "body": {
+                "data": [
+                    {
+                        "client_uuid": "01M4R000F6DEW3D31VCG20XF7M",
+                        "status": "synced",
+                        "replayed": false,
+                        "session": {
+                            "id": "01M4R000GNSVBBZEFQ2W1TQ5VH",
+                            "establishment_id": "01M4QZZXCHCVFYYB52PZJW9DQ5",
+                            "slot_id": "01M4QZZZ43MQK4SW1Q5PRWVQT3",
+                            "structure_id": "01M4QZZXFTSAFRD7YEFBARCV9Y",
+                            "teacher_person_id": "01M4QZZXGYAV03ZPAG8RQ6SM0P",
+                            "subject_label": "Mathématiques",
+                            "session_date": "2026-10-13",
+                            "start_time": "08:00",
+                            "end_time": "10:00",
+                            "status": "validated",
+                            "client_uuid": "01M4R000F6DEW3D31VCG20XF7M",
+                            "expected_count": 3,
+                            "taken_by": "01M4QZZXGYAV03ZPAG8RQ6SM0Q",
+                            "validated_by": "01M4QZZXGYAV03ZPAG8RQ6SM0Q",
+                            "validated_at": "2026-10-13T10:02:03+01:00",
+                            "synced_at": "2026-10-13T10:02:03+01:00",
+                            "created_at": "2026-10-13T10:02:03+01:00",
+                            "updated_at": "2026-10-13T10:02:03+01:00",
+                            "present_count": 2,
+                            "absent_count": 1,
+                            "late_count": 0,
+                            "recorded_count": 3,
+                            "records": [
+                                {
+                                    "id": "01M4R000GPVHVPQYDKFP1FRG17",
+                                    "session_id": "01M4R000GNSVBBZEFQ2W1TQ5VH",
+                                    "person_id": "01M4QZZXRFY2WVGSMS99WGEGZT",
+                                    "session_date": "2026-10-13",
+                                    "status": "P",
+                                    "arrived_at": null,
+                                    "client_uuid": "01M4R000F6DEW3D31VCG20XF7N",
+                                    "justified": 0,
+                                    "justification_id": null,
+                                    "note": null,
+                                    "created_at": "2026-10-13T10:02:03+01:00",
+                                    "updated_at": "2026-10-13T10:02:03+01:00"
+                                },
+                                {
+                                    "id": "01M4R000GPVHVPQYDKFP1FRG18",
+                                    "session_id": "01M4R000GNSVBBZEFQ2W1TQ5VH",
+                                    "person_id": "01M4QZZYBT6S52XF0P9SZ0B2JN",
+                                    "session_date": "2026-10-13",
+                                    "status": "A",
+                                    "arrived_at": null,
+                                    "client_uuid": "01M4R000F6DEW3D31VCG20XF7P",
+                                    "justified": 0,
+                                    "justification_id": null,
+                                    "note": null,
+                                    "created_at": "2026-10-13T10:02:03+01:00",
+                                    "updated_at": "2026-10-13T10:02:03+01:00"
+                                },
+                                {
+                                    "id": "01M4R000GPVHVPQYDKFP1FRG19",
+                                    "session_id": "01M4R000GNSVBBZEFQ2W1TQ5VH",
+                                    "person_id": "01M4QZZYPWY5BQJS4SVFPK410B",
+                                    "session_date": "2026-10-13",
+                                    "status": "P",
+                                    "arrived_at": null,
+                                    "client_uuid": "01M4R000F6DEW3D31VCG20XF7Q",
+                                    "justified": 0,
+                                    "justification_id": null,
+                                    "note": null,
+                                    "created_at": "2026-10-13T10:02:03+01:00",
+                                    "updated_at": "2026-10-13T10:02:03+01:00"
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+        "teacher.gradesheet": {
+            "request": "GET /grade-sheets?structure_id=01M4QZZXFTSAFRD7YEFBARCV9Y&period_id=01M4QZZXE0QBMQ01E3HQ6VRQ3S",
+            "status": 200,
+            "content_type": "application/json; charset=utf-8",
+            "body": {
+                "data": {
+                    "columns": [
+                        {
+                            "id": "01M4QZZZ62CN2B56H698TRPGPD",
+                            "subject_id": "01M4QZZZ5FFWVBKQS257S6YMF3",
+                            "title": "Devoir 1",
+                            "kind": "devoir",
+                            "weight": 1,
+                            "max_score": 20,
+                            "status": "draft",
+                            "grading_mode": "numeric",
+                            "anonymous": false
+                        }
+                    ],
+                    "rows": [
+                        {
+                            "number": 1,
+                            "person_id": "01M4QZZYBT6S52XF0P9SZ0B2JN",
+                            "matricule": "MAT-2026-00002",
+                            "name": "Yann Ewane",
+                            "cells": {
+                                "01M4QZZZ62CN2B56H698TRPGPD": {
+                                    "state": "missing",
+                                    "value": null,
+                                    "absence": null,
+                                    "qualitative": null,
+                                    "version": 0,
+                                    "grade_id": null,
+                                    "message": null
+                                }
+                            },
+                            "average": null,
+                            "appraisal": null
+                        },
+                        {
+                            "number": 2,
+                            "person_id": "01M4QZZXRFY2WVGSMS99WGEGZT",
+                            "matricule": "MAT-2026-00001",
+                            "name": "Nadia Foka",
+                            "cells": {
+                                "01M4QZZZ62CN2B56H698TRPGPD": {
+                                    "state": "missing",
+                                    "value": null,
+                                    "absence": null,
+                                    "qualitative": null,
+                                    "version": 0,
+                                    "grade_id": null,
+                                    "message": null
+                                }
+                            },
+                            "average": null,
+                            "appraisal": null
+                        },
+                        {
+                            "number": 3,
+                            "person_id": "01M4QZZYPWY5BQJS4SVFPK410B",
+                            "matricule": "MAT-2026-00003",
+                            "name": "Chloé Ngo",
+                            "cells": {
+                                "01M4QZZZ62CN2B56H698TRPGPD": {
+                                    "state": "missing",
+                                    "value": null,
+                                    "absence": null,
+                                    "qualitative": null,
+                                    "version": 0,
+                                    "grade_id": null,
+                                    "message": null
+                                }
+                            },
+                            "average": null,
+                            "appraisal": null
+                        }
+                    ],
+                    "counters": {
+                        "errors": 0,
+                        "missing": 3,
+                        "absent_justified": 0
+                    },
+                    "rules_version": 0
+                }
+            }
+        },
+        "teacher.grades.sync.ok": {
+            "request": "POST /grades/sync",
+            "status": 200,
+            "content_type": "application/json; charset=utf-8",
+            "body": {
+                "data": {
+                    "results": [
+                        {
+                            "client_uuid": "01M4R000JKCPHTTGS6HD5DW2YY",
+                            "status": "created",
+                            "grade": {
+                                "id": "01M4R000K6C3CG84QAY9BPYQFD",
+                                "assessment_id": "01M4QZZZ62CN2B56H698TRPGPD",
+                                "person_id": "01M4QZZXRFY2WVGSMS99WGEGZT",
+                                "score": 15,
+                                "absence": null,
+                                "qualitative": null,
+                                "remark": null,
+                                "version": 1,
+                                "entered_by": "01M4QZZXGYAV03ZPAG8RQ6SM0Q",
+                                "client_uuid": "01M4R000JKCPHTTGS6HD5DW2YY",
+                                "created_at": "2026-10-13T10:02:03+01:00",
+                                "updated_at": "2026-10-13T10:02:03+01:00"
+                            }
+                        }
+                    ]
+                }
+            }
+        },
+        "teacher.grades.sync.conflict": {
+            "request": "POST /grades/sync",
+            "status": 409,
+            "content_type": "application/problem+json; charset=utf-8",
+            "body": {
+                "type": "https://api.scholaris.cm/errors/conflict",
+                "title": "Conflit",
+                "status": 409,
+                "detail": "1 note(s) ont été modifiées entre-temps : comparez les deux versions et choisissez. Les autres notes sont enregistrées.",
+                "results": [
+                    {
+                        "client_uuid": "01M4R000KP027DX17AG7SFXTX7",
+                        "status": "conflict",
+                        "server": {
+                            "id": "01M4R000K6C3CG84QAY9BPYQFD",
+                            "assessment_id": "01M4QZZZ62CN2B56H698TRPGPD",
+                            "person_id": "01M4QZZXRFY2WVGSMS99WGEGZT",
+                            "score": 12,
+                            "absence": null,
+                            "qualitative": null,
+                            "remark": null,
+                            "version": 2,
+                            "entered_by": "01M4QZZVK4DVDF5NG6RNFXGGYS",
+                            "client_uuid": "01M4R000JKCPHTTGS6HD5DW2YY",
+                            "created_at": "2026-10-13T10:02:03+01:00",
+                            "updated_at": "2026-10-13T10:02:03+01:00"
+                        },
+                        "client": {
+                            "score": 17,
+                            "absence": null,
+                            "qualitative": null,
+                            "remark": null,
+                            "person_id": "01M4QZZXRFY2WVGSMS99WGEGZT",
+                            "assessment_id": "01M4QZZZ62CN2B56H698TRPGPD",
+                            "base_version": 1,
+                            "client_uuid": "01M4R000KP027DX17AG7SFXTX7"
+                        }
+                    }
+                ]
+            }
+        },
+        "teacher.grades.invalid": {
+            "request": "POST /grades",
+            "status": 422,
+            "content_type": "application/problem+json; charset=utf-8",
+            "body": {
+                "type": "https://api.scholaris.cm/errors/validation",
+                "title": "Données invalides",
+                "status": 422,
+                "detail": "Données invalides.",
+                "trace_id": "01M4R000MQM8B3JXBRZKEFGS1E",
+                "errors": {
+                    "value": [
+                        "Devoir 1 : 22 dépasse le maximum de 20. Corrigez avant de valider."
+                    ]
+                }
+            }
+        },
+        "teacher.gradesheet.after": {
+            "request": "GET /grade-sheets?structure_id=01M4QZZXFTSAFRD7YEFBARCV9Y&period_id=01M4QZZXE0QBMQ01E3HQ6VRQ3S",
+            "status": 200,
+            "content_type": "application/json; charset=utf-8",
+            "body": {
+                "data": {
+                    "columns": [
+                        {
+                            "id": "01M4QZZZ62CN2B56H698TRPGPD",
+                            "subject_id": "01M4QZZZ5FFWVBKQS257S6YMF3",
+                            "title": "Devoir 1",
+                            "kind": "devoir",
+                            "weight": 1,
+                            "max_score": 20,
+                            "status": "draft",
+                            "grading_mode": "numeric",
+                            "anonymous": false
+                        }
+                    ],
+                    "rows": [
+                        {
+                            "number": 1,
+                            "person_id": "01M4QZZYBT6S52XF0P9SZ0B2JN",
+                            "matricule": "MAT-2026-00002",
+                            "name": "Yann Ewane",
+                            "cells": {
+                                "01M4QZZZ62CN2B56H698TRPGPD": {
+                                    "state": "missing",
+                                    "value": null,
+                                    "absence": null,
+                                    "qualitative": null,
+                                    "version": 0,
+                                    "grade_id": null,
+                                    "message": null
+                                }
+                            },
+                            "average": null,
+                            "appraisal": null
+                        },
+                        {
+                            "number": 2,
+                            "person_id": "01M4QZZXRFY2WVGSMS99WGEGZT",
+                            "matricule": "MAT-2026-00001",
+                            "name": "Nadia Foka",
+                            "cells": {
+                                "01M4QZZZ62CN2B56H698TRPGPD": {
+                                    "state": "value",
+                                    "value": 12,
+                                    "absence": null,
+                                    "qualitative": null,
+                                    "version": 2,
+                                    "grade_id": "01M4R000K6C3CG84QAY9BPYQFD",
+                                    "message": null
+                                }
+                            },
+                            "average": 12,
+                            "appraisal": "Assez bien"
+                        },
+                        {
+                            "number": 3,
+                            "person_id": "01M4QZZYPWY5BQJS4SVFPK410B",
+                            "matricule": "MAT-2026-00003",
+                            "name": "Chloé Ngo",
+                            "cells": {
+                                "01M4QZZZ62CN2B56H698TRPGPD": {
+                                    "state": "missing",
+                                    "value": null,
+                                    "absence": null,
+                                    "qualitative": null,
+                                    "version": 0,
+                                    "grade_id": null,
+                                    "message": null
+                                }
+                            },
+                            "average": null,
+                            "appraisal": null
+                        }
+                    ],
+                    "counters": {
+                        "errors": 0,
+                        "missing": 2,
+                        "absent_justified": 0
+                    },
+                    "rules_version": 0
+                }
+            }
+        },
+        "parent.me": {
+            "request": "GET /me",
+            "status": 200,
+            "content_type": "application/json; charset=utf-8",
+            "body": {
+                "data": {
+                    "id": "01M4QZZXKN5F8B3GGVCC3HF80Y",
+                    "person_id": "01M4QZZXKN5F8B3GGVCC3HF80X",
+                    "first_name": "Paul",
+                    "last_name": "Foka",
+                    "locale": "fr",
+                    "status": "active",
+                    "greeting": "Paul",
+                    "two_factor": {
+                        "enabled": false,
+                        "required": false,
+                        "verified": true
+                    },
+                    "context": {
+                        "establishment_id": null,
+                        "role": null
+                    }
+                }
+            }
+        },
+        "parent.contexts": {
+            "request": "GET /me/contexts",
+            "status": 200,
+            "content_type": "application/json; charset=utf-8",
+            "body": {
+                "data": [
+                    {
+                        "kind": "establishment",
+                        "id": "01M4QZZXCHCVFYYB52PZJW9DQ5",
+                        "name": "Collège Bilingue Démo",
+                        "type": "secondary",
+                        "accent": "#F26B1D",
+                        "logo": null,
+                        "roles": [
+                            {
+                                "code": "parent",
+                                "label": "Parent"
+                            }
+                        ],
+                        "period": {
+                            "id": "01M4QZZXE0QBMQ01E3HQ6VRQ3S",
+                            "kind": "trimester",
+                            "ordinal": 1,
+                            "starts_on": "2026-09-01",
+                            "ends_on": "2026-12-18",
+                            "academic_year": "2026-2027"
+                        }
+                    }
+                ]
+            }
+        },
+        "parent.applications": {
+            "request": "GET /me/applications",
+            "status": 200,
+            "content_type": "application/json; charset=utf-8",
+            "body": {
+                "data": [],
+                "meta": {
+                    "catalog": [
+                        {
+                            "key": "higher",
+                            "label": "IPES - Enseignement supérieur",
+                            "target": "higher",
+                            "status": "available",
+                            "monthly_price_xaf": 60000,
+                            "trial_days": 90
+                        },
+                        {
+                            "key": "nursery",
+                            "label": "Maternelle",
+                            "target": "nursery",
+                            "status": "coming_soon",
+                            "monthly_price_xaf": 60000,
+                            "trial_days": 90
+                        },
+                        {
+                            "key": "primary",
+                            "label": "Enseignement primaire",
+                            "target": "primary",
+                            "status": "coming_soon",
+                            "monthly_price_xaf": 60000,
+                            "trial_days": 90
+                        },
+                        {
+                            "key": "secondary",
+                            "label": "Enseignement secondaire",
+                            "target": "secondary",
+                            "status": "coming_soon",
+                            "monthly_price_xaf": 60000,
+                            "trial_days": 90
+                        }
+                    ]
+                }
+            }
+        },
+        "parent.context": {
+            "request": "POST /me/context",
+            "status": 200,
+            "content_type": "application/json; charset=utf-8",
+            "body": {
+                "data": {
+                    "context": {
+                        "kind": "establishment",
+                        "id": "01M4QZZXCHCVFYYB52PZJW9DQ5",
+                        "name": "Collège Bilingue Démo",
+                        "type": "secondary",
+                        "accent": "#F26B1D",
+                        "logo": null,
+                        "roles": [
+                            {
+                                "code": "parent",
+                                "label": "Parent"
+                            }
+                        ]
+                    },
+                    "role": "parent"
+                }
+            }
+        },
+        "parent.todo": {
+            "request": "GET /me/todo",
+            "status": 200,
+            "content_type": "application/json; charset=utf-8",
+            "body": {
+                "data": [],
+                "meta": {
+                    "count": 0
+                }
+            }
+        },
+        "parent.portal": {
+            "request": "GET /portal/family",
+            "status": 200,
+            "content_type": "application/json; charset=utf-8",
+            "body": {
+                "data": {
+                    "guarantor_id": "01M4QZZXKN5F8B3GGVCC3HF80X",
+                    "family_balance_xaf": 300000,
+                    "next_due": {
+                        "available": false,
+                        "reason": "Aucun contrat n'expose les échéances."
+                    },
+                    "children": [
+                        {
+                            "person": {
+                                "id": "01M4QZZXRFY2WVGSMS99WGEGZT",
+                                "name": "Nadia Foka"
+                            },
+                            "access": "full",
+                            "enrollments": [
+                                {
+                                    "id": "01M4QZZY3G8785MTZAB9XZY8EV",
+                                    "establishment_id": "01M4QZZXCHCVFYYB52PZJW9DQ5",
+                                    "establishment_name": "Collège Bilingue Démo",
+                                    "structure_id": "01M4QZZXFTSAFRD7YEFBARCV9Y"
+                                }
+                            ],
+                            "balance_xaf": 300000,
+                            "next_due": {
+                                "available": false,
+                                "reason": "Aucun contrat n'expose les échéances."
+                            },
+                            "attendance": {
+                                "available": true,
+                                "from": "2026-09-01",
+                                "to": "2026-10-13",
+                                "sessions": 1,
+                                "absences": 0,
+                                "unjustified_absences": 0,
+                                "lates": 0
+                            },
+                            "results": {
+                                "blocked": false,
+                                "latest": null,
+                                "items": []
+                            },
+                            "documents": {
+                                "blocked": false,
+                                "items": []
+                            },
+                            "life_book": {
+                                "available": false,
+                                "reason": "Aucun contrat n'expose le cahier de vie."
+                            }
+                        }
+                    ]
+                }
+            }
+        },
+        "parent.references": {
+            "request": "GET /payment-references?filter[guarantor_id]=01M4QZZXKN5F8B3GGVCC3HF80X",
+            "status": 403,
+            "content_type": "application/problem+json; charset=utf-8",
+            "body": {
+                "type": "https://api.scholaris.cm/errors/forbidden",
+                "title": "Accès refusé",
+                "status": 403,
+                "detail": "Vous n'avez pas le droit d'effectuer cette opération de facturation.",
+                "trace_id": "01M4R000S8ABQPNES7DC8T2ES7"
+            }
+        },
+        "parent.payment": {
+            "request": "POST /payments",
+            "status": 403,
+            "content_type": "application/problem+json; charset=utf-8",
+            "body": {
+                "type": "https://api.scholaris.cm/errors/forbidden",
+                "title": "Accès refusé",
+                "status": 403,
+                "detail": "Vous n'avez pas le droit d'effectuer cette opération de facturation.",
+                "trace_id": "01M4R000SQF1EKWV1Y8GYE1XB3"
+            }
+        },
+        "cashier.payment.pending": {
+            "request": "POST /payments",
+            "status": 202,
+            "content_type": "application/json; charset=utf-8",
+            "body": {
+                "data": {
+                    "id": "01M4R000VNA7WF1KKZCX34KVZH",
+                    "establishment_id": "01M4QZZXCHCVFYYB52PZJW9DQ5",
+                    "channel": "orange_money",
+                    "amount_xaf": 50000,
+                    "credit_xaf": 50000,
+                    "status": "pending",
+                    "journal_status": "En attente",
+                    "journal_amount_xaf": 50000,
+                    "receipt_number": null,
+                    "external_reference": "sim-pay-01M4R000VNA7WF1KKZCX34KVZG",
+                    "payer_reference_id": "01M4R000TRN41ETZPGJBVE1VXZ",
+                    "learner_id": null,
+                    "invoice_id": null,
+                    "cash_session_id": null,
+                    "received_by": "01M4QZZVK4DVDF5NG6RNFXGGYS",
+                    "received_at": "2026-10-13T10:02:03+01:00",
+                    "reconciled_at": null,
+                    "receipt": null,
+                    "allocations": []
+                }
+            }
+        }
+    }
+}

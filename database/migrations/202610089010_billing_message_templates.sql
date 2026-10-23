@@ -1,0 +1,10 @@
+-- Modèles de messages de la plateforme utilisés par Billing (reçu, relance, référence famille), en français et en anglais.
+-- Les variables sont celles que Billing transmet réellement ; elles figurent dans la liste blanche de Messaging.
+
+INSERT INTO message_templates (id, tenant_id, establishment_id, template_key, locale, channel, subject, body, variables, created_at, updated_at) VALUES
+('01J9T0000000000000000BIL01', 'platform', 'platform', 'billing.receipt', 'fr', 'sms', NULL, 'Reçu :receipt_number : :amount FCFA bien reçus. Solde restant : :balance FCFA. Merci.', '["receipt_number","amount","balance"]', '2026-10-08T00:00:00+01:00', '2026-10-08T00:00:00+01:00'),
+('01J9T0000000000000000BIL02', 'platform', 'platform', 'billing.receipt', 'en', 'sms', NULL, 'Receipt :receipt_number: :amount FCFA received. Remaining balance: :balance FCFA. Thank you.', '["receipt_number","amount","balance"]', '2026-10-08T00:00:00+01:00', '2026-10-08T00:00:00+01:00'),
+('01J9T0000000000000000BIL03', 'platform', 'platform', 'billing.reminder', 'fr', 'sms', NULL, 'Rappel : :label, :amount FCFA à régler pour le :due_on.', '["label","amount","due_on"]', '2026-10-08T00:00:00+01:00', '2026-10-08T00:00:00+01:00'),
+('01J9T0000000000000000BIL04', 'platform', 'platform', 'billing.reminder', 'en', 'sms', NULL, 'Reminder: :label, :amount FCFA due on :due_on.', '["label","amount","due_on"]', '2026-10-08T00:00:00+01:00', '2026-10-08T00:00:00+01:00'),
+('01J9T0000000000000000BIL05', 'platform', 'platform', 'billing.family_reference', 'fr', 'sms', NULL, 'Votre référence de paiement famille : :reference. Elle sert pour Orange Money, MTN MoMo et le guichet.', '["reference"]', '2026-10-08T00:00:00+01:00', '2026-10-08T00:00:00+01:00'),
+('01J9T0000000000000000BIL06', 'platform', 'platform', 'billing.family_reference', 'en', 'sms', NULL, 'Your family payment reference: :reference. Use it for Orange Money, MTN MoMo and at the counter.', '["reference"]', '2026-10-08T00:00:00+01:00', '2026-10-08T00:00:00+01:00');
