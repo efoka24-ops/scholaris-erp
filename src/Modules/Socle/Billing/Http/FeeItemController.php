@@ -12,7 +12,9 @@ use Scholaris\Core\Http\ListQuery;
 use Scholaris\Core\Support\Ulid;
 use Scholaris\Modules\Socle\Audit\Contracts\AuditLog;
 use Scholaris\Modules\Socle\Billing\Application\BillingClock;
+use Scholaris\Modules\Socle\Billing\Application\FeeItemGuards;
 use Scholaris\Modules\Socle\Billing\Application\FeeKinds;
+use Scholaris\Modules\Socle\Billing\Contracts\FeeItemDraft;
 use Scholaris\Modules\Socle\Billing\Http\Requests\FeeItemRequest;
 use Scholaris\Modules\Socle\Billing\Http\Resources\Resource;
 use Scholaris\Modules\Socle\Billing\Infrastructure\CatalogRepository;
@@ -28,6 +30,7 @@ final class FeeItemController extends BillingController
         private readonly BillingClock $clock,
         private readonly AuditLog $audit,
         private readonly FeeKinds $kinds,
+        private readonly FeeItemGuards $guards,
     ) {
         parent::__construct($responder, $context, $policy);
     }
@@ -60,6 +63,15 @@ final class FeeItemController extends BillingController
         $principal = $this->authorize($request, BillingPolicy::MANAGE);
         $data = (new FeeItemRequest($this->kinds->all()))->fromHttp($request);
         $this->assertCodeFree($data['code'] ?? null, null);
+        $this->guards->assertAllowed(new FeeItemDraft(
+            $this->context->tenantId(),
+            $this->context->establishmentId(),
+            (string) $data['kind'],
+            isset($data['code']) ? (string) $data['code'] : null,
+            (string) $data['name'],
+            (int) $data['amount_xaf'],
+            ($data['active'] ?? 1) === 1,
+        ));
 
         $id = (string) new Ulid();
         $now = $this->clock->now();
@@ -87,6 +99,17 @@ final class FeeItemController extends BillingController
             throw HttpException::conflict('Le code d\'un frais est stable : il ne peut plus être modifié.');
         }
         $this->assertCodeFree($changes['code'] ?? null, (string) $before['id']);
+        $state = $changes + $before;
+        $this->guards->assertAllowed(new FeeItemDraft(
+            $this->context->tenantId(),
+            $this->context->establishmentId(),
+            (string) $state['kind'],
+            isset($state['code']) ? (string) $state['code'] : null,
+            (string) $state['name'],
+            (int) $state['amount_xaf'],
+            (int) $state['active'] === 1,
+            (string) $before['id'],
+        ));
         $tenantId = $this->context->tenantId();
         $this->catalog->update(CatalogRepository::ITEMS, $tenantId, $this->context->establishmentId(), (string) $before['id'], $changes + ['updated_at' => $this->clock->now()]);
         $after = $this->find($request);

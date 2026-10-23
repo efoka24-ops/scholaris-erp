@@ -15,7 +15,7 @@ paths:
         '422':
           description: "Données invalides"
     post:
-      summary: "Crée un frais (kind : registration, tuition, other ou type enregistré par une application sous billing.fee_kinds.*) ; code stable facultatif unique dans l'établissement ; montant entier en XAF"
+      summary: "Crée un frais (kind : registration, tuition, other ou type enregistré par une application sous billing.fee_kinds.*) ; code stable facultatif unique dans l'établissement ; montant entier en XAF ; soumis aux gardes billing.fee_item_guards.* (SS8), aucune garde = aucun contrôle supplémentaire"
       security:
         - bearer: []
       parameters:
@@ -28,7 +28,7 @@ paths:
         '409':
           description: "Code de frais déjà utilisé"
         '422':
-          description: "Données invalides"
+          description: "Données invalides, ou frais refusé par une garde (code fee_not_authorized, type errors/fee-not-authorized, motif dans detail)"
   /api/v1/fee-items/{id}:
     get:
       summary: "Détail d'un frais"
@@ -49,7 +49,7 @@ paths:
         '404':
           description: "Introuvable ou autre client"
     patch:
-      summary: "Modifie ou désactive un frais ; le code, une fois renseigné, ne change plus (409)"
+      summary: "Modifie ou désactive un frais ; le code, une fois renseigné, ne change plus (409) ; l'état après modification est soumis aux gardes billing.fee_item_guards.* (SS8)"
       security:
         - bearer: []
       parameters:
@@ -69,7 +69,7 @@ paths:
         '404':
           description: "Introuvable ou autre client"
         '422':
-          description: "Données invalides"
+          description: "Données invalides, ou frais refusé par une garde (code fee_not_authorized)"
   /api/v1/fee-schedules:
     get:
       summary: "Grilles de frais (filtres academic_year_id, structure_id, level, track, fee_item_id)"
@@ -225,7 +225,7 @@ paths:
         '422':
           description: "Données invalides"
     post:
-      summary: "Enregistre un paiement (guichet, mobile money saisi) ou lance une demande mobile money ; idempotent"
+      summary: "Enregistre un paiement (guichet, mobile money saisi) ou lance une demande mobile money ; idempotent ; affectation selon billing.allocation_rule : registration_overdue_upcoming (défaut), oldest_first ou kind_priority (SS7 : ordre des natures billing.allocation_kind_order, défaut [registration, apee, tuition, *], puis échéance, puis enfants billing.allocation_sibling_order enrolled_first ou eldest_first, tranche par tranche)"
       security:
         - bearer: []
       parameters:
