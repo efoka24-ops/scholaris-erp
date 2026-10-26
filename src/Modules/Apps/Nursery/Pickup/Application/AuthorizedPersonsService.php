@@ -7,6 +7,7 @@ namespace Scholaris\Modules\Apps\Nursery\Pickup\Application;
 use Scholaris\Core\Http\HttpException;
 use Scholaris\Core\Security\Principal;
 use Scholaris\Core\Support\Ulid;
+use Scholaris\Modules\Apps\Nursery\Documents\Application\NurseryDocuments;
 use Scholaris\Modules\Apps\Nursery\Sections\Application\ChildDirectory;
 use Scholaris\Modules\Apps\Nursery\Support\Access;
 use Scholaris\Modules\Apps\Nursery\Support\NurseryClock;
@@ -36,6 +37,7 @@ final class AuthorizedPersonsService
         private readonly NurserySettings $settings,
         private readonly NurseryClock $clock,
         private readonly Access $access,
+        private readonly NurseryDocuments $documents,
     ) {
     }
 
@@ -108,6 +110,8 @@ final class AuthorizedPersonsService
         $this->registry->revoke($principal->tenantId, $establishmentId, $pickupId, $principal->userId);
         // La personne retirée ne peut plus se présenter avec un code du jour encore valable.
         $this->store->update('nu_pickup_codes', $principal->tenantId, $establishmentId, ['status' => 'expired'], ['pickup_id' => $pickupId, 'status' => 'issued']);
+        // La carte DOC-MAT-03 tombe avec l'autorisation : sa vérification publique indique « révoquée ».
+        $this->documents->revokeFor($principal->tenantId, $establishmentId, NurseryDocuments::PICKUP_CARD, $pickupId, 'Autorisation retirée.', $principal->userId);
         $this->access->audit($principal, 'nursery.pickup.revoked', 'authorization', $pickupId, ['learner_id' => $info->learnerId], null);
 
         return self::resource($this->registry->find($principal->tenantId, $establishmentId, $pickupId) ?? $info);

@@ -81,4 +81,25 @@ final class NurseryScopeTest extends NurseryTestCase
         self::assertSame([], array_intersect($a, $b));
         self::assertContains($this->sections['a'], $a);
     }
+    public function testLesRessourcesFinalesNeFuientPasVersUnAutreClient(): void
+    {
+        $ada = $this->world->child(self::TA, self::EA, $this->sections['a'], 'Ada');
+        $this->grantAll(self::TB, 'directrice-b', self::EB);
+        foreach (['nursery.service.manage', 'nursery.consent.manage', 'nursery.transition.decide'] as $permission) {
+            $this->grant(self::TA, self::DIRECTOR, self::EA, $permission);
+            $this->grant(self::TB, 'directrice-b', self::EB, $permission);
+        }
+        $plan = $this->ok('POST', '/nursery/services/plans', ['kind' => 'daycare', 'label' => 'Garderie (exemple)', 'fee_item_id' => 'FEE-GARDERIE', 'billing_cycle' => 'month']);
+        $sub = $this->ok('POST', '/nursery/services/subscriptions', ['learner_id' => $ada['child'], 'plan_id' => $plan['id']]);
+        $decision = $this->ok('POST', '/nursery/transition/proposals', ['section_id' => $this->sections['a']])[0];
+        $b = ['directrice-b', self::TB, self::EB];
+        self::assertSame(404, $this->code('PATCH', '/nursery/services/plans/' . $plan['id'], ['label' => 'Pirate'], ...$b));
+        self::assertSame(404, $this->code('POST', '/nursery/services/subscriptions/' . $sub['id'] . '/invoice', [], ...$b));
+        self::assertSame(404, $this->code('POST', '/nursery/services/subscriptions', ['learner_id' => $ada['child'], 'plan_id' => $plan['id']], ...$b));
+        self::assertSame(404, $this->code('GET', '/nursery/children/' . $ada['child'] . '/photo-consent', null, ...$b));
+        self::assertSame(404, $this->code('POST', '/nursery/transition/decisions/' . $decision['id'] . '/decide', ['decision' => 'to_primary'], ...$b));
+        self::assertSame([], $this->ok('GET', '/nursery/services/subscriptions', null, ...$b));
+        self::assertSame([], $this->ok('GET', '/nursery/transition/decisions', null, ...$b));
+        self::assertSame([], $this->ok('GET', '/nursery/documents', null, ...$b));
+    }
 }

@@ -58,6 +58,23 @@ final class ChildDirectory
         return $paging->slice($rows);
     }
 
+    /**
+     * Enfants inscrits dans les sections du périmètre : identifiant => section.
+     *
+     * @return array<string, string>
+     */
+    public function sectionsByChild(Perimeter $perimeter): array
+    {
+        $bySection = [];
+        foreach ($this->sections->inPerimeter($perimeter) as $section) {
+            foreach ($this->sections->childIds($perimeter->tenantId, (string) $section['id']) as $childId) {
+                $bySection[$childId] = (string) $section['id'];
+            }
+        }
+
+        return $bySection;
+    }
+
     /** @return array<string, mixed> 404 hors établissement ou hors périmètre de sections */
     public function get(Perimeter $perimeter, string $childId): array
     {

@@ -26,6 +26,11 @@ final class NurserySettings
     public const DEV_DISCOURAGED_TERMS = 'nursery.dev.discouraged_terms';
     public const ENROL_MIN_AGE_MONTHS = 'nursery.enrol.min_age_months';
     public const PROGRESS_BLOCK_ON_DEBT = 'nursery.progress_book.block_on_debt';
+    public const DAY_START = 'nursery.day.start_time';
+    public const LIFEBOOK_RETENTION_DAYS = 'nursery.lifebook.retention_days';
+    public const TRANSITION_RETAIN_NEEDS_REQUEST = 'nursery.transition.retain_requires_parent_request';
+    public const TRANSITION_STRENGTH_LEVELS = 'nursery.transition.strength_levels';
+    public const CONSENT_STATEMENT_VERSION = 'nursery.photo_consent.statement_version';
 
     /** Clés connues et leur type (`time` HH:MM, `int`, `bool`, `list`). */
     public const KEYS = [
@@ -41,6 +46,11 @@ final class NurserySettings
         self::DEV_DISCOURAGED_TERMS => 'list',
         self::ENROL_MIN_AGE_MONTHS => 'int',
         self::PROGRESS_BLOCK_ON_DEBT => 'bool',
+        self::DAY_START => 'time',
+        self::LIFEBOOK_RETENTION_DAYS => 'int',
+        self::TRANSITION_RETAIN_NEEDS_REQUEST => 'bool',
+        self::TRANSITION_STRENGTH_LEVELS => 'list',
+        self::CONSENT_STATEMENT_VERSION => 'text',
     ];
 
     public function __construct(private readonly SettingsReader $reader)
@@ -56,6 +66,7 @@ final class NurserySettings
             'int' => is_int($value) || (is_string($value) && preg_match('/^\d{1,9}$/', $value) === 1) ? (int) $value : null,
             'bool' => is_bool($value) ? $value : null,
             'time' => is_string($value) && preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $value) === 1 ? $value : null,
+            'text' => is_string($value) && trim($value) !== '' ? trim($value) : null,
             default => is_array($value) ? array_values(array_filter($value, 'is_string')) : null,
         };
     }
@@ -73,6 +84,13 @@ final class NurserySettings
     }
 
     public function time(string $tenantId, string $establishmentId, string $key): ?string
+    {
+        $value = $this->get($tenantId, $establishmentId, $key);
+
+        return is_string($value) ? $value : null;
+    }
+
+    public function text(string $tenantId, string $establishmentId, string $key): ?string
     {
         $value = $this->get($tenantId, $establishmentId, $key);
 

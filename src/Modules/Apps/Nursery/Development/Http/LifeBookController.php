@@ -109,7 +109,7 @@ final class LifeBookController extends Controller
         [$principal, $establishmentId] = $this->context($request);
         $perimeter = $this->access->require($principal, $establishmentId, self::READ);
 
-        return $this->binary($this->lifebook->staffMedia($perimeter, self::id($request)));
+        return $this->binary($this->lifebook->staffMedia($principal, $perimeter, self::id($request)));
     }
 
     /** Réponse binaire d'un média (jamais mise en cache partagée). */

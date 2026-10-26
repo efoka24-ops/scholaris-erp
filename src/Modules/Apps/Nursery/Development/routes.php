@@ -6,6 +6,7 @@ use Scholaris\Modules\Apps\Nursery\Development\Http\FrameController;
 use Scholaris\Modules\Apps\Nursery\Development\Http\LifeBookController;
 use Scholaris\Modules\Apps\Nursery\Development\Http\NeedController;
 use Scholaris\Modules\Apps\Nursery\Development\Http\ObservationController;
+use Scholaris\Modules\Apps\Nursery\Development\Http\PhotoConsentController;
 use Scholaris\Modules\Apps\Nursery\Development\Http\ProgressBookController;
 use Scholaris\Modules\Apps\Nursery\Support\NurseryRoutes;
 
@@ -44,4 +45,11 @@ return static function (NurseryRoutes $routes): void {
     $routes->post('/needs', [NeedController::class, 'store']);
     $routes->post('/needs/{id}/orient', [NeedController::class, 'orient']);
     $routes->post('/needs/{id}/close', [NeedController::class, 'close']);
+
+    $routes->get('/children/{id}/photo-consent', [PhotoConsentController::class, 'show']);
+    $routes->post('/children/{id}/photo-consent', [PhotoConsentController::class, 'store']);
+    $routes->post('/children/{id}/photo-consent/revoke', [PhotoConsentController::class, 'revoke']);
+    $routes->get('/portal/photo-consent', [PhotoConsentController::class, 'portalShow']);
+    $routes->post('/portal/photo-consent', [PhotoConsentController::class, 'portalGrant']);
+    $routes->post('/portal/photo-consent/revoke', [PhotoConsentController::class, 'portalRevoke']);
 };

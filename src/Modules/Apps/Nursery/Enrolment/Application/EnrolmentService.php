@@ -6,6 +6,7 @@ namespace Scholaris\Modules\Apps\Nursery\Enrolment\Application;
 
 use Scholaris\Core\Http\HttpException;
 use Scholaris\Core\Security\Principal;
+use Scholaris\Modules\Apps\Nursery\Development\Application\PhotoConsentService;
 use Scholaris\Modules\Apps\Nursery\Sections\Application\ChildDirectory;
 use Scholaris\Modules\Apps\Nursery\Sections\Application\SectionService;
 use Scholaris\Modules\Apps\Nursery\Support\Access;
@@ -14,8 +15,6 @@ use Scholaris\Modules\Apps\Nursery\Support\NurserySettings;
 use Scholaris\Modules\Apps\Nursery\Support\Perimeter;
 use Scholaris\Modules\Socle\Organisation\Contracts\CurrentPeriod;
 use Scholaris\Modules\Socle\Organisation\Contracts\OrgUnitTree;
-use Scholaris\Modules\Socle\People\Contracts\ConsentChecker;
-use Scholaris\Modules\Socle\People\Contracts\ConsentRecorder;
 use Scholaris\Modules\Socle\People\Contracts\FoodAllergies;
 use Scholaris\Modules\Socle\People\Contracts\LearnerWriter;
 
@@ -35,7 +34,7 @@ final class EnrolmentService
         private readonly CurrentPeriod $periods,
         private readonly OrgUnitTree $tree,
         private readonly FoodAllergies $allergies,
-        private readonly ConsentRecorder $consents,
+        private readonly PhotoConsentService $consents,
         private readonly NurserySettings $settings,
         private readonly NurseryClock $clock,
         private readonly Access $access,
@@ -77,7 +76,13 @@ final class EnrolmentService
             $this->allergies->declare($tenantId, $childId, $allergy, $principal->userId);
         }
         if (($data['photo_consent'] ?? false) === true) {
-            $this->consents->grant($tenantId, $childId, ConsentChecker::PHOTO, $principal->userId, isset($data['consent_evidence']) ? (string) $data['consent_evidence'] : null);
+            // Accord photo de la fiche d'inscription : tracé dans l'historique du consentement (formulaire papier), révocable ensuite.
+            $identity = (array) ($guardians[0]['identity'] ?? []);
+            $signer = trim((string) ($identity['first_name'] ?? '') . ' ' . (string) ($identity['last_name'] ?? ''));
+            $this->consents->grant($principal, $establishmentId, $childId, [
+                'channel' => 'paper', 'evidence_ref' => isset($data['consent_evidence']) ? (string) $data['consent_evidence'] : 'inscription:' . $enrollmentId,
+                'signed_on' => $today, 'signed_by_name' => $signer !== '' ? $signer : 'Responsable légal (fiche d’inscription)',
+            ]);
         }
         $this->access->audit($principal, 'nursery.child.enrolled', 'enrollment', $enrollmentId, null, ['child_id' => $childId, 'section_id' => $sectionId]);
 

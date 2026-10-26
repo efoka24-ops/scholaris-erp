@@ -25,7 +25,7 @@ final class RoleMatrix
                 'nursery.settings.manage', 'nursery.section.manage', 'nursery.child.read', 'nursery.pickup.read', 'nursery.pickup.restrict',
                 'nursery.pickup.manage', 'nursery.pickup.handover', 'nursery.register.read', 'nursery.dev.read', 'nursery.dev.validate',
                 'nursery.frame.manage', 'nursery.lifebook.read', 'nursery.need.read', 'nursery.allergy.read', 'nursery.message.send',
-                'nursery.transition.decide', 'nursery.dashboard.read',
+                'nursery.transition.decide', 'nursery.dashboard.read', 'nursery.service.manage', 'nursery.service.attend', 'nursery.consent.manage',
             ],
         ],
         'N03' => [
@@ -34,23 +34,23 @@ final class RoleMatrix
             'permissions' => [
                 'nursery.child.read', 'nursery.pickup.handover', 'nursery.register.read', 'nursery.arrival.record', 'nursery.dev.observe', 'nursery.dev.read',
                 'nursery.lifebook.write', 'nursery.lifebook.read', 'nursery.need.report', 'nursery.need.read', 'nursery.allergy.read',
-                'nursery.message.send', 'nursery.transition.opinion', 'attendance.take',
+                'nursery.message.send', 'nursery.transition.opinion', 'attendance.take', 'nursery.service.attend',
             ],
         ],
         'N04' => [
             'code' => 'nursery_assistant', 'level' => 'class', 'sensitive' => false,
             'label_fr' => 'Aide maternelle', 'label_en' => 'Nursery assistant',
-            'permissions' => ['nursery.child.read', 'nursery.pickup.handover', 'nursery.arrival.record', 'nursery.register.read', 'nursery.allergy.read', 'attendance.take'],
+            'permissions' => ['nursery.child.read', 'nursery.pickup.handover', 'nursery.arrival.record', 'nursery.register.read', 'nursery.allergy.read', 'attendance.take', 'nursery.service.attend'],
         ],
         'N05' => [
             'code' => 'nursery_secretaire', 'level' => 'establishment', 'sensitive' => false,
             'label_fr' => 'Secrétaire de maternelle', 'label_en' => 'Nursery secretary',
-            'permissions' => ['people.manage', 'nursery.enrol', 'nursery.child.read', 'documents.issue', 'nursery.pickup.manage', 'nursery.pickup.read', 'nursery.register.read', 'nursery.allergy.read'],
+            'permissions' => ['people.manage', 'nursery.enrol', 'nursery.child.read', 'documents.issue', 'nursery.pickup.manage', 'nursery.pickup.read', 'nursery.register.read', 'nursery.allergy.read', 'nursery.service.manage', 'nursery.consent.manage'],
         ],
         'N10' => [
             'code' => 'nursery_cantine', 'level' => 'establishment', 'sensitive' => false,
             'label_fr' => 'Responsable de cantine de maternelle', 'label_en' => 'Nursery canteen manager',
-            'permissions' => ['nursery.allergy.read'],
+            'permissions' => ['nursery.allergy.read', 'nursery.service.attend'],
         ],
     ];
 

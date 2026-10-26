@@ -10,7 +10,9 @@ use Scholaris\Modules\Apps\Nursery\Support\Access;
 use Scholaris\Modules\Apps\Nursery\Support\NurseryClock;
 use Scholaris\Modules\Apps\Nursery\Support\Perimeter;
 use Scholaris\Modules\Apps\Nursery\Support\Store;
+use Scholaris\Modules\Socle\Attendance\Contracts\AttendanceCodes;
 use Scholaris\Modules\Socle\Organisation\Contracts\OrgUnitTree;
+use Scholaris\Modules\Socle\Organisation\Contracts\SettingsWriter;
 use Scholaris\Modules\Socle\Organisation\Contracts\StructureDraft;
 use Scholaris\Modules\Socle\Organisation\Contracts\StructureInfo;
 use Scholaris\Modules\Socle\Organisation\Contracts\StructureWriter;
@@ -34,6 +36,7 @@ final class SectionService
         private readonly StructureEnrollments $enrolled,
         private readonly Access $access,
         private readonly NurseryClock $clock,
+        private readonly SettingsWriter $settings,
     ) {
     }
 
@@ -98,6 +101,9 @@ final class SectionService
             'subsystem' => (string) ($data['subsystem'] ?? 'fr'), 'created_at' => $now, 'updated_at' => $now,
         ]);
         $this->access->audit($principal, 'nursery.section.created', 'section', $structureId, null, ['label' => $label, 'capacity' => $capacity]);
+        // EX-MAT-23 : la maternelle fait l'appel par moment de la journée. Préréglage à la première section, jamais d'écrasement d'un
+        // choix de l'école (SettingsWriter ne pose la valeur que si l'établissement n'en a pas).
+        $this->settings->presetIfAbsent($tenantId, $establishmentId, 'attendance.mode', AttendanceCodes::MODE_DAY_PART, $principal->userId);
 
         return $this->resource($this->findRaw($tenantId, $establishmentId, $structureId));
     }

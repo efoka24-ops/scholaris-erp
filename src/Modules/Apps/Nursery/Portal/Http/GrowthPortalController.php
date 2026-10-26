@@ -62,7 +62,7 @@ final class GrowthPortalController extends Controller
                 $sections[] = $section;
             }
         }
-        $content = $this->lifebook->parentMedia($principal->tenantId, $establishmentId, $sections, self::id($request));
+        $content = $this->lifebook->parentMedia($principal->tenantId, $establishmentId, $sections, self::id($request), $principal);
 
         return $this->responses->createResponse(200)
             ->withHeader('Content-Type', $content->mime)

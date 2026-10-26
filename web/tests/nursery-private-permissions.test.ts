@@ -5,12 +5,12 @@ import { permissionsForRoles, ROLE_PERMISSIONS } from '@/lib/permissions';
 import { nurseryPrivateRoutes } from '@/views/nursery-private/routes';
 
 const ROOT = resolve(process.cwd(), '..');
-const MIGRATION = resolve(ROOT, 'database/migrations/202610220801_roles_nursery.sql');
+const MIGRATIONS = ['database/migrations/202610220801_roles_nursery.sql', 'database/migrations/202610231303_roles_nursery_services_consents.sql'].map((m) => resolve(ROOT, m));
 const FOLDER = resolve(process.cwd(), 'src/views/nursery-private');
 
 function seeded(): Record<string, string[]> {
   const grants: Record<string, string[]> = {};
-  for (const m of readFileSync(MIGRATION, 'utf8').matchAll(/INSERT INTO role_permissions \(role, permission\) VALUES \('([^']+)', '([^']+)'\);/g)) {
+  for (const m of MIGRATIONS.map((f) => readFileSync(f, 'utf8')).join('\n').matchAll(/INSERT INTO role_permissions \(role, permission\) VALUES \('([^']+)', '([^']+)'\);/g)) {
     (grants[m[1] as string] ??= []).push(m[2] as string);
   }
   return grants;
@@ -25,8 +25,8 @@ describe('permissions de la maternelle privée (miroir de la migration de rôles
     }
   });
 
-  it('le rôle cantine ne lit que les allergies et l’aide ne remet ni n’observe', () => {
-    expect(permissionsForRoles(['nursery_cantine'])).toEqual(new Set(['nursery.allergy.read']));
+  it('le rôle cantine ne lit que les allergies et note la présence au service ; l’aide ne remet ni n’observe', () => {
+    expect(permissionsForRoles(['nursery_cantine'])).toEqual(new Set(['nursery.allergy.read', 'nursery.service.attend']));
     const aide = permissionsForRoles(['nursery_assistant']);
     expect(aide.has('nursery.pickup.handover')).toBe(true);
     expect(aide.has('nursery.dev.observe')).toBe(false);

@@ -25,8 +25,8 @@ use Scholaris\Modules\Socle\People\Contracts\PersonDirectory;
  * Cahier de vie (EX-MAT-18, RG-MAT-6, SC-MAT-4) : publications d'une section avec des médias ÉTIQUETÉS (quels enfants figurent sur la
  * photo). Un média n'est jamais servi à un parent si l'un des enfants visibles n'a pas de consentement photo EN VIGUEUR, vérifié à
  * CHAQUE lecture : le retrait d'un consentement retire la photo à la lecture suivante. Un média non étiqueté ne se publie pas. Seul le
- * texte de la publication reste visible quand toutes les photos sont retenues. (La durée de conservation et la purge dépendent de MQ-07 :
- * non livrées.)
+ * texte de la publication reste visible quand toutes les photos sont retenues. Conservation et purge : MediaRetention (nursery:purge-media) ;
+ * consentement recueilli et révocable : PhotoConsentService. Toute lecture d'une photo est journalisée.
  */
 final class LifeBookService
 {
@@ -200,11 +200,15 @@ final class LifeBookService
         return $paging->slice($rows);
     }
 
-    /** Octets d'un média pour le personnel de la section. */
-    public function staffMedia(Perimeter $perimeter, string $mediaId): MediaContent
+    /** Octets d'un média pour le personnel de la section (étiquetage) ; chaque lecture est journalisée, une photo purgée n'existe plus. */
+    public function staffMedia(Principal $principal, Perimeter $perimeter, string $mediaId): MediaContent
     {
         $media = $this->store->find(self::MEDIA, $perimeter->tenantId, $perimeter->establishmentId, $mediaId) ?? throw HttpException::notFound('Média introuvable.');
-        $entry = $this->entry($perimeter, (string) $media['entry_id'], true);
+        $this->entry($perimeter, (string) $media['entry_id'], true);
+        if ((string) $media['status'] === 'purged') {
+            throw HttpException::notFound('Média introuvable.');
+        }
+        $this->access->audit($principal, 'nursery.lifebook.media_read', 'lifebook_media', $mediaId, null, ['reader' => 'staff']);
 
         return $this->bytes($perimeter->tenantId, (string) $media['media_ref']);
     }
@@ -242,13 +246,16 @@ final class LifeBookService
      *
      * @param list<string> $sectionIds sections de ses enfants
      */
-    public function parentMedia(string $tenantId, string $establishmentId, array $sectionIds, string $mediaId): MediaContent
+    public function parentMedia(string $tenantId, string $establishmentId, array $sectionIds, string $mediaId, ?Principal $reader = null): MediaContent
     {
         $media = $this->store->find(self::MEDIA, $tenantId, $establishmentId, $mediaId) ?? throw HttpException::notFound('Média introuvable.');
         $entry = $this->store->find(self::ENTRIES, $tenantId, $establishmentId, (string) $media['entry_id']);
         if ($entry === null || (string) $entry['status'] !== 'published' || !in_array((string) $entry['structure_id'], $sectionIds, true)
             || (string) $media['status'] !== 'published' || !$this->servable($tenantId, $establishmentId, $media)) {
             throw HttpException::notFound('Média introuvable.');
+        }
+        if ($reader !== null) {
+            $this->access->audit($reader, 'nursery.lifebook.media_read', 'lifebook_media', $mediaId, null, ['reader' => 'parent']);
         }
 
         return $this->bytes($tenantId, (string) $media['media_ref']);

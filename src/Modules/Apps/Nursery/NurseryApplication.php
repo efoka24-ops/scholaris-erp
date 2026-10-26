@@ -21,7 +21,7 @@ final class NurseryApplication
     public const VERSION = '0.1.0';
     public const CONTAINER_KEY = 'platform.applications.nursery';
     public const PERMISSION_PREFIX = 'nursery.';
-    public const MODULES = ['Core', 'Sections', 'Enrolment', 'Attendance', 'Pickup', 'Development', 'Billing', 'Messages', 'Portal'];
+    public const MODULES = ['Core', 'Sections', 'Enrolment', 'Attendance', 'Pickup', 'Development', 'Billing', 'Messages', 'Portal', 'Documents', 'Services', 'Transition', 'Dashboard'];
 
     /** @var array<string, string> */
     public const VOCABULARY = [

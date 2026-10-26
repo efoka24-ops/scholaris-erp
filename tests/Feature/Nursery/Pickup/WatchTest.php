@@ -24,19 +24,27 @@ final class WatchTest extends PickupTestCase
     private function startAt(string $now, ?string $dayEnd = '16:00'): void
     {
         $this->bootPickup([], $now);
-        if ($dayEnd !== null) {
-            $this->setSetting(self::TA, self::EA, 'nursery.pickup.day_end_time', $dayEnd);
-        }
+        // Valeur de départ de la plateforme : 13:30 (arrêté du 14 août 2026) ; null = l'école a effacé l'heure de fin.
+        $this->setSetting(self::TA, self::EA, 'nursery.pickup.day_end_time', $dayEnd);
         $this->arrive($this->ada['child']);
         $this->arrive($this->bao['child'], 'b');
     }
 
-    public function testSansHeureDeFinSaisieParLEcoleAucuneAlertePart(): void
+    public function testSansHeureDeFinAucuneAlertePart(): void
     {
         $this->startAt('2026-10-21T23:00:00+01:00', null);
         $result = $this->service(PickupWatch::class)->run(self::TA, self::EA);
         self::assertSame(['parent' => 0, 'director' => 0], $result);
         self::assertSame([], $this->safety->sent);
+    }
+
+    public function testLHeureDeFinDeDepartEstCelleDeLArreteDu14Aout2026(): void
+    {
+        $this->bootPickup([], '2026-10-21T14:05:00+01:00');
+        self::assertSame('13:30', $this->service(\Scholaris\Modules\Apps\Nursery\Support\NurserySettings::class)->time(self::TA, self::EA, 'nursery.pickup.day_end_time'));
+        self::assertSame('07:30', $this->service(\Scholaris\Modules\Apps\Nursery\Support\NurserySettings::class)->time(self::TA, self::EA, 'nursery.day.start_time'));
+        $this->arrive($this->ada['child']);
+        self::assertSame(['parent' => 1, 'director' => 0], $this->service(PickupWatch::class)->run(self::TA, self::EA), '13:30 + 30 min : les parents sont alertés.');
     }
 
     public function testAvantLeDelaiAucuneAlerteApresLeDelaiLesParentsPuisLaDirection(): void

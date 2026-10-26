@@ -35,9 +35,21 @@ final class WorldBilling implements InvoiceIssuer, DebtorDirectory
         return new InvoiceSummary('INV1', $establishmentId, 'c1', InvoiceSummary::KIND_ENROLLMENT, $enrollmentId, null, 'issued', 40000, 3000, 37000, 0, 37000, null, $lines, $installments);
     }
 
+    /** @var array<string, ChargeInvoice> factures libres par référence (services) */
+    public array $charges = [];
+    /** @var array<string, int> montant fictif par frais du catalogue */
+    public array $feeAmounts = ['FEE-CANTINE' => 15000, 'FEE-GARDERIE' => 10000];
+
     public function forCharges(ChargeInvoice $invoice): InvoiceSummary
     {
-        throw new \LogicException('Non utilisé.');
+        $line = $invoice->lines[0];
+        $amount = $this->feeAmounts[(string) $line->feeItemId] ?? throw new \Scholaris\Core\Http\HttpException(404, 'Not Found', 'Frais introuvable.');
+        $this->charges[$invoice->reference] = $invoice;
+        $id = 'CHG-' . substr(md5($invoice->reference), 0, 8);
+        $lines = [['id' => 'CL1', 'fee_item_id' => (string) $line->feeItemId, 'fee_code' => null, 'kind' => 'canteen', 'label' => (string) $line->label, 'gross_xaf' => $amount, 'discount_xaf' => 0, 'net_xaf' => $amount, 'paid_xaf' => 0]];
+        $installments = [['id' => 'CI1', 'line_id' => 'CL1', 'label' => (string) $line->label, 'due_on' => $line->dueOn, 'amount_xaf' => $amount, 'paid_xaf' => 0]];
+
+        return new InvoiceSummary($id, $invoice->establishmentId, $invoice->subjectId, InvoiceSummary::KIND_CHARGES, null, $invoice->reference, 'issued', $amount, 0, $amount, 0, $amount, null, $lines, $installments);
     }
 
     public function addDiscount(string $tenantId, string $establishmentId, string $actorId, string $invoiceId, string $kind, string $mode, int $value, string $appliesTo, string $reason): InvoiceSummary
