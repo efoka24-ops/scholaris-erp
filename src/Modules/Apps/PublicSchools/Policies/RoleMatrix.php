@@ -57,7 +57,7 @@ final class RoleMatrix
             'label_fr' => 'Inspection générale des enseignements', 'label_en' => 'General inspectorate of education',
             'permissions' => [
                 'public_schools.aggregates.read', 'public_schools.inspection.read', 'documents.templates.manage',
-                'reporting.territory_aggregates.read',
+                'reporting.territory_aggregates.read', 'public_primary.referential.manage',
             ],
         ],
         'pub_regional_delegate' => [
@@ -107,6 +107,7 @@ final class RoleMatrix
                 'public_schools.apee.read', 'public_schools.census.write', 'public_schools.inspection.read', 'public_primary.evaluation.validate',
                 'public_primary.evaluation.publish', 'public_primary.evaluation.rectify', 'public_primary.promotion.validate',
                 'public_primary.exams.write', 'organisation.read', 'sync.batches.submit', 'sync.devices.manage', 'identity.named_access.read',
+                'documents.read',
             ],
         ],
         'pub_class_teacher' => [
@@ -123,7 +124,7 @@ final class RoleMatrix
             'label_fr' => 'Bureau de l\'APEE (président, trésorier)', 'label_en' => 'PTA board (chair, treasurer)',
             'permissions' => [
                 'public_schools.school.read', 'public_schools.apee.read', 'public_schools.apee.write', 'public_schools.apee.read_receipts',
-                'public_schools.apee.non_payers.read',
+                'public_schools.apee.non_payers.read', 'documents.read',
             ],
         ],
         'pub_school_council' => [
@@ -167,6 +168,7 @@ final class RoleMatrix
             'permissions' => [
                 'organisation.read', 'organisation.territories.manage', 'identity.manage', 'identity.roles.assign', 'settings.manage',
                 'documents.templates.manage', 'messaging.templates.manage', 'sync.devices.manage',
+                'public_primary.referential.manage',
             ],
         ],
     ];

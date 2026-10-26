@@ -87,6 +87,9 @@ final class RolePermissionsPublicSchoolsTest extends TestCase
         // database/migrations/202610211104_roles_public_attendance.sql (T634, RG-PRE-1) : correction de l'appel par le directeur.
         'attendance.correct' => ['pub_school_director'],
         'attendance.correct_late' => ['pub_school_director'],
+        // database/migrations/202610231301_roles_public_primary_p2.sql (lot P2) : référentiel national, téléchargement des PDF émis.
+        'public_primary.referential.manage' => ['pub_inspection_general', 'pub_functional_admin'],
+        'documents.read' => ['pub_school_director', 'pub_apee_board'],
     ];
 
     /** @var array<string, array{level: string, sensitive: bool, label_fr: string, label_en: string}> */
