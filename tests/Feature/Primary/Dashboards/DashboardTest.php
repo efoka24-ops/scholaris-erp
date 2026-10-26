@@ -178,7 +178,7 @@ final class DashboardTest extends PrimaryTestCase
 
         $report = $this->ok('GET', '/primary/closure/check?academic_year_id=ay1');
         self::assertFalse($report['ready']);
-        self::assertSame(2, $report['blocking_count']);
+        self::assertSame(3, $report['blocking_count'], 'Feuilles, table de passage et conseils des maîtres (P-002).');
         $checks = array_column($report['checks'], null, 'key');
         self::assertSame(['blocking', 1], [$checks[ClosureReadiness::SHEETS]['status'], $checks[ClosureReadiness::SHEETS]['blocking_count']]);
         self::assertSame('blocking', $checks[ClosureReadiness::MAP]['status']);
@@ -192,6 +192,7 @@ final class DashboardTest extends PrimaryTestCase
 
         $this->ok('POST', "/primary/classes/$c1/competency-sheet/lock?period_id=P-T1");
         $this->service(SettingsWriter::class)->presetIfAbsent(self::TA, self::EA, 'people.promotion.next_structure', [$c1 => $c2, $c2 => $c3], self::DIRECTOR);
+        $this->service(SettingsWriter::class)->presetIfAbsent(self::TA, self::EA, 'primary.closure.require_councils', false, self::DIRECTOR);
         $ready = $this->ok('GET', '/primary/closure/check?academic_year_id=ay1');
         self::assertTrue($ready['ready']);
         self::assertSame(0, $ready['blocking_count']);

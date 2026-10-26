@@ -8,6 +8,7 @@ use Scholaris\Core\Security\Principal;
 use Scholaris\Modules\Apps\Primary\Support\Access;
 use Scholaris\Modules\Apps\Primary\Support\Perimeter;
 use Scholaris\Modules\Apps\Primary\Support\PrimaryClock;
+use Scholaris\Modules\Apps\Primary\Support\PrimarySettings;
 use Scholaris\Modules\Socle\Attendance\Contracts\DailyPresence;
 use Scholaris\Modules\Socle\Billing\Contracts\DebtorDirectory;
 use Scholaris\Modules\Socle\Billing\Contracts\EstablishmentBalances;
@@ -29,6 +30,7 @@ final class DirectorDashboard
         private readonly DebtorDirectory $debtors,
         private readonly EstablishmentBalances $balances,
         private readonly PrimaryClock $clock,
+        private readonly PrimarySettings $settings,
     ) {
     }
 
@@ -49,6 +51,7 @@ final class DirectorDashboard
         $context = $this->sheets->context($t, $establishmentId, $today);
         $balances = $this->balances->balancesXaf($t, $establishmentId);
         $arrears = array_flip($this->debtors->learnerIdsInArrears($t, $establishmentId));
+        $cap = $this->settings->int($t, $establishmentId, 'primary.class_size_cap');
 
         $rows = [];
         $totals = ['classes' => 0, 'learners' => 0, 'absent_morning' => 0, 'absent_afternoon' => 0, 'late_payers' => 0, 'late_balance_xaf' => 0, 'sheets_late' => 0];
@@ -63,6 +66,7 @@ final class DirectorDashboard
                 'class_id' => $class->id, 'name' => $class->name, 'level_id' => $class->levelId,
                 'capacity' => $class->capacity, 'learners' => count($class->learnerIds),
                 'over_capacity' => $class->capacity !== null && count($class->learnerIds) > $class->capacity,
+                'class_size_cap' => $cap, 'over_cap' => $cap > 0 && count($class->learnerIds) > $cap,
                 'absent_morning' => count($this->presence->absentOn($t, $establishmentId, $today, $class->id, DailyPresence::MORNING)),
                 'absent_afternoon' => count($this->presence->absentOn($t, $establishmentId, $today, $class->id, DailyPresence::AFTERNOON)),
                 'late_payers' => count($late), 'late_balance_xaf' => $lateBalance,
