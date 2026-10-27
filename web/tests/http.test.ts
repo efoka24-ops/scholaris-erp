@@ -21,6 +21,20 @@ describe('client HTTP', () => {
     expect(lastInit(f).credentials).toBe('same-origin');
   });
 
+  it('envoie PUT, PATCH et DELETE en POST avec X-HTTP-Method-Override (refusés par l\'hébergement)', async () => {
+    const f = vi.fn(async (_url: string, _init?: RequestInit) => jsonResponse({ data: {} }));
+    const c = client(f as unknown as typeof fetch);
+    for (const [call, method] of [[() => c.patch('/x', { a: 1 }), 'PATCH'], [() => c.put('/x', { a: 1 }), 'PUT'], [() => c.delete('/x'), 'DELETE']] as const) {
+      await call();
+      expect(lastInit(f).method).toBe('POST');
+      expect(hdr(f, 'X-HTTP-Method-Override')).toBe(method);
+    }
+    await c.patch('/x', { a: 1 });
+    expect(lastInit(f).body).toBe('{"a":1}');
+    await c.post('/x', {});
+    expect(hdr(f, 'X-HTTP-Method-Override')).toBeUndefined();
+  });
+
   it("n'envoie pas X-Establishment-Id sur /me, /auth et /portal", async () => {
     const f = vi.fn(async (_url: string, _init?: RequestInit) => jsonResponse({ data: {} }));
     const c = client(f as unknown as typeof fetch);

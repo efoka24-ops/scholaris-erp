@@ -40,7 +40,7 @@ final class Cors implements MiddlewareInterface
             ->withHeader('Access-Control-Allow-Origin', $origin)
             ->withHeader('Access-Control-Allow-Credentials', 'true')
             ->withHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS')
-            ->withHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type, Accept-Language, X-Establishment-Id, Idempotency-Key')
+            ->withHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type, Accept-Language, X-Establishment-Id, Idempotency-Key, X-HTTP-Method-Override')
             ->withHeader('Access-Control-Expose-Headers', 'X-Trace-Id, Retry-After, Idempotent-Replayed')
             ->withHeader('Access-Control-Max-Age', '600');
     }

@@ -49,7 +49,9 @@ export function mockApi(map: Record<string, Handler>): RecordedCall[] {
     fetchImpl: (async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = new URL(String(input), 'http://localhost');
       const path = url.pathname.replace(/^\/api\/v1/, '');
-      const method = (init?.method ?? 'GET').toUpperCase();
+      // Comme le serveur (MethodOverride) : un POST portant X-HTTP-Method-Override vaut la méthode indiquée.
+      const override = ((init?.headers ?? {}) as Record<string, string>)['X-HTTP-Method-Override'];
+      const method = (override ?? init?.method ?? 'GET').toUpperCase();
       const call: RecordedCall = {
         method,
         path,

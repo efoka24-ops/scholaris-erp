@@ -27,6 +27,7 @@ use Scholaris\Core\Http\Middleware\ErrorHandler;
 use Scholaris\Core\Http\Middleware\Idempotency;
 use Scholaris\Core\Http\Middleware\JsonBodyLimit;
 use Scholaris\Core\Http\Middleware\Locale;
+use Scholaris\Core\Http\Middleware\MethodOverride;
 use Scholaris\Core\Http\Middleware\RateLimit;
 use Scholaris\Core\Http\Middleware\ResolveEstablishment;
 use Scholaris\Core\Http\Middleware\RouteResolver;
@@ -108,6 +109,7 @@ final class Kernel
 
         // En-têtes de sécurité et CORS À L'EXTÉRIEUR du gestionnaire d'erreurs : les réponses Problem Details les portent aussi.
         $middlewares = [
+            new MethodOverride(),
             new SecurityHeaders(),
             new Cors($this->stringList('api.cors_origins')),
             new ErrorHandler($c->get(JsonResponder::class), $c->get(LoggerInterface::class), $debug),

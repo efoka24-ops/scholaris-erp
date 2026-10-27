@@ -94,6 +94,7 @@ const IDEMPOTENT_POST = /^\/(payments|cash\/receipts|documents)$/;
  */
 const NO_ESTABLISHMENT = /^\/(auth|me|portal|health|vocabulary)(\/|$)|^\/public\/(applications|access-requests|admissions|verify)(\/|$)/;
 const MUTATING = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+const OVERRIDDEN = new Set(['PUT', 'PATCH', 'DELETE']);
 
 export class HttpClient {
   constructor(private cfg: HttpConfig) {}
@@ -120,6 +121,9 @@ export class HttpClient {
       ...opts.headers,
     };
     const upper = method.toUpperCase();
+    // L'hébergement de production refuse PUT, PATCH et DELETE (403 avant PHP) : envoi en POST, méthode réelle en en-tête.
+    const sent = OVERRIDDEN.has(upper) ? 'POST' : upper;
+    if (sent !== upper) headers['X-HTTP-Method-Override'] = upper;
 
     const establishment = opts.establishmentId === undefined ? this.cfg.getEstablishmentId() : opts.establishmentId;
     if (establishment && opts.establishmentId !== false && !NO_ESTABLISHMENT.test(path)) {
@@ -148,7 +152,7 @@ export class HttpClient {
     let response: Response;
     try {
       response = await doFetch(this.buildUrl(path, opts.query), {
-        method: upper,
+        method: sent,
         headers,
         body,
         credentials: 'same-origin',
