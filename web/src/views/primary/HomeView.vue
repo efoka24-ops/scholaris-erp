@@ -31,6 +31,13 @@ const tiles: Tile[] = [
   { name: 'pri-sheet', title: 'pri.sheet.title', text: 'pri.home.sheetText', perms: P.competencyRead },
   { name: 'pri-conduct', title: 'pri.conduct.title', text: 'pri.home.conductText', perms: P.conductRead },
   { name: 'pri-journal', title: 'pri.journal.title', text: 'pri.home.journalText', perms: P.journalRead },
+  { name: 'pri-council', title: 'pri.council.title', text: 'pri.home.councilText', perms: P.councilRead },
+  { name: 'pri-cards', title: 'pri.cards.title', text: 'pri.home.cardsText', perms: P.reportCardRead },
+  { name: 'pri-remediation', title: 'pri.rem.title', text: 'pri.home.remText', perms: P.remediationRead },
+  { name: 'pri-exam', title: 'pri.exam.title', text: 'pri.home.examText', perms: P.examRead },
+  { name: 'pri-exports', title: 'pri.exports.title', text: 'pri.home.exportsText', perms: P.tutelageExport },
+  { name: 'pri-closure', title: 'pri.close.title', text: 'pri.home.closeText', perms: P.closureRead },
+  { name: 'pri-family', title: 'pri.family.title', text: 'pri.home.familyText', perms: P.family },
 ];
 const visible = computed(() => tiles.filter((tile) => router.hasRoute(tile.name) && can(...tile.perms)));
 const needsSetup = computed(() => status.value !== null && !status.value.ready);

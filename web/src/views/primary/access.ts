@@ -18,8 +18,20 @@ export const P = {
   dashboardRead: ['primary.dashboard.read'],
   /** Contrôles avant clôture : mêmes permissions que le serveur (sur tout l'établissement). */
   closureRead: ['primary.settings.manage', 'primary.promotion.decide', 'primary.dashboard.read'],
+  councilRead: ['primary.council.read', 'primary.council.preside', 'assessment.validate'],
+  councilPrepare: ['primary.council.preside', 'assessment.validate'],
+  councilPreside: ['primary.council.preside'],
+  reportCardRead: ['primary.report_card.read', 'primary.report_card.sign', 'primary.council.preside'],
+  reportCardSign: ['primary.report_card.sign'],
+  remediationRead: ['primary.remediation.read', 'primary.remediation.write'],
+  remediationWrite: ['primary.remediation.write'],
+  examRead: ['primary.exam.read', 'primary.exam.manage'],
+  examManage: ['primary.exam.manage'],
+  tutelageExport: ['primary.tutelage.export'],
+  family: ['self.read'],
   /** Accès à l'espace : au moins une permission de travail dans l'école primaire privée. */
   space: [
+    'primary.council.read', 'primary.report_card.read', 'primary.remediation.read', 'primary.exam.read', 'primary.tutelage.export',
     'primary.referential.read', 'primary.referential.manage', 'primary.settings.manage', 'primary.learner.read', 'primary.enrol',
     'primary.competency.enter', 'primary.competency.read', 'primary.conduct.enter', 'primary.journal.write', 'primary.journal.read', 'primary.dashboard.read',
   ],

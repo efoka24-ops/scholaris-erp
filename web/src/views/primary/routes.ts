@@ -15,6 +15,13 @@ const screens: Screen[] = [
   ['competences', 'pri-sheet', () => import('./SheetView.vue'), P.competencyRead, 'pri.sheet.title'],
   ['cahier', 'pri-journal', () => import('./JournalView.vue'), P.journalRead, 'pri.journal.title'],
   ['conduite', 'pri-conduct', () => import('./ConductView.vue'), P.conductRead, 'pri.conduct.title'],
+  ['conseils', 'pri-council', () => import('./CouncilView.vue'), P.councilRead, 'pri.council.title'],
+  ['bulletins', 'pri-cards', () => import('./ReportCardsView.vue'), P.reportCardRead, 'pri.cards.title'],
+  ['remediation', 'pri-remediation', () => import('./RemediationView.vue'), P.remediationRead, 'pri.rem.title'],
+  ['examen', 'pri-exam', () => import('./ExamView.vue'), P.examRead, 'pri.exam.title'],
+  ['exports', 'pri-exports', () => import('./ExportsView.vue'), P.tutelageExport, 'pri.exports.title'],
+  ['cloture', 'pri-closure', () => import('./ClosureView.vue'), P.closureRead, 'pri.close.title'],
+  ['famille', 'pri-family', () => import('./FamilyView.vue'), P.family, 'pri.family.title'],
 ];
 
 const schoolOnly = { needsEstablishment: true, establishmentTypes: ['primary'] };

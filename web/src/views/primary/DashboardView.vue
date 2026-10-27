@@ -61,7 +61,7 @@ async function check(): Promise<void> {
 }
 
 const checkLabel = (key: string, fallback: string): string => {
-  const known: Record<string, MessageKey> = { 'primary.competency_sheets': 'pri.dash.check.sheets', 'primary.promotion_map': 'pri.dash.check.map' };
+  const known: Record<string, MessageKey> = { 'primary.competency_sheets': 'pri.dash.check.sheets', 'primary.promotion_map': 'pri.dash.check.map', 'primary.councils': 'pri.close.councils', 'primary.report_cards': 'pri.close.cards' };
   const k = known[key];
   return k ? t(k) : fallback;
 };
