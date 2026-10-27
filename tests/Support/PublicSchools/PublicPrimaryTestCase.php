@@ -32,6 +32,9 @@ abstract class PublicPrimaryTestCase extends PublicSchoolsTestCase
         $this->bootPublic($settings);
         $this->connections()->pdo()->prepare('INSERT INTO pub_schools (id, tenant_id, establishment_id, official_code, subsystem, cycle, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
             ->execute(['01SCHOOLE1000000000000000A', 't1', 'e1', 'SYN-EP-0001', 'francophone', 'primary', 'open', '2026-09-01T08:00:00+01:00', '2026-09-01T08:00:00+01:00']);
+        // L'établissement existe aussi en base : les paramètres territoriaux du socle (PP16) le vérifient.
+        $this->connections()->pdo()->prepare('INSERT INTO establishments (id, tenant_id, name, type, branding, modules_enabled, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+            ->execute(['e1', 't1', 'École publique de Bonamoussadi', 'primary', '{}', '[]', '2026-09-01T08:00:00+01:00', '2026-09-01T08:00:00+01:00']);
         $this->people->add('t1', 'paul', 'Paul', 'Essomba');
         $this->enrollments->add('t1', 'en-paul', 'paul', 'e1', 'c2');
         $this->people->add('t1', 'p-parent3', 'Lucie', 'Essomba', '+237670000003');
