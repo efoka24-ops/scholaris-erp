@@ -158,16 +158,21 @@ final class PublicNurseryConventionsTest extends TestCase
             $stamps[basename($file)] = (int) substr(basename($file), 0, 12);
         }
 
+        $now = (int) (new \DateTimeImmutable('now', new \DateTimeZone('Africa/Douala')))->format('YmdHi');
         foreach ($stamps as $name => $stamp) {
-            self::assertLessThanOrEqual(202610201100, $stamp, $name . ' est datée après le 2026-10-20 11:00.');
+            self::assertLessThanOrEqual($now, $stamp, $name . ' est datée dans le futur.');
         }
         $order = array_keys($stamps);
         sort($order);
+        $modules = array_map(static fn (string $name): string => (string) preg_replace('/^\d{12}_|\.sql$/', '', $name), $order);
         self::assertSame(
             ['public_nursery_pickup', 'public_nursery_development', 'public_nursery_transition'],
-            array_map(static fn (string $name): string => (string) preg_replace('/^\d{12}_|\.sql$/', '', $name), $order),
-            'Ordre Pickup puis Development puis Transition.',
+            array_slice($modules, 0, 3),
+            'Ordre Pickup puis Development puis Transition ; les migrations de finalisation (N-002) viennent après.',
         );
+        foreach (array_slice($order, 3) as $name) {
+            self::assertGreaterThan(202610231300, $stamps[$name], $name . ' : toute nouvelle migration est postérieure au 2026-10-23 13:00.');
+        }
     }
 
     public function testAucunMotReserveMysqlDansLesMigrationsPublicNursery(): void

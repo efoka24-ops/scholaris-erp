@@ -40,7 +40,7 @@ use Scholaris\Modules\Apps\PublicNursery\Transition\Http\TransitionController;
  * Definitions racine de l'application Maternelle publique : un manifeste de plateforme et le chargement futur
  * des sous-modules via leurs propres definitions.php.
  */
-return [
+$definitions = [
     PublicNurseryApplication::CONTAINER_KEY => PublicNurseryApplication::manifest(),
     FrameService::class => autowire(),
     FrameController::class => autowire(),
@@ -49,6 +49,7 @@ return [
     ObservationService::class => autowire(),
     ObservationController::class => autowire(),
     ProgressBookService::class => autowire(),
+    \Scholaris\Modules\Apps\PublicNursery\Development\Http\ProgressBookController::class => autowire(),
     NeedReportService::class => autowire(),
     NeedReportController::class => autowire(),
     AuthorizedPersonsService::class => autowire(),
@@ -75,3 +76,10 @@ return [
     GatedAction::class => autowire(),
     SectionScopeResolver::class => autowire(),
 ];
+
+// Sous-modules ajoutés depuis N-002 : leurs propres definitions.php (Contribution, Capacity, Register...).
+foreach (glob(__DIR__ . '/*/definitions.php') ?: [] as $file) {
+    $definitions = array_merge($definitions, (array) require $file);
+}
+
+return $definitions;

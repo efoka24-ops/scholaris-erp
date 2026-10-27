@@ -6,6 +6,7 @@ use Scholaris\Modules\Apps\PublicNursery\Development\Http\FrameController;
 use Scholaris\Modules\Apps\PublicNursery\Development\Http\LifeBookController;
 use Scholaris\Modules\Apps\PublicNursery\Development\Http\NeedReportController;
 use Scholaris\Modules\Apps\PublicNursery\Development\Http\ObservationController;
+use Scholaris\Modules\Apps\PublicNursery\Development\Http\ProgressBookController;
 use Scholaris\Modules\Apps\PublicNursery\Support\NurseryRoutes;
 
 return static function (NurseryRoutes $routes): void {
@@ -22,4 +23,10 @@ return static function (NurseryRoutes $routes): void {
     $routes->post('/sync/observations', [ObservationController::class, 'store']);
     $routes->get('/development/needs', [NeedReportController::class, 'index']);
     $routes->post('/development/needs', [NeedReportController::class, 'store']);
+    $routes->get('/development/progress-books/{id}', [ProgressBookController::class, 'show']);
+    $routes->post('/development/progress-books', [ProgressBookController::class, 'store']);
+    $routes->post('/development/progress-books/{id}/validate', [ProgressBookController::class, 'validate']);
+    $routes->post('/development/progress-books/{id}/publish', [ProgressBookController::class, 'publish']);
+    $routes->post('/development/progress-books/{id}/reissue', [ProgressBookController::class, 'reissue']);
+    $routes->get('/development/progress-books/{id}/pdf', [ProgressBookController::class, 'pdf']);
 };
