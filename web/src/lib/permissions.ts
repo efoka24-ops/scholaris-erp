@@ -6,8 +6,9 @@ import { NURSERY_ROLE_PERMISSIONS } from '@/views/nursery-private/rolePermission
 const ALL_ADMIN = [
   'organisation.read', 'organisation.manage', 'settings.manage', 'identity.manage', 'identity.roles.assign',
   'people.read', 'people.manage', 'billing.read', 'billing.manage', 'billing.reversal.approve',
+  'billing.reversal.approve.direction',
   'messaging.read', 'messaging.send', 'messaging.templates.manage',
-  'documents.read', 'documents.issue', 'documents.revoke', 'documents.templates.manage',
+  'documents.read', 'documents.issue', 'documents.revoke', 'documents.rectify', 'documents.templates.manage',
   'scheduling.read', 'scheduling.manage', 'attendance.read', 'attendance.justify',
   'attendance.discipline.manage', 'attendance.discipline.approve',
   'assessment.read', 'assessment.validate', 'assessment.publish', 'assessment.correction.approve',
@@ -24,8 +25,8 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
   direction_groupe: [
     'organisation.read', 'organisation.manage', 'settings.manage', 'identity.manage', 'identity.roles.assign',
     'people.read', 'billing.read', 'billing.reversal.approve', 'messaging.read', 'messaging.send',
-    'messaging.templates.manage', 'documents.read', 'documents.issue', 'documents.revoke', 'documents.templates.manage',
-    'scheduling.read', 'attendance.read', 'assessment.read', 'staff.read', 'privacy.requests.read',
+    'messaging.templates.manage', 'documents.read', 'documents.issue', 'documents.revoke', 'documents.rectify', 'documents.templates.manage',
+    'billing.reversal.approve.direction', 'scheduling.read', 'attendance.read', 'assessment.read', 'staff.read', 'privacy.requests.read',
     'reporting.read', 'reporting.group.read', 'applications.manage',
   ],
   directeur: [...ALL_ADMIN.filter((p) => p !== 'assessment.enter')],
