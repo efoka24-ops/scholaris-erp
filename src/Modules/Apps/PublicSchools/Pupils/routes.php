@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Scholaris\Modules\Apps\PublicSchools\Pupils\Http\BatchController;
 use Scholaris\Modules\Apps\PublicSchools\Pupils\Http\ClassController;
 use Scholaris\Modules\Apps\PublicSchools\Pupils\Http\DropoutController;
 use Scholaris\Modules\Apps\PublicSchools\Pupils\Http\PupilController;
@@ -21,6 +22,8 @@ return static function (PublicRoutes $routes): void {
 
     $routes->post('/pupils', [PupilController::class, 'register']);
     $routes->get('/pupils', [PupilController::class, 'search']);
+    $routes->post('/pupils/batches', [BatchController::class, 'create']);
+    $routes->get('/pupils/batches', [BatchController::class, 'index']);
     $routes->get('/pupils/without-birth-act', [PupilController::class, 'withoutBirthAct']);
     $routes->post('/pupils/without-birth-act/transmissions', [PupilController::class, 'transmit']);
     $routes->get('/pupils/without-birth-act/transmissions', [PupilController::class, 'transmissions']);
