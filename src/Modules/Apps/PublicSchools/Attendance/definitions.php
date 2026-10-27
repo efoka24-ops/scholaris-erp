@@ -30,6 +30,8 @@ return [
     AttendanceController::class => autowire(),
     TeacherPresenceController::class => autowire(),
     AlertController::class => autowire(),
+    \Scholaris\Modules\Apps\PublicSchools\Attendance\Application\AttendanceDocuments::class => autowire(),
+    \Scholaris\Modules\Apps\PublicSchools\Attendance\Http\DocumentController::class => autowire(),
     AttendanceBatchHandler::class => autowire(),
     // Hors ligne (API-04) : point d'extension unique du socle Sync, un élément = l'appel d'une classe pour une demi-journée.
     'sync.handlers.public.attendance' => autowire(AttendanceBatchHandler::class),

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Scholaris\Modules\Apps\PublicSchools\Attendance\Http\AlertController;
 use Scholaris\Modules\Apps\PublicSchools\Attendance\Http\AttendanceController;
+use Scholaris\Modules\Apps\PublicSchools\Attendance\Http\DocumentController;
 use Scholaris\Modules\Apps\PublicSchools\Attendance\Http\TeacherPresenceController;
 use Scholaris\Modules\Apps\PublicSchools\Support\PublicRoutes;
 
@@ -12,6 +13,8 @@ return static function (PublicRoutes $routes): void {
     $routes->put('/classes/{id}/attendance/{date}', [AttendanceController::class, 'record']);
     $routes->get('/classes/{id}/attendance/{date}', [AttendanceController::class, 'show']);
     $routes->get('/classes/{id}/attendance-register', [AttendanceController::class, 'register']);
+    $routes->post('/classes/{id}/attendance-register/document', [DocumentController::class, 'register']);
+    $routes->post('/teacher-presence/summary/document', [DocumentController::class, 'presence']);
 
     // PRE : présence des enseignants, contrôle de l'inspection, synthèse mensuelle (DOC-22), classes sans enseignant (RG-PRE-2).
     $routes->put('/staff/{id}/presence/{date}', [TeacherPresenceController::class, 'declare']);

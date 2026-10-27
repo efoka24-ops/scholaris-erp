@@ -258,3 +258,51 @@ paths:
         '403': { description: Permission ou périmètre insuffisant }
         '404': { description: Introuvable dans le périmètre }
         '422': { description: Données invalides }
+  /api/v1/public/classes/{id}/attendance-register/document:
+    post:
+      summary: DocumentController::register
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: "Succès" }
+        '201': { description: "Créé" }
+        '400': { description: "Requête invalide" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission ou périmètre insuffisant" }
+        '404': { description: "Introuvable dans le périmètre" }
+        '409': { description: "Conflit : déjà publié, figé ou rejeu différent" }
+        '422': { description: "Données invalides" }
+        '423': { description: "Application en lecture seule" }
+  /api/v1/public/teacher-presence/summary/document:
+    post:
+      summary: DocumentController::presence
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: "Succès" }
+        '201': { description: "Créé" }
+        '400': { description: "Requête invalide" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission ou périmètre insuffisant" }
+        '404': { description: "Introuvable dans le périmètre" }
+        '409': { description: "Conflit : déjà publié, figé ou rejeu différent" }
+        '422': { description: "Données invalides" }
+        '423': { description: "Application en lecture seule" }
