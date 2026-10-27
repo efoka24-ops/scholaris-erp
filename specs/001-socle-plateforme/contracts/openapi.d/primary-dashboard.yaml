@@ -15,8 +15,8 @@ paths:
         '404': {description: "Application fermee ou ressource introuvable"}
   /api/v1/primary/closure/check:
     get:
-      summary: "Controles propres au primaire avant la cloture d'une annee : feuilles de competences non verrouillees, table de passage incoherente (permissions primary.settings.manage, primary.promotion.decide ou primary.dashboard.read, sur tout l'etablissement)"
-      description: "Reponse {academic_year_id, ready, blocking_count, checks[{key, label, status (ok|blocking|not_evaluable), blocking_count, detail}], sheets_to_lock[{class_id, name, periods[]}], promotion_map_errors[{code, class_structure_id, target_structure_id}]}. Un etablissement sans niveau primaire recoit 'sans objet' (aucun blocage). Les bulletins et conseils ne sont pas controles (questions du client sans reponse)."
+      summary: "Controles propres au primaire avant la cloture d'une annee : feuilles de competences non verrouillees, table de passage incoherente, conseils non valides, bulletins non emis (permissions primary.settings.manage, primary.promotion.decide ou primary.dashboard.read, sur tout l'etablissement)"
+      description: "Reponse {academic_year_id, ready, blocking_count, checks[{key, label, status (ok|blocking|not_evaluable), blocking_count, detail}], sheets_to_lock[{class_id, name, periods[]}], promotion_map_errors[{code, class_structure_id, target_structure_id}]}. Un etablissement sans niveau primaire recoit 'sans objet' (aucun blocage). Controles P-002 : primary.councils (conseils valides, primary.trimesters attendus) et primary.report_cards (bulletins emis), desactivables par primary.closure.require_councils et primary.closure.require_report_cards ; listes councils_missing[] et report_cards_missing[]."
       parameters:
         - {name: academic_year_id, in: query, required: false, schema: {type: string}, description: "Annee a cloturer ; par defaut, celle de la periode en cours"}
       responses:
