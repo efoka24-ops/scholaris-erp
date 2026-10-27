@@ -141,4 +141,43 @@ final class PrimaryRuleStrategyTest extends TestCase
         self::assertNotSame([], $strategy->optionErrors(['period_weights' => ['t1' => -1]]));
         self::assertSame('primary', $strategy->key());
     }
+
+    /**
+     * T534 chiffré avec les VALEURS DE DÉPART de questions.md (Q3, Q4, Q10 : barème 20, note de passage 10, arrondi 2, coefficients
+     * et poids 1), à confirmer : chaîne complète séquences -> trimestre -> année -> proposition, épreuves sur 10 ramenées sur 20,
+     * absence non justifiée = zéro, absence justifiée exclue.
+     */
+    public function testChaineCompleteAvecLesValeursDeDepartAConfirmer(): void
+    {
+        $strategy = new PrimaryRuleStrategy();
+        $rules = $this->exampleRules(20.0, 10.0);
+        // Séquence 1 : lecture 7/10 et 8/10 -> 15/20 ; calcul 6/10 -> 12/20 ; générale (15 + 12) / 2 = 13,5.
+        $s1 = $strategy->computeLearner($rules, [$this->unit('LECT', 1.0, [$this->entry(7.0, 10.0), $this->entry(8.0, 10.0)]), $this->unit('CALC', 1.0, [$this->entry(6.0, 10.0)])], 'normal');
+        self::assertSame(13.5, $s1['average']);
+        // Séquence 2 : lecture 9/10 -> 18 ; calcul absent non justifié (zéro) et 5/10 -> (0 + 10) / 2 = 5 ; générale 11,5.
+        $s2 = $strategy->computeLearner($rules, [$this->unit('LECT', 1.0, [$this->entry(9.0, 10.0)]), $this->unit('CALC', 1.0, [$this->entry(null, 10.0, 1.0, 'abs'), $this->entry(5.0, 10.0)])], 'normal');
+        self::assertSame(11.5, $s2['average']);
+        // Absence justifiée exclue : calcul = 5/10 seul -> 10 ; générale (18 + 10) / 2 = 14.
+        $s2bis = $strategy->computeLearner($rules, [$this->unit('LECT', 1.0, [$this->entry(9.0, 10.0)]), $this->unit('CALC', 1.0, [$this->entry(null, 10.0, 1.0, 'just'), $this->entry(5.0, 10.0)])], 'normal');
+        self::assertSame(14.0, $s2bis['average']);
+
+        $summary = static fn (string $id, array $r): array => ['period_id' => $id, 'average' => $r['average'], 'credits_earned' => 0, 'credits_total' => 0, 'units' => array_map(static fn (?float $a): array => ['average' => $a], $r['subjects'])];
+        $t1 = $strategy->aggregatePeriods($rules, [$summary('s1', $s1), $summary('s2', $s2)]);
+        self::assertSame(12.5, $t1['average'], 'Trimestre = moyenne des séquences, poids 1.');
+        self::assertSame(16.5, $t1['units']['LECT']['average']);
+        $year = $strategy->decideYear($rules, [
+            ['period_id' => 't1', 'average' => 12.5, 'credits_earned' => 0, 'credits_total' => 0, 'units' => []],
+            ['period_id' => 't2', 'average' => 8.0, 'credits_earned' => 0, 'credits_total' => 0, 'units' => []],
+            ['period_id' => 't3', 'average' => 9.0, 'credits_earned' => 0, 'credits_total' => 0, 'units' => []],
+        ], []);
+        self::assertSame(9.83, $year['average'], 'Année = moyenne des trimestres arrondie au centième.');
+        self::assertSame('adjourned', $year['extras']['decision_code'] ?? null, '9,83 < 10 : redouble (proposition, le conseil décide).');
+        $weighted = $strategy->decideYear($this->exampleRules(20.0, 10.0, 2, ['period_weights' => ['t1' => 2]]), [
+            ['period_id' => 't1', 'average' => 12.5, 'credits_earned' => 0, 'credits_total' => 0, 'units' => []],
+            ['period_id' => 't2', 'average' => 8.0, 'credits_earned' => 0, 'credits_total' => 0, 'units' => []],
+            ['period_id' => 't3', 'average' => 9.0, 'credits_earned' => 0, 'credits_total' => 0, 'units' => []],
+        ], []);
+        self::assertSame(10.5, $weighted['average'], 'Poids de période paramétré (exemple) : (12,5 × 2 + 8 + 9) / 4.');
+        self::assertSame('admitted', $weighted['extras']['decision_code'] ?? null);
+    }
 }
