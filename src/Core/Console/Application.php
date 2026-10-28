@@ -41,6 +41,8 @@ final class Application
                 'attendance:retry-absences' => $this->kernel()->container()->get(\Scholaris\Modules\Socle\Attendance\Console\RetryAbsenceNotificationsCommand::class)->run(array_slice($argv, 2)),
                 'queue:send' => $this->kernel()->container()->get(\Scholaris\Modules\Socle\Messaging\Console\SendQueueCommand::class)->run(array_slice($argv, 2)),
                 'reports:run' => $this->kernel()->container()->get(\Scholaris\Modules\Socle\Reporting\Console\RunScheduledReportsCommand::class)->run(array_slice($argv, 2)),
+                'schedule:run' => $this->scheduleRun(),
+                'schedule:list' => $this->scheduleList(),
                 'documents:process-jobs' => $this->kernel()->container()->get(\Scholaris\Modules\Socle\Documents\Console\ProcessDocumentJobsCommand::class)->run(array_slice($argv, 2)),
                 default => $this->moduleCommand($command, array_slice($argv, 2)),
             };
@@ -86,6 +88,10 @@ final class Application
         echo "  admin:create <client> <prénom> <nom> <téléphone|e-mail>  crée le premier super administrateur\n";
         echo "  platform:admin-create <e-mail|téléphone> <prénom> <nom...>  crée un administrateur de plateforme (2FA obligatoire)\n";
         echo "  platform:client-create <application> <type> <e-mail|tel> <prenom> <nom> <etablissement...> [--ville=] [--region=] [--dry-run]  met un client en service\n";
+        echo '  schedule:run          exécute les tâches planifiées dues (cron.php, chaque minute)
+';
+        echo '  schedule:list         liste les tâches planifiées
+';
         echo "  platform:billing-run [AAAA-MM-JJ]  relances, impayés et suspensions des abonnements (une fois par jour)\n";
 
         return 0;
@@ -211,6 +217,48 @@ final class Application
         $result = $this->kernel()->container()->get(ReminderService::class)->run($today);
         echo "Relances : {$result['sent']} envoyée(s), {$result['skipped']} ignorée(s) (sans destinataire ou déjà relancées).
 ";
+
+        return 0;
+    }
+
+    /**
+     * Exécute les tâches de Schedule dues à la minute courante (heure de l'application). Une tâche en échec n'empêche pas
+     * les suivantes ; un verrou évite deux exécutions simultanées. Trace : storage/logs/schedule.log.
+     */
+    private function scheduleRun(): int
+    {
+        $lock = fopen($this->basePath . '/storage/schedule.lock', 'c');
+        if ($lock === false || !flock($lock, LOCK_EX | LOCK_NB)) {
+            echo "Exécution précédente encore en cours : rien à faire.\n";
+
+            return 0;
+        }
+        $this->kernel(); // fixe le fuseau de l'application (app.timezone)
+        $now = new \DateTimeImmutable('now');
+        $failed = 0;
+        try {
+            foreach (Schedule::due($now) as $command) {
+                $started = microtime(true);
+                ob_start();
+                $code = $this->run(['artisan', ...$command]);
+                $output = trim((string) ob_get_clean());
+                $failed += $code === 0 ? 0 : 1;
+                $line = sprintf("[%s] %s : code %d en %.1f s%s\n", $now->format('Y-m-d H:i'), implode(' ', $command), $code, microtime(true) - $started, $code === 0 ? '' : ' | ' . mb_substr(str_replace("\n", ' ', $output), 0, 500));
+                @file_put_contents($this->basePath . '/storage/logs/schedule.log', $line, FILE_APPEND);
+            }
+        } finally {
+            flock($lock, LOCK_UN);
+            fclose($lock);
+        }
+
+        return $failed === 0 ? 0 : 1;
+    }
+
+    private function scheduleList(): int
+    {
+        foreach (Schedule::TASKS as [$expression, $command]) {
+            printf("%-18s %s\n", $expression, implode(' ', $command));
+        }
 
         return 0;
     }

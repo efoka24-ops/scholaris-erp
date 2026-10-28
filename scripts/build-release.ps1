@@ -18,7 +18,7 @@ $root = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 if (Test-Path $Out) { Remove-Item -Recurse -Force $Out }
 New-Item -ItemType Directory -Path $Out | Out-Null
 
-$include = @("public", "src", "config", "database", "lang", "artisan", "composer.json", "composer.lock", ".htaccess")
+$include = @("public", "src", "config", "database", "lang", "artisan", "cron.php", "composer.json", "composer.lock", ".htaccess")
 foreach ($item in $include) {
 	$source = Join-Path $root $item
 	if (-not (Test-Path $source)) { continue }
