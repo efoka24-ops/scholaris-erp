@@ -25,6 +25,27 @@ final class ResultRepository
         $this->db->update($table, $set, ['tenant_id' => $tenantId, 'id' => $id]);
     }
 
+    // --- Périodes (table de l'Organisation, lue pour l'agrégat et le type de bulletin) ---------------------------
+
+    /** @return array{id: string, kind: string, academic_year_id: string, parent_id: string|null}|null */
+    public function period(string $tenantId, string $establishmentId, string $periodId): ?array
+    {
+        $row = $this->db->one('SELECT id, kind, academic_year_id, parent_id FROM periods WHERE tenant_id = ? AND establishment_id = ? AND id = ?', [$tenantId, $establishmentId, $periodId]);
+
+        return $row === null ? null : [
+            'id' => (string) $row['id'], 'kind' => (string) $row['kind'], 'academic_year_id' => (string) $row['academic_year_id'],
+            'parent_id' => $row['parent_id'] === null ? null : (string) $row['parent_id'],
+        ];
+    }
+
+    /** @return list<string> périodes enfants dans l'ordre : rang, puis date de début, puis identifiant */
+    public function childPeriods(string $tenantId, string $establishmentId, string $periodId): array
+    {
+        $rows = $this->db->all('SELECT id FROM periods WHERE tenant_id = ? AND establishment_id = ? AND parent_id = ? ORDER BY ordinal, starts_on, id', [$tenantId, $establishmentId, $periodId]);
+
+        return array_map(static fn (array $row): string => (string) $row['id'], $rows);
+    }
+
     // --- Règles de calcul versionnées par année ---------------------------------------------------------------
 
     /** @return array<string, mixed>|null dernière version de l'année pour cette structure (null = version sans structure) */

@@ -118,7 +118,7 @@ final class Resource
 
     public static function councilLine(): self
     {
-        return new self(['id', 'person_id', 'name', 'matricule', 'average:float', 'rank_in_class:int', 'unjustified_absences:int', 'conduct', 'proposal', 'decision', 'reason', 'appraisal']);
+        return new self(['id', 'person_id', 'name', 'matricule', 'average:float', 'rank_in_class:int', 'unjustified_absences:int', 'conduct', 'proposal', 'decision', 'reason', 'appraisal', 'line_extras:json']);
     }
 
     public static function deliberation(): self

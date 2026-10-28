@@ -9,24 +9,27 @@ use Scholaris\Core\Http\HttpException;
 use Scholaris\Core\Security\Principal;
 use Scholaris\Modules\Socle\Assessment\Contracts\ReportCardVariables;
 use Scholaris\Modules\Socle\Assessment\Infrastructure\ResultRepository;
-use Scholaris\Modules\Socle\Organisation\Contracts\SettingsReader;
 use Scholaris\Modules\Socle\People\Contracts\PersonDirectory;
 
 /**
  * File de génération des bulletins : un conseil validé met une demande par élève en file ; la génération passe par
- * Documents\Contracts\DocumentIssuer (type « report_card »). Un échec (modèle absent, variable non déclarée) laisse la
+ * Documents\Contracts\DocumentIssuer. Type de document : assessment.report_card_types selon la nature de la période du
+ * conseil (séquence, trimestre, année...), sinon assessment.report_card_type, sinon « report_card ». Les variables des
+ * applications (assessment.report_card_variables.<application>) sont ajoutées si leur nom commence par
+ * `<application>_` (ou par `primary_`, préfixe d'origine). Un échec (modèle absent, variable non déclarée) laisse la
  * demande en échec avec son motif ; elle sera reprise à la génération suivante, sans doublon pour les bulletins déjà émis.
  */
 final class ReportCardService
 {
     public const DOCUMENT_TYPE = 'report_card';
+    public const LEGACY_PREFIX = 'primary_';
 
     public function __construct(
         private readonly ResultRepository $repo,
         private readonly MinutesIssuer $issuer,
         private readonly PersonDirectory $people,
         private readonly AssessmentClock $clock,
-        private readonly SettingsReader $settings,
+        private readonly AssessmentSettings $assessmentSettings,
         private readonly ContainerInterface $container,
     ) {
     }
@@ -52,6 +55,9 @@ final class ReportCardService
             throw HttpException::conflict('Les bulletins se génèrent après la validation du conseil de classe.');
         }
 
+        $period = $this->repo->period($tenantId, $establishmentId, (string) $council['period_id']);
+        $type = $this->assessmentSettings->reportCardType($tenantId, $establishmentId, $period['kind'] ?? null, self::DOCUMENT_TYPE);
+        $providers = AssessmentExtensions::collectByModule($this->container, AssessmentExtensions::REPORT_CARD_VARIABLES, ReportCardVariables::class);
         $lines = [];
         foreach ($this->repo->councilLines($tenantId, $councilId) as $line) {
             $lines[(string) $line['person_id']] = $line;
@@ -70,16 +76,12 @@ final class ReportCardService
                 'average' => $result['average'] ?? null, 'rank' => $result['rank_in_class'] ?? null, 'class_size' => $result['class_size'] ?? null,
                 'decision' => $line['decision'] ?? null, 'appraisal' => $line['appraisal'] ?? ($result['mention'] ?? null),
             ];
-            foreach (AssessmentExtensions::collect($this->container, AssessmentExtensions::REPORT_CARD_VARIABLES, ReportCardVariables::class) as $provider) {
-                foreach ($provider->for($tenantId, $establishmentId, $councilId, $personId) as $name => $value) {
-                    if (str_starts_with($name, 'primary_')) {
+            foreach ($providers as $registered) {
+                foreach ($registered['provider']->for($tenantId, $establishmentId, $councilId, $personId) as $name => $value) {
+                    if (self::accepts((string) $name, $registered['module'])) {
                         $variables[$name] = $value;
                     }
                 }
-            }
-            $type = $this->settings->value($tenantId, $establishmentId, 'assessment.report_card_type', self::DOCUMENT_TYPE);
-            if (!is_string($type) || preg_match('/^[a-z][a-z0-9_]{1,39}$/', $type) !== 1) {
-                $type = self::DOCUMENT_TYPE;
             }
             $issued = $this->issuer->issue($tenantId, $establishmentId, $type, $personId, $variables, $principal->userId, $person === null ? 'fr' : $person->locale);
 
@@ -90,6 +92,16 @@ final class ReportCardService
         }
 
         return $this->repo->reportCards($tenantId, $councilId);
+    }
+
+    /**
+     * Variables d'une application (SS5) : préfixe `<application>_` de sa clé de conteneur (secondary_, primary_...) ;
+     * le préfixe historique `primary_` reste accepté de tout fournisseur (contrat d'origine du primaire).
+     */
+    public static function accepts(string $name, string $module): bool
+    {
+        return str_starts_with($name, self::LEGACY_PREFIX)
+            || ($module !== '' && preg_match('/^[a-z][a-z0-9_]*$/', $module) === 1 && str_starts_with($name, $module . '_') && strlen($name) > strlen($module) + 1);
     }
 
     /** @return array<string, mixed> */

@@ -51,4 +51,35 @@ final class AssessmentExtensions
 
         return array_values($found);
     }
+
+    /**
+     * Comme collect, avec le nom d'application de la clé (`assessment.report_card_variables.secondary` → secondary).
+     * Une même classe déclarée sous deux clés est rendue une fois, avec la première clé (ordre alphabétique).
+     *
+     * @template T of object
+     * @param class-string<T> $interface
+     * @return list<array{module: string, provider: T}>
+     */
+    public static function collectByModule(ContainerInterface $container, string $prefix, string $interface): array
+    {
+        if (!method_exists($container, 'getKnownEntryNames')) {
+            return [];
+        }
+        $names = (array) $container->getKnownEntryNames();
+        sort($names);
+        $found = [];
+        foreach ($names as $name) {
+            if (!is_string($name) || !str_starts_with($name, $prefix) || strlen($name) === strlen($prefix)) {
+                continue;
+            }
+            foreach ((array) $container->get($name) as $class) {
+                $provider = is_string($class) ? $container->get($class) : $class;
+                if ($provider instanceof $interface && !isset($found[$provider::class])) {
+                    $found[$provider::class] = ['module' => substr($name, strlen($prefix)), 'provider' => $provider];
+                }
+            }
+        }
+
+        return array_values($found);
+    }
 }

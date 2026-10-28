@@ -84,6 +84,19 @@ final class AssessmentRequest extends ValidatedRequest
             ],
             self::COUNCIL_LINE => [
                 'decision' => Field::nullableString(60), 'reason' => Field::nullableString(255), 'appraisal' => Field::nullableString(255), 'conduct' => Field::nullableString(60),
+                'line_extras' => Field::custom(static function (mixed $v): array {
+                    // Valeurs propres de l'application saisies en séance (SS6) : fusionnées clé par clé, jamais écrasées par un recalcul.
+                    if (!is_array($v) || ($v !== [] && array_is_list($v)) || count($v) > 30) {
+                        throw new InvalidArgumentException('Les valeurs complémentaires forment un objet de 30 clés au plus : {"distinction_refused": true}.');
+                    }
+                    foreach ($v as $key => $value) {
+                        if (!is_string($key) || preg_match('/^[a-z][a-z0-9_]{0,39}$/', $key) !== 1 || (!is_scalar($value) && $value !== null) || (is_string($value) && mb_strlen($value) > 255)) {
+                            throw new InvalidArgumentException(sprintf('Valeur complémentaire « %s » invalide : clé en minuscules, valeur simple (texte de 255 caractères au plus, nombre, booléen ou null).', (string) $key));
+                        }
+                    }
+
+                    return $v;
+                }),
             ],
             self::DELIBERATION => [
                 'structure_id' => Field::id()->required(), 'period_id' => Field::id()->required(), 'period_label' => Field::string(80),

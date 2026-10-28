@@ -106,6 +106,30 @@ final class AssessmentSettings
         return $codes;
     }
 
+    /** assessment.subject_ranks (SS4) : rang et statistiques par matière dans les résultats ; faux par défaut. */
+    public function subjectRanks(string $tenantId, string $establishmentId): bool
+    {
+        return in_array($this->settings->value($tenantId, $establishmentId, 'assessment.subject_ranks', false), [true, 1, '1', 'true'], true);
+    }
+
+    /**
+     * Type de document d'un bulletin (SS5) : assessment.report_card_types[<nature de la période>] s'il est déclaré
+     * (ex. {"sequence": "secondary_report_sequence", "trimester": "...", "year": "..."}), sinon assessment.report_card_type,
+     * sinon $default. Un code mal formé est ignoré.
+     */
+    public function reportCardType(string $tenantId, string $establishmentId, ?string $periodKind, string $default): string
+    {
+        $byKind = $this->array($this->settings->value($tenantId, $establishmentId, 'assessment.report_card_types', null)) ?? [];
+        $candidates = [$periodKind === null ? null : ($byKind[$periodKind] ?? null), $this->settings->value($tenantId, $establishmentId, 'assessment.report_card_type', null)];
+        foreach ($candidates as $type) {
+            if (is_string($type) && preg_match('/^[a-z][a-z0-9_]{1,39}$/', $type) === 1) {
+                return $type;
+            }
+        }
+
+        return $default;
+    }
+
     /** Pas de saisie de l'établissement (null = deux décimales au plus, règle historique). */
     public function step(string $tenantId, string $establishmentId): ?float
     {

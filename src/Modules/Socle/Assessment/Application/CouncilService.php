@@ -24,6 +24,9 @@ use Scholaris\Modules\Socle\Audit\Contracts\AuditLog;
  */
 final class CouncilService
 {
+    /** Profondeur maximale des périodes imbriquées parcourues (année → trimestre → séquence, avec marge). */
+    private const MAX_PERIOD_DEPTH = 4;
+
     public function __construct(
         private readonly Db $db,
         private readonly ResultRepository $repo,
@@ -77,6 +80,7 @@ final class CouncilService
                     'person_id' => $row['person_id'], 'average' => $row['average'], 'rank_in_class' => $row['rank_in_class'],
                     'unjustified_absences' => $absences, 'conduct' => $prefills[$row['person_id']]['conduct'] ?? null, 'proposal' => $proposal, 'decision' => $proposal, 'reason' => null,
                     'appraisal' => $prefills[$row['person_id']]['appraisal'] ?? $row['mention'],
+                    'line_extras' => self::extrasJson(self::mergeExtras([], $prefills[$row['person_id']]['extras'] ?? null)),
                 ]);
             }
             $this->repo->update('class_councils', $tenantId, $id, ['summary' => $this->summaryJson($tenantId, $establishmentId, $id, $computed['rules'], $window)]);
@@ -129,6 +133,9 @@ final class CouncilService
                 $set[$field] = $data[$field];
             }
         }
+        if (isset($data['line_extras']) && is_array($data['line_extras'])) {
+            $set['line_extras'] = self::extrasJson(array_merge(self::decodeExtras($line['line_extras'] ?? null), $data['line_extras']));
+        }
         $this->repo->update('council_lines', $tenantId, $lineId, $set);
 
         return $this->find($tenantId, $establishmentId, (string) $council['id']);
@@ -163,7 +170,7 @@ final class CouncilService
         $structureId = (string) $council['structure_id'];
         $periodId = (string) $council['period_id'];
 
-        $assessments = $this->catalog->forSheet($tenantId, $establishmentId, $structureId, $periodId);
+        $assessments = $this->sheetAssessments($tenantId, $establishmentId, $structureId, $periodId, 0);
         if ($assessments === []) {
             throw HttpException::conflict('Aucune épreuve n\'existe pour cette classe et cette période : il n\'y a rien à valider.');
         }
@@ -207,6 +214,26 @@ final class CouncilService
         return $this->find($tenantId, $establishmentId, $id);
     }
 
+    /**
+     * Épreuves que couvre le conseil : celles de la période ; si elle n'en a pas et qu'elle a des périodes enfants
+     * (trimestre, année : SS3), celles de ses descendants.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function sheetAssessments(string $tenantId, string $establishmentId, string $structureId, string $periodId, int $depth): array
+    {
+        $own = $this->catalog->forSheet($tenantId, $establishmentId, $structureId, $periodId);
+        if ($own !== [] || $depth >= self::MAX_PERIOD_DEPTH) {
+            return $own;
+        }
+        $all = [];
+        foreach ($this->repo->childPeriods($tenantId, $establishmentId, $periodId) as $childId) {
+            $all = [...$all, ...$this->sheetAssessments($tenantId, $establishmentId, $structureId, $childId, $depth + 1)];
+        }
+
+        return $all;
+    }
+
     /** @return array<string, mixed> */
     private function openCouncil(string $tenantId, string $establishmentId, string $id): array
     {
@@ -241,6 +268,13 @@ final class CouncilService
             foreach (['conduct', 'appraisal'] as $field) {
                 if (($line[$field] ?? null) === null && isset($prefill[$field])) {
                     $set[$field] = $prefill[$field];
+                }
+            }
+            if (isset($prefill['extras'])) {
+                $current = self::decodeExtras($line['line_extras'] ?? null);
+                $merged = self::mergeExtras($current, $prefill['extras']);
+                if ($merged !== $current) {
+                    $set['line_extras'] = self::extrasJson($merged);
                 }
             }
             if ($line['decision'] === $line['proposal'] || $line['decision'] === null) {
@@ -349,6 +383,50 @@ final class CouncilService
     }
 
     /**
+     * Valeurs propres d'une ligne (SS6) : celles déjà présentes (saisies en séance ou fournies plus tôt) sont conservées,
+     * seules les clés absentes sont ajoutées depuis le fournisseur.
+     *
+     * @param array<string, mixed> $current
+     * @return array<string, mixed>
+     */
+    private static function mergeExtras(array $current, mixed $provided): array
+    {
+        if (!is_array($provided)) {
+            return $current;
+        }
+        foreach ($provided as $key => $value) {
+            if (is_string($key) && !array_key_exists($key, $current)) {
+                $current[$key] = $value;
+            }
+        }
+
+        return $current;
+    }
+
+    /** @return array<string, mixed> */
+    private static function decodeExtras(mixed $raw): array
+    {
+        $decoded = is_string($raw) ? json_decode($raw, true) : null;
+        if (!is_array($decoded)) {
+            return [];
+        }
+        $out = [];
+        foreach ($decoded as $key => $value) {
+            if (is_string($key)) {
+                $out[$key] = $value;
+            }
+        }
+
+        return $out;
+    }
+
+    /** @param array<string, mixed> $extras */
+    private static function extrasJson(array $extras): ?string
+    {
+        return $extras === [] ? null : json_encode($extras, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
+    }
+
+    /**
      * @param list<string> $personIds
      * @return array<string, array<string, mixed>>
      */
@@ -357,9 +435,16 @@ final class CouncilService
         $result = [];
         foreach (AssessmentExtensions::collect($this->container, AssessmentExtensions::COUNCIL_LINES, CouncilLineProvider::class) as $provider) {
             foreach ($provider->prefill($tenantId, $establishmentId, $structureId, $periodId, $personIds) as $personId => $values) {
-                if (in_array($personId, $personIds, true)) {
-                    $result[$personId] = array_merge($result[$personId] ?? [], $values);
+                if (!in_array($personId, $personIds, true)) {
+                    continue;
                 }
+                $previous = $result[$personId]['extras'] ?? [];
+                $merged = array_merge($result[$personId] ?? [], $values);
+                if (isset($values['extras'])) {
+                    // Plusieurs fournisseurs : leurs valeurs propres s'additionnent clé par clé.
+                    $merged['extras'] = self::mergeExtras(self::mergeExtras([], $values['extras']), $previous);
+                }
+                $result[$personId] = $merged;
             }
         }
 
