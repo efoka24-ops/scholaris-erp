@@ -415,7 +415,7 @@ final class PromotionService
     private function notify(string $tenantId, string $establishmentId, string $personId, string $yearLabel, string $decision, string $appealUntil): void
     {
         $this->messages->notifyGuardians($tenantId, $establishmentId, $personId, self::NOTICE_TEMPLATE, [
-            'school_year' => $yearLabel, 'decision' => self::LABELS[$decision] ?? $decision, 'appeal_until' => $appealUntil,
+            'school_year' => $yearLabel, 'details' => self::LABELS[$decision] ?? $decision, 'due_on' => $appealUntil,
         ]);
     }
 

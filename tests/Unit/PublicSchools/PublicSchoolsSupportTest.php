@@ -221,7 +221,8 @@ final class PublicSchoolsSupportTest extends TestCase
             $fromMigration[$role][] = $permission;
         }
         // Permissions ajoutées par des migrations ultérieures du socle (agrégats territoriaux, journal nominatif).
-        $later = ['reporting.territory_aggregates.read', 'identity.named_access.read'];
+        // Lot P2 (202610231301_roles_public_primary_p2.sql) : référentiel national, téléchargement des PDF émis.
+        $later = ['reporting.territory_aggregates.read', 'identity.named_access.read', 'public_primary.referential.manage', 'documents.read'];
 
         self::assertCount(count(RoleMatrix::ROLES), $roles);
         foreach ($roles as [, $code, $level, $sensitive]) {

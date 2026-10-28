@@ -244,7 +244,7 @@ final class EvaluationService
             return;
         }
         $this->messages->notifyGuardians($tenantId, $establishmentId, $personId, self::NA_TEMPLATE, [
-            'discipline' => $frame->labelFr, 'unit_no' => (string) $context->unit->unitNo,
+            'subject' => $frame->labelFr, 'label' => 'unité ' . $context->unit->unitNo,
         ]);
         $this->repository->markNotified($tenantId, $personId, $frame->id, 'unit', $context->unit->id, $this->clock->now());
     }
