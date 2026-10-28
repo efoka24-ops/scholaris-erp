@@ -20,6 +20,56 @@ const ALL_ADMIN = [
   'applications.manage',
 ];
 
+// Secondaire (migration 202610281601_roles_secondary.sql, T808) : R09 est le rôle commun « enseignant », les autres rôles sont sec_*.
+const SECONDARY_TEACHER = [
+  'secondary.timetable.read', 'secondary.syllabus.read', 'secondary.lesson.log', 'secondary.attendance.read', 'secondary.attendance.take',
+  'secondary.grades.read', 'secondary.grades.enter', 'secondary.reportcard.read', 'secondary.appraisal.subject', 'secondary.workshops.read',
+  'secondary.workshops.session', 'secondary.dashboard.read',
+];
+const sec = (...names: string[]): string[] => names.map((n) => (n.startsWith('@') ? n.slice(1) : `secondary.${n}`));
+const SECONDARY_ROLE_PERMISSIONS: Record<string, string[]> = {
+  sec_promoteur: sec('dashboard.read', 'finance.read', 'fees.validate', 'profile.read', 'catalogue.read'),
+  sec_reseau: sec('network.read'),
+  sec_chef_etablissement: sec(
+    'settings.read', 'settings.manage', 'enrol.read', 'enrol.validate', 'timetable.read', 'timetable.validate', 'syllabus.read', 'attendance.read',
+    'discipline.validate', 'grades.read', 'reportcard.read', 'reportcard.validate', 'council.preside', 'exams.read', 'exams.validate', 'fees.read',
+    'workshops.read', 'dashboard.read', 'discipline.council.preside', 'document.sign', 'profile.read', 'catalogue.read',
+  ),
+  sec_censeur: sec(
+    'settings.read', 'settings.write', 'enrol.read', 'timetable.read', 'timetable.manage', 'syllabus.read', 'syllabus.visa', 'attendance.read',
+    'grades.read', 'grades.validate', 'grades.lock', 'reportcard.read', 'council.prepare', 'exams.read', 'exams.manage', 'workshops.read',
+    'dashboard.read', 'profile.read', 'catalogue.read',
+  ),
+  sec_surveillant_general: sec(
+    'enrol.read', 'timetable.read', 'attendance.read', 'attendance.manage', 'discipline.manage', 'reportcard.read', 'conduct.enter', 'dashboard.read', 'profile.read',
+  ),
+  sec_chef_travaux: sec('workshops.manage', 'stock.manage', 'safety.manage', 'internships.manage'),
+  sec_animateur_pedagogique: sec('syllabus.manage', 'commontests.manage', 'catalogue.read'),
+  sec_professeur_principal: sec(
+    'enrol.read', 'timetable.read', 'syllabus.read', 'attendance.read', 'grades.read', 'reportcard.read', 'appraisal.general', 'class.synthesis',
+    'exams.read', 'dashboard.read',
+  ),
+  sec_conseiller_orientation: sec('orientation.manage', 'catalogue.read'),
+  sec_intendant: sec(
+    'settings.read', 'enrol.read', 'exams.read', 'fees.read', 'billing.manage', 'fees.catalog', 'workshops.costs.read', 'finance.read', 'profile.read', 'catalogue.read',
+  ),
+  sec_caissier: sec('billing.cash'),
+  sec_scolarite: sec('enrol.manage', 'documents.issue', 'exams.lists', 'profile.read', 'catalogue.read'),
+  sec_infirmier: sec('infirmary.manage'),
+  sec_responsable_services: sec('services.manage'),
+  sec_bibliothecaire: sec('library.manage'),
+  sec_eleve: sec('self.read'),
+  sec_delegue_classe: sec('attendance.countersign'),
+  sec_parent: sec('family.read', 'family.pay'),
+  sec_bureau_apee: sec('apee.read'),
+  sec_inspecteur: sec('inspection.read'),
+  sec_delegation: sec('territory.read'),
+  sec_brigade_controle: sec('control.read'),
+  sec_admin_fonctionnel: sec(
+    'settings.manage', 'profile.manage', 'documents.template.manage', 'profile.read', 'catalogue.read', '@identity.manage', '@identity.roles.assign',
+  ),
+};
+
 export const ROLE_PERMISSIONS: Record<string, string[]> = {
   super_admin: [...ALL_ADMIN, 'assessment.enter', 'privacy.export', 'reporting.group.read', 'settings.platform'],
   direction_groupe: [
@@ -44,6 +94,7 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     'primary.referential.read', 'primary.learner.read', 'primary.competency.enter', 'primary.competency.read', 'primary.conduct.enter', 'primary.conduct.read',
     'primary.journal.write', 'primary.journal.read',
     'primary.council.read', 'primary.report_card.read', 'primary.remediation.read', 'primary.remediation.write',
+    ...SECONDARY_TEACHER,
   ],
   parent: ['self.read', 'documents.request', 'public_schools.apee.read_receipts'],
   apprenant: ['self.read', 'documents.request'],
@@ -122,6 +173,7 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     'primary.report_card.read', 'primary.exam.read', 'primary.tutelage.export', 'primary.services.read',
   ],
   primary_surveillant: ['attendance.sanction.manage', 'primary.pickup.handover', 'primary.pickup.read'],
+  ...SECONDARY_ROLE_PERMISSIONS,
 };
 
 export function permissionsForRoles(roles: string[]): Set<string> {

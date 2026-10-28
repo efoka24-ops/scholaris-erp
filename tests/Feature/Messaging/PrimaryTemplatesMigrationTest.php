@@ -48,7 +48,8 @@ final class PrimaryTemplatesMigrationTest extends TestCase
         self::assertSame([], array_values(array_diff(self::PREVIOUS, TemplateRenderer::ALLOWED)));
         $added = array_values(array_diff(TemplateRenderer::ALLOWED, self::PREVIOUS));
         sort($added);
-        self::assertSame(['exam_label', 'period_label', 'place'], $added);
+        // T509 (primaire) puis T809 (secondaire : average, decision, hours, rank).
+        self::assertSame(['average', 'decision', 'exam_label', 'hours', 'period_label', 'place', 'rank'], $added);
     }
 
     public function testChaqueModeleExisteEnFrancaisEtEnAnglaisEnModelePlateforme(): void

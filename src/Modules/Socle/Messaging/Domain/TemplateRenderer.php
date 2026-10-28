@@ -25,6 +25,8 @@ final class TemplateRenderer
         'reference', 'school_year', 'due_on', 'label', 'offset',
         'subject', 'time', 'change_label', 'details',
         'period_label', 'exam_label', 'place',
+        // Secondaire (SS11, NOT-03 et NOT-05) : heures d'absence, moyenne, rang et décision du bulletin.
+        'hours', 'average', 'rank', 'decision',
     ];
 
     /** @return list<string> variables utilisées par le texte, sans doublon */
