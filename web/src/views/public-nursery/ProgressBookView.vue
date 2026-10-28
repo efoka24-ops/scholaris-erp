@@ -1,29 +1,59 @@
 <script setup lang="ts">
+// Carnet trimestriel DOC-18 de la maternelle publique, branché sur le serveur : brouillon de l'éducatrice (points d'appui, synthèse
+// positive), validation puis publication par la direction, réédition Duplicata ou Rectificatif, PDF du carnet publié seulement.
+// Aucun calcul : niveaux tels qu'observés ; un terme à éviter (paramètre) bloque la validation côté serveur.
 import { computed, reactive, ref } from 'vue';
-import ComingSoon from '@/components/ComingSoon.vue';
+import { progressBooks, type PublicProgressBook } from '@/api/publicNursery';
+import ErrorNotice from '@/components/ErrorNotice.vue';
 import { useI18n } from '@/i18n';
+import type { MessageKey } from '@/i18n';
 
+const LEVELS = ['acquired', 'in_progress', 'not_yet'] as const;
 const { t } = useI18n();
+const error = ref<unknown>(null);
+const busy = ref(false);
+const book = ref<PublicProgressBook | null>(null);
+const draft = reactive({ learner_id: '', structure_id: '', period_id: 'T1', school_year: '', synthesis: '' });
+const points = ref<{ domain: string; label: string; level: string; comment: string }[]>([]);
+const point = reactive({ domain: '', label: '', level: 'in_progress' });
+const ready = computed(() => draft.learner_id.trim() !== '' && draft.structure_id.trim() !== '' && draft.school_year.trim() !== '');
 
-const draft = reactive({
-  period: 'T1',
-  learner: '',
-  summary: 'Beau progrès dans les interactions et les activités de langage.',
-  points: ['Prendre la parole en groupe', 'Reconnaître les formes simples', 'Participer aux ateliers'],
-});
-const pointInput = ref('');
-
-const hasDraft = computed(() => draft.learner.trim() !== '');
-
-function addPoint(): void {
-  const point = pointInput.value.trim();
-  if (!point) return;
-  draft.points.push(point);
-  pointInput.value = '';
+async function run<T>(action: () => Promise<T>): Promise<T | undefined> {
+  busy.value = true;
+  error.value = null;
+  try {
+    return await action();
+  } catch (e) {
+    error.value = e;
+    return undefined;
+  } finally {
+    busy.value = false;
+  }
 }
-
+function addPoint(): void {
+  if (!point.label.trim()) return;
+  points.value.push({ domain: point.domain.trim(), label: point.label.trim(), level: point.level, comment: '' });
+  point.label = '';
+}
 function removePoint(index: number): void {
-  draft.points.splice(index, 1);
+  points.value.splice(index, 1);
+}
+async function save(): Promise<void> {
+  book.value = (await run(() => progressBooks.saveDraft({ ...draft, synthesis: draft.synthesis.trim(), items: points.value }))) ?? book.value;
+}
+async function act(action: 'validate' | 'publish'): Promise<void> {
+  const id = book.value?.id;
+  if (id) book.value = (await run(() => progressBooks[action](id))) ?? book.value;
+}
+async function reissue(label: 'duplicate' | 'rectified'): Promise<void> {
+  const id = book.value?.id;
+  if (id) book.value = (await run(() => progressBooks.reissue(id, label))) ?? book.value;
+}
+async function pdf(): Promise<void> {
+  const id = book.value?.id;
+  if (!id) return;
+  const blob = await run(() => progressBooks.pdf(id));
+  if (blob) window.open(URL.createObjectURL(blob), '_blank', 'noopener');
 }
 </script>
 
@@ -34,57 +64,54 @@ function removePoint(index: number): void {
       <h1>{{ t('pn.progressBook.title') }}</h1>
       <p class="lead">{{ t('pn.progressBook.intro') }}</p>
     </header>
+    <ErrorNotice :error="error" />
 
     <div class="grid">
-      <section class="card panel">
+      <form class="card panel" @submit.prevent="save">
         <h2>{{ t('pn.progressBook.formTitle') }}</h2>
-        <div class="field">
-          <label for="pb-learner">{{ t('nursery.child') }}</label>
-          <input id="pb-learner" v-model="draft.learner" type="text" placeholder="LEARNER-01" />
-        </div>
-        <div class="field grid2">
-          <div>
+        <div class="grid2">
+          <div class="field"><label for="pb-learner">{{ t('nursery.child') }}</label><input id="pb-learner" v-model="draft.learner_id" type="text" maxlength="40" required /></div>
+          <div class="field"><label for="pb-section">{{ t('pn.progressBook.section') }}</label><input id="pb-section" v-model="draft.structure_id" type="text" maxlength="40" required /></div>
+          <div class="field">
             <label for="pb-period">{{ t('pn.progressBook.period') }}</label>
-            <select id="pb-period" v-model="draft.period">
-              <option value="T1">T1</option>
-              <option value="T2">T2</option>
-              <option value="T3">T3</option>
-            </select>
+            <select id="pb-period" v-model="draft.period_id"><option value="T1">T1</option><option value="T2">T2</option><option value="T3">T3</option></select>
           </div>
-          <div>
-            <label for="pb-point">{{ t('pn.progressBook.items') }}</label>
-            <div class="row add-point">
-              <input id="pb-point" v-model="pointInput" type="text" placeholder="Point fort" @keydown.enter.prevent="addPoint" />
-              <button type="button" class="btn" :aria-label="t('pn.progressBook.addPoint')" @click="addPoint">+</button>
-            </div>
+          <div class="field"><label for="pb-year">{{ t('pn.progressBook.year') }}</label><input id="pb-year" v-model="draft.school_year" type="text" maxlength="9" placeholder="2026-2027" required /></div>
+        </div>
+        <fieldset class="grid2">
+          <legend>{{ t('pn.progressBook.items') }}</legend>
+          <div class="field"><label for="pb-domain">{{ t('pn.progressBook.domain') }}</label><input id="pb-domain" v-model="point.domain" type="text" maxlength="80" /></div>
+          <div class="field"><label for="pb-point">{{ t('pn.progressBook.item') }}</label><input id="pb-point" v-model="point.label" type="text" maxlength="200" @keydown.enter.prevent="addPoint" /></div>
+          <div class="field">
+            <label for="pb-level">{{ t('pn.progressBook.level') }}</label>
+            <select id="pb-level" v-model="point.level"><option v-for="l in LEVELS" :key="l" :value="l">{{ t(`pn.progressBook.l.${l}` as MessageKey) }}</option></select>
           </div>
-        </div>
-        <div class="field">
-          <label for="pb-summary">{{ t('pn.progressBook.summary') }}</label>
-          <textarea id="pb-summary" v-model="draft.summary" rows="4"></textarea>
-        </div>
+          <div><button type="button" class="btn" :aria-label="t('pn.progressBook.addPoint')" @click="addPoint">+</button></div>
+        </fieldset>
         <ul class="points">
-          <li v-for="(point, index) in draft.points" :key="point + index">
-            <span>{{ point }}</span>
-            <button type="button" class="btn btn--quiet" :aria-label="`${t('pn.progressBook.removePoint')} : ${point}`" @click="removePoint(index)">×</button>
+          <li v-for="(p, index) in points" :key="p.label + index">
+            <span>{{ p.domain }} · {{ p.label }} : {{ t(`pn.progressBook.l.${p.level}` as MessageKey) }}</span>
+            <button type="button" class="btn btn--quiet" :aria-label="`${t('pn.progressBook.removePoint')} : ${p.label}`" @click="removePoint(index)">×</button>
           </li>
         </ul>
-        <div class="row">
-          <button type="button" class="btn btn--primary">{{ t('pn.progressBook.saveLocal') }}</button>
-          <button type="button" class="btn" :disabled="!hasDraft">{{ t('pn.progressBook.validate') }}</button>
-        </div>
-      </section>
+        <div class="field"><label for="pb-summary">{{ t('pn.progressBook.summary') }}</label><textarea id="pb-summary" v-model="draft.synthesis" rows="4" maxlength="3000"></textarea></div>
+        <button type="submit" class="btn btn--primary" :disabled="busy || !ready">{{ t('pn.progressBook.saveDraft') }}</button>
+      </form>
 
-      <aside class="card panel preview">
+      <aside class="card panel" aria-live="polite">
         <h2>{{ t('pn.progressBook.preview') }}</h2>
-        <ComingSoon v-if="!hasDraft" :title="t('pn.progressBook.empty')" :text="t('pn.progressBook.notice')" />
+        <p v-if="!book" class="muted">{{ t('pn.progressBook.empty') }}</p>
         <template v-else>
-          <p class="muted small">{{ t('pn.progressBook.period') }} : {{ draft.period }}</p>
-          <p class="strong">{{ draft.learner }}</p>
-          <p>{{ draft.summary }}</p>
-          <ul class="preview-points">
-            <li v-for="point in draft.points" :key="point">{{ point }}</li>
-          </ul>
+          <p><span class="tag tag--neutral">{{ t(`pn.progressBook.s.${book.status}` as MessageKey) }}</span><span v-if="book.edition_label"> · {{ t(`pn.progressBook.e.${book.edition_label}` as MessageKey) }} ({{ book.edition }})</span></p>
+          <p>{{ book.synthesis }}</p>
+          <ul class="points"><li v-for="(p, i) in book.snapshot" :key="i">{{ p.domain }} · {{ p.label }} : {{ t(`pn.progressBook.l.${p.level}` as MessageKey) }}</li></ul>
+          <div class="row">
+            <button v-if="book.status === 'draft' || book.status === 'submitted'" type="button" class="btn btn--primary" :disabled="busy" @click="act('validate')">{{ t('pn.progressBook.validate') }}</button>
+            <button v-if="book.status === 'validated'" type="button" class="btn btn--primary" :disabled="busy" @click="act('publish')">{{ t('pn.progressBook.publish') }}</button>
+            <button v-if="book.status === 'published'" type="button" class="btn" :disabled="busy" @click="pdf">{{ t('pn.progressBook.pdf') }}</button>
+            <button v-if="book.status === 'published'" type="button" class="btn btn--quiet" :disabled="busy" @click="reissue('duplicate')">{{ t('pn.progressBook.e.duplicate') }}</button>
+            <button v-if="book.status === 'published'" type="button" class="btn btn--quiet" :disabled="busy" @click="reissue('rectified')">{{ t('pn.progressBook.e.rectified') }}</button>
+          </div>
         </template>
       </aside>
     </div>
@@ -92,60 +119,17 @@ function removePoint(index: number): void {
 </template>
 
 <style scoped>
-.pn-screen {
-  max-width: 1120px;
-}
-.lead {
-  max-width: 760px;
-  color: var(--muted, #5f5b52);
-}
-.grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 16px;
-}
-.panel {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.grid2 {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 12px;
-}
-.points,
-.preview-points {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: grid;
-  gap: 8px;
-}
-.points li {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
-  border: 1px solid var(--border, #dcdcd8);
-  border-radius: 12px;
-}
-.add-point {
-  gap: 8px;
-}
-.strong {
-  font-weight: 800;
-  font-size: 18px;
-}
-@media (min-width: 600px) {
-  .grid2 {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-@media (min-width: 901px) {
-  .grid {
-    grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.85fr);
-  }
+.pn-screen { max-width: 1120px; }
+.lead { max-width: 760px; color: var(--muted, #5f5b52); }
+.grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
+.panel { display: flex; flex-direction: column; gap: 12px; }
+.grid2 { display: grid; grid-template-columns: 1fr; gap: 12px; border: 0; padding: 0; }
+.points { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+.points li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--border, #dcdcd8); border-radius: 12px; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; }
+button { min-height: 44px; }
+@media (min-width: 900px) {
+  .grid { grid-template-columns: 1.2fr 1fr; }
+  .grid2 { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
 }
 </style>

@@ -17,6 +17,7 @@ import { higherDeliberationRoutes } from '@/views/higher/deliberation/routes';
 import { accountRoutes } from '@/views/account/routes';
 import { publicSchoolsRoutes } from '@/views/public-schools/routes';
 import { nurseryPrivateRoutes } from '@/views/nursery-private/routes';
+import { publicNurseryRoutes } from '@/views/public-nursery/routes';
 import { primaryRoutes } from '@/views/primary/routes';
 import { importRoutes } from '@/views/admin/import/routes';
 import { workflowRoutes } from '@/views/admin/workflows/routes';
@@ -395,6 +396,7 @@ export const routes: RouteRecordRaw[] = [
   ...accountRoutes,
   ...publicSchoolsRoutes,
   ...nurseryPrivateRoutes,
+  ...publicNurseryRoutes,
   ...primaryRoutes,
   ...importRoutes,
   ...workflowRoutes,

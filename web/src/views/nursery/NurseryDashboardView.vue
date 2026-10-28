@@ -39,6 +39,8 @@ onMounted(async () => {
       <router-link class="btn" :to="{ name: 'nursery-lifebook' }">{{ t('pn.lifebook.title') }}</router-link>
       <router-link class="btn" :to="{ name: 'nursery-transition-decisions' }">{{ t('pn.transition.title') }}</router-link>
       <router-link class="btn" :to="{ name: 'nursery-transition-liaison' }">{{ t('pn.liaison.title') }}</router-link>
+      <router-link class="btn" :to="{ name: 'pn-register' }">{{ t('pn.nav.register') }}</router-link>
+      <router-link class="btn" :to="{ name: 'pn-contribution' }">{{ t('pn.nav.contribution') }}</router-link>
     </nav>
 
     <section class="card kpi-line" aria-labelledby="nd-pick">
