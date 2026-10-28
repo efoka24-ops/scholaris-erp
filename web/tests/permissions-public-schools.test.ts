@@ -6,8 +6,13 @@ import { permissionsForRoles, ROLE_PERMISSIONS } from '@/lib/permissions';
 // Parité du miroir front avec la migration qui sème les rôles des écoles publiques (T610). Vitest s'exécute depuis web/.
 const MIGRATION = resolve(process.cwd(), '../database/migrations/202610152351_roles_public_schools.sql');
 
+// Migrations ultérieures de droits des écoles publiques recopiées dans le miroir (lot P2, section maternelle du directeur).
+const LATER = ['202610231301_roles_public_primary_p2.sql', '202610231380_roles_public_nursery_director.sql'].map((f) =>
+  resolve(process.cwd(), `../database/migrations/${f}`),
+);
+
 function seeded(): Record<string, string[]> {
-  const sql = readFileSync(MIGRATION, 'utf8');
+  const sql = [MIGRATION, ...LATER].map((f) => readFileSync(f, 'utf8')).join('\n');
   const grants: Record<string, string[]> = {};
   for (const m of sql.matchAll(/INSERT INTO role_permissions \(role, permission\) VALUES \('([^']+)', '([^']+)'\);/g)) {
     (grants[m[1] as string] ??= []).push(m[2] as string);

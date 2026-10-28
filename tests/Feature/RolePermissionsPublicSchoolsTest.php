@@ -90,6 +90,9 @@ final class RolePermissionsPublicSchoolsTest extends TestCase
         // database/migrations/202610231301_roles_public_primary_p2.sql (lot P2) : référentiel national, téléchargement des PDF émis.
         'public_primary.referential.manage' => ['pub_inspection_general', 'pub_functional_admin'],
         'documents.read' => ['pub_school_director', 'pub_apee_board'],
+        // database/migrations/202610231380_roles_public_nursery_director.sql : section maternelle d'un groupe scolaire.
+        'public_nursery.contribution.manage' => ['pub_school_director'],
+        'public_nursery.register.read' => ['pub_school_director'],
     ];
 
     /** @var array<string, array{level: string, sensitive: bool, label_fr: string, label_en: string}> */

@@ -107,7 +107,7 @@ final class RoleMatrix
                 'public_schools.apee.read', 'public_schools.census.write', 'public_schools.inspection.read', 'public_primary.evaluation.validate',
                 'public_primary.evaluation.publish', 'public_primary.evaluation.rectify', 'public_primary.promotion.validate',
                 'public_primary.exams.write', 'organisation.read', 'sync.batches.submit', 'sync.devices.manage', 'identity.named_access.read',
-                'documents.read',
+                'documents.read', 'public_nursery.contribution.manage', 'public_nursery.register.read',
             ],
         ],
         'pub_class_teacher' => [

@@ -222,7 +222,9 @@ final class PublicSchoolsSupportTest extends TestCase
         }
         // Permissions ajoutées par des migrations ultérieures du socle (agrégats territoriaux, journal nominatif).
         // Lot P2 (202610231301_roles_public_primary_p2.sql) : référentiel national, téléchargement des PDF émis.
-        $later = ['reporting.territory_aggregates.read', 'identity.named_access.read', 'public_primary.referential.manage', 'documents.read'];
+        $later = ['reporting.territory_aggregates.read', 'identity.named_access.read', 'public_primary.referential.manage', 'documents.read',
+            // 202610231380_roles_public_nursery_director.sql : maternelle publique gérée par le directeur.
+            'public_nursery.contribution.manage', 'public_nursery.register.read'];
 
         self::assertCount(count(RoleMatrix::ROLES), $roles);
         foreach ($roles as [, $code, $level, $sensitive]) {
