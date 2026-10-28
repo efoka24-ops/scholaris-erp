@@ -21,6 +21,10 @@ const screens: Screen[] = [
   ['messages', 'nur-messages', () => import('./MessagesView.vue'), P.messages, 'nur.msg.title'],
   ['sections', 'nur-sections', () => import('./SectionsView.vue'), P.sections, 'nur.section.title'],
   ['referentiel', 'nur-frames', () => import('./FramesView.vue'), P.frames, 'nur.frames.title'],
+  ['tableau-de-bord', 'nur-dashboard', () => import('./DashboardView.vue'), P.dashboard, 'nur.dash.title'],
+  ['consentement-photo', 'nur-consent', () => import('./ConsentView.vue'), P.consent, 'nur.consent.title'],
+  ['passage', 'nur-transition', () => import('./TransitionView.vue'), P.transition, 'nur.trans.title'],
+  ['services', 'nur-services', () => import('./ServicesView.vue'), P.services, 'nur.svc.title'],
 ];
 
 const schoolOnly = { needsEstablishment: true, establishmentTypes: ['nursery'] };

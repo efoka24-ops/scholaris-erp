@@ -34,7 +34,11 @@ const tiles: Tile[] = [
   { name: 'nur-fees', title: 'nur.fees.title', text: 'nur.home.feesText', perms: P.fees },
   { name: 'nur-messages', title: 'nur.msg.title', text: 'nur.home.msgText', perms: P.messages },
   { name: 'nur-sections', title: 'nur.section.title', text: 'nur.home.sectionsText', perms: P.sections },
+  { name: 'nur-dashboard', title: 'nur.dash.title', text: 'nur.home.dashText', perms: P.dashboard },
   { name: 'nur-frames', title: 'nur.frames.title', text: 'nur.home.framesText', perms: P.frames },
+  { name: 'nur-consent', title: 'nur.consent.title', text: 'nur.home.consentText', perms: P.consent },
+  { name: 'nur-transition', title: 'nur.trans.title', text: 'nur.home.transText', perms: P.transition },
+  { name: 'nur-services', title: 'nur.svc.title', text: 'nur.home.svcText', perms: P.services },
 ];
 const visible = computed(() => tiles.filter((tile) => router.hasRoute(tile.name) && can(...tile.perms)));
 

@@ -2,7 +2,7 @@
 // Carnet de suivi trimestriel : rédaction par l'éducatrice (texte, sans aucune note), soumission, validation et publication par la directrice.
 // Le parent ne voit un carnet qu'une fois publié. Le contenu est rendu en texte (jamais de HTML).
 import { computed, ref, watch } from 'vue';
-import { nursery, type Child, type ProgressBook } from '@/api/nurseryPrivate';
+import { nursery, type Child, type IssuedDocument, type ProgressBook } from '@/api/nurseryPrivate';
 import ErrorNotice from '@/components/ErrorNotice.vue';
 import { useI18n } from '@/i18n';
 import type { MessageKey } from '@/i18n';
@@ -19,6 +19,7 @@ const books = ref<ProgressBook[]>([]);
 const childId = ref('');
 const editing = ref<ProgressBook | null>(null);
 const synthesis = ref('');
+const issued = ref<IssuedDocument | null>(null);
 
 const names = computed(() => Object.fromEntries(children.value.map((c) => [c.id, c.full_name])));
 async function load(): Promise<void> {
@@ -46,6 +47,10 @@ async function save(): Promise<void> {
   const saved = await run(() => nursery.writeBook(editing.value!.id, { synthesis: synthesis.value }));
   if (saved) editing.value = saved;
 }
+/** Carnet publié : document du socle (numéro, QR, contenu figé) ; une seconde demande rend le même document. */
+async function issue(book: ProgressBook, locale: 'fr' | 'en'): Promise<void> {
+  issued.value = (await run(() => nursery.bookDocument(book.id, locale))) ?? null;
+}
 async function act(book: ProgressBook, action: 'submit' | 'validate' | 'return' | 'publish'): Promise<void> {
   if (action === 'submit' && editing.value?.id === book.id) await save();
   const next = await run(() => nursery.bookAction(book.id, action));
@@ -64,6 +69,7 @@ async function act(book: ProgressBook, action: 'submit' | 'validate' | 'return' 
       <p class="lede">{{ t('nur.books.intro') }}</p>
     </header>
     <ErrorNotice :error="error" />
+    <p v-if="issued" class="notice" role="status" aria-live="polite">{{ t('nur.doc.issued', { number: issued.number }) }} <span v-if="issued.already_issued">{{ t('nur.doc.already') }}</span></p>
     <section class="card">
       <SectionPicker v-model="section" id="bk-section" />
       <div v-if="can(...P.observe) && section" class="row">
@@ -83,6 +89,8 @@ async function act(book: ProgressBook, action: 'submit' | 'validate' | 'return' 
             <button v-if="b.status === 'submitted' && can(...P.devValidate)" type="button" class="btn btn--primary" :disabled="busy" @click="act(b, 'validate')">{{ t('nur.books.validate') }}</button>
             <button v-if="(b.status === 'submitted' || b.status === 'validated') && can(...P.devValidate)" type="button" class="btn btn--quiet" :disabled="busy" @click="act(b, 'return')">{{ t('nur.books.return') }}</button>
             <button v-if="b.status === 'validated' && can(...P.devValidate)" type="button" class="btn btn--primary" :disabled="busy" @click="act(b, 'publish')">{{ t('nur.books.publish') }}</button>
+            <button v-if="b.status === 'published' && can(...P.devValidate)" type="button" class="btn btn--quiet" :disabled="busy" @click="issue(b, 'fr')">{{ t('nur.doc.issueFr') }}</button>
+            <button v-if="b.status === 'published' && can(...P.devValidate)" type="button" class="btn btn--quiet" :disabled="busy" @click="issue(b, 'en')">{{ t('nur.doc.issueEn') }}</button>
           </span>
         </li>
       </ul>

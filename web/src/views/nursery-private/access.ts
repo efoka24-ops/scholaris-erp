@@ -21,10 +21,17 @@ export const P = {
   needManage: ['nursery.need.read'],
   messages: ['nursery.message.send'],
   fees: ['nursery.enrol', 'billing.manage', 'billing.read'],
+  dashboard: ['nursery.dashboard.read'],
+  consent: ['nursery.consent.manage'],
+  transition: ['nursery.transition.decide', 'nursery.transition.opinion'],
+  transitionDecide: ['nursery.transition.decide'],
+  services: ['nursery.service.manage', 'nursery.service.attend'],
+  serviceManage: ['nursery.service.manage'],
   /** Accès à l'espace : au moins une permission de travail dans la maternelle privée. */
   space: [
     'nursery.child.read', 'nursery.section.manage', 'nursery.enrol', 'nursery.pickup.handover', 'nursery.pickup.manage', 'nursery.pickup.read', 'nursery.register.read',
     'nursery.dev.observe', 'nursery.dev.read', 'nursery.dev.validate', 'nursery.lifebook.write', 'nursery.lifebook.read', 'nursery.need.report', 'nursery.need.read',
-    'nursery.message.send', 'nursery.allergy.read', 'nursery.dashboard.read',
+    'nursery.message.send', 'nursery.allergy.read', 'nursery.dashboard.read', 'nursery.consent.manage', 'nursery.service.manage', 'nursery.service.attend',
+    'nursery.transition.decide', 'nursery.transition.opinion',
   ],
 } as const;

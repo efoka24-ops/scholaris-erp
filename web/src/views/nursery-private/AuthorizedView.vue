@@ -2,7 +2,7 @@
 // Personnes autorisées d'un enfant (secrétaire, directrice), code du jour, demandes des parents à valider et restrictions de garde
 // (directrice seule : décisions de justice, jamais visibles du parent).
 import { onMounted, ref, watch } from 'vue';
-import { nursery, type Authorized, type Child, type Restriction } from '@/api/nurseryPrivate';
+import { nursery, type Authorized, type Child, type IssuedDocument, type Restriction } from '@/api/nurseryPrivate';
 import ErrorNotice from '@/components/ErrorNotice.vue';
 import { useI18n } from '@/i18n';
 import { P } from './access';
@@ -19,6 +19,7 @@ const people = ref<Authorized[]>([]);
 const requests = ref<{ id: string; learner_id: string; name: string; relationship: string; grant_type: string }[]>([]);
 const restrictions = ref<Restriction[]>([]);
 const issued = ref<{ id: string; code: string } | null>(null);
+const card = ref<IssuedDocument | null>(null);
 const blank = () => ({ name: '', relationship: '', phone: '', grant_type: 'permanent', valid_on: today() });
 const form = ref(blank());
 const rform = ref({ restricted_name: '', nature: 'no_pickup', decision_reference: '', valid_from: today() });
@@ -67,6 +68,10 @@ async function lift(r: Restriction): Promise<void> {
   if (reason && reason.trim() && (await run(() => nursery.liftRestriction(r.id, reason.trim())))) await reload();
 }
 onMounted(() => void loadRequests());
+/** Carte DOC-MAT-03 (QR) : refusée par le serveur pour une personne visée par une restriction ; révoquée avec l'autorisation. */
+async function makeCard(a: Authorized): Promise<void> {
+  card.value = (await run(() => nursery.pickupCard(a.id))) ?? null;
+}
 </script>
 
 <template>
@@ -77,6 +82,7 @@ onMounted(() => void loadRequests());
       <p class="lede">{{ t('nur.auth.intro') }}</p>
     </header>
     <ErrorNotice :error="error" />
+    <p v-if="card" class="notice" role="status" aria-live="polite">{{ t('nur.doc.issued', { number: card.number }) }}</p>
 
     <section v-if="requests.length > 0" class="card" aria-labelledby="au-req">
       <h2 id="au-req">{{ t('nur.auth.requests') }}</h2>
@@ -111,6 +117,7 @@ onMounted(() => void loadRequests());
                 <span v-if="a.grant_type === 'day'" class="tag tag--neutral">{{ t('nur.auth.dayOnly', { date: a.valid_on ?? '' }) }}</span></span>
               <span v-if="can(...P.authorizedManage)" class="row">
                 <button v-if="a.grant_type === 'day'" type="button" class="btn btn--quiet" :disabled="busy" @click="code(a)">{{ t('nur.auth.makeCode') }}</button>
+                <button v-if="can(...P.authorizedManage)" type="button" class="btn btn--quiet" :disabled="busy" @click="makeCard(a)">{{ t('nur.doc.card') }}</button>
                 <button type="button" class="btn btn--quiet" :disabled="busy" @click="revoke(a)">{{ t('nur.auth.revoke') }}</button>
               </span>
             </div>

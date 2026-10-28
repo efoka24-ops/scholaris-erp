@@ -232,6 +232,95 @@ export interface FamilyChild {
   section_label: string;
 }
 
+export interface IssuedDocument {
+  id: string;
+  kind: 'progress_book' | 'pickup_card' | 'exit_register' | 'liaison_sheet';
+  source_id: string;
+  learner_id: string | null;
+  document_id: string;
+  number: string;
+  verification_path: string;
+  locale: 'fr' | 'en';
+  status: 'valid' | 'revoked';
+  issued_at: string;
+  revoked_at: string | null;
+  revoke_reason: string | null;
+  already_issued?: boolean;
+}
+export interface PhotoConsent {
+  learner_id: string;
+  active: boolean;
+  statement_version: string | null;
+  history: { id: string; channel: 'paper' | 'portal'; evidence_ref: string | null; signed_on: string; signed_by_name: string; statement_version: string | null; granted_at: string; status: 'active' | 'revoked'; revoked_at: string | null; revoke_reason: string | null }[];
+}
+export interface TransitionDecision {
+  id: string;
+  learner_id: string;
+  child_name: string | null;
+  academic_year_id: string;
+  from_section_id: string;
+  target_section_id: string | null;
+  proposal: 'promote' | 'to_primary';
+  decision: 'promote' | 'to_primary' | 'retain' | null;
+  educator_opinion: string | null;
+  decision_reason: string | null;
+  parent_request_ref: string | null;
+  status: 'proposed' | 'opined' | 'decided' | 'applied';
+}
+export interface LiaisonSheet {
+  id: string;
+  learner_id: string;
+  academic_year_id: string;
+  section_id: string;
+  path_summary: string | null;
+  strengths: string | null;
+  needs: string | null;
+  destination: string | null;
+  status: 'draft' | 'signed';
+  document_id: string | null;
+  signed_at: string | null;
+}
+export interface ServicePlan {
+  id: string;
+  kind: 'daycare' | 'canteen' | 'transport';
+  label: string;
+  fee_item_id: string;
+  billing_cycle: 'month' | 'term' | 'year';
+  active: boolean;
+}
+export interface ServiceSubscription {
+  id: string;
+  learner_id: string;
+  plan_id: string;
+  plan_label: string | null;
+  kind: string | null;
+  billing_cycle: string | null;
+  starts_on: string;
+  ends_on: string | null;
+  status: 'active' | 'ended';
+}
+export interface ServiceInvoice {
+  id: string;
+  subscription_id: string;
+  cycle: string;
+  invoice_id: string;
+  amount_xaf: number;
+  already_invoiced?: boolean;
+}
+export interface ServiceRoster {
+  plan: ServicePlan;
+  date: string;
+  present: number;
+  children: { learner_id: string; name: string | null; section_id: string; present: boolean | null }[];
+}
+export interface Dashboard {
+  date: string;
+  totals: { enrolled: number; absent: number; arrived: number; in_arrears: number; balance_xaf: number; observation_gaps: number; over_capacity_sections: number };
+  sections: { id: string; label: string; enrolled: number; capacity: number | null; absent: number; arrived: number; in_arrears: number; observation_gaps: number; over_capacity: boolean }[];
+  late_pickups: { today: { parent: number; director: number }; month: { parent: number; director: number } };
+  services_present_today: number;
+}
+
 export const nursery = {
   settings: () => get<Record<string, unknown>>('/settings'),
   sections: () => all<Section>('/sections'),
@@ -279,6 +368,37 @@ export const nursery = {
   reportNeed: (body: { learner_id: string; need_area: string; summary: string }) => post<Need>('/needs', body),
   orientNeed: (id: string, note: string) => post<Need>(`/needs/${id}/orient`, { orientation_note: note }),
   closeNeed: (id: string) => post<Need>(`/needs/${id}/close`),
+  // Documents (module Documents du socle : numéro, QR, contenu figé)
+  documents: (query: Record<string, QueryValue> = {}) => all<IssuedDocument>('/documents', query),
+  bookDocument: (bookId: string, locale: 'fr' | 'en' = 'fr') => post<IssuedDocument>(`/progress-books/${bookId}/document`, { locale }),
+  pickupCard: (pickupId: string, locale: 'fr' | 'en' = 'fr') => post<IssuedDocument>(`/pickup/authorized-persons/${pickupId}/card`, { locale }),
+  registerDocument: (date: string, locale: 'fr' | 'en' = 'fr') => post<IssuedDocument>('/register/document', { date, locale }),
+  // Consentement photo
+  photoConsent: (childId: string) => get<PhotoConsent>(`/children/${childId}/photo-consent`),
+  recordPhotoConsent: (childId: string, body: { evidence_ref: string; signed_on: string; signed_by_name: string }) => post<PhotoConsent>(`/children/${childId}/photo-consent`, body),
+  revokePhotoConsent: (childId: string, reason: string) => post<PhotoConsent>(`/children/${childId}/photo-consent/revoke`, { reason }),
+  // Passage au primaire
+  decisions: (query: Record<string, QueryValue> = {}) => all<TransitionDecision>('/transition/decisions', query),
+  propose: (sectionId: string) => post<TransitionDecision[]>('/transition/proposals', { section_id: sectionId }),
+  opinion: (id: string, opinion: string) => post<TransitionDecision>(`/transition/decisions/${id}/opinion`, { opinion }),
+  decide: (id: string, body: { decision: string; reason?: string | null; parent_request_ref?: string | null; target_section_id?: string | null }) => post<TransitionDecision>(`/transition/decisions/${id}/decide`, body),
+  closure: (academicYearId: string) => get<{ academic_year_id: string; blocking_count: number; ready: boolean; detail: string }>('/transition/closure', { academic_year_id: academicYearId }),
+  liaisons: (query: Record<string, QueryValue> = {}) => all<LiaisonSheet>('/transition/liaison-sheets', query),
+  createLiaison: (learnerId: string) => post<LiaisonSheet>('/transition/liaison-sheets', { learner_id: learnerId }),
+  updateLiaison: (id: string, body: Partial<Pick<LiaisonSheet, 'path_summary' | 'strengths' | 'needs' | 'destination'>>) => patch<LiaisonSheet>(`/transition/liaison-sheets/${id}`, body),
+  signLiaison: (id: string, locale: 'fr' | 'en' = 'fr') => post<LiaisonSheet & { document: IssuedDocument }>(`/transition/liaison-sheets/${id}/sign`, { locale }),
+  // Services garderie, cantine, transport
+  servicePlans: () => all<ServicePlan>('/services/plans'),
+  createServicePlan: (body: { kind: string; label: string; fee_item_id: string; billing_cycle: string }) => post<ServicePlan>('/services/plans', body),
+  updateServicePlan: (id: string, body: Partial<{ label: string; fee_item_id: string; active: boolean }>) => patch<ServicePlan>(`/services/plans/${id}`, body),
+  subscriptions: (query: Record<string, QueryValue> = {}) => all<ServiceSubscription>('/services/subscriptions', query),
+  subscribe: (body: { learner_id: string; plan_id: string; starts_on?: string }) => post<ServiceSubscription>('/services/subscriptions', body),
+  endSubscription: (id: string, endsOn: string) => post<ServiceSubscription>(`/services/subscriptions/${id}/end`, { ends_on: endsOn }),
+  invoiceSubscription: (id: string, on: string) => post<ServiceInvoice>(`/services/subscriptions/${id}/invoice`, { on }),
+  invoiceAll: (body: { plan_id?: string; on: string }) => post<{ issued: number; already: number; failed: { subscription_id: string; reason: string }[] }>('/services/invoices', body),
+  serviceRoster: (planId: string, date: string) => get<ServiceRoster>('/services/attendance', { plan_id: planId, date }),
+  recordServiceAttendance: (body: { plan_id: string; date: string; marks: { learner_id: string; present: boolean }[] }) => post<ServiceRoster>('/services/attendance', body),
+  dashboard: (date?: string) => get<Dashboard>('/dashboard', date ? { date } : {}),
   messages: () => all<OutgoingMessage>('/messages'),
   sendMessage: (body: { subject: string; body: string; section_ids?: string[] }) => post<{ recipients: number; delivered: number; blocked: number; skipped_by_restriction: number }>('/messages', body),
   // Portail de la famille
@@ -293,6 +413,11 @@ export const nursery = {
     lifebook: (learnerId: string) => all<ParentLifeEntry>('/portal/lifebook', { learner_id: learnerId }),
     needs: (learnerId: string) => all<Need>('/portal/needs', { learner_id: learnerId }),
     balance: (learnerId: string) => get<Balance>('/portal/balance', { learner_id: learnerId }),
+    documents: (learnerId: string) => all<IssuedDocument>('/portal/documents', { learner_id: learnerId }),
+    services: (learnerId: string) => all<ServiceSubscription>('/portal/services', { learner_id: learnerId }),
+    photoConsent: (learnerId: string) => get<PhotoConsent>('/portal/photo-consent', { learner_id: learnerId }),
+    givePhotoConsent: (body: { learner_id: string; signed_by_name: string; accept: true }) => post<PhotoConsent>('/portal/photo-consent', body),
+    withdrawPhotoConsent: (learnerId: string, reason?: string) => post<PhotoConsent>('/portal/photo-consent/revoke', { learner_id: learnerId, ...(reason ? { reason } : {}) }),
   },
 };
 

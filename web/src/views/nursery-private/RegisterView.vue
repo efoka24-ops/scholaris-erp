@@ -1,22 +1,29 @@
 <script setup lang="ts">
 // Registre du jour : arrivées, sorties (et à qui), refus, alertes et « encore à l'école », par section. Imprimable.
 import { onMounted, ref } from 'vue';
-import { nursery, type Register } from '@/api/nurseryPrivate';
+import { nursery, type IssuedDocument, type Register } from '@/api/nurseryPrivate';
 import ErrorNotice from '@/components/ErrorNotice.vue';
 import { formatTime } from '@/lib/format';
 import { useI18n } from '@/i18n';
 import type { MessageKey } from '@/i18n';
-import { today, useAction } from './useNur';
+import { P } from './access';
+import { today, useAction, usePermissions } from './useNur';
 
 const { t } = useI18n();
 const { error, busy, run } = useAction();
 const date = ref(today());
 const register = ref<Register | null>(null);
+const issued = ref<IssuedDocument | null>(null);
+const { can } = usePermissions();
 
 async function load(): Promise<void> {
   register.value = (await run(() => nursery.register(date.value))) ?? null;
 }
 const print = (): void => window.print();
+/** Registre du jour émis par le module Documents (numéro, contenu figé) ; une réédition révoque la précédente. */
+async function issue(): Promise<void> {
+  issued.value = (await run(() => nursery.registerDocument(date.value))) ?? null;
+}
 const hhmm = (iso: string | null): string => (iso ? formatTime(iso.slice(11, 16)) : '');
 onMounted(() => void load());
 </script>
@@ -29,10 +36,12 @@ onMounted(() => void load());
       <p class="lede">{{ t('nur.register.intro') }}</p>
     </header>
     <ErrorNotice :error="error" />
+    <p v-if="issued" class="notice" role="status" aria-live="polite">{{ t('nur.doc.issued', { number: issued.number }) }}</p>
     <form class="card row noprint" @submit.prevent="load">
       <div class="field"><label for="rg-date">{{ t('nur.register.date') }}</label><input id="rg-date" v-model="date" type="date" required /></div>
       <button type="submit" class="btn" :disabled="busy">{{ t('nur.register.show') }}</button>
       <button type="button" class="btn btn--quiet" @click="print">{{ t('nur.register.print') }}</button>
+      <button v-if="can(...P.dashboard)" type="button" class="btn btn--quiet" :disabled="busy" @click="issue">{{ t('nur.doc.register') }}</button>
     </form>
 
     <template v-if="register">
