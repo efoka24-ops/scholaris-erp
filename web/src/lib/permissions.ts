@@ -33,6 +33,7 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
   comptable: [
     'organisation.read', 'people.read', 'billing.read', 'billing.manage', 'billing.reversal.approve',
     'finance.read', 'finance.manage', 'messaging.read', 'messaging.send', 'documents.read', 'documents.issue',
+    'primary.services.read', 'primary.services.manage',
   ],
   caissier: [
     'organisation.read', 'people.read', 'billing.read', 'billing.cash', 'billing.reversal.request',
@@ -42,6 +43,7 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     'organisation.read', 'assessment.enter', 'grades.enter', 'attendance.take', 'staff.leave.request',
     'primary.referential.read', 'primary.learner.read', 'primary.competency.enter', 'primary.competency.read', 'primary.conduct.enter', 'primary.conduct.read',
     'primary.journal.write', 'primary.journal.read',
+    'primary.council.read', 'primary.report_card.read', 'primary.remediation.read', 'primary.remediation.write',
   ],
   parent: ['self.read', 'documents.request', 'public_schools.apee.read_receipts'],
   apprenant: ['self.read', 'documents.request'],
@@ -100,17 +102,24 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
   ...NURSERY_ROLE_PERMISSIONS,
   primary_promoteur: [
     'primary.dashboard.read', 'reporting.read', 'primary.referential.read', 'primary.learner.read', 'primary.competency.read', 'primary.conduct.read', 'primary.journal.read',
+    'primary.council.read', 'primary.report_card.read', 'primary.remediation.read', 'primary.exam.read', 'primary.tutelage.export', 'primary.services.read',
   ],
   primary_directeur: [
     'primary.settings.manage', 'primary.council.preside', 'primary.report_card.sign', 'assessment.correction.approve', 'primary.promotion.decide', 'primary.dashboard.read',
     'primary.referential.read', 'primary.learner.read', 'primary.competency.read', 'primary.competency.validate', 'primary.conduct.read', 'primary.journal.read',
+    'primary.council.read', 'primary.report_card.read', 'primary.remediation.read', 'primary.remediation.write', 'primary.exam.read', 'primary.exam.manage',
+    'primary.tutelage.export', 'primary.services.read', 'primary.pickup.read', 'primary.pickup.handover',
   ],
   primary_adjoint: [
     'primary.referential.manage', 'assessment.validate', 'scheduling.manage', 'primary.referential.read', 'primary.learner.read', 'primary.competency.read',
     'primary.competency.validate', 'primary.conduct.read', 'primary.journal.read',
+    'primary.council.read', 'primary.report_card.read', 'primary.remediation.read', 'primary.remediation.write', 'primary.exam.read',
   ],
-  primary_secretaire: ['people.manage', 'primary.enrol', 'documents.issue', 'primary.exam.manage', 'primary.referential.read', 'primary.learner.read'],
-  primary_surveillant: ['attendance.sanction.manage', 'primary.pickup.handover'],
+  primary_secretaire: [
+    'people.manage', 'primary.enrol', 'documents.issue', 'primary.exam.manage', 'primary.referential.read', 'primary.learner.read',
+    'primary.report_card.read', 'primary.exam.read', 'primary.tutelage.export', 'primary.services.read',
+  ],
+  primary_surveillant: ['attendance.sanction.manage', 'primary.pickup.handover', 'primary.pickup.read'],
 };
 
 export function permissionsForRoles(roles: string[]): Set<string> {
