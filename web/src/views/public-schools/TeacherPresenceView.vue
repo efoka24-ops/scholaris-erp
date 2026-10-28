@@ -3,13 +3,13 @@
 // Une présence contrôlée par l'inspection ne peut plus être modifiée.
 import { computed, onMounted, reactive, ref } from 'vue';
 import ErrorNotice from '@/components/ErrorNotice.vue';
-import { publicSchools, type AttendanceAlert, type ClassRow, type Presence, type StaffMember, type TeacherPresence, type UncoveredClass } from '@/api/publicSchools';
+import { openDocument, publicSchools, publicSchoolsP2, type AttendanceAlert, type ClassRow, type Presence, type StaffMember, type TeacherPresence, type UncoveredClass } from '@/api/publicSchools';
 import { useI18n } from '@/i18n';
 import { formatDate, todayIso } from '@/lib/format';
 import { P } from './access';
 import { currentYear, useAction, usePermissions } from './usePs';
 
-const { t, tp } = useI18n();
+const { t, tp, locale } = useI18n();
 const { can } = usePermissions();
 const { error, busy, run } = useAction();
 
@@ -28,6 +28,10 @@ const byStaff = computed(() => new Map(rows.value.map((r) => [r.staff_id, r])));
 const className = (id: string): string => classes.value.find((c) => c.structure_id === id)?.label ?? id;
 const presenceLabel = (p: Presence): string => t(p === 'present' ? 'ps.presence.present' : p === 'absent' ? 'ps.presence.absent' : p === 'permission' ? 'ps.presence.permission' : 'ps.presence.mission');
 const needsReason = (p: Presence): boolean => p !== 'present';
+/** DOC-22 : synthèse mensuelle numérotée du mois de la date affichée, émise par le directeur. */
+async function summaryPdf(): Promise<void> {
+  await run(async () => openDocument((await publicSchoolsP2.presenceDocument(date.value.slice(0, 7), locale.value === 'en' ? 'en' : 'fr')).id));
+}
 
 function init(): void {
   for (const s of staff.value) {
@@ -100,6 +104,9 @@ onMounted(() => void load());
       <input id="pr-date" v-model="date" type="date" :max="todayIso()" @change="load" />
     </div>
     <p v-if="saved" class="notice notice--success" role="status">{{ t('ps.presence.saved', { name: saved }) }}</p>
+    <p v-if="canWrite && can('documents.read')">
+      <button type="button" class="btn" :disabled="busy" @click="summaryPdf">{{ t('pp.doc.presencePdf', { month: date.slice(0, 7) }) }}</button>
+    </p>
 
     <section v-if="staff.length > 0" class="card" aria-labelledby="pr-list">
       <div class="row row--between">

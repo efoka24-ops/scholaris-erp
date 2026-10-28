@@ -25,6 +25,16 @@ const screens: Screen[] = [
   ['personnel/:id', 'ps-staff-profile', () => import('./StaffProfileView.vue'), P.staffRead, 'ps.career.title', true],
   ['messages', 'ps-messages', () => import('./MessagesView.vue'), P.messagesSend, 'ps.messages.title'],
   ['appareil', 'ps-device', () => import('./DeviceView.vue'), P.attendanceWrite, 'ps.device.title'],
+  // Lot P2 : évaluation, remédiation, bulletins, passage, APEE, paquet minimum, questionnaire statistique, inscription groupée, référentiel.
+  ['evaluation', 'pp-evaluation', () => import('./EvaluationView.vue'), P.evaluation, 'pp.eval.title'],
+  ['remediation', 'pp-remediation', () => import('./RemediationView.vue'), P.evaluation, 'pp.rem.title'],
+  ['bulletins', 'pp-report-cards', () => import('./ReportCardsView.vue'), P.evaluation, 'pp.cards.title'],
+  ['passage', 'pp-promotion', () => import('./PromotionView.vue'), P.promotion, 'pp.pas.title'],
+  ['apee', 'ps-apee', () => import('./ApeeView.vue'), P.apee, 'pp.apee.title'],
+  ['paquet-minimum', 'ps-supplies', () => import('./SuppliesView.vue'), P.schoolRead, 'pp.supplies.title'],
+  ['statistiques', 'ps-census', () => import('./CensusView.vue'), P.census, 'pp.census.title'],
+  ['eleves/registre', 'ps-batch-enrol', () => import('./BatchEnrolView.vue'), P.pupilsWrite, 'pp.batch.title'],
+  ['referentiel', 'pp-referential', () => import('./ReferentialView.vue'), P.referential, 'pp.ref.title'],
 ];
 
 const schoolOnly = { needsEstablishment: true, establishmentTypes: ['primary'] };

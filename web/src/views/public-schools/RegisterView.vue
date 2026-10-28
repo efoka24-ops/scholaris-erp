@@ -3,7 +3,8 @@
 // imprimable en A4 paysage. Données nominatives, lisibles dans l'école seulement : le serveur répond 403 ailleurs.
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import ErrorNotice from '@/components/ErrorNotice.vue';
-import { publicSchools, type AttendanceRegister, type DayPart } from '@/api/publicSchools';
+import { openDocument, publicSchools, publicSchoolsP2, type AttendanceRegister, type DayPart } from '@/api/publicSchools';
+import { useContextStore } from '@/stores/context';
 import { useI18n } from '@/i18n';
 import { todayIso } from '@/lib/format';
 import { useAction } from './usePs';
@@ -49,6 +50,11 @@ async function load(): Promise<void> {
 }
 
 const print = (): void => window.print();
+/** DOC-06 officiel (numéroté) : émis par le directeur, puis ouvert depuis le module Documents. */
+const canIssue = computed(() => useContextStore().can('documents.read') && useContextStore().can('public_schools.attendance.write'));
+async function issuePdf(): Promise<void> {
+  await run(async () => openDocument((await publicSchoolsP2.registerDocument(props.id, month.value, locale.value === 'en' ? 'en' : 'fr')).id));
+}
 
 // A4 paysage et mise en page d'impression : posés seulement tant que le cahier est affiché (une règle @page est globale).
 const PRINT_CSS = `@page { size: A4 landscape; margin: 10mm; }
@@ -85,6 +91,7 @@ onBeforeUnmount(() => printStyle?.remove());
       <strong class="month" aria-live="polite">{{ monthLabel }}</strong>
       <button type="button" class="btn" :disabled="busy || isCurrentMonth" @click="shift(1)">{{ t('ps.register.next') }}</button>
       <button type="button" class="btn btn--primary" :disabled="!register || columns.length === 0" @click="print">{{ t('ps.register.print') }}</button>
+      <button v-if="canIssue" type="button" class="btn" :disabled="busy || !register || columns.length === 0" @click="issuePdf">{{ t('pp.doc.registerPdf') }}</button>
     </div>
 
     <section v-if="register" class="register-print" :aria-label="t('ps.register.title')">

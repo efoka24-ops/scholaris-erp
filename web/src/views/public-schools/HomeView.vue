@@ -29,6 +29,15 @@ const tiles: Tile[] = [
   { name: 'ps-school', title: 'ps.school.title', text: 'ps.home.schoolText', perms: P.schoolRead },
   { name: 'ps-photos', title: 'ps.photos.title', text: 'ps.home.photosText', perms: P.inspectionRead },
   { name: 'ps-device', title: 'ps.device.title', text: 'ps.home.deviceText', perms: P.attendanceWrite },
+  { name: 'pp-evaluation', title: 'pp.eval.title', text: 'pp.home.evalText', perms: P.evaluation },
+  { name: 'pp-remediation', title: 'pp.rem.title', text: 'pp.home.remText', perms: P.evaluation },
+  { name: 'pp-report-cards', title: 'pp.cards.title', text: 'pp.home.cardsText', perms: P.evaluation },
+  { name: 'pp-promotion', title: 'pp.pas.title', text: 'pp.home.pasText', perms: P.promotion },
+  { name: 'ps-apee', title: 'pp.apee.title', text: 'pp.home.apeeText', perms: P.apee },
+  { name: 'ps-supplies', title: 'pp.supplies.title', text: 'pp.home.suppliesText', perms: P.schoolWrite },
+  { name: 'ps-census', title: 'pp.census.title', text: 'pp.home.censusText', perms: P.census },
+  { name: 'ps-batch-enrol', title: 'pp.batch.title', text: 'pp.home.batchText', perms: P.pupilsWrite },
+  { name: 'pp-referential', title: 'pp.ref.title', text: 'pp.home.refText', perms: P.referential },
 ];
 const visible = computed(() => tiles.filter((tile) => ctx.can(...tile.perms)));
 </script>

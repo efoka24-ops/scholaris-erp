@@ -565,3 +565,416 @@ export const syncDevices = {
   unlock: async (deviceId: string, code: string): Promise<{ device_id: string; unlocked: boolean; wipe: boolean }> =>
     (await http.post<{ data: { device_id: string; unlocked: boolean; wipe: boolean } }>(`/sync/devices/${encodeURIComponent(deviceId)}/unlock`, { code })).data,
 };
+
+// ------------------------------------------------------------------------------------------------ lot P2 (évaluation, APEE, statistiques)
+// Primaire publique : préfixe /api/v1/public-primary (contrat openapi.d/public-primary.yaml). Mêmes règles d'en-tête et de finalité.
+
+const PP = '/public-primary';
+const ppGet = async <T>(path: string, query?: Record<string, QueryValue>): Promise<T> =>
+  (await http.get<{ data: T }>(`${PP}${path}`, withPurpose(query), options())).data;
+const ppPost = async <T>(path: string, body?: unknown): Promise<T> => (await http.post<{ data: T }>(`${PP}${path}`, body ?? {}, options())).data;
+const ppPut = async <T>(path: string, body?: unknown, est?: string | null): Promise<T> =>
+  (await http.put<{ data: T }>(`${PP}${path}`, body ?? {}, options(est))).data;
+const ppPatch = async <T>(path: string, body?: unknown): Promise<T> => (await http.patch<{ data: T }>(`${PP}${path}`, body ?? {}, options())).data;
+async function ppAll<T>(path: string, query: Record<string, QueryValue> = {}): Promise<T[]> {
+  const rows: T[] = [];
+  let cursor: string | null = null;
+  for (let i = 0; i < 20; i++) {
+    const res: { data: T[]; meta?: { next_cursor?: string | null } } = await http.get(`${PP}${path}`, withPurpose({ ...query, ...(cursor ? { cursor } : {}) }), options());
+    rows.push(...(res.data ?? []));
+    cursor = res.meta?.next_cursor ?? null;
+    if (!cursor) break;
+  }
+  return rows;
+}
+const enc = encodeURIComponent;
+
+export type Outcome = 'success' | 'fail' | 'absent';
+export interface ScaleLevel {
+  code: string;
+  label_fr: string;
+  label_en: string;
+}
+export interface Criterion {
+  id: string;
+  code: string;
+  label_fr: string;
+  label_en: string;
+  kind: 'minimal' | 'perfection';
+}
+export interface Frame {
+  id: string;
+  subsystem: string;
+  level_code: string;
+  discipline_code: string;
+  label_fr: string;
+  label_en: string;
+  version: number;
+  valid_from: string;
+  is_key_discipline: boolean;
+  criteria: Criterion[];
+}
+export interface LearningUnit {
+  id: string;
+  year_label: string;
+  level_code: string;
+  unit_no: number;
+  period_id: string;
+  starts_on: string;
+  ends_on: string;
+  evaluation_week_from: string;
+  is_final_integration: boolean;
+}
+export interface UnitMention {
+  person_id: string;
+  frame_id: string;
+  discipline_code: string | null;
+  mention: string;
+  perfection_mastered: boolean;
+  to_remediate: string[];
+}
+export interface Cell {
+  person_id: string;
+  criterion_id: string;
+  occasion_no: number;
+  outcome: Outcome;
+}
+export interface GridFrame {
+  id: string;
+  discipline_code: string;
+  label_fr: string;
+  label_en: string;
+  is_key_discipline: boolean;
+  criteria: Criterion[];
+}
+export interface Grid {
+  unit: { id: string; unit_no: number; level_code: string; year_label: string; starts_on: string; ends_on: string; evaluation_week_from: string };
+  class: { structure_id: string; label: string };
+  occasions: number;
+  mastery_min_success: number;
+  scale: ScaleLevel[];
+  frames: GridFrame[];
+  pupils: { person_id: string; name: string }[];
+  cells: Cell[];
+  mentions: UnitMention[];
+  frozen: string[];
+}
+export interface ChecksBody {
+  structure_id: string;
+  client_uuid: string;
+  checks: Cell[];
+}
+export interface ChecksResult {
+  applied: number;
+  replayed: boolean;
+  mentions: UnitMention[];
+}
+export interface RemediationGroup {
+  frame_id: string;
+  discipline_code: string;
+  discipline_fr: string;
+  discipline_en: string;
+  criterion_id: string;
+  criterion_code: string;
+  criterion_fr: string;
+  criterion_en: string;
+  pupils: { remediation_id: string; person_id: string; name: string; state: string }[];
+}
+export interface RemediationSession {
+  id: string;
+  structure_id: string;
+  frame_id: string;
+  unit_id: string | null;
+  held_on: string;
+  duration_minutes: number;
+  form: string;
+  criterion_ids: string[];
+  person_ids: string[];
+  notes: string | null;
+}
+export interface SessionInput {
+  structure_id: string;
+  frame_id: string;
+  unit_id?: string;
+  held_on: string;
+  duration_minutes: number;
+  form: string;
+  criterion_ids: string[];
+  person_ids: string[];
+  notes?: string;
+}
+export interface WeeklySummary {
+  week_from: string;
+  week_to: string;
+  minimum_minutes: number;
+  disciplines: { frame_id: string; discipline_fr: string; discipline_en: string; minutes: number; minimum: number; met: boolean }[];
+}
+export interface SheetItem {
+  id: string;
+  state: string;
+  form: string | null;
+  outcome_note: string | null;
+  discipline_fr: string | null;
+  discipline_en: string | null;
+  unit_no: number | null;
+  criterion_code: string | null;
+  criterion_fr: string | null;
+  criterion_en: string | null;
+}
+export interface RemediationSheet {
+  person_id: string;
+  name: string;
+  minutes_attended: number;
+  open: number;
+  remediations: SheetItem[];
+  sessions: RemediationSession[];
+}
+export interface ReportCardLine {
+  frame_id: string;
+  discipline_code: string;
+  label_fr: string;
+  label_en: string;
+  mention: string;
+  perfection?: boolean;
+  units?: { unit_no: number; mention: string }[];
+}
+export interface ReportCard {
+  id: string;
+  person_id: string;
+  name?: string;
+  structure_id: string;
+  kind: 'unit' | 'trimester' | 'year';
+  scope_ref: string;
+  year_label: string;
+  state: 'draft' | 'published' | 'rectified';
+  appraisal: string | null;
+  document_id: string | null;
+  published_at: string | null;
+  rectified_reason: string | null;
+  content: { period_label_fr?: string; period_label_en?: string; disciplines?: ReportCardLine[]; remediation?: string[] };
+}
+export interface PromotionRow {
+  id: string;
+  person_id: string;
+  name?: string;
+  structure_id: string;
+  year_label: string;
+  level_code: string;
+  proposal: string;
+  key_na_count: number;
+  decision: string | null;
+  state: 'proposed' | 'final' | 'pending_opinion';
+  reason: string | null;
+  policy_version: string;
+  inspector_opinion: string | null;
+  appeal_until: string | null;
+  appeal_state: string | null;
+  council_id: string | null;
+}
+export interface PromotionPolicyView {
+  version: string;
+  na_for_remediation: number;
+  na_for_council: number;
+  lock_level: string;
+}
+export interface SettingRow {
+  key: string;
+  value: unknown;
+  default: unknown;
+  status: 'official' | 'cdc_default' | 'to_confirm';
+  source: string;
+}
+export interface IssuedRef {
+  id: string;
+  number: string;
+}
+export interface CouncilInput {
+  structure_id: string;
+  held_on: string;
+  attendees: string[];
+  decisions: { person_id: string; decision: string; reason?: string }[];
+}
+
+export const publicPrimary = {
+  settings: (): Promise<SettingRow[]> => ppGet('/settings'),
+  frames: (levelCode?: string): Promise<Frame[]> => ppAll('/frames', levelCode ? { level_code: levelCode } : {}),
+  importExample: (subsystem: string, levelCode: string): Promise<Frame[]> => ppPost('/frames/import-example', { subsystem, level_code: levelCode }),
+  units: (yearLabel: string, levelCode: string): Promise<LearningUnit[]> => ppGet('/units', { year_label: yearLabel, level_code: levelCode }),
+  generateUnits: (body: { year_label: string; level_code: string; trimesters: { period_id: string; starts_on: string; ends_on: string }[] }): Promise<LearningUnit[]> =>
+    ppPost('/units/generate', body),
+  grid: (unitId: string, structureId: string): Promise<Grid> => ppGet(`/units/${enc(unitId)}/grid`, { structure_id: structureId }),
+  saveChecks: (unitId: string, body: ChecksBody, est?: string | null): Promise<ChecksResult> => ppPut(`/units/${enc(unitId)}/criterion-checks`, body, est),
+  remediation: (unitId: string, structureId: string): Promise<RemediationGroup[]> => ppGet(`/units/${enc(unitId)}/remediation`, { structure_id: structureId }),
+  sessions: (structureId: string): Promise<RemediationSession[]> => ppAll('/remediation-sessions', { structure_id: structureId }),
+  recordSession: (body: SessionInput): Promise<RemediationSession> => ppPost('/remediation-sessions', body),
+  weeklySummary: (structureId: string, date?: string): Promise<WeeklySummary> => ppGet('/remediation-sessions/summary', { structure_id: structureId, ...(date ? { date } : {}) }),
+  updateRemediation: (id: string, body: { state?: string; form?: string | null; outcome_note?: string }): Promise<unknown> => ppPatch(`/remediations/${enc(id)}`, body),
+  sheet: (structureId: string, personId: string): Promise<RemediationSheet> => ppGet(`/classes/${enc(structureId)}/pupils/${enc(personId)}/remediation-sheet`),
+  generateCards: (body: { kind: string; scope_ref: string; structure_id: string; year_label?: string }): Promise<ReportCard[]> => ppPost('/report-cards/generate', body),
+  cards: (structureId: string, kind?: string, scopeRef?: string): Promise<ReportCard[]> =>
+    ppAll('/report-cards', { structure_id: structureId, ...(kind ? { kind } : {}), ...(scopeRef ? { scope_ref: scopeRef } : {}) }),
+  appraise: (id: string, appraisal: string): Promise<ReportCard> => ppPatch(`/report-cards/${enc(id)}`, { appraisal }),
+  publish: (id: string): Promise<ReportCard & { document?: IssuedRef }> => ppPost(`/report-cards/${enc(id)}/publish`, {}),
+  rectify: (id: string, body: { frame_id: string; mention: string; reason: string }): Promise<ReportCard> => ppPost(`/report-cards/${enc(id)}/rectify`, body),
+  phrases: (locale: string): Promise<{ id: string; locale: string; phrase: string }[]> => ppAll('/appraisal-phrases', { locale }),
+  addPhrase: (locale: string, phrase: string): Promise<{ id: string }> => ppPost('/appraisal-phrases', { locale, phrase }),
+  policy: (): Promise<PromotionPolicyView> => ppGet('/promotion/policy'),
+  propose: (year: string, structureId: string): Promise<PromotionRow[]> => ppPost(`/promotion/${enc(year)}/proposals`, { structure_id: structureId }),
+  promotion: (year: string, structureId: string): Promise<PromotionRow[]> => ppAll(`/promotion/${enc(year)}`, { structure_id: structureId }),
+  council: (year: string, body: CouncilInput): Promise<{ council_id: string; decisions: PromotionRow[] }> => ppPost(`/promotion/${enc(year)}/council`, body),
+  opinion: (id: string, opinion: 'favourable' | 'unfavourable', comment: string): Promise<PromotionRow> => ppPost(`/promotion/decisions/${enc(id)}/opinion`, { opinion, comment }),
+  appeal: (id: string, body: { action: 'lodge' | 'uphold' | 'revise'; reason: string; decision?: string }): Promise<PromotionRow> =>
+    ppPost(`/promotion/decisions/${enc(id)}/appeal`, body),
+  minutes: (councilId: string): Promise<{ document: IssuedRef }> => ppPost(`/promotion/councils/${enc(councilId)}/minutes`, {}),
+};
+
+// APEE (comptes de l'association, séparés de la scolarité), paquet minimum, questionnaire statistique, inscription groupée, PDF P1.
+
+export interface ApeeYear {
+  id: string;
+  year_label: string;
+  amount_per_pupil: number;
+  voted_on: string;
+  minutes_ref: string | null;
+  expected_pupils: number;
+}
+export interface ApeeEntry {
+  id: string;
+  apee_year_id: string;
+  direction: 'income' | 'expense';
+  category: string;
+  amount: number;
+  method: string | null;
+  operator_ref: string | null;
+  family_ref: string | null;
+  label: string | null;
+  proof_ref: string | null;
+  state: 'recorded' | 'pending';
+  receipt_document_id: string | null;
+  receipt_number: string | null;
+  entered_on: string;
+}
+export interface ApeeEntryInput {
+  apee_year_id: string;
+  direction: 'income' | 'expense';
+  category: string;
+  amount: number;
+  method?: string;
+  operator_ref?: string;
+  family_ref?: string;
+  label?: string;
+  proof_ref?: string;
+  client_uuid: string;
+}
+export interface ApeeStatement {
+  year_label: string;
+  amount_per_pupil: number;
+  expected_pupils: number;
+  expected: number;
+  collected: number;
+  collection_rate: number | null;
+  contributing_families: number;
+  exempted_families: number;
+  non_contributing_families: number;
+  income: Record<string, number>;
+  income_total: number;
+  expenses: Record<string, number>;
+  expenses_total: number;
+  pending_expenses: Record<string, number>;
+  pending_total: number;
+  balance: number;
+}
+export interface SupplyLine {
+  item_label: string;
+  quantity: number;
+  structure_id?: string | null;
+}
+export interface SupplyReceipt {
+  id: string;
+  source: 'minimum_package' | 'donation';
+  slip_ref: string | null;
+  received_on: string;
+  deliverer_name: string | null;
+  document_id: string | null;
+  lines?: SupplyLine[];
+}
+export interface CensusSection {
+  title_fr: string;
+  title_en: string;
+  values: Record<string, number | null>;
+}
+export interface CensusForm {
+  id: string;
+  year_label: string;
+  campaign: 'start_of_year' | 'end_of_year';
+  version: number;
+  state: 'draft' | 'returned' | 'in_review' | 'frozen' | 'consolidated';
+  current_step: string | null;
+  entered_by_proxy: boolean;
+  correction_reason: string | null;
+  return_reason: string | null;
+  payload: { sections?: Record<string, CensusSection> };
+  checks: { anomalies?: string[]; justifications?: Record<string, string> } | null;
+}
+export interface BatchResult {
+  row: number;
+  status: 'created' | 'replayed' | 'duplicate' | 'rejected';
+  person_id?: string;
+  learner_number?: string | null;
+  message?: string;
+  errors?: Record<string, string[]>;
+}
+export interface RegistrationBatch {
+  id: string;
+  client_uuid: string;
+  register_photo_ref: string | null;
+  register_label: string | null;
+  entered_by_proxy: boolean;
+  rows_count: number;
+  created_count: number;
+  results: BatchResult[];
+  replayed?: boolean;
+}
+
+export const publicSchoolsP2 = {
+  apeeYears: (): Promise<ApeeYear[]> => all('/apee/years'),
+  voteApee: (body: { year_label: string; amount_per_pupil: number; voted_on: string; minutes_ref?: string; expected_pupils?: number }): Promise<ApeeYear> =>
+    post('/apee/years', body),
+  apeeEntries: (yearId: string): Promise<ApeeEntry[]> => all(`/apee/years/${enc(yearId)}/entries`),
+  recordApee: (body: ApeeEntryInput): Promise<ApeeEntry & { replayed: boolean }> => post('/apee/entries', body),
+  attachProof: (entryId: string, proofRef: string): Promise<ApeeEntry> => post(`/apee/entries/${enc(entryId)}/proof`, { proof_ref: proofRef }),
+  apeeStatement: (yearId: string): Promise<ApeeStatement> => get(`/apee/years/${enc(yearId)}/statement`),
+  issueStatement: (yearId: string): Promise<{ document: IssuedRef }> => post(`/apee/years/${enc(yearId)}/statement/document`, {}),
+  nonContributors: (yearId: string): Promise<{ person_id: string; name: string }[]> => all(`/apee/years/${enc(yearId)}/non-contributors`),
+  exempt: (yearId: string, familyRef: string, reasonCode: string): Promise<unknown> => post(`/apee/years/${enc(yearId)}/exemptions`, { family_ref: familyRef, reason_code: reasonCode }),
+  families: (search: string): Promise<{ person_id: string; name: string }[]> => get('/apee/families', { search }),
+  supplies: (): Promise<SupplyReceipt[]> => all('/supplies'),
+  receiveSupply: (body: { source: string; slip_ref?: string; received_on: string; deliverer_name?: string; lines: SupplyLine[] }): Promise<SupplyReceipt> => post('/supplies', body),
+  supplySlip: (id: string): Promise<{ document: IssuedRef }> => post(`/supplies/${enc(id)}/slip`, {}),
+  census: (): Promise<CensusForm[]> => all('/census'),
+  censusPending: (): Promise<CensusForm[]> => get('/census/pending'),
+  openCensus: (yearLabel: string, campaign: string): Promise<CensusForm> => post('/census', { year_label: yearLabel, campaign }),
+  editCensus: (id: string, values: Record<string, number | null>): Promise<CensusForm> => patch(`/census/${enc(id)}`, { values }),
+  submitCensus: (id: string, justifications: Record<string, string> = {}): Promise<CensusForm> => post(`/census/${enc(id)}/submit`, { justifications }),
+  returnCensus: (id: string, reason: string): Promise<CensusForm> => post(`/census/${enc(id)}/return`, { reason }),
+  correctCensus: (id: string, reason: string): Promise<CensusForm> => post(`/census/${enc(id)}/corrections`, { reason }),
+  censusDocument: (id: string): Promise<{ document: IssuedRef }> => post(`/census/${enc(id)}/document`, {}),
+  censusExport: (id: string): Promise<Blob> => http.get<Blob>(`${ROOT}/census/${enc(id)}/export`, { format: 'csv' }, { ...options(), expect: 'blob' }),
+  registerBatch: (body: { client_uuid: string; register_photo_ref?: string; register_label?: string; class_id?: string; rows: Record<string, unknown>[] }): Promise<RegistrationBatch> =>
+    post('/pupils/batches', body),
+  registrationBatches: (): Promise<RegistrationBatch[]> => all('/pupils/batches'),
+  registerDocument: (classId: string, month: string, locale: string): Promise<IssuedRef> => post(`/classes/${enc(classId)}/attendance-register/document`, { month, locale }),
+  presenceDocument: (month: string, locale: string): Promise<IssuedRef> => post('/teacher-presence/summary/document', { month, locale }),
+};
+
+/** PDF d'un document émis (module Documents du socle, profil léger pour les parents et les réseaux lents). */
+export function documentPdf(documentId: string, light = true): Promise<Blob> {
+  return http.get<Blob>(`/documents/${enc(documentId)}/preview`, light ? { profile: 'light' } : {}, { ...options(), expect: 'blob' });
+}
+
+/** Ouvre un PDF émis dans un nouvel onglet (lecture authentifiée : pas de lien direct). */
+export async function openDocument(documentId: string): Promise<void> {
+  const url = URL.createObjectURL(await documentPdf(documentId));
+  window.open(url, '_blank', 'noopener');
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}

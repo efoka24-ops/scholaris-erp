@@ -51,6 +51,8 @@ describe('permissions des routes des écoles publiques', () => {
       for (const r of psRoutes) {
         const needed = (r.meta?.perms ?? []) as string[];
         expect(needed.length, String(r.name)).toBeGreaterThan(0);
+        // Le questionnaire statistique (lot P2) ne contient que des effectifs : la planification (R03) le consolide.
+        if (r.name === 'ps-census') continue;
         expect(needed.some((p) => perms.has(p)), `${role} -> ${String(r.name)}`).toBe(false);
       }
     }

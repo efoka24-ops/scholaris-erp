@@ -21,8 +21,25 @@ export const P = {
   devicesManage: ['sync.devices.manage'],
   /** Alertes d'assiduité : lues avec la permission d'appel ; classes sans enseignant : avec la présence des enseignants. */
   alerts: ['public_schools.attendance.read', 'public_schools.teacher_presence.read'],
+  /** Lot P2 : évaluation (enseignant titulaire, directeur), bulletins, passage, APEE, questionnaire statistique, référentiel. */
+  evaluation: ['public_primary.evaluation.write', 'public_primary.evaluation.validate'],
+  promotion: ['public_primary.promotion.write', 'public_primary.promotion.validate', 'public_primary.promotion.opinion'],
+  apee: ['public_schools.apee.read'],
+  census: ['public_schools.census.write', 'public_schools.census.validate'],
+  referential: [
+    'public_primary.referential.manage',
+    'public_primary.evaluation.write',
+    'public_primary.evaluation.validate',
+    'public_primary.promotion.validate',
+  ],
   /** Accès à l'espace : au moins une permission de travail dans l'école (école, élèves, appel, personnel, messages, inspection). */
   space: [
+    'public_primary.evaluation.write',
+    'public_primary.evaluation.validate',
+    'public_primary.promotion.opinion',
+    'public_primary.referential.manage',
+    'public_schools.apee.read',
+    'public_schools.census.write',
     'public_schools.pupils.read',
     'public_schools.attendance.write',
     'public_schools.teacher_presence.read',
