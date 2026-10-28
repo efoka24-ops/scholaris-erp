@@ -48,7 +48,7 @@ return [
     PersonDirectory::class => autowire(PdoPersonDirectory::class),
     EnrollmentDirectory::class => autowire(PdoEnrollmentDirectory::class),
     // Contrat déjà implémenté par PdoEnrollmentDirectory mais jamais lié (N-002) : sans lui, toute classe qui le reçoit est inconstructible.
-    \Scholaris\Modules\Socle\People\Contracts\StructureEnrollments::class => \DI\get(EnrollmentDirectory::class),
+    \Scholaris\Modules\Socle\People\Contracts\StructureEnrollments::class => autowire(PdoEnrollmentDirectory::class),
     EnrollmentWriter::class => autowire(EnrollmentWriterService::class),
     \Scholaris\Modules\Socle\People\Contracts\EnrollmentStatusWriter::class => autowire(\Scholaris\Modules\Socle\People\Application\EnrollmentStatusWriterService::class),
     BirthDateWriter::class => autowire(BirthDateWriterService::class),
