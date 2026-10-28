@@ -42,4 +42,6 @@ web/e2e/playwright-report/
 /.phpunit.cache-mysql/
 tests/Load/.work/
 web/e2e/screenshots/
+# Captures de la recette en production (web/e2e/recette-prod), deja couvertes par la ligne precedente : explicite.
+web/e2e/screenshots/recette-prod/
 web/build/

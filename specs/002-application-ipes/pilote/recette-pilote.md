@@ -87,3 +87,21 @@ Un défaut = une ligne. Gravité : B bloquant, M majeur, m mineur. Statut : ouve
 | D-P02 | | | | | | | | | | | |
 
 Rappel : les défauts D-01 à D-04 de la recette Septentrion (`recette-septentrion.md`) sont à vérifier comme corrigés avant la bascule : frais de dossier en espèces au guichet, publication des notes, étudiant sur la liste d'appel, source de notes des délibérations.
+
+## 7. Parcours automatique en lecture seule (primaire et maternelle)
+
+Avant et pendant le pilote des écoles, le chef de projet rejoue un parcours Playwright **en lecture seule** sur le serveur réel : `web/e2e/recette-prod/recette.spec.ts`, configuration séparée `web/e2e/playwright.recette-prod.config.ts` (la configuration e2e simulée n'est pas touchée).
+
+- Couvre les écrans principaux du primaire privé (`/primaire/*`), du primaire public (`/ecole-publique/*`), de la maternelle privée (`/maternelle-privee/*`) et de la maternelle publique (`/maternelle/*`), à 390 px et 1280 px.
+- Vérifie : pas d'ErrorNotice, pas de page blanche, pas d'erreur JavaScript, aucune réponse 403 ou 5xx sur `/api/`, pas de renvoi vers `/interdit` (signalé ; échec avec `RECETTE_STRICT=1`).
+- Lecture seule garantie : aucun clic hors « Se connecter » ; toute requête `/api/` autre que GET est annulée avant de partir, sauf la connexion et le choix d'établissement (`/me/context`).
+- Captures pleine page et bilan JSON par application dans `web/e2e/screenshots/recette-prod/<AAAA-MM-JJ>/<projet>/` (ignoré par git).
+
+```powershell
+cd web/e2e
+$env:RECETTE_EMAIL='<compte de recette>'; $env:RECETTE_PASSWORD='<mot de passe>'   # jamais dans un fichier
+# facultatif : $env:RECETTE_BASE_URL, $env:RECETTE_APPS='maternelle-publique', $env:RECETTE_MATERNELLE_PUBLIQUE_ETAB='<nom>'
+npx playwright test -c playwright.recette-prod.config.ts
+```
+
+Comptes : un compte de direction par école de recette, sans double authentification (sinon le parcours s'arrête avec un message). Un compte par application est possible (`RECETTE_<APP>_EMAIL`, `RECETTE_<APP>_PASSWORD`). Tout problème relevé va au registre des défauts (§6), avec la capture correspondante.
