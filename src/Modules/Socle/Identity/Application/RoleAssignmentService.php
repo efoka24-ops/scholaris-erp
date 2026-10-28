@@ -58,6 +58,7 @@ final class RoleAssignmentService
             throw HttpException::validation(['person_id' => ['Personne introuvable dans votre client.']]);
         }
         [$startsAt, $endsAt] = $this->dates($input['starts_at'], $input['ends_at']);
+        $this->assertDuration($role, $startsAt, $endsAt);
 
         return $this->store($actor, $input['person_id'], $role, $scopeType, $scopeId, $establishmentId, $startsAt, $endsAt, null);
     }
@@ -255,6 +256,21 @@ final class RoleAssignmentService
         }
         if ($role->code === Role::SUPER_ADMIN && !$this->resolver->hasRole($actor->tenantId, $actor->personId, Role::SUPER_ADMIN)) {
             throw HttpException::forbidden('Seul un super administrateur peut attribuer ce rôle.');
+        }
+    }
+
+    /**
+     * SS13 : un rôle à durée limitée (comptes externes, `roles.max_assignment_days`) exige une date de fin au plus à cette durée
+     * de la date de début. L'affectation échue est ensuite ignorée par la résolution des permissions. Une délégation reste
+     * bornée par la fin du rôle délégué.
+     */
+    private function assertDuration(Role $role, string $startsAt, ?string $endsAt): void
+    {
+        if ($role->maxAssignmentDays === null) {
+            return;
+        }
+        if ($endsAt === null || $this->moment->secondsBetween($startsAt, $endsAt) > $role->maxAssignmentDays * 86400) {
+            throw HttpException::validation(['ends_at' => ['Ce rôle s\'attribue pour une durée limitée : indiquez une date de fin au plus ' . $role->maxAssignmentDays . ' jours après la date de début.']]);
         }
     }
 

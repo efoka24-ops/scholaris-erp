@@ -22,6 +22,8 @@ final class Role
         public readonly string $labelEn,
         /** PP2 : rôle de supervision à agrégats seuls, jamais porteur d'une permission nominative `*.named.*` */
         public readonly bool $aggregateOnly = false,
+        /** SS13 : durée maximale d'une affectation, en jours (comptes externes) ; null = sans limite */
+        public readonly ?int $maxAssignmentDays = null,
     ) {
     }
 

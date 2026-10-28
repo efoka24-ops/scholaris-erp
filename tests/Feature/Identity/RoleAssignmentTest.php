@@ -125,6 +125,28 @@ final class RoleAssignmentTest extends IdentityTestCase
         self::assertSame(201, $delegate(['ends_at' => $moment->in(86400)]));
     }
 
+    /** SS13 : un compte externe du secondaire (R21) s'attribue avec une fin d'au plus 30 jours, puis ne donne plus aucun droit. */
+    public function testRoleExterneADureeLimiteePuisIgnoreUneFoisEchu(): void
+    {
+        $inspector = $this->createUser('t1', 'Ines', '+237691000059');
+        $moment = $this->kernel->container()->get(\Scholaris\Modules\Socle\Identity\Application\Moment::class);
+        $post = fn (array $extra): \Psr\Http\Message\ResponseInterface => $this->call('POST', '/api/v1/role-assignments', $this->auth($this->token, 'e1'), $extra + [
+            'person_id' => $inspector['person_id'], 'role' => 'sec_inspecteur', 'scope_type' => 'establishment', 'scope_id' => 'e1',
+        ]);
+
+        self::assertSame(422, $post([])->getStatusCode(), 'Sans date de fin.');
+        self::assertSame(422, $post(['ends_at' => $moment->in(31 * 86400)])->getStatusCode(), 'Au-delà de 30 jours.');
+        self::assertSame(201, $post(['ends_at' => $moment->in(29 * 86400)])->getStatusCode());
+        self::assertSame(201, $this->call('POST', '/api/v1/role-assignments', $this->auth($this->token, 'e1'), [
+            'person_id' => $inspector['person_id'], 'role' => 'sec_censeur', 'scope_type' => 'establishment', 'scope_id' => 'e1',
+        ])->getStatusCode(), 'Un rôle interne reste sans limite.');
+
+        self::assertTrue($this->can($inspector, 'secondary.inspection.read', 'e1'));
+        $this->clock->advance(30 * 86400);
+        self::assertFalse($this->can($inspector, 'secondary.inspection.read', 'e1'), 'Affectation échue : ignorée.');
+        self::assertTrue($this->can($inspector, 'secondary.grades.validate', 'e1'));
+    }
+
     public function testLeSuperAdminSeulAttribueSuperAdminEtSettingsPlatform(): void
     {
         $root = $this->createUser('t1', 'Root', '+237691000057', [['super_admin', 'tenant', null]]);

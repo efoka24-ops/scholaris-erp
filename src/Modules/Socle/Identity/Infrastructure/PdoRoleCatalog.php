@@ -83,6 +83,7 @@ final class PdoRoleCatalog extends PdoRepository
                 (string) $row['label_fr'],
                 (string) $row['label_en'],
                 (int) ($row['aggregate_only'] ?? 0) === 1,
+                isset($row['max_assignment_days']) ? (int) $row['max_assignment_days'] : null,
             ),
             $this->rows('SELECT * FROM roles ORDER BY code', []),
         );
