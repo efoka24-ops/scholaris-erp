@@ -19,6 +19,10 @@ final class PupilInfo
         public readonly ?string $birthDate,
         /** vrai si l'acte de naissance est présenté et vérifié (un élève sans acte reste accepté, signalé) */
         public readonly bool $birthActVerified,
+        /** sexe déclaré à l'inscription (F ou M) ; null si inconnu (listes d'examen, Q10) */
+        public readonly ?string $sex = null,
+        /** référence de l'acte de naissance telle que saisie ; null si absente (contrôle d'état civil des examens, RG-EXA-1) */
+        public readonly ?string $birthActRef = null,
     ) {
     }
 }

@@ -22,6 +22,18 @@ use Tests\Support\PublicSchools\FakePublicApplicationAccess;
 /** Garde d'écriture, routage gardé, périmètre, manifestes et matrice des rôles des écoles publiques (T620, T621). */
 final class PublicSchoolsSupportTest extends TestCase
 {
+    /** Droits ajoutés par 202610281401_roles_public_primary_p3.sql (lot P3), par rôle. */
+    private const P3_GRANTS = [
+        'pub_class_teacher' => ['public_primary.exams.read'],
+        'pub_regional_delegate' => ['public_primary.exams.read'],
+        'pub_departmental_delegate' => ['public_primary.exams.consolidate', 'public_primary.exams.attest'],
+        'pub_inspection_general' => ['public_schools.inspection.manage'],
+        'pub_functional_admin' => ['public_schools.inspection.manage'],
+        'pub_school_director' => ['public_schools.canteen.read'],
+        'pub_canteen_manager' => ['public_schools.canteen.read'],
+        'pub_school_health_agent' => ['public_schools.canteen.read'],
+    ];
+
     private FakePublicApplicationAccess $access;
     private WriteGate $gate;
 
@@ -232,7 +244,7 @@ final class PublicSchoolsSupportTest extends TestCase
             self::assertSame($level, RoleMatrix::ROLES[$code]['level'], $code);
             self::assertSame($sensitive === '1', RoleMatrix::ROLES[$code]['sensitive'], $code);
             $expected = $fromMigration[$code] ?? [];
-            $actual = array_values(array_diff(RoleMatrix::ROLES[$code]['permissions'], $later));
+            $actual = array_values(array_diff(RoleMatrix::ROLES[$code]['permissions'], $later, self::P3_GRANTS[$code] ?? []));
             sort($expected);
             sort($actual);
             self::assertSame($expected, $actual, $code);

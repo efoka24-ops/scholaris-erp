@@ -93,6 +93,22 @@ final class RolePermissionsPublicSchoolsTest extends TestCase
         // database/migrations/202610231380_roles_public_nursery_director.sql : section maternelle d'un groupe scolaire.
         'public_nursery.contribution.manage' => ['pub_school_director'],
         'public_nursery.register.read' => ['pub_school_director'],
+        // database/migrations/202610281401_roles_public_primary_p3.sql (lot P3) : examens, inspection, cantine, PDF émis par la supervision.
+        'public_primary.exams.read' => ['pub_class_teacher', 'pub_regional_delegate'],
+        'public_primary.exams.attest' => ['pub_departmental_delegate'],
+        'public_schools.inspection.manage' => ['pub_inspection_general', 'pub_functional_admin'],
+        'public_schools.canteen.read' => ['pub_school_director', 'pub_canteen_manager', 'pub_school_health_agent'],
+    ];
+
+    /**
+     * Droits accordés par le lot P3 à un rôle qui ne les avait pas, alors que d'autres rôles les tiennent de la migration d'origine.
+     *
+     * @var array<string, list<string>>
+     */
+    private const P3_ROLE_GRANTS = [
+        'pub_departmental_delegate' => ['public_primary.exams.consolidate', 'documents.read'],
+        'pub_district_inspector' => ['documents.read'],
+        'pub_pedagogical_advisor' => ['documents.read'],
     ];
 
     /** @var array<string, array{level: string, sensitive: bool, label_fr: string, label_en: string}> */
@@ -153,6 +169,7 @@ final class RolePermissionsPublicSchoolsTest extends TestCase
                 $expected[] = $permission;
             }
         }
+        $expected = array_values(array_unique([...$expected, ...(self::P3_ROLE_GRANTS[$code] ?? [])]));
         $granted = self::$grants[$code] ?? [];
         sort($expected);
         sort($granted);

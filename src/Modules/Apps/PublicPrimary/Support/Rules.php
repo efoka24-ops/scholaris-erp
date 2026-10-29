@@ -89,6 +89,58 @@ final class Rules
             'default' => 8, 'status' => 'to_confirm',
             'source' => 'EX-PAS-03 : délai de recours paramétré, aucune valeur publiée ; 8 jours par défaut, à confirmer (Q13).',
         ],
+        'public_primary.exams.catalogue' => [
+            'default' => [
+                'cep' => ['label_fr' => 'Certificat d\'études primaires (CEP)', 'label_en' => 'First School Leaving Certificate, French (CEP)', 'subsystem' => 'francophone', 'levels' => ['CM2'], 'kind' => 'certificate'],
+                'fslc' => ['label_fr' => 'First School Leaving Certificate (FSLC)', 'label_en' => 'First School Leaving Certificate (FSLC)', 'subsystem' => 'anglophone', 'levels' => ['CLASS6'], 'kind' => 'certificate'],
+                'sixth' => ['label_fr' => 'Concours d\'entrée en 6e', 'label_en' => 'Entrance examination into Form 1 (French)', 'subsystem' => 'francophone', 'levels' => ['CM2'], 'kind' => 'competition'],
+                'common_entrance' => ['label_fr' => 'Common Entrance', 'label_en' => 'Common Entrance', 'subsystem' => 'anglophone', 'levels' => ['CLASS6'], 'kind' => 'competition'],
+            ],
+            'status' => 'cdc_default',
+            'source' => 'EX-EXA-01, 02 : CEP en CM2 (francophone), FSLC en Class 6 (anglophone), entrée en 6e et Common Entrance ; classe d\'examen paramétrée par sous-système (spec §3).',
+        ],
+        'public_primary.exams.subjects' => [
+            'default' => [], 'status' => 'to_confirm',
+            'source' => 'Liste officielle des épreuves du CEP et du FSLC non publiée en ligne (recherche MINEDUB du 23/10/2026, §3) : vide, à obtenir du MINEDUB.',
+        ],
+        'public_primary.exams.coefficients' => [
+            'default' => [], 'status' => 'to_confirm',
+            'source' => 'Coefficients des épreuves non publiés (recherche MINEDUB, §3) : l\'application ne calcule aucune moyenne ; seuls les résultats officiels sont importés.',
+        ],
+        'public_primary.exams.pass_mark' => [
+            'default' => null, 'status' => 'to_confirm',
+            'source' => 'Note d\'admission non publiée (recherche MINEDUB, §3) : aucune ; le résultat (admis, ajourné, absent) vient de l\'import officiel (API-10).',
+        ],
+        'public_primary.exams.birth_act_alert_month' => [
+            'default' => 1, 'status' => 'cdc_default',
+            'source' => 'RG-EXA-1, NOT-08 : le directeur et les familles sont alertés dès janvier de l\'année d\'examen (mois 1 par défaut).',
+        ],
+        'public_primary.exams.functions' => [
+            'default' => [
+                'jury_president' => ['label_fr' => 'Président de jury', 'label_en' => 'Jury chair'],
+                'mission_officer' => ['label_fr' => 'Chargé de mission', 'label_en' => 'Mission officer'],
+                'centre_head' => ['label_fr' => 'Chef de centre', 'label_en' => 'Centre head'],
+                'sub_centre_head' => ['label_fr' => 'Chef de sous-centre', 'label_en' => 'Sub-centre head'],
+                'rapporteur' => ['label_fr' => 'Rapporteur', 'label_en' => 'Rapporteur'],
+                'secretariat_head' => ['label_fr' => 'Chef de secrétariat', 'label_en' => 'Head of secretariat'],
+                'pe_coordinator' => ['label_fr' => 'Coordonnateur d\'EPS', 'label_en' => 'PE coordinator'],
+                'marking_room_head' => ['label_fr' => 'Chef de salle de correction', 'label_en' => 'Marking room head'],
+                'pe_workshop_head' => ['label_fr' => 'Chef d\'atelier d\'EPS', 'label_en' => 'PE workshop head'],
+                'secretariat_member' => ['label_fr' => 'Membre de secrétariat', 'label_en' => 'Secretariat member'],
+                'marker' => ['label_fr' => 'Correcteur', 'label_en' => 'Marker'],
+            ],
+            'status' => 'official',
+            'source' => 'Décret n° 2010/1738/PM du 7 juin 2010 (indemnités et vacations des examens du MINEDUB : CEP, FSLC, CAPIEMP, Common Entrance, ENIEG), recherche MINEDUB du 23/10/2026, §3.',
+        ],
+        'public_primary.exams.vacation_rates' => [
+            'default' => ['half_day' => 1500, 'copy' => 60, 'director_per_candidate' => 50, 'per_function' => []],
+            'status' => 'official',
+            'source' => 'Décret n° 2010/1738/PM : vacation 1 500 FCFA par demi-journée, correction 60 FCFA la copie (CEP, FSLC, Common Entrance), indemnité du directeur d\'école 50 FCFA par candidat ; montants par fonction (per_function) à vérifier sur le texte intégral.',
+        ],
+        'public_primary.exams.attestation_signer' => [
+            'default' => 'pub_departmental_delegate', 'status' => 'cdc_default',
+            'source' => 'DOC-16 et Q17 : attestation préparée par l\'application, signée à la main par le délégué départemental (R06) qui en saisit le statut « signé ».',
+        ],
     ];
 
     public function __construct(private readonly TerritorySettings $territorial, private readonly SettingsReader $settings)
@@ -97,7 +149,10 @@ final class Rules
 
     public function value(string $tenantId, string $establishmentId, string $key): mixed
     {
-        $default = self::DEFAULTS[$key]['default'] ?? throw new \InvalidArgumentException('Paramètre inconnu : ' . $key);
+        if (!array_key_exists($key, self::DEFAULTS)) {
+            throw new \InvalidArgumentException('Paramètre inconnu : ' . $key);
+        }
+        $default = self::DEFAULTS[$key]['default'];
         $ordinary = $this->settings->value($tenantId, $establishmentId, $key, $default);
         try {
             return $this->territorial->value($tenantId, $establishmentId, $key, $ordinary);

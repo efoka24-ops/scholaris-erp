@@ -26,7 +26,7 @@ final class PdoPupilRegistry implements PupilRegistry
     public function find(string $tenantId, string $personId): ?PupilInfo
     {
         $query = $this->connections->pdo()->prepare(
-            'SELECT r.learner_number, r.birth_date, p.birth_act_verified FROM pub_pupil_registrations r '
+            'SELECT r.learner_number, r.birth_date, r.sex, p.birth_act_verified, p.birth_act_ref FROM pub_pupil_registrations r '
             . 'LEFT JOIN pub_pupil_profiles p ON p.tenant_id = r.tenant_id AND p.person_id = r.person_id WHERE r.tenant_id = ? AND r.person_id = ?',
         );
         $query->execute([$tenantId, $personId]);
@@ -68,6 +68,8 @@ final class PdoPupilRegistry implements PupilRegistry
             $person->firstName,
             $row['birth_date'] !== null ? (string) $row['birth_date'] : null,
             (bool) ($row['birth_act_verified'] ?? false),
+            isset($row['sex']) && $row['sex'] !== '' ? (string) $row['sex'] : null,
+            isset($row['birth_act_ref']) && $row['birth_act_ref'] !== '' ? (string) $row['birth_act_ref'] : null,
         );
     }
 }

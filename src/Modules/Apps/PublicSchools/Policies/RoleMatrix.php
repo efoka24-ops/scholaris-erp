@@ -57,7 +57,7 @@ final class RoleMatrix
             'label_fr' => 'Inspection générale des enseignements', 'label_en' => 'General inspectorate of education',
             'permissions' => [
                 'public_schools.aggregates.read', 'public_schools.inspection.read', 'documents.templates.manage',
-                'reporting.territory_aggregates.read', 'public_primary.referential.manage',
+                'reporting.territory_aggregates.read', 'public_primary.referential.manage', 'public_schools.inspection.manage',
             ],
         ],
         'pub_regional_delegate' => [
@@ -65,7 +65,7 @@ final class RoleMatrix
             'label_fr' => 'Délégué régional', 'label_en' => 'Regional delegate',
             'permissions' => [
                 'public_schools.school.read', 'public_schools.aggregates.read', 'public_schools.census.validate',
-                'public_schools.messages.announce_territory', 'reporting.territory_aggregates.read',
+                'public_schools.messages.announce_territory', 'reporting.territory_aggregates.read', 'public_primary.exams.read',
             ],
         ],
         'pub_departmental_delegate' => [
@@ -75,7 +75,7 @@ final class RoleMatrix
                 'public_schools.school.read', 'public_schools.pupils.read', 'public_schools.pupils.named.read', 'public_schools.staff.read',
                 'public_schools.inspection.read', 'public_schools.aggregates.read', 'public_schools.census.validate', 'public_schools.messages.send',
                 'public_schools.messages.announce_territory', 'public_primary.exams.validate', 'public_primary.exams.import',
-                'reporting.territory_aggregates.read',
+                'reporting.territory_aggregates.read', 'public_primary.exams.consolidate', 'public_primary.exams.attest', 'documents.read',
             ],
         ],
         'pub_district_inspector' => [
@@ -87,14 +87,14 @@ final class RoleMatrix
                 'public_schools.messages.send', 'public_schools.messages.announce_territory', 'public_schools.apee.read',
                 'public_schools.census.validate', 'public_schools.inspection.read', 'public_schools.inspection.write',
                 'public_schools.aggregates.read', 'public_primary.promotion.opinion', 'public_primary.exams.validate', 'organisation.read',
-                'sync.batches.submit', 'reporting.territory_aggregates.read',
+                'sync.batches.submit', 'reporting.territory_aggregates.read', 'documents.read',
             ],
         ],
         'pub_pedagogical_advisor' => [
             'number' => 'R08', 'level' => 'territory', 'sensitive' => false, 'aggregate_only' => false,
             'label_fr' => 'Conseiller ou animateur pédagogique', 'label_en' => 'Pedagogical advisor or facilitator',
             'permissions' => [
-                'public_schools.school.read', 'public_schools.inspection.read', 'public_schools.inspection.write',
+                'public_schools.school.read', 'public_schools.inspection.read', 'public_schools.inspection.write', 'documents.read',
             ],
         ],
         'pub_school_director' => [
@@ -107,7 +107,7 @@ final class RoleMatrix
                 'public_schools.apee.read', 'public_schools.census.write', 'public_schools.inspection.read', 'public_primary.evaluation.validate',
                 'public_primary.evaluation.publish', 'public_primary.evaluation.rectify', 'public_primary.promotion.validate',
                 'public_primary.exams.write', 'organisation.read', 'sync.batches.submit', 'sync.devices.manage', 'identity.named_access.read',
-                'documents.read', 'public_nursery.contribution.manage', 'public_nursery.register.read',
+                'documents.read', 'public_nursery.contribution.manage', 'public_nursery.register.read', 'public_schools.canteen.read',
             ],
         ],
         'pub_class_teacher' => [
@@ -117,6 +117,7 @@ final class RoleMatrix
                 'public_schools.school.read', 'public_schools.pupils.read', 'public_schools.attendance.read', 'public_schools.attendance.write',
                 'public_schools.teacher_presence.read', 'public_schools.messages.send', 'public_schools.inspection.read',
                 'public_primary.evaluation.write', 'public_primary.promotion.write', 'organisation.read', 'sync.batches.submit',
+                'public_primary.exams.read',
             ],
         ],
         'pub_apee_board' => [
@@ -138,14 +139,14 @@ final class RoleMatrix
             'number' => 'R17', 'level' => 'establishment', 'sensitive' => false, 'aggregate_only' => false,
             'label_fr' => 'Responsable de la cantine', 'label_en' => 'Canteen manager',
             'permissions' => [
-                'public_schools.school.read', 'public_schools.canteen.write',
+                'public_schools.school.read', 'public_schools.canteen.write', 'public_schools.canteen.read',
             ],
         ],
         'pub_school_health_agent' => [
             'number' => 'R18', 'level' => 'territory', 'sensitive' => false, 'aggregate_only' => false,
             'label_fr' => 'Agent de santé scolaire', 'label_en' => 'School health agent',
             'permissions' => [
-                'public_schools.school.read', 'public_schools.canteen.write',
+                'public_schools.school.read', 'public_schools.canteen.write', 'public_schools.canteen.read',
             ],
         ],
         'pub_technical_partner' => [
@@ -168,7 +169,7 @@ final class RoleMatrix
             'permissions' => [
                 'organisation.read', 'organisation.territories.manage', 'identity.manage', 'identity.roles.assign', 'settings.manage',
                 'documents.templates.manage', 'messaging.templates.manage', 'sync.devices.manage',
-                'public_primary.referential.manage',
+                'public_primary.referential.manage', 'public_schools.inspection.manage',
             ],
         ],
     ];
