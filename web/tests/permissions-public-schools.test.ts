@@ -7,7 +7,7 @@ import { permissionsForRoles, ROLE_PERMISSIONS } from '@/lib/permissions';
 const MIGRATION = resolve(process.cwd(), '../database/migrations/202610152351_roles_public_schools.sql');
 
 // Migrations ultérieures de droits des écoles publiques recopiées dans le miroir (lot P2, section maternelle du directeur).
-const LATER = ['202610231301_roles_public_primary_p2.sql', '202610231380_roles_public_nursery_director.sql'].map((f) =>
+const LATER = ['202610231301_roles_public_primary_p2.sql', '202610231380_roles_public_nursery_director.sql', '202610281401_roles_public_primary_p3.sql'].map((f) =>
   resolve(process.cwd(), `../database/migrations/${f}`),
 );
 

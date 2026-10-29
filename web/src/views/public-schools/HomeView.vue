@@ -38,6 +38,11 @@ const tiles: Tile[] = [
   { name: 'ps-census', title: 'pp.census.title', text: 'pp.home.censusText', perms: P.census },
   { name: 'ps-batch-enrol', title: 'pp.batch.title', text: 'pp.home.batchText', perms: P.pupilsWrite },
   { name: 'pp-referential', title: 'pp.ref.title', text: 'pp.home.refText', perms: P.referential },
+  { name: 'pp-exams', title: 'pp.exa.title', text: 'pp.home.examsText', perms: P.exams },
+  { name: 'pp-exams-delegation', title: 'pp.exd.title', text: 'pp.home.examsDelegationText', perms: P.examsConsolidation },
+  { name: 'ps-inspection', title: 'ps.ins.title', text: 'pp.home.inspectionText', perms: P.inspection },
+  { name: 'ps-canteen', title: 'ps.can.title', text: 'pp.home.canteenText', perms: P.canteen },
+  { name: 'territory-dashboard', title: 'ps.dash.title', text: 'pp.home.dashboardText', perms: P.dashboards },
 ];
 const visible = computed(() => tiles.filter((tile) => ctx.can(...tile.perms)));
 </script>

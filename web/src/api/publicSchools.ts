@@ -978,3 +978,343 @@ export async function openDocument(documentId: string): Promise<void> {
   window.open(url, '_blank', 'noopener');
   setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
+
+// ------------------------------------------------------------------------------------------------ lot P3 (examens, inspection, cantine, tableau de bord)
+// Contrats : openapi.d/public-primary-exams.yaml, public-schools-inspection.yaml, public-schools-canteen.yaml, public-schools-dashboards.yaml.
+
+export type ExamState = 'proposed' | 'validated' | 'blocked' | 'withdrawn';
+export type ExamOutcome = 'passed' | 'failed' | 'absent';
+export interface ExamSession {
+  id: string;
+  exam_code: string;
+  year_label: string;
+  label: string;
+  subsystem: string;
+  level_codes: string[];
+  kind: 'certificate' | 'competition';
+  written_on: string | null;
+  state: string;
+}
+export interface ExamList {
+  id: string;
+  establishment_id: string;
+  session_id: string;
+  state: 'draft' | 'submitted' | 'inspected' | 'validated' | 'returned';
+  current_step: 'inspection' | 'delegation' | null;
+  return_reason: string | null;
+  frozen_at: string | null;
+  amendments_count: number;
+}
+export interface ExamSessionDetail extends ExamSession {
+  list: ExamList | null;
+  counts: Partial<Record<ExamState, number>>;
+}
+export interface ExamCandidate {
+  id: string;
+  session_id: string;
+  establishment_id: string;
+  person_id: string;
+  learner_number: string | null;
+  last_name: string;
+  first_name: string;
+  sex: string | null;
+  birth_date: string | null;
+  birth_act_ref: string | null;
+  birth_act_verified: boolean;
+  structure_id: string | null;
+  level_code: string | null;
+  state: ExamState;
+  blocked_reason: string | null;
+  added_after_freeze: boolean;
+  added_reason: string | null;
+  withdrawn_reason: string | null;
+  candidate_number: string | null;
+  centre_id: string | null;
+  sub_centre_id: string | null;
+  outcome: ExamOutcome | null;
+  result_published: boolean;
+  attestation_state: 'prepared' | 'signed' | null;
+  attestation_document_id: string | null;
+}
+export interface ExamSummary {
+  candidates: number;
+  present: number;
+  passed: number;
+  failed: number;
+  absent: number;
+  success_rate: number | null;
+  pending: number;
+}
+export interface ExamValidation {
+  list: ExamList | null;
+  step: string;
+  validated: number;
+  blocked: string[];
+}
+export interface TerritoryList {
+  id: string;
+  establishment_id: string;
+  official_code: string;
+  list: ExamList | null;
+  counts: Partial<Record<ExamState, number>>;
+}
+export interface ExamCentre {
+  id: string;
+  session_id: string;
+  territory_id: string;
+  parent_centre_id: string | null;
+  code: string;
+  label: string;
+  host_establishment_id: string | null;
+  capacity: number | null;
+  kind: 'centre' | 'sub_centre';
+}
+export interface ExamOfficial {
+  id: string;
+  centre_id: string;
+  full_name: string;
+  staff_ref: string | null;
+  function_code: string;
+  half_days: number;
+  copies_marked: number;
+}
+export interface VacationStatementView {
+  territory_id: string;
+  rates: Record<string, unknown>;
+  rates_status: string;
+  source: string;
+  lines: (ExamOfficial & { half_day_rate: number; copy_rate: number; amount: number })[];
+  directors: { establishment_id: string; candidates: number; amount: number }[];
+  total_officials: number;
+  total_directors: number;
+  total: number;
+}
+export interface ImportReport {
+  imported: number;
+  rejected: { line: number; key: string; reason: string }[];
+  summary: ExamSummary;
+}
+export interface TransferDossier {
+  id: string;
+  candidate_id: string;
+  target_label: string | null;
+  created_at: string;
+  dossier: Record<string, unknown>;
+  dossier_json: string;
+  signature: string;
+  algorithm: string;
+}
+
+export const publicExams = {
+  sessions: (yearLabel?: string): Promise<ExamSession[]> => ppAll('/exams', yearLabel ? { year_label: yearLabel } : {}),
+  openSession: (body: { exam_code: string; year_label: string; written_on?: string }): Promise<ExamSession> => ppPost('/exams', body),
+  session: (id: string): Promise<ExamSessionDetail> => ppGet(`/exams/${enc(id)}`),
+  candidates: (id: string): Promise<ExamCandidate[]> => ppAll(`/exams/${enc(id)}/candidates`),
+  generate: (id: string, academicYearId: string): Promise<ExamCandidate[]> => ppPost(`/exams/${enc(id)}/candidates/generate`, { academic_year_id: academicYearId }),
+  add: (id: string, body: { person_id: string; structure_id?: string; reason?: string }): Promise<ExamCandidate> => ppPost(`/exams/${enc(id)}/candidates`, body),
+  submit: (id: string): Promise<ExamList> => ppPost(`/exams/${enc(id)}/submit`, {}),
+  validate: (id: string): Promise<ExamValidation> => ppPost(`/exams/${enc(id)}/candidates/validate`, {}),
+  sendBack: (id: string, reason: string): Promise<ExamList> => ppPost(`/exams/${enc(id)}/return`, { reason }),
+  listDocument: (id: string, locale: string): Promise<{ document: IssuedRef }> => ppPost(`/exams/${enc(id)}/document`, { locale }),
+  birthActAlerts: (id: string): Promise<{ alerted: number; messages: number }> => ppPost(`/exams/${enc(id)}/birth-act-alerts`, {}),
+  results: (id: string): Promise<{ session: ExamSession; summary: ExamSummary }> => ppGet(`/exams/${enc(id)}/results`),
+  resultsDocument: (id: string, locale: string): Promise<{ document: IssuedRef }> => ppPost(`/exams/${enc(id)}/results/document`, { locale }),
+  importResults: (id: string, territoryId: string, csv: string): Promise<ImportReport> => ppPost(`/exams/${enc(id)}/results/import`, { territory_id: territoryId, csv }),
+  publish: (id: string, territoryId: string): Promise<{ published: number; messages: number }> => ppPost(`/exams/${enc(id)}/results/publish`, { territory_id: territoryId }),
+  attestations: (id: string, locale: string): Promise<{ prepared: { candidate_id: string; document: IssuedRef }[] }> => ppPost(`/exams/${enc(id)}/attestations`, { locale }),
+  territoryLists: (id: string, territoryId: string): Promise<TerritoryList[]> => ppAll(`/exams/${enc(id)}/territories/${enc(territoryId)}/lists`),
+  territoryResults: (id: string, territoryId: string): Promise<{ schools: { establishment_id: string; official_code: string; summary: ExamSummary }[]; summary: ExamSummary }> =>
+    ppGet(`/exams/${enc(id)}/territories/${enc(territoryId)}/results`),
+  vacations: (id: string, territoryId: string): Promise<VacationStatementView> => ppGet(`/exams/${enc(id)}/territories/${enc(territoryId)}/vacations`),
+  centres: (id: string): Promise<ExamCentre[]> => ppAll(`/exams/${enc(id)}/centres`),
+  createCentre: (id: string, body: { territory_id: string; code: string; label: string; parent_centre_id?: string; host_establishment_id?: string }): Promise<ExamCentre> =>
+    ppPost(`/exams/${enc(id)}/centres`, body),
+  assign: (id: string, centreId: string, establishmentIds: string[]): Promise<{ assigned: number; skipped: number }> =>
+    ppPost(`/exams/${enc(id)}/centres/${enc(centreId)}/assign`, { establishment_ids: establishmentIds }),
+  officials: (id: string): Promise<ExamOfficial[]> => ppAll(`/exams/${enc(id)}/officials`),
+  addOfficial: (id: string, body: { centre_id: string; full_name: string; function_code: string; half_days: number; copies_marked: number; staff_ref?: string }): Promise<ExamOfficial> =>
+    ppPost(`/exams/${enc(id)}/officials`, body),
+  withdraw: (candidateId: string, reason: string): Promise<ExamCandidate> => ppPost(`/exam-candidates/${enc(candidateId)}/withdraw`, { reason }),
+  validateCandidate: (candidateId: string): Promise<ExamCandidate> => ppPost(`/exam-candidates/${enc(candidateId)}/validate`, {}),
+  sheet: (candidateId: string, locale: string): Promise<{ document: IssuedRef }> => ppPost(`/exam-candidates/${enc(candidateId)}/sheet`, { locale }),
+  sign: (candidateId: string): Promise<ExamCandidate> => ppPost(`/exam-candidates/${enc(candidateId)}/attestation/sign`, {}),
+  transfer: (candidateId: string, targetLabel?: string): Promise<TransferDossier> =>
+    ppPost(`/exam-candidates/${enc(candidateId)}/secondary-transfer`, targetLabel ? { target_label: targetLabel } : {}),
+  exportList: (id: string): Promise<Blob> => http.get<Blob>(`/public-primary/exams/${enc(id)}/export`, { format: 'csv' }, { ...options(), expect: 'blob' }),
+};
+
+export interface GridItem {
+  code: string;
+  section: string;
+  label_fr: string;
+  label_en: string;
+}
+export interface VisitGrid {
+  id: string;
+  code: string;
+  version: number;
+  label_fr: string;
+  label_en: string;
+  items: GridItem[];
+  active: boolean;
+}
+export interface ScaleCode {
+  code: string;
+  label_fr: string;
+  label_en: string;
+}
+export interface Recommendation {
+  id: string;
+  visit_id: string;
+  label: string;
+  state: 'open' | 'in_progress' | 'done' | 'not_done';
+  checked_visit_id: string | null;
+  note: string | null;
+}
+export interface Visit {
+  id: string;
+  establishment_id: string;
+  inspector_id: string;
+  inspector_name: string;
+  planned_on: string;
+  state: 'planned' | 'done';
+  done_on: string | null;
+  structure_id: string | null;
+  class_name: string;
+  teacher_person_id: string | null;
+  teacher_name: string;
+  grid_id: string | null;
+  answers: Record<string, string>;
+  counted_present: number | null;
+  registry_count: number | null;
+  headcount_gap: number | null;
+  headcount_gap_rate: number | null;
+  observations: string | null;
+  report_document_id: string | null;
+  recommendations: Recommendation[];
+  replayed?: boolean;
+}
+export interface VisitReport {
+  client_uuid: string;
+  done_on: string;
+  grid_id?: string;
+  answers: Record<string, string>;
+  counted_present?: number;
+  observations?: string;
+  recommendations: string[];
+  followups: { id: string; state: 'in_progress' | 'done' | 'not_done'; note?: string }[];
+}
+export interface FeeReport {
+  id: string;
+  reported_on: string;
+  reporter_kind: string;
+  fee_label: string;
+  amount: number | null;
+  description: string;
+  state: 'open' | 'investigating' | 'confirmed' | 'dismissed';
+  resolution: string | null;
+  handled_at: string | null;
+}
+
+export const publicInspection = {
+  grids: (): Promise<VisitGrid[]> => all('/inspection/grids'),
+  importExample: (): Promise<VisitGrid> => post('/inspection/grids/import-example', {}),
+  scale: (): Promise<{ scale: ScaleCode[]; status: string }> => get('/inspection/scale'),
+  planning: (): Promise<Visit[]> => all('/inspection/planning'),
+  visits: (est?: string | null): Promise<Visit[]> => all('/inspection/visits', {}, est),
+  plan: (body: { planned_on: string; structure_id?: string; teacher_person_id?: string; grid_id?: string }): Promise<Visit> => post('/inspection/visits', body),
+  visit: (id: string): Promise<Visit> => get(`/inspection/visits/${enc(id)}`),
+  report: (id: string, body: VisitReport, est?: string | null): Promise<Visit> => put(`/inspection/visits/${enc(id)}/report`, body, est),
+  document: (id: string, locale: string): Promise<{ document: IssuedRef }> => post(`/inspection/visits/${enc(id)}/document`, { locale }),
+  recommendations: (state?: string): Promise<Recommendation[]> => all('/inspection/recommendations', state ? { state } : {}),
+  fees: (): Promise<FeeReport[]> => all('/inspection/fee-reports'),
+  reportFee: (body: { reported_on: string; reporter_kind: string; fee_label: string; amount?: number; description: string }): Promise<FeeReport> =>
+    post('/inspection/fee-reports', body),
+  handleFee: (id: string, state: string, resolution: string): Promise<FeeReport> => post(`/inspection/fee-reports/${enc(id)}/handle`, { state, resolution }),
+};
+
+export interface Meal {
+  id: string;
+  structure_id: string;
+  class_name: string;
+  day_on: string;
+  served_count: number;
+}
+export interface StockMove {
+  id: string;
+  item_label: string;
+  unit_label: string;
+  direction: 'in' | 'out';
+  quantity: number;
+  moved_on: string;
+  source_label: string | null;
+  note: string | null;
+}
+export interface StockBalance {
+  item_label: string;
+  unit_label: string;
+  received: number;
+  consumed: number;
+  balance: number;
+}
+export interface HealthCampaign {
+  id: string;
+  campaign_kind: string;
+  held_on: string;
+  label: string | null;
+  girls_count: number;
+  boys_count: number;
+  treated_count: number;
+  consents_count: number;
+  refusals_count: number;
+}
+export interface MealSummary {
+  month: string;
+  service_days: number;
+  served_total: number;
+  classes: { structure_id: string; class_name: string; days: number; served: number }[];
+}
+
+export const publicCanteen = {
+  meals: (date: string): Promise<Meal[]> => all('/canteen/meals', { date }),
+  saveMeals: (date: string, lines: { structure_id: string; served_count: number }[]): Promise<{ meals: Meal[]; warnings: string[] }> =>
+    put(`/canteen/meals/${enc(date)}`, { lines }),
+  summary: (month: string): Promise<MealSummary> => get('/canteen/summary', { month }),
+  moves: (): Promise<StockMove[]> => all('/canteen/stock'),
+  addMove: (body: { item_label: string; unit_label: string; direction: 'in' | 'out'; quantity: number; moved_on: string; source_label?: string }): Promise<StockMove> =>
+    post('/canteen/stock', body),
+  balance: async (): Promise<StockBalance[]> => (await get<{ items: StockBalance[] }>('/canteen/stock/balance')).items,
+  campaigns: (): Promise<HealthCampaign[]> => all('/health-campaigns'),
+  addCampaign: (body: { campaign_kind: string; held_on: string; label?: string; girls_count: number; boys_count: number; consents_count: number; refusals_count: number }): Promise<HealthCampaign> =>
+    post('/health-campaigns', body),
+};
+
+export interface TerritoryNodeView {
+  id: string;
+  type: string;
+  label_fr: string;
+  label_en: string;
+  code?: string;
+}
+export interface DerivedIndicator {
+  code: string;
+  label_fr: string;
+  label_en: string;
+  formula: string;
+  value: number | null;
+  masked: boolean;
+}
+export interface TerritoryDashboard {
+  territory: TerritoryNodeView & { parent_id: string | null };
+  reference_date: string | null;
+  minimum_cell_size: number;
+  derived: DerivedIndicator[];
+  indicators: { key: string; establishment_count: number; computed_at: string; cells: { key: string; value: number | null; suppressed: boolean }[] }[];
+}
+
+export const publicDashboards = {
+  entry: async (): Promise<TerritoryNodeView[]> => (await get<{ territories: TerritoryNodeView[] }>('/dashboards/entry')).territories,
+  show: (territoryId: string, date?: string): Promise<TerritoryDashboard> => get(`/dashboards/${enc(territoryId)}`, date ? { date } : {}),
+  children: async (territoryId: string): Promise<TerritoryNodeView[]> => (await get<{ territories: TerritoryNodeView[] }>(`/dashboards/${enc(territoryId)}/children`)).territories,
+  document: (territoryId: string, locale: string): Promise<{ document: IssuedRef }> => post(`/dashboards/${enc(territoryId)}/document`, { locale }),
+};

@@ -35,6 +35,11 @@ const screens: Screen[] = [
   ['statistiques', 'ps-census', () => import('./CensusView.vue'), P.census, 'pp.census.title'],
   ['eleves/registre', 'ps-batch-enrol', () => import('./BatchEnrolView.vue'), P.pupilsWrite, 'pp.batch.title'],
   ['referentiel', 'pp-referential', () => import('./ReferentialView.vue'), P.referential, 'pp.ref.title'],
+  // Lot P3 : examens (école, contrôle, délégation), inspection, cantine et santé scolaire.
+  ['examens', 'pp-exams', () => import('./ExamsView.vue'), P.exams, 'pp.exa.title'],
+  ['examens/consolidation', 'pp-exams-delegation', () => import('./ExamDelegationView.vue'), P.examsConsolidation, 'pp.exd.title'],
+  ['inspection', 'ps-inspection', () => import('./InspectionView.vue'), P.inspection, 'ps.ins.title'],
+  ['cantine', 'ps-canteen', () => import('./CanteenView.vue'), P.canteen, 'ps.can.title'],
 ];
 
 const schoolOnly = { needsEstablishment: true, establishmentTypes: ['primary'] };
@@ -53,4 +58,11 @@ export const publicSchoolsRoutes: RouteRecordRaw[] = [
     props: withProps === true,
     meta: { ...schoolOnly, perms: [...perms], titleKey },
   })),
+  // T690 : tableau de bord territorial (agrégats seuls), sans école imposée : les rôles nationaux et territoriaux y accèdent aussi.
+  {
+    path: '/tableau-de-bord-territorial',
+    name: 'territory-dashboard',
+    component: () => import('./DashboardView.vue'),
+    meta: { perms: [...P.dashboards], titleKey: 'ps.dash.title' },
+  },
 ];

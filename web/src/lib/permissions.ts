@@ -103,23 +103,25 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
   pub_cabinet: ['public_schools.aggregates.read'],
   pub_exam_directorate: ['public_schools.aggregates.read', 'public_primary.exams.consolidate', 'public_primary.exams.import'],
   pub_planning: ['public_schools.aggregates.read', 'public_schools.census.validate'],
-  pub_inspection_general: ['public_schools.aggregates.read', 'public_schools.inspection.read', 'documents.templates.manage', 'public_primary.referential.manage'],
+  pub_inspection_general: ['public_schools.aggregates.read', 'public_schools.inspection.read', 'documents.templates.manage', 'public_primary.referential.manage', 'public_schools.inspection.manage'],
   pub_regional_delegate: [
-    'public_schools.school.read', 'public_schools.aggregates.read', 'public_schools.census.validate', 'public_schools.messages.announce_territory',
+    'public_schools.school.read', 'public_schools.aggregates.read', 'public_schools.census.validate', 'public_schools.messages.announce_territory', 'public_primary.exams.read',
   ],
   pub_departmental_delegate: [
     'public_schools.school.read', 'public_schools.pupils.read', 'public_schools.pupils.named.read', 'public_schools.staff.read',
     'public_schools.inspection.read', 'public_schools.aggregates.read', 'public_schools.census.validate', 'public_schools.messages.send',
     'public_schools.messages.announce_territory', 'public_primary.exams.validate', 'public_primary.exams.import',
+    // Migration 202610281401 (lot P3) : consolidation et signature des attestations, PDF émis.
+    'public_primary.exams.consolidate', 'public_primary.exams.attest', 'documents.read',
   ],
   pub_district_inspector: [
     'public_schools.school.read', 'public_schools.school.validate', 'public_schools.pupils.read', 'public_schools.pupils.named.read',
     'public_schools.teacher_presence.read', 'public_schools.teacher_presence.validate', 'public_schools.staff.read', 'public_schools.messages.send',
     'public_schools.messages.announce_territory', 'public_schools.apee.read', 'public_schools.census.validate', 'public_schools.inspection.read',
     'public_schools.inspection.write', 'public_schools.aggregates.read', 'public_primary.promotion.opinion', 'public_primary.exams.validate',
-    'organisation.read', 'sync.batches.submit',
+    'organisation.read', 'sync.batches.submit', 'documents.read',
   ],
-  pub_pedagogical_advisor: ['public_schools.school.read', 'public_schools.inspection.read', 'public_schools.inspection.write'],
+  pub_pedagogical_advisor: ['public_schools.school.read', 'public_schools.inspection.read', 'public_schools.inspection.write', 'documents.read'],
   pub_school_director: [
     'public_schools.school.read', 'public_schools.school.write', 'public_schools.pupils.read', 'public_schools.pupils.write',
     'public_schools.attendance.read', 'public_schools.attendance.write', 'public_schools.teacher_presence.read', 'public_schools.teacher_presence.write',
@@ -128,24 +130,27 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     'public_primary.promotion.validate', 'public_primary.exams.write', 'organisation.read', 'sync.batches.submit', 'sync.devices.manage',
     // Migrations 202610231301 (PDF émis) et 202610231380 (section maternelle d'un groupe scolaire).
     'documents.read', 'public_nursery.contribution.manage', 'public_nursery.register.read',
+    // Migration 202610281401 (lot P3) : consultation de la cantine et des campagnes de santé.
+    'public_schools.canteen.read',
   ],
   pub_class_teacher: [
     'public_schools.school.read', 'public_schools.pupils.read', 'public_schools.attendance.read', 'public_schools.attendance.write',
     'public_schools.teacher_presence.read', 'public_schools.messages.send', 'public_schools.inspection.read', 'public_primary.evaluation.write',
-    'public_primary.promotion.write', 'organisation.read', 'sync.batches.submit',
+    'public_primary.promotion.write', 'organisation.read', 'sync.batches.submit', 'public_primary.exams.read',
   ],
   pub_apee_board: [
     'public_schools.school.read', 'public_schools.apee.read', 'public_schools.apee.write', 'public_schools.apee.read_receipts',
     'public_schools.apee.non_payers.read', 'documents.read',
   ],
   pub_school_council: ['public_schools.school.read', 'public_schools.apee.read'],
-  pub_canteen_manager: ['public_schools.school.read', 'public_schools.canteen.write'],
-  pub_school_health_agent: ['public_schools.school.read', 'public_schools.canteen.write'],
+  pub_canteen_manager: ['public_schools.school.read', 'public_schools.canteen.write', 'public_schools.canteen.read'],
+  pub_school_health_agent: ['public_schools.school.read', 'public_schools.canteen.write', 'public_schools.canteen.read'],
   pub_technical_partner: ['public_schools.aggregates.read'],
   pub_inspection_clerk: ['public_schools.school.read', 'public_schools.pupils.read', 'public_schools.pupils.write', 'public_schools.census.write'],
   pub_functional_admin: [
     'organisation.read', 'organisation.territories.manage', 'identity.manage', 'identity.roles.assign', 'settings.manage',
     'documents.templates.manage', 'messaging.templates.manage', 'sync.devices.manage', 'public_primary.referential.manage',
+    'public_schools.inspection.manage',
   ],
   pn_educator: [
     'public_nursery.pickup.handover', 'public_nursery.dev.observe', 'public_nursery.lifebook.write',

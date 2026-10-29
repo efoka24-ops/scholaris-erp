@@ -32,8 +32,26 @@ export const P = {
     'public_primary.evaluation.validate',
     'public_primary.promotion.validate',
   ],
+  /** Lot P3 : examens (école, inspection, délégation, direction des examens), inspection, cantine, tableau de bord territorial. */
+  exams: [
+    'public_primary.exams.write',
+    'public_primary.exams.read',
+    'public_primary.exams.validate',
+    'public_primary.exams.consolidate',
+    'public_primary.exams.import',
+    'public_primary.exams.attest',
+  ],
+  examsConsolidation: ['public_primary.exams.consolidate', 'public_primary.exams.import'],
+  inspection: ['public_schools.inspection.read', 'public_schools.inspection.write', 'public_schools.inspection.manage'],
+  canteen: ['public_schools.canteen.read', 'public_schools.canteen.write'],
+  dashboards: ['public_schools.aggregates.read'],
   /** Accès à l'espace : au moins une permission de travail dans l'école (école, élèves, appel, personnel, messages, inspection). */
   space: [
+    'public_primary.exams.write',
+    'public_primary.exams.validate',
+    'public_schools.inspection.read',
+    'public_schools.canteen.read',
+    'public_schools.canteen.write',
     'public_primary.evaluation.write',
     'public_primary.evaluation.validate',
     'public_primary.promotion.opinion',
