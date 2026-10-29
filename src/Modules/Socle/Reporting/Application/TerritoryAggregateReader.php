@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Scholaris\Modules\Socle\Reporting\Application;
 
 use Scholaris\Modules\Socle\Reporting\Contracts\DisclosurePolicy;
+use Scholaris\Modules\Socle\Reporting\Contracts\TerritoryAggregates;
 use Scholaris\Modules\Socle\Reporting\Infrastructure\TerritoryAggregateRepository;
 
 /**
@@ -12,7 +13,7 @@ use Scholaris\Modules\Socle\Reporting\Infrastructure\TerritoryAggregateRepositor
  * comme un tableau de cases ; une case masquée est rendue avec `value: null` et `suppressed: true`. Seul ce lecteur expose
  * les agrégats : la valeur brute d'une case masquée ne sort jamais.
  */
-final class TerritoryAggregateReader
+final class TerritoryAggregateReader implements TerritoryAggregates
 {
     public function __construct(
         private readonly TerritoryAggregateRepository $repository,

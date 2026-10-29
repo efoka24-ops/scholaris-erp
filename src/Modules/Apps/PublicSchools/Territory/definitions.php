@@ -22,5 +22,7 @@ return [
     EnrolmentAggregates::class => autowire(),
     BirthActAggregates::class => autowire(),
     TeacherAggregates::class => autowire(),
+    \Scholaris\Modules\Apps\PublicSchools\Territory\Application\DashboardService::class => autowire(),
+    \Scholaris\Modules\Apps\PublicSchools\Territory\Http\DashboardController::class => autowire(),
     'reporting.territory_aggregates.public_schools' => [EnrolmentAggregates::class, BirthActAggregates::class, TeacherAggregates::class],
 ];

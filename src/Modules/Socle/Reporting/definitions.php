@@ -44,6 +44,8 @@ return [
     'reporting.disclosure.minimum_cell_size' => 5,
     \Scholaris\Modules\Socle\Reporting\Contracts\DisclosurePolicy::class => autowire(\Scholaris\Modules\Socle\Reporting\Application\ThresholdDisclosurePolicy::class),
     \Scholaris\Modules\Socle\Reporting\Application\TerritoryAggregateReader::class => autowire()->constructorParameter('minimumCellSize', get('reporting.disclosure.minimum_cell_size')),
+    // Lecture des agrégats territoriaux par les applications (DOC-28 des écoles publiques, lot P3) : même lecteur masqué.
+    \Scholaris\Modules\Socle\Reporting\Contracts\TerritoryAggregates::class => get(\Scholaris\Modules\Socle\Reporting\Application\TerritoryAggregateReader::class),
     'reporting.territory_aggregates.socle' => [],
     'console.command.' . \Scholaris\Modules\Socle\Reporting\Console\AggregateTerritoriesCommand::NAME => autowire(\Scholaris\Modules\Socle\Reporting\Console\AggregateTerritoriesCommand::class),
     'privacy.tenant_data_source.reporting' => \DI\autowire(\Scholaris\Modules\Socle\Reporting\Infrastructure\PrivacyExportSource::class),
