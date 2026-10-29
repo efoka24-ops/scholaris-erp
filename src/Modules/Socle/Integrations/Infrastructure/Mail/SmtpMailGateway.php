@@ -228,11 +228,18 @@ final class SmtpMailGateway implements MailGateway
             'Subject: ' . self::encodeWord($subject),
             'Message-ID: ' . $messageId,
             'MIME-Version: 1.0',
-            'Content-Type: text/plain; charset=UTF-8',
-            'Content-Transfer-Encoding: base64',
         ];
+        // Texte brut (messageries anciennes, lecteurs d'écran) et version HTML mise en page (EmailLayout).
+        $boundary = 'scholaris-' . bin2hex(random_bytes(12));
+        $html = EmailLayout::render($subject, $body, $fromName);
+        $part = static fn (string $type, string $content): string => '--' . $boundary . "\r\n"
+            . 'Content-Type: ' . $type . "; charset=UTF-8\r\n"
+            . "Content-Transfer-Encoding: base64\r\n\r\n"
+            . rtrim(chunk_split(base64_encode($content), 76, "\r\n")) . "\r\n";
+        $headers[] = 'Content-Type: multipart/alternative; boundary="' . $boundary . '"';
 
-        return implode("\r\n", $headers) . "\r\n\r\n" . rtrim(chunk_split(base64_encode($body), 76, "\r\n"));
+        return implode("\r\n", $headers) . "\r\n\r\n"
+            . $part('text/plain', $body) . $part('text/html', $html) . '--' . $boundary . '--';
     }
 
     private static function encodeWord(string $text): string

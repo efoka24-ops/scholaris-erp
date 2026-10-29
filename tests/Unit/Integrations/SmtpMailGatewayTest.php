@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Unit\Integrations;
 
 use PHPUnit\Framework\TestCase;
+use Scholaris\Modules\Socle\Integrations\Infrastructure\Mail\EmailLayout;
 use Scholaris\Modules\Socle\Integrations\Infrastructure\Mail\SmtpException;
 use Scholaris\Modules\Socle\Integrations\Infrastructure\Mail\SmtpMailGateway;
 use Scholaris\Modules\Socle\Integrations\Infrastructure\Mail\SmtpSettings;
@@ -49,7 +50,31 @@ final class SmtpMailGatewayTest extends TestCase
         self::assertStringContainsString('To: <parent@example.test>', $headers);
         self::assertStringContainsString('Subject: =?UTF-8?B?' . base64_encode('Reçu de paiement') . '?=', $headers);
         self::assertStringContainsString('Message-ID: ' . $reference, $headers);
-        self::assertSame("Bonjour,\nMerci pour votre paiement de 35000 FCFA.", base64_decode($body, true));
+        self::assertMatchesRegularExpression('/Content-Type: multipart\/alternative; boundary="(scholaris-[0-9a-f]{24})"/', $headers);
+        $boundary = preg_match('/boundary="([^"]+)"/', $headers, $b) === 1 ? $b[1] : 'absent';
+        $parts = array_values(array_filter(array_map('trim', explode('--' . $boundary, $body)), static fn (string $p): bool => $p !== '' && $p !== '--'));
+        self::assertCount(2, $parts);
+        [$textHeaders, $text] = explode("\r\n\r\n", $parts[0], 2);
+        [$htmlHeaders, $html] = explode("\r\n\r\n", $parts[1], 2);
+        self::assertStringContainsString('text/plain; charset=UTF-8', $textHeaders);
+        self::assertSame("Bonjour,\nMerci pour votre paiement de 35000 FCFA.", base64_decode($text, true));
+        self::assertStringContainsString('text/html; charset=UTF-8', $htmlHeaders);
+        $decoded = (string) base64_decode($html, true);
+        self::assertStringContainsString('Merci pour votre paiement de 35000 FCFA.', $decoded);
+        self::assertStringContainsString('Reçu de paiement', $decoded);
+    }
+
+    public function testMiseEnPageHtmlEchappeLeTexteMetLeCodeEnEvidenceEtRendLesLiensCliquables(): void
+    {
+        $html = EmailLayout::render('Votre code', "SCHOLARIS : votre code est 482915. Il expire dans 5 minutes.\n\nOuvrez https://scholariserp.trugroup.cm/activation?t=a1. <script>alert(1)</script>", 'TRU GROUP');
+
+        self::assertStringContainsString('letter-spacing:6px;color:#1a1a1a;">482915</td>', $html);
+        self::assertStringContainsString('<a href="https://scholariserp.trugroup.cm/activation?t=a1" style="color:#f26b1d;">', $html);
+        self::assertStringContainsString('Ouvrir / Open', $html);
+        self::assertStringNotContainsString('<script>', $html);
+        self::assertStringContainsString('&lt;script&gt;', $html);
+        self::assertStringContainsString('envoyé par TRU GROUP', $html);
+        self::assertStringNotContainsString('Ouvrir / Open', EmailLayout::render('Info', 'Sans lien ni code.'));
     }
 
     public function testAuthentificationLoginQuandPlainNEstPasOfferte(): void
