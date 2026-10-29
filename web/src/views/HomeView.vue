@@ -26,6 +26,16 @@ const opening = ref<string | null>(null);
 
 const greeting = computed(() => (auth.displayName ? t('home.greeting', { name: auth.displayName }) : t('home.greetingAnon')));
 const typeLabel = (tile: ContextTile): string => (tile.kind === 'group' ? t('home.consolidated') : tile.type ? t(`type.${tile.type}` as MessageKey) : '');
+/** « Trimestre 1 · 2026-2027 » à partir de la période en cours renvoyée par /me/contexts. */
+function periodLabel(tile: ContextTile): string {
+  const p = tile.period;
+  if (!p) return '';
+  if (typeof p === 'string') return p;
+  const key = `admin.period.${p.kind}` as MessageKey;
+  const kind = t(key);
+  const name = `${kind === key ? p.kind : kind} ${p.ordinal}`;
+  return p.academic_year ? `${name} · ${p.academic_year}` : name;
+}
 const roleCount = computed(() => new Set(ctx.tiles.flatMap((x) => x.roles.map((r) => r.code))).size);
 const initials = (name: string): string =>
   name
@@ -104,7 +114,7 @@ onMounted(loadAll);
           <article class="tile" :class="{ 'tile--ink': tile.kind === 'group', 'tile--active': tile.id === ctx.activeId }">
             <div class="row row--between">
               <span class="tag" :class="tile.kind === 'group' ? 'tag--onink' : tile.id === ctx.activeId ? 'tag--accent' : ''">{{ typeLabel(tile) }}</span>
-              <span v-if="tile.period" class="period">{{ tile.period }}</span>
+              <span v-if="tile.period" class="period">{{ periodLabel(tile) }}</span>
             </div>
             <div>
               <div class="tile__name">{{ tile.name }}</div>

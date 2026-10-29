@@ -63,10 +63,20 @@ export interface ContextTile {
   accent?: string | null;
   logo?: string | null;
   roles: RoleRef[];
+  /** Période en cours de l'établissement (contrat Organisation\CurrentPeriod) ; absente hors période. */
+  period?: TilePeriod | string | null;
   /** Fournis plus tard par les applications ; absents tant qu'aucune application ne les fournit. */
-  period?: string | null;
   kpis?: Array<{ label: string; value: string }>;
   permissions?: string[];
+}
+
+export interface TilePeriod {
+  id: string;
+  kind: string;
+  ordinal: number;
+  starts_on: string;
+  ends_on: string;
+  academic_year: string | null;
 }
 
 export interface CodeChallenge {
