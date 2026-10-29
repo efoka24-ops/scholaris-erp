@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use Scholaris\Core\Http\RouteRegistry;
+use Scholaris\Modules\Apps\Secondary\Policies\RoleMatrix;
 use Scholaris\Modules\Apps\Secondary\SecondaryApplication;
 use Scholaris\Modules\Apps\Secondary\Setup\Contracts\Modules;
 use Scholaris\Modules\Apps\Secondary\Setup\Http\ProfileController;
@@ -237,8 +238,12 @@ final class SecondaryConventionsTest extends TestCase
         }
         self::assertCount(24, SecondaryApplication::roles());
         foreach (SecondaryApplication::roles() as $role) {
-            self::assertStringStartsWith('sec_', $role);
+            if (!in_array($role, RoleMatrix::SHARED_ROLES, true)) {
+                self::assertStringStartsWith('sec_', $role);
+            }
         }
+        self::assertSame(['enseignant'], RoleMatrix::SHARED_ROLES, 'Seul R09 reprend un rôle commun (décision du propriétaire).');
+        self::assertSame('enseignant', RoleMatrix::ROLES['R09']['code']);
         foreach (['SecondaryApplication.php', 'definitions.php', 'routes.php', 'Support/WriteGate.php', 'Support/GatedAction.php', 'Support/ModuleGate.php', 'Support/SecondaryRoutes.php', 'Support/Perimeter.php', 'Support/ScopedByClass.php', 'Policies/RoleMatrix.php', 'Policies/ScopeResolver.php', self::RESOLVER] as $item) {
             self::assertFileExists(self::appRoot() . '/' . $item);
         }
@@ -247,6 +252,41 @@ final class SecondaryConventionsTest extends TestCase
         foreach (array_keys($definitions) as $key) {
             self::assertFalse(is_string($key) && str_starts_with($key, 'platform.applications.') && $key !== SecondaryApplication::CONTAINER_KEY, 'Une seule clé de manifeste : ' . $key);
         }
+    }
+
+    /**
+     * Droits accordés par une migration de rôles : rôle => permissions (ordre du fichier).
+     *
+     * @return array<string, list<string>>
+     */
+    public static function migrationGrants(string $sql): array
+    {
+        $grants = [];
+        preg_match_all("/INSERT INTO role_permissions \\(role, permission\\) VALUES \\('([a-z_]+)', '([a-z_.]+)'\\)/", $sql, $matches, PREG_SET_ORDER);
+        foreach ($matches as $match) {
+            $grants[$match[1]][] = $match[2];
+        }
+
+        return $grants;
+    }
+
+    /** RoleMatrix (ROLES + EXTRA) et la migration des rôles du secondaire (W0S-5) accordent exactement les mêmes droits. */
+    public function testLaMatriceDesRolesEstAligneeSurLaMigration(): void
+    {
+        $grants = self::migrationGrants((string) file_get_contents(self::root() . '/database/migrations/202610281601_roles_secondary.sql'));
+        self::assertNotSame([], $grants);
+        $codes = [];
+        foreach (RoleMatrix::ROLES as $number => $row) {
+            $expected = RoleMatrix::permissionsOf($row['code']);
+            $granted = $grants[$row['code']] ?? [];
+            sort($expected);
+            sort($granted);
+            self::assertSame($granted, $expected, $number . ' ' . $row['code']);
+            $codes[] = $row['code'];
+        }
+        self::assertSame([], array_values(array_diff(array_keys($grants), $codes)), 'Rôle de la migration absent de RoleMatrix.');
+        self::assertSame([], array_values(array_diff(array_keys(RoleMatrix::EXTRA), $codes)), 'EXTRA vise un rôle inconnu.');
+        self::assertNotSame([], self::migrationGrants("INSERT INTO role_permissions (role, permission) VALUES ('sec_x', 'secondary.y.read');"));
     }
 
     public function testLeCodeNeDependQueDesContratsDuSocleEtDeLuiMeme(): void

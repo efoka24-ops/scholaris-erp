@@ -6,11 +6,13 @@ namespace Scholaris\Modules\Apps\Secondary\Policies;
 
 /**
  * Matrice des rôles de l'application secondaire (spec 005 §2, CDC « Matrice des droits ») : 24 rôles créés UNE fois pour les 7
- * types d'établissement, préfixe `sec_`. Un rôle n'est proposé que si son module est actif (`module`, null = noyau) ; le libellé
- * du chef d'établissement (proviseur ou principal) est du vocabulaire du profil, pas un rôle de plus.
+ * types d'établissement, préfixe `sec_`, sauf R09 qui est le rôle commun `enseignant` (décision du propriétaire). Un rôle n'est
+ * proposé que si son module est actif (`module`, null = noyau) ; le libellé du chef d'établissement (proviseur ou principal) est
+ * du vocabulaire du profil, pas un rôle de plus.
  *
- * La migration de données qui crée ces rôles et leurs permissions (T808, SS9) appartient à l'agent Identity (vague 0, tour b) :
- * cette classe est la source qu'elle reprend, `RolePermissionsTest` vérifie l'égalité.
+ * Migration de données : database/migrations/202610281601_roles_secondary.sql (T808, SS9). `permissionsOf()` (ROLES + EXTRA) est
+ * égal, rôle par rôle, aux droits qu'elle accorde (pour `enseignant` : ses seuls droits `secondary.*`, il garde ceux du socle).
+ * tests/Architecture/SecondaryConventionsTest compare au fichier, `RolePermissionsTest` à la base migrée.
  */
 final class RoleMatrix
 {
@@ -24,7 +26,7 @@ final class RoleMatrix
         'R06' => ['code' => 'sec_chef_travaux', 'module' => 'workshops', 'external' => false, 'permissions' => ['secondary.workshops.manage', 'secondary.stock.manage', 'secondary.safety.manage', 'secondary.internships.manage']],
         'R07' => ['code' => 'sec_animateur_pedagogique', 'module' => null, 'external' => false, 'permissions' => ['secondary.syllabus.manage', 'secondary.commontests.manage']],
         'R08' => ['code' => 'sec_professeur_principal', 'module' => null, 'external' => false, 'permissions' => ['secondary.class.synthesis', 'secondary.appraisal.general']],
-        'R09' => ['code' => 'sec_enseignant', 'module' => null, 'external' => false, 'permissions' => ['secondary.attendance.take', 'secondary.lesson.log', 'secondary.grades.enter', 'secondary.appraisal.subject']],
+        'R09' => ['code' => 'enseignant', 'module' => null, 'external' => false, 'permissions' => ['secondary.attendance.take', 'secondary.lesson.log', 'secondary.grades.enter', 'secondary.appraisal.subject']],
         'R10' => ['code' => 'sec_conseiller_orientation', 'module' => 'orientation', 'external' => false, 'permissions' => ['secondary.orientation.manage']],
         'R11' => ['code' => 'sec_intendant', 'module' => null, 'external' => false, 'permissions' => ['secondary.billing.manage', 'secondary.fees.catalog']],
         'R12' => ['code' => 'sec_caissier', 'module' => null, 'external' => false, 'permissions' => ['secondary.billing.cash']],
@@ -43,22 +45,30 @@ final class RoleMatrix
     ];
 
     /**
-     * Permissions du squelette (vague 0) à ajouter par la même migration : lecture du profil d'établissement et des listes de
-     * référence (séries et spécialités). Mêmes rôles, mêmes codes.
+     * Droits ajoutés aux droits propres de ROLES : lecture du profil et des listes de référence (squelette, vague 0), puis
+     * matrice du CDC appliquée par la migration des rôles (W0S-5) : L = `<module>.read`, É et V = écriture ou validation du
+     * module avec sa lecture ; `family.pay` du parent ; `identity.roles.assign` de l'administrateur fonctionnel (comptes
+     * externes datés, Q13).
      *
      * @var array<string, list<string>>
      */
     public const EXTRA = [
         'sec_promoteur' => ['secondary.profile.read', 'secondary.catalogue.read'],
-        'sec_chef_etablissement' => ['secondary.profile.read', 'secondary.catalogue.read'],
-        'sec_censeur' => ['secondary.profile.read', 'secondary.catalogue.read'],
-        'sec_surveillant_general' => ['secondary.profile.read'],
+        'sec_chef_etablissement' => ['secondary.settings.read', 'secondary.enrol.read', 'secondary.enrol.validate', 'secondary.timetable.read', 'secondary.timetable.validate', 'secondary.syllabus.read', 'secondary.attendance.read', 'secondary.discipline.validate', 'secondary.grades.read', 'secondary.reportcard.read', 'secondary.exams.read', 'secondary.exams.validate', 'secondary.fees.read', 'secondary.workshops.read', 'secondary.dashboard.read', 'secondary.profile.read', 'secondary.catalogue.read'],
+        'sec_censeur' => ['secondary.settings.read', 'secondary.settings.write', 'secondary.enrol.read', 'secondary.timetable.read', 'secondary.syllabus.read', 'secondary.attendance.read', 'secondary.grades.read', 'secondary.reportcard.read', 'secondary.exams.read', 'secondary.exams.manage', 'secondary.workshops.read', 'secondary.dashboard.read', 'secondary.profile.read', 'secondary.catalogue.read'],
+        'sec_surveillant_general' => ['secondary.enrol.read', 'secondary.timetable.read', 'secondary.attendance.read', 'secondary.reportcard.read', 'secondary.dashboard.read', 'secondary.profile.read'],
         'sec_animateur_pedagogique' => ['secondary.catalogue.read'],
+        'sec_professeur_principal' => ['secondary.enrol.read', 'secondary.timetable.read', 'secondary.syllabus.read', 'secondary.attendance.read', 'secondary.grades.read', 'secondary.reportcard.read', 'secondary.exams.read', 'secondary.dashboard.read'],
+        'enseignant' => ['secondary.timetable.read', 'secondary.syllabus.read', 'secondary.attendance.read', 'secondary.grades.read', 'secondary.reportcard.read', 'secondary.workshops.read', 'secondary.workshops.session', 'secondary.dashboard.read'],
         'sec_conseiller_orientation' => ['secondary.catalogue.read'],
-        'sec_intendant' => ['secondary.profile.read', 'secondary.catalogue.read'],
+        'sec_intendant' => ['secondary.settings.read', 'secondary.enrol.read', 'secondary.exams.read', 'secondary.fees.read', 'secondary.workshops.costs.read', 'secondary.finance.read', 'secondary.profile.read', 'secondary.catalogue.read'],
         'sec_scolarite' => ['secondary.profile.read', 'secondary.catalogue.read'],
-        'sec_admin_fonctionnel' => ['secondary.profile.read', 'secondary.catalogue.read'],
+        'sec_parent' => ['secondary.family.pay'],
+        'sec_admin_fonctionnel' => ['secondary.profile.read', 'secondary.catalogue.read', 'identity.roles.assign'],
     ];
+
+    /** Rôles communs du socle repris par la matrice, sans préfixe `sec_` (R09). */
+    public const SHARED_ROLES = ['enseignant'];
 
     private function __construct()
     {
