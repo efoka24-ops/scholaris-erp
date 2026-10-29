@@ -136,6 +136,8 @@ final class AssessmentService
             }
         }
 
+        $this->assertKindAndDate($tenantId, $establishmentId, (string) $data['kind'], (string) $data['period_id'], $data['held_on'] ?? null);
+
         $structureId = (string) $data['structure_id'];
         $teacher = $data['teacher_person_id'] ?? null;
         if (!$this->permissions->can($principal, 'assessment.validate', $establishmentId)) {
@@ -171,6 +173,9 @@ final class AssessmentService
         $this->scope->assertCanEnter($principal, $establishmentId, $assessment, []);
 
         $set = array_intersect_key($data, array_flip(['title', 'kind', 'weight', 'max_score', 'held_on', 'score_step']));
+        if (isset($set['kind']) || isset($set['held_on'])) {
+            $this->assertKindAndDate($tenantId, $establishmentId, (string) ($set['kind'] ?? $assessment['kind']), (string) $assessment['period_id'], $set['held_on'] ?? null);
+        }
         if (isset($set['max_score'])) {
             foreach ($this->grades->ofAssessment($tenantId, $id) as $grade) {
                 if ($grade['score'] !== null && (float) $grade['score'] > (float) $set['max_score']) {
@@ -349,5 +354,27 @@ final class AssessmentService
             'id' => (string) new Ulid(), 'tenant_id' => $tenantId, 'establishment_id' => $establishmentId, 'subject_id' => $subjectId,
             'name' => $element['name'], 'coefficient' => $element['coefficient'] ?? 1.0, 'credits' => $element['credits'] ?? 0, 'created_at' => $now,
         ]);
+    }
+
+    /** Type d'épreuve dans la liste de l'établissement (assessment.kinds) et date de l'épreuve dans les bornes de sa période. */
+    private function assertKindAndDate(string $tenantId, string $establishmentId, string $kind, string $periodId, mixed $heldOn): void
+    {
+        $kinds = $this->settings->kinds($tenantId, $establishmentId);
+        if (!in_array($kind, $kinds, true)) {
+            throw HttpException::validation(['kind' => ['Type d\'épreuve inconnu. Valeurs acceptées : ' . implode(', ', $kinds) . '.']]);
+        }
+        if (!is_string($heldOn) || $heldOn === '') {
+            return;
+        }
+        $period = $this->db->one('SELECT starts_on, ends_on FROM periods WHERE tenant_id = ? AND establishment_id = ? AND id = ?', [$tenantId, $establishmentId, $periodId]);
+        if ($period === null) {
+            return;
+        }
+        $from = substr((string) $period['starts_on'], 0, 10);
+        $to = substr((string) $period['ends_on'], 0, 10);
+        $day = substr($heldOn, 0, 10);
+        if ($day < $from || $day > $to) {
+            throw HttpException::validation(['held_on' => ['La date de l\'épreuve doit être comprise dans sa période (du ' . $from . ' au ' . $to . ').']]);
+        }
     }
 }

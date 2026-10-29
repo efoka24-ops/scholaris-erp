@@ -106,6 +106,28 @@ final class AssessmentSettings
         return $codes;
     }
 
+    /** Types d'épreuve acceptés par défaut (tous ordres d'enseignement) ; l'établissement peut fixer sa liste. */
+    public const DEFAULT_KINDS = ['cc', 'devoir', 'interrogation', 'composition', 'evaluation', 'examen', 'exam', 'td', 'tp', 'oral', 'projet', 'test', 'retake', 'resit'];
+
+    /**
+     * assessment.kinds : liste fermée des types d'épreuve (codes en minuscules). Absente ou vide : DEFAULT_KINDS.
+     *
+     * @return list<string>
+     */
+    public function kinds(string $tenantId, string $establishmentId): array
+    {
+        $raw = $this->settings->value($tenantId, $establishmentId, 'assessment.kinds', null);
+        $list = is_string($raw) ? explode(',', $raw) : (is_array($raw) ? $raw : []);
+        $kinds = [];
+        foreach ($list as $kind) {
+            if (is_string($kind) && preg_match('/^[a-z][a-z0-9_]{0,39}$/', trim($kind)) === 1) {
+                $kinds[] = trim($kind);
+            }
+        }
+
+        return $kinds === [] ? self::DEFAULT_KINDS : array_values(array_unique($kinds));
+    }
+
     /** assessment.subject_ranks (SS4) : rang et statistiques par matière dans les résultats ; faux par défaut. */
     public function subjectRanks(string $tenantId, string $establishmentId): bool
     {
