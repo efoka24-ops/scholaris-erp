@@ -3,7 +3,8 @@
 declare(strict_types=1);
 
 /**
- * Point d'entrée du cron de l'hébergement, qui n'accepte que `php -f <script>` : une seule tâche, chaque minute,
+ * Point d'entrée du cron de l'hébergement, qui n'accepte que `php -f <script>` et au plus une exécution toutes les
+ * 15 minutes : une seule tâche, toutes les 15 minutes,
  *   php -f /home/<compte>/<application>/cron.php
  * équivaut à `artisan schedule:run` (voir Scholaris\Core\Console\Schedule pour la liste des tâches et leurs horaires).
  */

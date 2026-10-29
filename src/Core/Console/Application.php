@@ -222,8 +222,9 @@ final class Application
     }
 
     /**
-     * Exécute les tâches de Schedule dues à la minute courante (heure de l'application). Une tâche en échec n'empêche pas
-     * les suivantes ; un verrou évite deux exécutions simultanées. Trace : storage/logs/schedule.log.
+     * Exécute une fois chaque tâche de Schedule due depuis l'exécution précédente (storage/schedule.last ; la première fois,
+     * la minute courante seulement), à l'heure de l'application. Une tâche en échec n'empêche pas les suivantes ; un
+     * verrou évite deux exécutions simultanées. Trace : storage/logs/schedule.log.
      */
     private function scheduleRun(): int
     {
@@ -235,9 +236,13 @@ final class Application
         }
         $this->kernel(); // fixe le fuseau de l'application (app.timezone)
         $now = new \DateTimeImmutable('now');
+        $lastFile = $this->basePath . '/storage/schedule.last';
+        $last = is_file($lastFile) ? \DateTimeImmutable::createFromFormat(DATE_ATOM, trim((string) file_get_contents($lastFile))) : false;
+        $from = $last instanceof \DateTimeImmutable && $last < $now ? $last : $now->modify('-1 minute');
+        @file_put_contents($lastFile, $now->format(DATE_ATOM));
         $failed = 0;
         try {
-            foreach (Schedule::due($now) as $command) {
+            foreach (Schedule::dueBetween($from, $now) as $command) {
                 $started = microtime(true);
                 ob_start();
                 $code = $this->run(['artisan', ...$command]);

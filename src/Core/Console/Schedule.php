@@ -8,12 +8,16 @@ use DateTimeImmutable;
 use InvalidArgumentException;
 
 /**
- * Tâches planifiées de la plateforme. L'hébergement (Camoo) n'accepte qu'une commande `php -f <script>` par tâche cron :
- * une seule tâche, chaque minute, lance `cron.php` (= `artisan schedule:run`), qui exécute les commandes dues ci-dessous.
+ * Tâches planifiées de la plateforme. L'hébergement (Camoo) n'accepte qu'une commande `php -f <script>` par tâche cron, et
+ * au plus une exécution toutes les 15 minutes : une seule tâche lance `cron.php` (= `artisan schedule:run`), qui exécute
+ * une fois chaque commande due depuis l'exécution précédente (voir `dueBetween`).
  * Expressions au format cron (minute heure jour mois jour-de-semaine), à l'heure de l'application (Africa/Douala).
  */
 final class Schedule
 {
+    /** Rattrapage maximal après une interruption du cron : au-delà, les échéances plus anciennes sont abandonnées. */
+    public const MAX_CATCH_UP_MINUTES = 120;
+
     /** @var list<array{0: string, 1: list<string>}> */
     public const TASKS = [
         ['* * * * *', ['queue:send']],
@@ -54,6 +58,31 @@ final class Schedule
         }
 
         return $due;
+    }
+
+    /**
+     * Commandes dues à au moins une minute de l'intervalle ]$from, $to], chacune une seule fois, dans l'ordre de TASKS.
+     * L'intervalle est ramené aux MAX_CATCH_UP_MINUTES dernières minutes.
+     *
+     * @return list<list<string>>
+     */
+    public static function dueBetween(DateTimeImmutable $from, DateTimeImmutable $to): array
+    {
+        $to = $to->setTime((int) $to->format('G'), (int) $to->format('i'));
+        $floor = $to->modify('-' . self::MAX_CATCH_UP_MINUTES . ' minutes');
+        $minute = ($from < $floor ? $floor : $from->setTime((int) $from->format('G'), (int) $from->format('i')))->modify('+1 minute');
+        /** @var array<int, list<string>> $due */
+        $due = [];
+        for (; $minute <= $to; $minute = $minute->modify('+1 minute')) {
+            foreach (self::TASKS as $i => [$expression, $command]) {
+                if (!isset($due[$i]) && self::matches($expression, $minute)) {
+                    $due[$i] = $command;
+                }
+            }
+        }
+        ksort($due);
+
+        return array_values($due);
     }
 
     public static function matches(string $expression, DateTimeImmutable $at): bool

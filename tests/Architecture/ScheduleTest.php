@@ -60,6 +60,23 @@ final class ScheduleTest extends TestCase
         self::assertContains(['attendance:retry-absences'], $due);
     }
 
+    public function testCronToutesLes15MinutesRattrapeChaqueTacheUneSeuleFois(): void
+    {
+        $due = Schedule::dueBetween(new DateTimeImmutable('2026-10-28 06:15'), new DateTimeImmutable('2026-10-28 06:30'));
+        self::assertContains(['higher:expiry-alerts'], $due, '6 h 30 tombe dans la fenêtre.');
+        self::assertSame(1, count(array_keys($due, ['queue:send'], true)), 'Une tâche de chaque minute ne tourne qu\'une fois.');
+        self::assertNotContains(['platform:billing-run'], $due, '6 h 00 est avant la fenêtre.');
+
+        $due = Schedule::dueBetween(new DateTimeImmutable('2026-10-28 05:55'), new DateTimeImmutable('2026-10-28 06:10'));
+        self::assertContains(['platform:billing-run'], $due);
+        self::assertContains(['attendance:retry-absences'], $due);
+
+        // Cron interrompu une journée : seules les 120 dernières minutes sont rattrapées.
+        $due = Schedule::dueBetween(new DateTimeImmutable('2026-10-27 00:00'), new DateTimeImmutable('2026-10-28 08:10'));
+        self::assertContains(['public:absence-alerts'], $due);
+        self::assertNotContains(['backup:run'], $due);
+    }
+
     public function testUneExpressionMalFormeeEstRefusee(): void
     {
         $this->expectException(\InvalidArgumentException::class);
