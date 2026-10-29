@@ -136,6 +136,19 @@ if (-not $files -or @($files).Count -eq 0) {
 	throw "Aucun fichier à envoyer (vérifiez LocalRoot et les exclusions)."
 }
 
+# Ordre d'envoi : celui de -Paths (sinon l'ordre du disque), puis toujours public/sw.js et public/index.html en dernier.
+# Sinon la page d'accueil peut arriver avant ses scripts et le site affiche une page blanche pendant l'envoi.
+$rank = @{}
+for ($n = 0; $n -lt $Paths.Count; $n++) { if (-not $rank.ContainsKey($Paths[$n])) { $rank[$Paths[$n]] = $n } }
+$last = @{ "public/sw.js" = 1; "public/index.html" = 2 }
+$position = 0
+$files = @($files) | ForEach-Object {
+	$relative = $_.FullName.Substring($resolvedLocalRoot.Length).TrimStart("\") -replace "\\", "/"
+	$key = if ($last.ContainsKey($relative)) { [int]::MaxValue - 10 + $last[$relative] } elseif ($rank.ContainsKey($relative)) { $rank[$relative] } else { [int]::MaxValue - 100 }
+	$position++
+	[pscustomobject]@{ Key = $key; Position = $position; File = $_ }
+} | Sort-Object -Property Key, Position | ForEach-Object { $_.File }
+
 $total = @($files).Count
 
 if ($DryRun) {

@@ -5,7 +5,7 @@
 .DESCRIPTION
   1. npm ci (ou npm install si aucun verrou) dans web/ ; si l'installation echoue, rien n'est construit ni copie.
   2. npm run build : verification de types puis vite build (base /) vers web/dist.
-  3. Copie web/dist dans public/ : seuls les fichiers du front sont remplaces (index.html, assets, icons, sw.js,
+  3. Copie web/dist dans public/ : seuls les fichiers du front sont remplaces (index.html, assets, pwa, sw.js,
      workbox-*.js, manifest, favicon). public/index.php (l'API) et public/.htaccess ne sont jamais touches.
   Aucun deploiement, aucun FTP : ce script ne fait que preparer les fichiers.
 
@@ -50,7 +50,7 @@ $old = Join-Path $target 'app'
 if (Test-Path $old) { Remove-Item -Recurse -Force $old }
 
 # Fichiers du front precedent (jamais index.php ni .htaccess).
-foreach ($name in @('assets', 'icons')) {
+foreach ($name in @('assets', 'icons', 'pwa')) {
   $p = Join-Path $target $name
   if (Test-Path $p) { Remove-Item -Recurse -Force $p }
 }
@@ -65,4 +65,4 @@ foreach ($item in Get-ChildItem -Path $dist -Force) {
 if (-not (Test-Path (Join-Path $target 'index.html'))) { throw 'public/index.html absent apres la copie.' }
 if (-not (Test-Path (Join-Path $target 'index.php'))) { throw 'public/index.php absent : l''API ne demarrerait plus.' }
 
-Write-Host "Termine : le front est dans public/ (index.html, assets, icons, sw.js)."
+Write-Host "Termine : le front est dans public/ (index.html, assets, pwa, sw.js)."

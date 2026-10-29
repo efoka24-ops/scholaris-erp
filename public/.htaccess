@@ -22,5 +22,9 @@ RewriteRule ^$ index.html [L]
 RewriteCond %{REQUEST_FILENAME} -f
 RewriteRule ^ - [L]
 
+# Un fichier statique absent (script, style, icône) répond 404 au lieu de la page d'accueil : sinon le navigateur reçoit du
+# HTML à la place d'un script (page blanche) et le cache hors ligne garde une copie fausse.
+RewriteRule ^(assets|pwa)/ - [R=404,L]
+
 # Toute autre adresse est une page de l'application web (routage côté navigateur).
 RewriteRule ^ index.html [L]
