@@ -26,10 +26,10 @@ final class DocumentHoldGuard implements IssuanceGuard
 
     public function refusal(IssuanceContext $context): ?string
     {
-        if (!in_array($context->type, $this->settings->blockedDocumentTypes($context->tenantId, $context->establishmentId), true)) {
+        if ($this->mode->of($context->tenantId, $context->establishmentId) !== FeesMode::PRIVATE) {
             return null;
         }
-        if ($this->mode->of($context->tenantId, $context->establishmentId) !== FeesMode::PRIVATE) {
+        if (!in_array($context->type, $this->settings->blockedDocumentTypes($context->tenantId, $context->establishmentId), true)) {
             return null;
         }
         if (!$this->debtors->isBlocked($context->tenantId, $context->establishmentId, $context->subjectPersonId, 'documents')) {
