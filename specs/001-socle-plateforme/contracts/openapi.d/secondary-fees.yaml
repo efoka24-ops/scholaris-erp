@@ -1,0 +1,299 @@
+# Contrat OpenAPI 3.1 des frais de l'application Enseignement secondaire (spec 005, lot E1 : T830 a T832, TST-06, TST-07).
+# Les grilles (par niveau, serie ou specialite), factures, remises, paiements, recus et relances restent dans le socle Billing
+# (/fee-items, /fee-schedules, /invoices, /payments, /cash/receipts) ; le secondaire ajoute :
+#  - la vue d'ensemble (noyau) ;
+#  - [fees_private] les preglages de Billing (affectation kind_priority, ordre des natures et des enfants, relances graduees ; jamais
+#    d'ecrasement) et les plans de paiement individuels (validation par une autre personne) ;
+#  - [fees_public_catalog] le catalogue des frais autorises (tenu par le client) et les demandes d'ajout. Un frais hors catalogue
+#    cree par POST /fee-items est refuse en 422 `fee_not_authorized` et produit une demande tracee (garde billing.fee_item_guards).
+# Toutes les valeurs de depart sont "a confirmer". Route d'un module inactif : 409 `module_not_enabled` (membre `code`).
+# Ecritures : 423 si l'abonnement est suspendu, 403 si l'application n'est pas ouverte (WriteGate).
+paths:
+  /api/v1/secondary/fees/overview:
+    get:
+      summary: "Vue d'ensemble des frais : mode (private, public_catalog, none), natures, natures jamais facturees, parametres de Billing en vigueur, preglages proposes"
+      description: "Permission secondary.fees.read, secondary.finance.read, secondary.billing.manage, secondary.fees.catalog ou secondary.fees.validate."
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "{data: {mode, kinds, refused_kinds, blocked_document_types, allocation_rule, allocation_kind_order, allocation_sibling_order, reminder_offsets, blocks, presets, confirmation}}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Application fermee ou etablissement introuvable"}
+        '422': {description: "Type d'etablissement invalide"}
+  /api/v1/secondary/fees/private/setup:
+    post:
+      summary: "[fees_private] Poser les preglages de Billing de l'etablissement (sans jamais ecraser une valeur deja posee) ; rejouable"
+      description: "Permission secondary.billing.manage sur tout l'etablissement. Corps vide accepte."
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "{data: {presets: {cle: {value, applied}}, confirmation}}"}
+        '400': {description: "Corps illisible"}
+        '403': {description: "Permission absente ou application non ouverte"}
+        '404': {description: "Etablissement introuvable"}
+        '409': {description: "Module fees_private non active"}
+        '422': {description: "Type d'etablissement invalide"}
+        '423': {description: "Abonnement suspendu"}
+  /api/v1/secondary/fees/payment-plans:
+    get:
+      summary: "[fees_private] Plans de paiement individuels (filtres status, person_id ; curseur)"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: 'filter[status]', in: query, required: false, schema: {type: string, enum: [pending, approved, refused, cancelled]}}
+        - {name: 'filter[person_id]', in: query, required: false, schema: {type: string}}
+        - {name: sort, in: query, required: false, schema: {type: string}}
+        - {name: per_page, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 200}}
+        - {name: cursor, in: query, required: false, schema: {type: string}}
+      responses:
+        '200': {description: "Liste paginee {data, meta.next_cursor, meta.per_page}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Application fermee ou etablissement introuvable"}
+        '409': {description: "Module fees_private non active"}
+        '422': {description: "Filtre, tri ou pagination invalide"}
+    post:
+      summary: "[fees_private] Proposer un plan de paiement (echeances en dates croissantes, motif obligatoire)"
+      description: "Permission secondary.billing.manage sur tout l'etablissement. L'eleve doit etre inscrit dans l'etablissement."
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [person_id, reason, installments]
+              properties:
+                person_id: {type: string, maxLength: 40}
+                invoice_id: {type: [string, 'null'], maxLength: 40}
+                reason: {type: string, maxLength: 255}
+                installments:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: object
+                    required: [due_on, amount]
+                    properties:
+                      due_on: {type: string, format: date}
+                      amount: {type: integer, minimum: 1}
+      responses:
+        '201': {description: "Plan cree (status pending)"}
+        '400': {description: "Corps illisible"}
+        '403': {description: "Permission absente ou application non ouverte"}
+        '404': {description: "Etablissement introuvable"}
+        '409': {description: "Module fees_private non active, ou plan en attente ou valide deja present"}
+        '422': {description: "Donnees invalides ou eleve non inscrit"}
+        '423': {description: "Abonnement suspendu"}
+  /api/v1/secondary/fees/payment-plans/{id}:
+    get:
+      summary: "[fees_private] Un plan de paiement"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "{data: {id, person_id, invoice_id, installments, total_amount, due_to_date, ends_on, reason, status, in_force, requested_by, approved_by, decided_at, decision_reason}}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Introuvable"}
+        '409': {description: "Module fees_private non active"}
+  /api/v1/secondary/fees/payment-plans/{id}/approve:
+    post:
+      summary: "[fees_private] Valider un plan (secondary.fees.validate, jamais son auteur)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                reason: {type: string, maxLength: 255}
+      responses:
+        '200': {description: "Plan valide"}
+        '400': {description: "Corps illisible"}
+        '403': {description: "Permission absente, auteur du plan, ou application non ouverte"}
+        '404': {description: "Introuvable"}
+        '409': {description: "Module inactif ou plan deja decide"}
+        '422': {description: "Donnees invalides"}
+        '423': {description: "Abonnement suspendu"}
+  /api/v1/secondary/fees/payment-plans/{id}/refuse:
+    post:
+      summary: "[fees_private] Refuser un plan (secondary.fees.validate, motif obligatoire, jamais son auteur)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [reason]
+              properties:
+                reason: {type: string, maxLength: 255}
+      responses:
+        '200': {description: "Plan refuse"}
+        '400': {description: "Corps illisible"}
+        '403': {description: "Permission absente, auteur du plan, ou application non ouverte"}
+        '404': {description: "Introuvable"}
+        '409': {description: "Module inactif ou plan deja decide"}
+        '422': {description: "Motif absent"}
+        '423': {description: "Abonnement suspendu"}
+  /api/v1/secondary/fees/payment-plans/{id}/cancel:
+    post:
+      summary: "[fees_private] Annuler un plan en attente ou valide (motif obligatoire)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [reason]
+              properties:
+                reason: {type: string, maxLength: 255}
+      responses:
+        '200': {description: "Plan annule"}
+        '400': {description: "Corps illisible"}
+        '403': {description: "Permission absente ou application non ouverte"}
+        '404': {description: "Introuvable"}
+        '409': {description: "Module inactif ou plan deja clos"}
+        '422': {description: "Motif absent"}
+        '423': {description: "Abonnement suspendu"}
+  /api/v1/secondary/fees/catalog:
+    get:
+      summary: "[fees_public_catalog] Catalogue des frais autorises (lignes de l'etablissement et du client), vide a l'ouverture (Q4)"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "{data: [{id, client_wide, fee_kind, fee_code, label, max_amount, cycle_code, legal_basis, valid_from, valid_to}], meta}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Application fermee ou etablissement introuvable"}
+        '409': {description: "Module fees_public_catalog non active"}
+    post:
+      summary: "[fees_public_catalog] Ajouter une ligne au catalogue (administrateur fonctionnel du client, texte de reference obligatoire)"
+      description: "Permission secondary.profile.manage sur tout l'etablissement ; client_wide=true : ligne valable dans tous les etablissements du client."
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [fee_kind, label, legal_basis]
+              properties:
+                fee_kind: {type: string, maxLength: 20}
+                fee_code: {type: [string, 'null'], maxLength: 40}
+                label: {type: string, maxLength: 160}
+                max_amount: {type: [integer, 'null'], minimum: 0}
+                cycle_code: {type: string, enum: [first, second]}
+                legal_basis: {type: string, maxLength: 255}
+                valid_from: {type: string, format: date}
+                valid_to: {type: [string, 'null'], format: date}
+                client_wide: {type: boolean}
+      responses:
+        '201': {description: "Ligne creee"}
+        '400': {description: "Corps illisible"}
+        '403': {description: "Permission absente ou application non ouverte"}
+        '404': {description: "Etablissement introuvable"}
+        '409': {description: "Module fees_public_catalog non active"}
+        '422': {description: "Donnees invalides"}
+        '423': {description: "Abonnement suspendu"}
+  /api/v1/secondary/fees/catalog/{id}/retire:
+    post:
+      summary: "[fees_public_catalog] Retirer une ligne a une date (rien n'est supprime)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [valid_to, reason]
+              properties:
+                valid_to: {type: string, format: date}
+                reason: {type: string, maxLength: 255}
+      responses:
+        '200': {description: "Ligne retiree"}
+        '400': {description: "Corps illisible"}
+        '403': {description: "Permission absente ou application non ouverte"}
+        '404': {description: "Introuvable"}
+        '409': {description: "Module fees_public_catalog non active"}
+        '422': {description: "Donnees invalides"}
+        '423': {description: "Abonnement suspendu"}
+  /api/v1/secondary/fees/requests:
+    get:
+      summary: "[fees_public_catalog] Demandes d'ajout au catalogue (status=pending, accepted ou refused)"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: status, in: query, required: false, schema: {type: string, enum: [pending, accepted, refused]}}
+      responses:
+        '200': {description: "{data: [{id, fee_kind, fee_code, label, amount, justification, origin, requested_by, status, decided_by, decided_at, decision_reason, catalog_id}], meta}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Application fermee ou etablissement introuvable"}
+        '409': {description: "Module fees_public_catalog non active"}
+    post:
+      summary: "[fees_public_catalog] Demander l'ajout d'un frais au catalogue (intendant) ; une demande en attente identique est rendue telle quelle (200)"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [fee_kind, label, amount, justification]
+              properties:
+                fee_kind: {type: string, maxLength: 20}
+                fee_code: {type: [string, 'null'], maxLength: 40}
+                label: {type: string, maxLength: 160}
+                amount: {type: integer, minimum: 0}
+                justification: {type: string, maxLength: 500}
+      responses:
+        '200': {description: "Demande en attente identique deja presente"}
+        '201': {description: "Demande creee"}
+        '400': {description: "Corps illisible"}
+        '403': {description: "Permission absente ou application non ouverte"}
+        '404': {description: "Etablissement introuvable"}
+        '409': {description: "Module fees_public_catalog non active"}
+        '422': {description: "Donnees invalides"}
+        '423': {description: "Abonnement suspendu"}
+  /api/v1/secondary/fees/requests/{id}/decide:
+    post:
+      summary: "[fees_public_catalog] Decider une demande (administrateur fonctionnel, jamais son auteur) ; acceptation : ligne du catalogue creee"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [decision, reason]
+              properties:
+                decision: {type: string, enum: [accepted, refused]}
+                reason: {type: string, maxLength: 255}
+                max_amount: {type: [integer, 'null'], minimum: 0}
+                legal_basis: {type: [string, 'null'], maxLength: 255, description: "obligatoire pour accepter"}
+      responses:
+        '200': {description: "Demande decidee"}
+        '400': {description: "Corps illisible"}
+        '403': {description: "Permission absente, auteur de la demande, ou application non ouverte"}
+        '404': {description: "Introuvable"}
+        '409': {description: "Module inactif ou demande deja decidee"}
+        '422': {description: "Donnees invalides ou texte de reference absent"}
+        '423': {description: "Abonnement suspendu"}
