@@ -22,6 +22,7 @@ paths:
       responses:
         '200': {description: "{data: {guardian_id, can_pay, family_balance_xaf, children: [fiche + invoices: [{id, reference, net_xaf, paid_xaf, balance_xaf, installments}]]}}"}
         '403': {description: "Droit secondary.family.read absent ou compte sans fiche personne"}
+        '404': {description: "Application fermee"}
   /api/v1/secondary/portal/family/children/{id}/payments:
     post:
       summary: "Demander le paiement mobile money d'une facture d'un de ses enfants (idempotent par cle)"
