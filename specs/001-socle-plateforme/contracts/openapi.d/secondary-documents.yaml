@@ -26,6 +26,17 @@ paths:
         '403': {description: "Permission absente"}
         '404': {description: "Eleve sans inscription dans l'etablissement ou hors perimetre"}
         '422': {description: "person_id manquant"}
+  /api/v1/secondary/documents/candidates:
+    get:
+      summary: "Inscriptions d'une classe du perimetre (en cours, ou closes par transfert pour l'exeat), pour choisir l'eleve d'un document"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: class_id, in: query, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "{data: {items: [{enrollment_id, person_id, name, status, internal_number}]}}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Classe hors perimetre"}
+        '422': {description: "class_id manquant"}
   /api/v1/secondary/documents:
     post:
       summary: "Emettre un document du secondaire (variables tirees de l'inscription, de la classe ou de la facture du socle)"

@@ -145,6 +145,9 @@ final class SecondaryDocumentsTest extends SecondaryTestCase
         [$status] = $this->call('POST', '/secondary/documents', $body, self::SCOLARITE, self::TA, $this->school);
         self::assertSame(422, $status, 'Jamais d\'exeat pour un élève encore inscrit.');
         $this->enrollments->add(self::TA, 'ins-3', 'eleve-2', $this->school, $this->classA, 'ay-2026', 'transferred');
+        $candidates = $this->ok('GET', '/secondary/documents/candidates?class_id=' . $this->classA, null, self::SCOLARITE, self::TA, $this->school)['items'];
+        self::assertContains('ins-3', array_column($candidates, 'enrollment_id'));
+        self::assertSame('EXEMPLE Aïcha', $candidates[0]['name']);
         $exeat = $this->ok('POST', '/secondary/documents', ['enrollment_id' => 'ins-3'] + $body, self::SCOLARITE, self::TA, $this->school);
         self::assertTrue($exeat['qr']);
         self::assertSame(422, $this->call('POST', '/secondary/documents', ['kind' => 'exeat', 'enrollment_id' => 'ins-3'], self::SCOLARITE, self::TA, $this->school)[0], 'Destination, motif et date obligatoires.');

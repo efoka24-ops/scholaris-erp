@@ -73,6 +73,20 @@ final class DocumentsController extends Controller
         return $this->json($this->documents->issue($principal, $establishmentId, $kind, $v), 201);
     }
 
+    /** Élèves inscrits (en cours ou clos) d'une classe du périmètre, pour choisir l'inscription d'un document. */
+    public function candidates(ServerRequestInterface $request): ResponseInterface
+    {
+        [$principal, $establishmentId] = $this->context($request);
+        $perimeter = $this->access->require($principal, $establishmentId, self::READ);
+        $classId = $request->getQueryParams()['class_id'] ?? null;
+        if (!is_string($classId) || $classId === '') {
+            throw HttpException::validation(['class_id' => ['Paramètre obligatoire.']]);
+        }
+        $this->access->assertReadableClass($perimeter, $classId);
+
+        return $this->json(['items' => $this->documents->candidates($principal->tenantId, $establishmentId, $classId)]);
+    }
+
     public function issued(ServerRequestInterface $request): ResponseInterface
     {
         [$principal, $establishmentId] = $this->context($request);

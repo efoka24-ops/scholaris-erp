@@ -9,5 +9,6 @@ use Scholaris\Modules\Apps\Secondary\Support\SecondaryRoutes;
 return static function (SecondaryRoutes $routes): void {
     $routes->get('/documents/kinds', [DocumentsController::class, 'kinds']);
     $routes->get('/documents/issued', [DocumentsController::class, 'issued']);
+    $routes->get('/documents/candidates', [DocumentsController::class, 'candidates']);
     $routes->post('/documents', [DocumentsController::class, 'issue']);
 };

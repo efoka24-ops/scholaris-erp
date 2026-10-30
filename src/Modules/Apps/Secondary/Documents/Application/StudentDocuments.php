@@ -94,6 +94,30 @@ final class StudentDocuments implements IssuedStudentDocuments
         return $out;
     }
 
+    /**
+     * Inscriptions d'une classe (en cours, ou closes par un transfert pour l'exeat), triées par nom.
+     *
+     * @return list<array{enrollment_id: string, person_id: string, name: string, status: string, internal_number: string|null}>
+     */
+    public function candidates(string $tenantId, string $establishmentId, string $classId): array
+    {
+        $out = [];
+        $ids = $this->enrollments->personIdsInStructure($tenantId, $classId);
+        foreach ($this->people->findMany($tenantId, $ids) as $person) {
+            foreach ($this->enrollments->forPerson($tenantId, $person->id) as $enrollment) {
+                if ($enrollment->structureId === $classId && $enrollment->establishmentId === $establishmentId && in_array($enrollment->status, [...self::LIVE, ...self::CLOSED], true)) {
+                    $out[] = [
+                        'enrollment_id' => $enrollment->id, 'person_id' => $person->id, 'name' => mb_strtoupper($person->lastName) . ' ' . $person->firstName,
+                        'status' => $enrollment->status, 'internal_number' => $enrollment->internalNumber,
+                    ];
+                }
+            }
+        }
+        usort($out, static fn (array $a, array $b): int => strcmp($a['name'], $b['name']));
+
+        return $out;
+    }
+
     /** @return array<string, mixed> */
     public static function resource(IssuedDocument $document, SecondaryDocumentType $type, ?string $locale): array
     {
