@@ -38,7 +38,10 @@ function New-FtpRequest {
 	$req.Credentials = $Credential
 	$req.UseBinary = $true
 	$req.UsePassive = $true
-	$req.KeepAlive = $false
+	# Une seule session FTP réutilisée : une connexion (et un login) par fichier déclenche le pare-feu de l'hébergeur,
+	# qui bloque alors l'adresse IP pour plusieurs heures.
+	$req.KeepAlive = $true
+	$req.ConnectionGroupName = "scholaris-deploy"
 	return $req
 }
 
