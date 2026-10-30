@@ -1,0 +1,192 @@
+# Contrat OpenAPI 3.1 des echanges avec cartescolaire.cm (spec 005, lot E1 : T828, T829 ; EX-SEC-20, 21, 23 ; API-03).
+# cartescolaire.cm (MINESEC) n'offre AUCUNE interface publique : l'integration se fait par fichiers CSV UTF-8 extraits par
+# l'etablissement (RG-CSC-1), jamais par appel reseau. Colonnes, separateur, format du matricule, natures de paiement et niveaux
+# d'entree sont des parametres secondary.carte_scolaire.* "a confirmer" (Q1). Le matricule n'apparait jamais dans une adresse :
+# l'eleve est designe par l'identifiant interne de la personne. Un fichier rejoue (meme empreinte SHA-256) rend l'import existant
+# (200, replayed=true). Ecritures : 423 si l'abonnement est suspendu, 403 si l'application n'est pas ouverte (WriteGate).
+paths:
+  /api/v1/secondary/carte-scolaire/settings:
+    get:
+      summary: "Parametres en vigueur des fichiers : format du matricule, separateur, colonnes, niveaux d'entree, taille maximale"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "{data: {national_id_pattern, csv_delimiter, columns: {national_ids, payments}, entry_levels, max_bytes, network: false, confirmation}}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Application fermee ou etablissement introuvable"}
+        '422': {description: "Type d'etablissement invalide"}
+  /api/v1/secondary/carte-scolaire/students:
+    get:
+      summary: "Eleves inscrits et etat de leur matricule (pending, recorded, mismatch) ; entry_only=1 : niveaux d'entree (matricules a generer, EX-CSC-02)"
+      description: "Permission secondary.enrol.read ou secondary.enrol.manage."
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: status, in: query, required: false, schema: {type: string, enum: [pending, recorded, mismatch]}}
+        - {name: entry_only, in: query, required: false, schema: {type: string, enum: ['0', '1']}}
+        - {name: per_page, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 200}}
+        - {name: cursor, in: query, required: false, schema: {type: string}}
+      responses:
+        '200': {description: "Liste paginee {data: [{person_id, first_name, last_name, birth_date, national_id, national_id_status, origin, recorded_at, level}], meta.next_cursor, meta.per_page, meta.total}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Application fermee ou etablissement introuvable"}
+        '422': {description: "Pagination invalide"}
+  /api/v1/secondary/carte-scolaire/students/{id}/national-id:
+    put:
+      summary: "Saisir le matricule unique d'un eleve (format parametre, unique dans l'etablissement) ; les paiements inconnus portant ce matricule lui sont rattaches"
+      description: "Permission secondary.enrol.manage sur tout l'etablissement. {id} = identifiant interne de la personne."
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [national_id]
+              properties:
+                national_id: {type: string, maxLength: 40}
+      responses:
+        '200': {description: "{data: {person_id, national_id, national_id_status}}"}
+        '400': {description: "Corps illisible"}
+        '403': {description: "Permission absente ou application non ouverte"}
+        '404': {description: "Eleve introuvable dans l'etablissement"}
+        '409': {description: "Matricule deja attribue a un autre eleve"}
+        '422': {description: "Format de matricule non reconnu"}
+        '423': {description: "Abonnement suspendu"}
+  /api/v1/secondary/carte-scolaire/national-ids/import:
+    post:
+      summary: "Importer le fichier des matricules (CSV UTF-8) : rapprochement par nom et prenoms (ordre indifferent, sans accents) et date de naissance, rapport d'ecarts"
+      description: "Permission secondary.enrol.manage sur tout l'etablissement. Ecarts : missing_local (absent de l'application), missing_remote (absent du fichier), identity (date de naissance differente), conflict (matricule different ou deja attribue), ambiguous. Rien n'est ecrase (RG-CSC-2)."
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [file_name, content]
+              properties:
+                file_name: {type: string, maxLength: 160}
+                content: {type: string, description: "Contenu texte du fichier CSV (2 Mo au plus)"}
+      responses:
+        '200': {description: "Fichier deja importe (meme empreinte) : import existant, replayed=true"}
+        '201': {description: "{data: {id, import_kind, file_name, file_hash, rows_total, rows_ok, rows_rejected, rows_duplicate, rows_unknown, rejected_rows: [{line, reason}], replayed}}"}
+        '400': {description: "Corps illisible"}
+        '403': {description: "Permission absente ou application non ouverte"}
+        '404': {description: "Etablissement introuvable"}
+        '422': {description: "Fichier vide, trop gros, non UTF-8 ou colonne obligatoire absente"}
+        '423': {description: "Abonnement suspendu"}
+  /api/v1/secondary/carte-scolaire/payments/import:
+    post:
+      summary: "API-03 : importer le releve des paiements constates sur cartescolaire.cm (contributions, frais d'examen), extrait par l'econome"
+      description: "Permission secondary.billing.manage sur tout l'etablissement. Rapprochement par matricule : matched ou unknown ; reference deja importee ou repetee : ignoree (rows_duplicate). Les frais d'examen ne sont jamais encaisses par l'etablissement (RG-FIN-3)."
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [file_name, content]
+              properties:
+                file_name: {type: string, maxLength: 160}
+                content: {type: string}
+      responses:
+        '200': {description: "Fichier deja importe : import existant, replayed=true"}
+        '201': {description: "Import cree (compteurs et lignes rejetees)"}
+        '400': {description: "Corps illisible"}
+        '403': {description: "Permission absente ou application non ouverte"}
+        '404': {description: "Etablissement introuvable"}
+        '422': {description: "Fichier vide, trop gros, non UTF-8 ou colonne obligatoire absente"}
+        '423': {description: "Abonnement suspendu"}
+  /api/v1/secondary/carte-scolaire/payments:
+    get:
+      summary: "Paiements constates importes (filtres match_status, payment_kind, matched_person_id, import_id, exam_code)"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: 'filter[match_status]', in: query, required: false, schema: {type: string, enum: [matched, unknown]}}
+        - {name: 'filter[payment_kind]', in: query, required: false, schema: {type: string, enum: [contribution, exam_fee]}}
+        - {name: 'filter[matched_person_id]', in: query, required: false, schema: {type: string}}
+        - {name: 'filter[import_id]', in: query, required: false, schema: {type: string}}
+        - {name: 'filter[exam_code]', in: query, required: false, schema: {type: string}}
+        - {name: sort, in: query, required: false, schema: {type: string}}
+        - {name: per_page, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 200}}
+        - {name: cursor, in: query, required: false, schema: {type: string}}
+      responses:
+        '200': {description: "Liste paginee {data, meta.next_cursor, meta.per_page}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Application fermee ou etablissement introuvable"}
+        '422': {description: "Filtre, tri ou pagination invalide"}
+  /api/v1/secondary/carte-scolaire/imports:
+    get:
+      summary: "Imports de fichiers (filtre import_kind = national_ids ou payments)"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: 'filter[import_kind]', in: query, required: false, schema: {type: string, enum: [national_ids, payments]}}
+        - {name: sort, in: query, required: false, schema: {type: string}}
+        - {name: per_page, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 200}}
+        - {name: cursor, in: query, required: false, schema: {type: string}}
+      responses:
+        '200': {description: "Liste paginee {data, meta.next_cursor, meta.per_page}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Application fermee ou etablissement introuvable"}
+        '422': {description: "Filtre, tri ou pagination invalide"}
+  /api/v1/secondary/carte-scolaire/imports/{id}:
+    get:
+      summary: "Rapport d'un import : compteurs, lignes rejetees et ecarts produits"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "{data: {..., discrepancies: [...]}}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Introuvable"}
+  /api/v1/secondary/carte-scolaire/discrepancies:
+    get:
+      summary: "Ecarts entre l'application et cartescolaire.cm (controle de coherence EX-CSC-05) ; resolved=0 : ouverts"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: resolved, in: query, required: false, schema: {type: string, enum: ['0', '1']}}
+        - {name: 'filter[discrepancy_kind]', in: query, required: false, schema: {type: string, enum: [missing_local, missing_remote, identity, conflict, ambiguous]}}
+        - {name: 'filter[person_id]', in: query, required: false, schema: {type: string}}
+        - {name: 'filter[import_id]', in: query, required: false, schema: {type: string}}
+        - {name: sort, in: query, required: false, schema: {type: string}}
+        - {name: per_page, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 200}}
+        - {name: cursor, in: query, required: false, schema: {type: string}}
+      responses:
+        '200': {description: "Liste paginee {data, meta.next_cursor, meta.per_page}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Application fermee ou etablissement introuvable"}
+        '422': {description: "Filtre, tri ou pagination invalide"}
+  /api/v1/secondary/carte-scolaire/discrepancies/{id}/resolve:
+    post:
+      summary: "Resoudre un ecart apres verification des pieces (RG-CSC-2) ; apply_national_id=true reporte le matricule du site sur l'eleve"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [note]
+              properties:
+                note: {type: string, maxLength: 255}
+                apply_national_id: {type: boolean}
+                person_id: {type: string, maxLength: 40, description: "eleve auquel reporter le matricule (ecart sans eleve)"}
+      responses:
+        '200': {description: "Ecart resolu"}
+        '400': {description: "Corps illisible"}
+        '403': {description: "Permission absente ou application non ouverte"}
+        '404': {description: "Introuvable"}
+        '409': {description: "Ecart deja resolu ou matricule deja attribue"}
+        '422': {description: "Donnees invalides, matricule absent ou eleve non inscrit"}
+        '423': {description: "Abonnement suspendu"}
