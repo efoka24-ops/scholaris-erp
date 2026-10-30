@@ -1,0 +1,57 @@
+# Contrat OpenAPI 3.1 des documents du secondaire, lot E1 (spec 005, T833, E1-C) : DOC-01 a DOC-06, DOC-27 a DOC-29 du CDC, emis par
+# le socle Documents (numero unique par etablissement, type et annee ; QR de verification publique sans note ni matricule ; contenu fige ;
+# FR/EN). DOC-01 (preinscription) et l'exeat apres transfert sont aussi emis par le contrat interne SecondaryDocuments ; DOC-27 (recu)
+# est produit par le socle Billing. Aucun document scolaire ne porte de montant (RG-DOC-4). Routes /secondary/** : authentification,
+# en-tete X-Establishment-Id, GET -> 404 si l'application est fermee, ecritures -> 423 abonnement suspendu, 403 application non ouverte.
+paths:
+  /api/v1/secondary/documents/kinds:
+    get:
+      summary: "Catalogue des documents du secondaire : numero DOC-nn, nature, QR, module requis, disponibilite selon les modules actifs, droit d'emettre"
+      description: "Permission secondary.documents.issue, secondary.enrol.manage, secondary.enrol.read, secondary.billing.manage ou secondary.settings.manage."
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "{data: {items: [{doc, kind, type, label_fr, label_en, qr, source, module, available, direct, can_issue}]}}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Application fermee"}
+        '422': {description: "Type d'etablissement invalide"}
+  /api/v1/secondary/documents/issued:
+    get:
+      summary: "Documents du secondaire valides d'un eleve (numero, nature, jeton de verification), sans contenu"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: person_id, in: query, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "{data: {items: [{id, number, kind, doc, type, status, qr, verification_token, subject_person_id}]}}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Eleve sans inscription dans l'etablissement ou hors perimetre"}
+        '422': {description: "person_id manquant"}
+  /api/v1/secondary/documents:
+    post:
+      summary: "Emettre un document du secondaire (variables tirees de l'inscription, de la classe ou de la facture du socle)"
+      description: "Inscription (enrolment_form, school_certificate, school_card ; exeat seulement pour une inscription close par le transfert, avec destination, motif et date) : secondary.documents.issue ou secondary.enrol.manage, perimetre de classe. Classe (class_list, enregistree au nom de l'agent) : memes droits. Facture (account_statement DOC-28, payment_attestation DOC-29 sans reste du) : secondary.billing.manage. Langue : demandee, sinon section de l'etablissement (RG-DOC-5). Les gardes de remise du socle (blocage pour impaye du prive) s'appliquent."
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [kind]
+              properties:
+                kind: {type: string, enum: [enrolment_form, school_certificate, school_card, exeat, class_list, account_statement, payment_attestation]}
+                enrollment_id: {type: string}
+                class_id: {type: string}
+                invoice_id: {type: string}
+                destination: {type: string, maxLength: 160}
+                reason: {type: string, maxLength: 255}
+                effective_on: {type: string, format: date}
+                locale: {type: string, enum: [fr, en]}
+      responses:
+        '201': {description: "{data: {id, number, kind, doc, type, status, qr, verification_token, locale, subject_person_id, enrollment_id|class_id|invoice_id}}"}
+        '403': {description: "Permission absente ou classe hors perimetre (journalise)"}
+        '404': {description: "Inscription, classe ou facture introuvable dans l'etablissement"}
+        '409': {description: "Module du type non active (code module_not_enabled)"}
+        '422': {description: "Nature inconnue ou non emise par cette route, champ obligatoire manquant, inscription non en cours (ou non close pour l'exeat), aucun paiement constate pour l'attestation, modele absent"}
