@@ -62,6 +62,28 @@ final class ProfileFactory
     }
 
     /**
+     * Établissements ouverts de chacun des 7 types, une fois par propriété permise par son profil (public ; privé laïc ; privé
+     * confessionnel), donc publics ET privés quand le type le permet. Modules = valeurs par défaut du profil de type.
+     *
+     * @return array<string, string> « code:propriété » => identifiant
+     */
+    public function variants(string $tenantId): array
+    {
+        $ids = [];
+        foreach (self::CODES as $code) {
+            $probe = $this->establishment($tenantId, $code, 'e-probe-' . str_replace('_', '-', $code) . '-' . substr(md5($tenantId), 0, 6));
+            $profile = $this->resolver->forEstablishment($tenantId, $probe);
+            $ownerships = $profile->ownership !== null ? [$profile->ownership] : $profile->ownershipOptions;
+            foreach ($ownerships as $ownership) {
+                $id = 'e-' . str_replace('_', '-', $code) . '-' . str_replace('_', '-', $ownership) . '-' . substr(md5($tenantId), 0, 6);
+                $ids[$code . ':' . $ownership] = $this->opened($tenantId, $code, $ownership, $id);
+            }
+        }
+
+        return $ids;
+    }
+
+    /**
      * Un établissement de chacun des 7 types.
      *
      * @return array<string, string> code => identifiant
