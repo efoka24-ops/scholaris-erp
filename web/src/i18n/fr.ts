@@ -21,6 +21,7 @@ import { publicSchoolsFr } from './public-schools-fr';
 import { nurseryPrivateFr } from './nursery-private-fr';
 import { primaryFr } from './primary-fr';
 import { secondaryFr } from './secondary-fr';
+import { secondaryFeesFr } from './secondary-fees-fr';
 import { importsFr } from './imports-fr';
 import { workflowsFr } from './workflows-fr';
 
@@ -46,6 +47,7 @@ export const fr = {
   ...nurseryPrivateFr,
   ...primaryFr,
   ...secondaryFr,
+  ...secondaryFeesFr,
   ...importsFr,
   ...workflowsFr,
   'nav.reportcards': "Bulletins",

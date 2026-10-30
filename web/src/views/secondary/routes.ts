@@ -9,6 +9,8 @@ type Screen = [path: string, name: string, view: () => Promise<unknown>, perms: 
 const screens: Screen[] = [
   ['profil', 'sec-profile', () => import('./setup/ProfileView.vue'), S.profileRead, 'sec.profile.title'],
   ['documents', 'sec-documents', () => import('./documents/DocumentsView.vue'), S.documentsRead, 'sec.docs.title'],
+  ['frais', 'sec-fees', () => import('./fees/FeesView.vue'), S.feesRead, 'secf.title'],
+  ['carte-scolaire', 'sec-cartescolaire', () => import('./cartescolaire/CarteScolaireView.vue'), S.carteScolaire, 'seccs.title'],
   ['mon-espace', 'sec-student', () => import('./portals/StudentPortalView.vue'), S.self, 'sec.portal.studentTitle'],
   ['famille', 'sec-family', () => import('./portals/FamilyPortalView.vue'), S.family, 'sec.portal.familyTitle'],
 ];

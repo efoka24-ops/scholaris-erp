@@ -21,6 +21,7 @@ export const MENU: MenuEntry[] = [
   { name: 'sec-enrolment', title: 'sec.menu.enrolment', text: 'sec.home.enrolmentText', perms: S.enrolRead },
   { name: 'sec-documents', title: 'sec.docs.title', text: 'sec.home.documentsText', perms: S.documentsRead },
   { name: 'sec-fees', title: 'sec.menu.fees', text: 'sec.home.feesText', perms: S.feesRead, modules: ['fees_private', 'fees_public_catalog'] },
+  { name: 'sec-cartescolaire', title: 'sec.menu.cartescolaire', text: 'sec.home.cartescolaireText', perms: S.carteScolaire },
   { name: 'sec-exams', title: 'sec.menu.exams', text: 'sec.home.examsText', perms: S.examsRead, modules: ['official_exams'] },
   { name: 'sec-orientation', title: 'sec.menu.orientation', text: 'sec.home.orientationText', perms: S.orientation, modules: ['orientation'] },
   { name: 'sec-workshops', title: 'sec.menu.workshops', text: 'sec.home.workshopsText', perms: S.workshops, modules: ['workshops'] },
