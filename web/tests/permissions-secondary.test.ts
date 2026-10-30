@@ -3,13 +3,17 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { permissionsForRoles, ROLE_PERMISSIONS } from '@/lib/permissions';
 
-// Parité du miroir front avec la migration des rôles du secondaire (T808). Vitest s'exécute depuis web/.
-const MIGRATION = resolve(process.cwd(), '../database/migrations/202610281601_roles_secondary.sql');
+// Parité du miroir front avec les migrations des rôles du secondaire (T808, puis droits Billing). Vitest s'exécute depuis web/.
+const MIGRATIONS = ['202610281601_roles_secondary.sql', '202610291001_roles_secondary_billing.sql'].map((name) =>
+  resolve(process.cwd(), '../database/migrations', name),
+);
 
 function seeded(): Record<string, string[]> {
   const grants: Record<string, string[]> = {};
-  for (const m of readFileSync(MIGRATION, 'utf8').matchAll(/INSERT INTO role_permissions \(role, permission\) VALUES \('([^']+)', '([^']+)'\);/g)) {
-    (grants[m[1] as string] ??= []).push(m[2] as string);
+  for (const file of MIGRATIONS) {
+    for (const m of readFileSync(file, 'utf8').matchAll(/INSERT INTO role_permissions \(role, permission\) VALUES \('([^']+)', '([^']+)'\);/g)) {
+      (grants[m[1] as string] ??= []).push(m[2] as string);
+    }
   }
   return grants;
 }

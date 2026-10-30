@@ -48,20 +48,22 @@ final class RoleMatrix
      * Droits ajoutés aux droits propres de ROLES : lecture du profil et des listes de référence (squelette, vague 0), puis
      * matrice du CDC appliquée par la migration des rôles (W0S-5) : L = `<module>.read`, É et V = écriture ou validation du
      * module avec sa lecture ; `family.pay` du parent ; `identity.roles.assign` de l'administrateur fonctionnel (comptes
-     * externes datés, Q13).
+     * externes datés, Q13) ; droits du socle Billing (migration 202610291001) : l'intendant facture et approuve les annulations,
+     * le caissier encaisse et les demande, chef et promoteur lisent ; validation des échéanciers par le chef sans promoteur.
      *
      * @var array<string, list<string>>
      */
     public const EXTRA = [
-        'sec_promoteur' => ['secondary.profile.read', 'secondary.catalogue.read'],
-        'sec_chef_etablissement' => ['secondary.settings.read', 'secondary.enrol.read', 'secondary.enrol.validate', 'secondary.timetable.read', 'secondary.timetable.validate', 'secondary.syllabus.read', 'secondary.attendance.read', 'secondary.discipline.validate', 'secondary.grades.read', 'secondary.reportcard.read', 'secondary.exams.read', 'secondary.exams.validate', 'secondary.fees.read', 'secondary.workshops.read', 'secondary.dashboard.read', 'secondary.profile.read', 'secondary.catalogue.read'],
+        'sec_promoteur' => ['secondary.profile.read', 'secondary.catalogue.read', 'billing.read'],
+        'sec_chef_etablissement' => ['secondary.settings.read', 'secondary.enrol.read', 'secondary.enrol.validate', 'secondary.timetable.read', 'secondary.timetable.validate', 'secondary.syllabus.read', 'secondary.attendance.read', 'secondary.discipline.validate', 'secondary.grades.read', 'secondary.reportcard.read', 'secondary.exams.read', 'secondary.exams.validate', 'secondary.fees.read', 'secondary.workshops.read', 'secondary.dashboard.read', 'secondary.profile.read', 'secondary.catalogue.read', 'secondary.fees.validate', 'billing.read'],
         'sec_censeur' => ['secondary.settings.read', 'secondary.settings.write', 'secondary.enrol.read', 'secondary.timetable.read', 'secondary.syllabus.read', 'secondary.attendance.read', 'secondary.grades.read', 'secondary.reportcard.read', 'secondary.exams.read', 'secondary.exams.manage', 'secondary.workshops.read', 'secondary.dashboard.read', 'secondary.profile.read', 'secondary.catalogue.read'],
         'sec_surveillant_general' => ['secondary.enrol.read', 'secondary.timetable.read', 'secondary.attendance.read', 'secondary.reportcard.read', 'secondary.dashboard.read', 'secondary.profile.read'],
         'sec_animateur_pedagogique' => ['secondary.catalogue.read'],
         'sec_professeur_principal' => ['secondary.enrol.read', 'secondary.timetable.read', 'secondary.syllabus.read', 'secondary.attendance.read', 'secondary.grades.read', 'secondary.reportcard.read', 'secondary.exams.read', 'secondary.dashboard.read'],
         'enseignant' => ['secondary.timetable.read', 'secondary.syllabus.read', 'secondary.attendance.read', 'secondary.grades.read', 'secondary.reportcard.read', 'secondary.workshops.read', 'secondary.workshops.session', 'secondary.dashboard.read'],
         'sec_conseiller_orientation' => ['secondary.catalogue.read'],
-        'sec_intendant' => ['secondary.settings.read', 'secondary.enrol.read', 'secondary.exams.read', 'secondary.fees.read', 'secondary.workshops.costs.read', 'secondary.finance.read', 'secondary.profile.read', 'secondary.catalogue.read'],
+        'sec_intendant' => ['secondary.settings.read', 'secondary.enrol.read', 'secondary.exams.read', 'secondary.fees.read', 'secondary.workshops.costs.read', 'secondary.finance.read', 'secondary.profile.read', 'secondary.catalogue.read', 'billing.read', 'billing.manage', 'billing.reversal.approve'],
+        'sec_caissier' => ['billing.read', 'billing.cash', 'billing.reversal.request'],
         'sec_scolarite' => ['secondary.profile.read', 'secondary.catalogue.read'],
         'sec_parent' => ['secondary.family.pay'],
         'sec_admin_fonctionnel' => ['secondary.profile.read', 'secondary.catalogue.read', 'identity.roles.assign'],

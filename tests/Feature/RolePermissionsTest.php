@@ -171,13 +171,14 @@ final class RolePermissionsTest extends TestCase
     ];
 
     /**
-     * Droits hors matrice du CDC : spec 005 §2 (missions du rôle) et lecture du profil et des listes de référence (squelette).
+     * Droits hors matrice du CDC : spec 005 §2 (missions du rôle), lecture du profil et des listes de référence (squelette) et droits
+     * du socle Billing (migration 202610291001, moindre privilège : l'intendant facture et approuve, le caissier encaisse et demande).
      * Préfixe `secondary.` sauf mention `@`.
      */
     private const SECONDARY_ROLE_EXTRAS = [
-        'sec_promoteur' => ['dashboard.read', 'finance.read', 'fees.validate', 'profile.read', 'catalogue.read'],
+        'sec_promoteur' => ['dashboard.read', 'finance.read', 'fees.validate', 'profile.read', 'catalogue.read', '@billing.read'],
         'sec_reseau' => ['network.read'],
-        'sec_chef_etablissement' => ['discipline.council.preside', 'document.sign', 'profile.read', 'catalogue.read'],
+        'sec_chef_etablissement' => ['discipline.council.preside', 'document.sign', 'profile.read', 'catalogue.read', 'fees.validate', '@billing.read'],
         'sec_censeur' => ['grades.lock', 'profile.read', 'catalogue.read'],
         'sec_surveillant_general' => ['profile.read'],
         'sec_chef_travaux' => ['workshops.manage', 'stock.manage', 'safety.manage', 'internships.manage'],
@@ -185,8 +186,8 @@ final class RolePermissionsTest extends TestCase
         'sec_professeur_principal' => ['class.synthesis'],
         'enseignant' => [],
         'sec_conseiller_orientation' => ['orientation.manage', 'catalogue.read'],
-        'sec_intendant' => ['fees.catalog', 'profile.read', 'catalogue.read'],
-        'sec_caissier' => ['billing.cash'],
+        'sec_intendant' => ['fees.catalog', 'profile.read', 'catalogue.read', '@billing.read', '@billing.manage', '@billing.reversal.approve'],
+        'sec_caissier' => ['billing.cash', '@billing.read', '@billing.cash', '@billing.reversal.request'],
         'sec_scolarite' => ['enrol.manage', 'documents.issue', 'exams.lists', 'profile.read', 'catalogue.read'],
         'sec_infirmier' => ['infirmary.manage'],
         'sec_responsable_services' => ['services.manage'],
@@ -287,6 +288,17 @@ final class RolePermissionsTest extends TestCase
             self::assertNotContains('secondary.grades.validate', $this->grants[$role] ?? [], $role);
         }
         self::assertNotContains('secondary.billing.manage', $this->grants['sec_caissier'] ?? []);
+        // Billing du socle : le caissier encaisse et demande une annulation, l'intendant facture et l'approuve, jamais les deux.
+        foreach (['billing.manage', 'billing.reversal.approve'] as $permission) {
+            self::assertNotContains($permission, $this->grants['sec_caissier'] ?? [], 'sec_caissier : ' . $permission);
+        }
+        foreach (['billing.cash', 'billing.reversal.request'] as $permission) {
+            self::assertNotContains($permission, $this->grants['sec_intendant'] ?? [], 'sec_intendant : ' . $permission);
+        }
+        // Le catalogue des frais publics est tenu par l'administrateur fonctionnel, jamais par l'intendant (RG-FIN-2).
+        $catalogue = array_keys(array_filter($this->grants, static fn (array $p): bool => in_array('secondary.profile.manage', $p, true)));
+        self::assertSame(['sec_admin_fonctionnel'], array_values($catalogue));
+        self::assertContains('secondary.fees.validate', $this->grants['sec_chef_etablissement'] ?? [], 'Validation des échéanciers sans promoteur.');
         $holders = array_keys(array_filter($this->grants, static fn (array $p): bool => in_array('secondary.infirmary.manage', $p, true)));
         self::assertSame(['sec_infirmier'], array_values($holders));
         foreach (['sec_inspecteur', 'sec_delegation', 'sec_brigade_controle', 'sec_reseau'] as $external) {

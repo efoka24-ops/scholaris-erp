@@ -270,10 +270,18 @@ final class SecondaryConventionsTest extends TestCase
         return $grants;
     }
 
-    /** RoleMatrix (ROLES + EXTRA) et la migration des rôles du secondaire (W0S-5) accordent exactement les mêmes droits. */
+    /**
+     * RoleMatrix (ROLES + EXTRA) et les migrations des rôles du secondaire (`*_roles_secondary*.sql` : matrice W0S-5, droits Billing)
+     * accordent exactement les mêmes droits.
+     */
     public function testLaMatriceDesRolesEstAligneeSurLaMigration(): void
     {
-        $grants = self::migrationGrants((string) file_get_contents(self::root() . '/database/migrations/202610281601_roles_secondary.sql'));
+        $files = glob(self::root() . '/database/migrations/*_roles_secondary*.sql') ?: [];
+        self::assertContains(self::root() . '/database/migrations/202610281601_roles_secondary.sql', $files);
+        $grants = [];
+        foreach ($files as $file) {
+            $grants = array_merge_recursive($grants, self::migrationGrants((string) file_get_contents($file)));
+        }
         self::assertNotSame([], $grants);
         $codes = [];
         foreach (RoleMatrix::ROLES as $number => $row) {

@@ -20,7 +20,8 @@ const ALL_ADMIN = [
   'applications.manage',
 ];
 
-// Secondaire (migration 202610281601_roles_secondary.sql, T808) : R09 est le rôle commun « enseignant », les autres rôles sont sec_*.
+// Secondaire (migrations 202610281601_roles_secondary.sql, T808, et 202610291001_roles_secondary_billing.sql, droits Billing) : R09 est
+// le rôle commun « enseignant », les autres rôles sont sec_*.
 const SECONDARY_TEACHER = [
   'secondary.timetable.read', 'secondary.syllabus.read', 'secondary.lesson.log', 'secondary.attendance.read', 'secondary.attendance.take',
   'secondary.grades.read', 'secondary.grades.enter', 'secondary.reportcard.read', 'secondary.appraisal.subject', 'secondary.workshops.read',
@@ -28,12 +29,12 @@ const SECONDARY_TEACHER = [
 ];
 const sec = (...names: string[]): string[] => names.map((n) => (n.startsWith('@') ? n.slice(1) : `secondary.${n}`));
 const SECONDARY_ROLE_PERMISSIONS: Record<string, string[]> = {
-  sec_promoteur: sec('dashboard.read', 'finance.read', 'fees.validate', 'profile.read', 'catalogue.read'),
+  sec_promoteur: sec('dashboard.read', 'finance.read', 'fees.validate', 'profile.read', 'catalogue.read', '@billing.read'),
   sec_reseau: sec('network.read'),
   sec_chef_etablissement: sec(
     'settings.read', 'settings.manage', 'enrol.read', 'enrol.validate', 'timetable.read', 'timetable.validate', 'syllabus.read', 'attendance.read',
     'discipline.validate', 'grades.read', 'reportcard.read', 'reportcard.validate', 'council.preside', 'exams.read', 'exams.validate', 'fees.read',
-    'workshops.read', 'dashboard.read', 'discipline.council.preside', 'document.sign', 'profile.read', 'catalogue.read',
+    'workshops.read', 'dashboard.read', 'discipline.council.preside', 'document.sign', 'profile.read', 'catalogue.read', 'fees.validate', '@billing.read',
   ),
   sec_censeur: sec(
     'settings.read', 'settings.write', 'enrol.read', 'timetable.read', 'timetable.manage', 'syllabus.read', 'syllabus.visa', 'attendance.read',
@@ -52,8 +53,9 @@ const SECONDARY_ROLE_PERMISSIONS: Record<string, string[]> = {
   sec_conseiller_orientation: sec('orientation.manage', 'catalogue.read'),
   sec_intendant: sec(
     'settings.read', 'enrol.read', 'exams.read', 'fees.read', 'billing.manage', 'fees.catalog', 'workshops.costs.read', 'finance.read', 'profile.read', 'catalogue.read',
+    '@billing.read', '@billing.manage', '@billing.reversal.approve',
   ),
-  sec_caissier: sec('billing.cash'),
+  sec_caissier: sec('billing.cash', '@billing.read', '@billing.cash', '@billing.reversal.request'),
   sec_scolarite: sec('enrol.manage', 'documents.issue', 'exams.lists', 'profile.read', 'catalogue.read'),
   sec_infirmier: sec('infirmary.manage'),
   sec_responsable_services: sec('services.manage'),
