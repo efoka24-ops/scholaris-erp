@@ -25,4 +25,3 @@ export function usePermissions() {
   const can = (...perms: readonly string[]): boolean => ctx.can(...perms);
   return { can };
 }
-
