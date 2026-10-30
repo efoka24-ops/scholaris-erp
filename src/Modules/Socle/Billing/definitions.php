@@ -16,6 +16,7 @@ return [
     PdoDebtorDirectory::class => autowire(),
     \Scholaris\Modules\Socle\Billing\Contracts\EstablishmentBalances::class => get(PdoDebtorDirectory::class),
     \Scholaris\Modules\Socle\Billing\Contracts\InvoiceTotals::class => autowire(\Scholaris\Modules\Socle\Billing\Infrastructure\PdoInvoiceTotals::class),
+    \Scholaris\Modules\Socle\Billing\Contracts\LearnerInvoices::class => autowire(\Scholaris\Modules\Socle\Billing\Infrastructure\PdoLearnerInvoices::class),
 
     // Contrats d'écriture pour les applications (D4) : factures (inscription, facture libre de candidat, tiers payeur) et paiements.
     \Scholaris\Modules\Socle\Billing\Contracts\InvoiceIssuer::class => autowire(\Scholaris\Modules\Socle\Billing\Application\InvoiceIssuerService::class),

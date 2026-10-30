@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Secondary\Fees;
 
+use Scholaris\Modules\Apps\Secondary\Fees\Application\FeesFamilyInvoices;
 use Scholaris\Modules\Apps\Secondary\Fees\Domain\FeesDefaults;
+use Scholaris\Modules\Apps\Secondary\Portals\Contracts\FamilyInvoices;
 use Tests\Support\Billing\BillingTestCase;
 
 /**
@@ -26,6 +28,23 @@ final class FamilyAllocationTest extends BillingTestCase
         self::assertSame(201, $response->getStatusCode(), (string) $response->getBody());
         [$schedule] = $this->api('POST', '/fee-schedules', 'manager', ['fee_item_id' => $json['data']['id'], 'academic_year_id' => 'ay1', 'amount_xaf' => $amount, 'terms' => $terms]);
         self::assertSame(201, $schedule->getStatusCode(), (string) $schedule->getBody());
+    }
+
+    public function testLePortailParentVoitLesFacturesOuvertesDeLEleve(): void
+    {
+        $this->bootBilling(FeesDefaults::PRIVATE_PRESETS);
+        $this->fee('registration', 'Inscription', self::EXAMPLE_CDC['registration'], [['due_on' => '2026-09-01', 'amount' => self::EXAMPLE_CDC['registration']]]);
+        $invoice = $this->invoiceFor('kid-a', 'g1', 'en-a');
+        $provider = $this->container()->get(FeesFamilyInvoices::class);
+        self::assertInstanceOf(FamilyInvoices::class, $provider);
+        self::assertContains(FeesFamilyInvoices::class, (array) $this->container()->get('secondary.family_invoices.fees'));
+
+        $open = $provider->openFor('t1', 'e1', 'kid-a');
+        self::assertSame([(string) $invoice['id']], array_map(static fn ($i): string => $i->id, $open));
+        self::assertSame(self::EXAMPLE_CDC['registration'], $open[0]->balanceXaf);
+        self::assertSame([], $provider->openFor('t1', 'e2', 'kid-a'), 'Autre établissement.');
+        self::assertSame([], $provider->openFor('t2', 'e1', 'kid-a'), 'Autre client.');
+        self::assertSame([], $provider->openFor('t1', 'e1', 'kid-z'));
     }
 
     public function testRepartitionDuPaiementFamilialDeLExempleDuCahierDesCharges(): void
