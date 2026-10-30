@@ -19,6 +19,7 @@ import { publicSchoolsRoutes } from '@/views/public-schools/routes';
 import { nurseryPrivateRoutes } from '@/views/nursery-private/routes';
 import { publicNurseryRoutes } from '@/views/public-nursery/routes';
 import { primaryRoutes } from '@/views/primary/routes';
+import { secondaryRoutes } from '@/views/secondary/routes';
 import { importRoutes } from '@/views/admin/import/routes';
 import { workflowRoutes } from '@/views/admin/workflows/routes';
 
@@ -398,6 +399,7 @@ export const routes: RouteRecordRaw[] = [
   ...nurseryPrivateRoutes,
   ...publicNurseryRoutes,
   ...primaryRoutes,
+  ...secondaryRoutes,
   ...importRoutes,
   ...workflowRoutes,
   { path: '/interdit', name: 'forbidden', component: () => import('@/views/ForbiddenView.vue'), meta: { titleKey: 'forbidden.title' } },
