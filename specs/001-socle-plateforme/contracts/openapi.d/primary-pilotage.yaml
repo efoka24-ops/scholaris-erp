@@ -1,0 +1,245 @@
+# Contrat OpenAPI 3.1 du pilotage de l'application Primaire privee (P-002) : exports de tutelle (T552), alertes d'absences (T551),
+# parametres « a confirmer », apercu du passage de classe (T555), services aux familles (T553) et sortie securisee (T554).
+# Lectures : 404 si l'application est fermee ; ecritures : WriteGate (423 suspendue, 403 fermee). Commande quotidienne : primary:alerts.
+paths:
+  /api/v1/primary/tutelage/types:
+    get:
+      summary: "Types d'export de tutelle et colonnes en vigueur (primary.tutelage.export, tout l'etablissement)"
+      responses:
+        '200': {description: "Reponse {data: {items[{key, label, columns}]}}"}
+        '403': {description: "Permission absente ou perimetre partiel"}
+        '404': {description: "Application fermee"}
+  /api/v1/primary/tutelage/exports/{type}:
+    get:
+      summary: "Export primary.enrolment (effectifs par classe et sexe, redoublants, plafond), primary.results (conseils valides), primary.census (niveau, sexe, age), primary.exam ; colonnes parametrables primary.tutelage.<type>.columns"
+      parameters:
+        - {name: type, in: path, required: true, schema: {type: string}}
+        - {name: academic_year_id, in: query, required: false, schema: {type: string}}
+        - {name: reference_date, in: query, required: false, schema: {type: string, format: date}, description: "Date de reference de l'age (recensement) ; par defaut primary.tutelage.census_reference"}
+        - {name: format, in: query, required: false, schema: {type: string, enum: [csv, xlsx, json]}}
+      responses:
+        '200': {description: "Fichier"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Type inconnu"}
+        '422': {description: "Format inconnu"}
+  /api/v1/primary/alerts:
+    get:
+      summary: "Alertes d'absences repetees ouvertes (primary.dashboard.read ; seuil primary.alert.absences demi-journees consecutives)"
+      responses:
+        '200': {description: "Reponse {data: {items[{id, person_id, name, class_structure_id, half_days, streak_start, detected_on}]}}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Application fermee"}
+  /api/v1/primary/alerts/{id}/resolve:
+    post:
+      summary: "Marquer une alerte comme traitee"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [note]
+              properties:
+                note: {type: string, maxLength: 255}
+      responses:
+        '200': {description: "Alerte traitee"}
+        '403': {description: "Permission absente ou hors perimetre"}
+        '404': {description: "Alerte introuvable"}
+        '409': {description: "Deja traitee"}
+        '422': {description: "Note manquante"}
+  /api/v1/primary/settings/defaults:
+    get:
+      summary: "Parametres de l'ecole primaire : valeur en vigueur, valeur de depart et sa source (questions du client, textes du MINEDUB), tous « a confirmer »"
+      responses:
+        '200': {description: "Reponse {data: {items[{key, label, source, default, current, customised, to_confirm}]}}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Application fermee"}
+  /api/v1/primary/closure/promotion-preview:
+    get:
+      summary: "Apercu du passage de classe (decisions des conseils du dernier trimestre et classe suivante de people.promotion.next_structure) ; le passage lui-meme est fait par People\\YearPromotion a la cloture du socle"
+      parameters:
+        - {name: academic_year_id, in: query, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Reponse {data: {academic_year_id, classes[{class_id, council_status, next_class_id, missing_next_class, admitted, adjourned, cycle_end, undecided}], totals}}"}
+        '403': {description: "Permission absente ou perimetre partiel"}
+        '404': {description: "Application fermee"}
+  /api/v1/primary/service-plans:
+    get:
+      summary: "Services (cantine, garderie, transport : primary.services.kinds) et nombre d'abonnes"
+      responses:
+        '200': {description: "Reponse {data: {kinds, plans[]}}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Application fermee"}
+    post:
+      summary: "Creer un forfait lie a un frais du catalogue Billing"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [service_kind, label, fee_code, billing_cycle]
+              properties:
+                service_kind: {type: string, maxLength: 20}
+                label: {type: string, maxLength: 160}
+                fee_code: {type: string, maxLength: 40}
+                billing_cycle: {type: string, enum: [term, month, year]}
+                capacity: {type: [integer, 'null'], minimum: 1}
+                route_label: {type: [string, 'null'], maxLength: 160}
+      responses:
+        '201': {description: "Forfait"}
+        '403': {description: "Permission absente"}
+        '422': {description: "Nature de service inconnue"}
+  /api/v1/primary/service-plans/{id}:
+    patch:
+      summary: "Modifier un forfait"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                label: {type: string, maxLength: 160}
+                capacity: {type: [integer, 'null'], minimum: 1}
+                route_label: {type: [string, 'null'], maxLength: 160}
+                active: {type: boolean}
+      responses:
+        '200': {description: "Forfait"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Forfait introuvable"}
+        '422': {description: "Donnees invalides"}
+  /api/v1/primary/service-plans/{id}/subscriptions:
+    get:
+      summary: "Abonnements d'un forfait"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Reponse {data: {items[]}}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Forfait introuvable"}
+    post:
+      summary: "Abonner un eleve inscrit (capacite respectee)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [person_id, academic_year_id, starts_on]
+              properties:
+                person_id: {type: string}
+                academic_year_id: {type: string}
+                starts_on: {type: string, format: date}
+      responses:
+        '201': {description: "Abonnement"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Forfait introuvable"}
+        '409': {description: "Deja abonne, capacite atteinte, forfait inactif"}
+        '422': {description: "Eleve non inscrit"}
+  /api/v1/primary/service-plans/{id}/invoice:
+    post:
+      summary: "Facturer un cycle : une facture par abonnement actif et par cycle, jamais deux"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [cycle_key, due_on]
+              properties:
+                cycle_key: {type: string, maxLength: 40}
+                due_on: {type: string, format: date}
+      responses:
+        '200': {description: "Reponse {data: {invoiced, already}}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Forfait introuvable"}
+        '422': {description: "Donnees invalides"}
+  /api/v1/primary/service-subscriptions/{id}/end:
+    post:
+      summary: "Terminer un abonnement"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [ends_on]
+              properties:
+                ends_on: {type: string, format: date}
+      responses:
+        '200': {description: "Abonnement termine"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Abonnement introuvable"}
+        '409': {description: "Deja termine"}
+        '422': {description: "Date invalide"}
+  /api/v1/primary/classes/{id}/pickups:
+    get:
+      summary: "Sortie securisee de la classe ce jour : personnes autorisees en vigueur et evenements (desactivee si le niveau n'est pas dans primary.pickup.levels)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Reponse {data: {class, date, enabled, learners[{person_id, name, authorised[], events[]}]}}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Classe introuvable ou hors perimetre"}
+  /api/v1/primary/classes/{id}/pickups/handover:
+    post:
+      summary: "Remise a une personne autorisee en vigueur (designee par l'identifiant de l'autorisation)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [person_id, pickup_id]
+              properties:
+                person_id: {type: string}
+                pickup_id: {type: string}
+      responses:
+        '201': {description: "Remise journalisee"}
+        '403': {description: "Permission absente ou hors perimetre"}
+        '404': {description: "Classe ou eleve introuvable"}
+        '409': {description: "Sortie securisee non activee pour ce niveau"}
+        '422': {description: "Personne non autorisee ce jour"}
+  /api/v1/primary/classes/{id}/pickups/refusals:
+    post:
+      summary: "Refus (personne non autorisee) : journalise, parent et direction prevenus (NOT-PRI-07)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [person_id, presented_name]
+              properties:
+                person_id: {type: string}
+                presented_name: {type: string, maxLength: 160}
+                note: {type: [string, 'null'], maxLength: 255}
+      responses:
+        '201': {description: "Refus journalise"}
+        '403': {description: "Permission absente ou hors perimetre"}
+        '404': {description: "Classe ou eleve introuvable"}
+        '409': {description: "Sortie securisee non activee pour ce niveau"}
+        '422': {description: "Donnees invalides"}

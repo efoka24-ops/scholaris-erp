@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="vendor/autoload.php"
+         colors="true"
+         cacheDirectory=".phpunit.cache"
+         failOnWarning="true"
+         failOnRisky="true">
+    <testsuites>
+        <testsuite name="Unit"><directory>tests/Unit</directory></testsuite>
+        <testsuite name="Architecture"><directory>tests/Architecture</directory></testsuite>
+        <testsuite name="Isolation"><directory>tests/Isolation</directory></testsuite>
+        <testsuite name="Feature"><directory>tests/Feature</directory></testsuite>
+        <!-- Recette : contrats de toutes les routes (~1 min) et parcours de bout en bout sur la pile réelle (~30 s). -->
+        <testsuite name="ApiContract"><directory>tests/ApiContract</directory></testsuite>
+        <testsuite name="E2E"><directory>tests/E2E</directory></testsuite>
+    </testsuites>
+    <source>
+        <include><directory>src</directory></include>
+    </source>
+    <php>
+        <!-- La suite complète (plus de 4 000 tests, piles réelles) dépasse les 128 Mio par défaut de PHP. -->
+        <ini name="memory_limit" value="1G"/>
+        <env name="APP_ENV" value="testing"/>
+        <env name="APP_DEBUG" value="false"/>
+        <env name="DB_CONNECTION" value="sqlite"/>
+        <env name="DB_DATABASE" value=":memory:"/>
+        <env name="LOG_PATH" value="storage/logs/test.log"/>
+    </php>
+</phpunit>

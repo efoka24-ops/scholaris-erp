@@ -1,0 +1,15 @@
+{
+  "name": "scholaris-web-e2e",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Tests d'interface de bout en bout (Playwright) contre le front construit servi par vite preview et un faux backend par interception réseau.",
+  "scripts": {
+    "test": "playwright test",
+    "install-browser": "playwright install chromium"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
+    "@playwright/test": "^1.64.0"
+  }
+}

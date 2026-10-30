@@ -1,20 +1,47 @@
-node_modules
-dist
-.next
-.turbo
-coverage
-*.log
+/vendor/
+/node_modules/
+/.phpunit.cache/
+/.php-cs-fixer.cache
+/.idea/
+/.vscode/
+/.claude/
+
+# Secrets et fichiers locaux : aucun secret dans le dépôt
 .env
-.env.local
-apps/api/generated
-packages/prisma/generated
-.DS_Store
-playwright-report
-test-results
-*.tsbuildinfo
+.env.*
+!.env.example
+*.bak
+/auth.json
+*.log
+*.cache
 
-# Claude worktrees
-.claude/
+# Données d'exécution
+/storage/logs/*
+/storage/cache/*
+!/storage/logs/.gitkeep
+!/storage/cache/.gitkeep
+/storage/uploads/
+*.sqlite
 
-# Documents deposes via l'upload (pieces jointes admissions, etc.)
-apps/api/uploads/
+# Front : sorties de construction et dépendances (générées par scripts/build-web.ps1)
+web/e2e/.dist/
+web/e2e/node_modules/
+web/e2e/test-results/
+web/e2e/playwright-report/
+/public/assets/
+/public/icons/
+/public/index.html
+/public/sw.js
+/public/workbox-*.js
+/public/registerSW.js
+/public/manifest.webmanifest
+/public/favicon.svg
+
+# Outils locaux
+/.agents/
+/.phpunit.cache-mysql/
+tests/Load/.work/
+web/e2e/screenshots/
+# Captures de la recette en production (web/e2e/recette-prod), deja couvertes par la ligne precedente : explicite.
+web/e2e/screenshots/recette-prod/
+web/build/

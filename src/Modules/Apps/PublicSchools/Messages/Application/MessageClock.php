@@ -1,0 +1,34 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Scholaris\Modules\Apps\PublicSchools\Messages\Application;
+
+use DateTimeImmutable;
+use DateTimeZone;
+use Scholaris\Core\Config\Config;
+use Scholaris\Core\RateLimit\Clock;
+
+/** Horloge des messages : instant ISO 8601 et jour courant dans le fuseau de l'application (Africa/Douala). */
+final class MessageClock
+{
+    public function __construct(private readonly Clock $clock, private readonly Config $config)
+    {
+    }
+
+    public function moment(): DateTimeImmutable
+    {
+        return (new DateTimeImmutable('@' . $this->clock->now()))
+            ->setTimezone(new DateTimeZone((string) $this->config->get('app.timezone', 'Africa/Douala')));
+    }
+
+    public function now(): string
+    {
+        return $this->moment()->format(DATE_ATOM);
+    }
+
+    public function today(): string
+    {
+        return $this->moment()->format('Y-m-d');
+    }
+}

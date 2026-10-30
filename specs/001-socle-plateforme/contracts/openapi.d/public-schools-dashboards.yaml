@@ -1,0 +1,181 @@
+# Contrat du tableau de bord territorial des écoles publiques (API-12, DOC-28) (contrat généré à partir des routes, réponses RFC 9457).
+paths:
+  /api/v1/public/dashboards/entry:
+    get:
+      summary: DashboardController::entry
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: per_page
+          in: query
+          required: false
+          schema: { type: integer }
+        - name: cursor
+          in: query
+          required: false
+          schema: { type: string }
+        - name: format
+          in: query
+          required: false
+          schema: { type: string }
+        - name: purpose
+          in: query
+          required: false
+          schema: { type: string }
+        - name: year_label
+          in: query
+          required: false
+          schema: { type: string }
+        - name: date
+          in: query
+          required: false
+          schema: { type: string }
+        - name: month
+          in: query
+          required: false
+          schema: { type: string }
+        - name: structure_id
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        '200': { description: "Succès" }
+        '201': { description: "Créé" }
+        '400': { description: "Requête invalide" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission ou périmètre insuffisant" }
+        '404': { description: "Introuvable dans le périmètre" }
+        '409': { description: "Conflit : état incompatible ou rejeu différent" }
+        '422': { description: "Données invalides" }
+        '423': { description: "Application en lecture seule" }
+  /api/v1/public/dashboards/{territory}:
+    get:
+      summary: DashboardController::show
+      security:
+        - bearer: []
+      parameters:
+        - name: territory
+          in: path
+          required: true
+          schema: { type: string }
+        - name: per_page
+          in: query
+          required: false
+          schema: { type: integer }
+        - name: cursor
+          in: query
+          required: false
+          schema: { type: string }
+        - name: format
+          in: query
+          required: false
+          schema: { type: string }
+        - name: purpose
+          in: query
+          required: false
+          schema: { type: string }
+        - name: year_label
+          in: query
+          required: false
+          schema: { type: string }
+        - name: date
+          in: query
+          required: false
+          schema: { type: string }
+        - name: month
+          in: query
+          required: false
+          schema: { type: string }
+        - name: structure_id
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        '200': { description: "Succès" }
+        '201': { description: "Créé" }
+        '400': { description: "Requête invalide" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission ou périmètre insuffisant" }
+        '404': { description: "Introuvable dans le périmètre" }
+        '409': { description: "Conflit : état incompatible ou rejeu différent" }
+        '422': { description: "Données invalides" }
+        '423': { description: "Application en lecture seule" }
+  /api/v1/public/dashboards/{territory}/children:
+    get:
+      summary: DashboardController::children
+      security:
+        - bearer: []
+      parameters:
+        - name: territory
+          in: path
+          required: true
+          schema: { type: string }
+        - name: per_page
+          in: query
+          required: false
+          schema: { type: integer }
+        - name: cursor
+          in: query
+          required: false
+          schema: { type: string }
+        - name: format
+          in: query
+          required: false
+          schema: { type: string }
+        - name: purpose
+          in: query
+          required: false
+          schema: { type: string }
+        - name: year_label
+          in: query
+          required: false
+          schema: { type: string }
+        - name: date
+          in: query
+          required: false
+          schema: { type: string }
+        - name: month
+          in: query
+          required: false
+          schema: { type: string }
+        - name: structure_id
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        '200': { description: "Succès" }
+        '201': { description: "Créé" }
+        '400': { description: "Requête invalide" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission ou périmètre insuffisant" }
+        '404': { description: "Introuvable dans le périmètre" }
+        '409': { description: "Conflit : état incompatible ou rejeu différent" }
+        '422': { description: "Données invalides" }
+        '423': { description: "Application en lecture seule" }
+  /api/v1/public/dashboards/{territory}/document:
+    post:
+      summary: DashboardController::document
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: territory
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: "Succès" }
+        '201': { description: "Créé" }
+        '400': { description: "Requête invalide" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission ou périmètre insuffisant" }
+        '404': { description: "Introuvable dans le périmètre" }
+        '409': { description: "Conflit : état incompatible ou rejeu différent" }
+        '422': { description: "Données invalides" }
+        '423': { description: "Application en lecture seule" }

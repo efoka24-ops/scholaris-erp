@@ -1,0 +1,31 @@
+# Contrat OpenAPI 3.1 de la Maternelle privée, tableau de bord (agrégats sans donnée nominative).
+# Erreurs au format RFC 9457. Toutes les routes exigent l'authentification (401) et X-Establishment-Id ; application suspendue : 423 en écriture.
+paths:
+  /api/v1/nursery/dashboard:
+    get:
+      summary: 'GET /nursery/dashboard'
+      security:
+        -
+          bearer: {  }
+      parameters:
+        -
+          $ref: '#/components/parameters/EstablishmentId'
+        -
+          name: date
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        200:
+          description: 'Succès : enveloppe JSON {data}'
+        400:
+          description: 'Requête invalide (en-tête X-Establishment-Id manquant, JSON illisible)'
+        401:
+          description: 'Authentification requise'
+        403:
+          description: 'Accès refusé (permission, application fermée)'
+        404:
+          description: 'Ressource introuvable ou hors périmètre'
+        422:
+          description: 'Données invalides ou refus métier (RFC 9457)'

@@ -1,0 +1,5 @@
+-- Application secondaire, sous-module Catalogue : ajout de la série E « Technique et mathématiques » (enseignement technique,
+-- industriel, génie mécanique, 2nd cycle), publiée par le MINESEC sur la même page que le reste du catalogue. Décision du
+-- propriétaire du 23 octobre 2026 : on l'ajoute au catalogue de la plateforme. Marquée « to_confirm » comme les autres lignes.
+-- Les séries ABI et SH (2nd cycle général) et les codes externes MAGE, TEP, ISRH restent non amorcés.
+INSERT INTO se_stream_refs (id, tenant_id, establishment_id, section_code, code, cycle_code, stream_kind, teaching_kind, track_code, field_label, label_fr, label_en, origin, source_ref, confirmation, hidden, version_no, created_by, created_at, updated_at) VALUES ('01SECSTRM00000000000000108', '*', '*', 'fr', 'E', 'second', 'specialty', 'technical', 'IND', 'Génie mécanique', 'Technique et mathématiques', NULL, 'minesec', 'MINESEC, Diversité de l''offre de formation (sous-système francophone), consultée le 2026-10-22', 'to_confirm', 0, 1, 'system', '2026-10-23T13:00:00+01:00', '2026-10-23T13:00:00+01:00');

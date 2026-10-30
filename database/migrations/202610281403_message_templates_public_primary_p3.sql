@@ -1,0 +1,8 @@
+-- Modèles de messages du lot P3 (FR et EN), catégorie « standard ». Variables de la liste blanche du socle Messaging.
+-- pub.not09.result : résultat d'examen publié (NOT-09) ; pub.not09.parent (attestation disponible) existe déjà (202610211105).
+-- pub.ins.report : rapport de visite d'inspection transmis au directeur (EX-INS-03).
+INSERT INTO message_templates (id, tenant_id, establishment_id, template_key, locale, channel, subject, body, variables, category, created_at, updated_at) VALUES
+('01M5SPP3000000000000000001', 'platform', 'platform', 'pub.not09.result', 'fr', 'sms', NULL, 'Résultat de :child_name à l''examen :exam_label : :details. :establishment_name', '["child_name","exam_label","details","establishment_name"]', 'standard', '2026-10-28T14:03:00+01:00', '2026-10-28T14:03:00+01:00'),
+('01M5SPP3000000000000000002', 'platform', 'platform', 'pub.not09.result', 'en', 'sms', NULL, ':child_name''s result in the :exam_label exam: :details. :establishment_name', '["child_name","exam_label","details","establishment_name"]', 'standard', '2026-10-28T14:03:00+01:00', '2026-10-28T14:03:00+01:00'),
+('01M5SPP3000000000000000003', 'platform', 'platform', 'pub.ins.report', 'fr', 'sms', NULL, 'Rapport de la visite du :date (:class_name) disponible dans SCHOLARIS pour :establishment_name.', '["date","class_name","establishment_name"]', 'standard', '2026-10-28T14:03:00+01:00', '2026-10-28T14:03:00+01:00'),
+('01M5SPP3000000000000000004', 'platform', 'platform', 'pub.ins.report', 'en', 'sms', NULL, 'Report of the :date visit (:class_name) available in SCHOLARIS for :establishment_name.', '["date","class_name","establishment_name"]', 'standard', '2026-10-28T14:03:00+01:00', '2026-10-28T14:03:00+01:00');

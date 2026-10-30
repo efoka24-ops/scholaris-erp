@@ -1,0 +1,350 @@
+{
+  "config": {
+    "argv": [
+      "C:\\Program Files\\nodejs\\node.exe",
+      "C:\\Users\\YCXL3291\\scholaris-erp\\web\\e2e\\node_modules\\@playwright\\test\\cli.js",
+      "test",
+      "specs/04-famille-paiement.spec.ts"
+    ],
+    "configFile": "C:\\Users\\YCXL3291\\scholaris-erp\\web\\e2e\\playwright.config.ts",
+    "rootDir": "C:/Users/YCXL3291/scholaris-erp/web/e2e/specs",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "C:/Users/YCXL3291/scholaris-erp/web/e2e/.results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "mobile-390",
+        "name": "mobile-390",
+        "testDir": "C:/Users/YCXL3291/scholaris-erp/web/e2e/specs",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 45000
+      },
+      {
+        "outputDir": "C:/Users/YCXL3291/scholaris-erp/web/e2e/.results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "desktop-1280",
+        "name": "desktop-1280",
+        "testDir": "C:/Users/YCXL3291/scholaris-erp/web/e2e/specs",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 45000
+      }
+    ],
+    "filteredProjects": [
+      {
+        "grep": {},
+        "grepInvert": null,
+        "outputDir": "C:\\Users\\YCXL3291\\scholaris-erp\\web\\e2e\\.results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "name": "mobile-390",
+        "testDir": "C:\\Users\\YCXL3291\\scholaris-erp\\web\\e2e\\specs",
+        "snapshotDir": "C:\\Users\\YCXL3291\\scholaris-erp\\web\\e2e\\specs",
+        "testIgnore": [],
+        "testMatch": "**/*.@(spec|test).?(c|m)[jt]s?(x)",
+        "timeout": 45000,
+        "use": {
+          "baseURL": "http://127.0.0.1:4317",
+          "serviceWorkers": "block",
+          "testIdAttribute": "data-test",
+          "locale": "fr-FR",
+          "timezoneId": "Africa/Douala",
+          "trace": "retain-on-failure",
+          "screenshot": "only-on-failure",
+          "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.8078.4 Safari/537.36",
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "screen": {
+            "width": 1920,
+            "height": 1080
+          },
+          "deviceScaleFactor": 1,
+          "isMobile": false,
+          "hasTouch": true,
+          "defaultBrowserType": "chromium"
+        },
+        "dependencies": [],
+        "ignoreSnapshots": false,
+        "__projectId": "mobile-390"
+      },
+      {
+        "grep": {},
+        "grepInvert": null,
+        "outputDir": "C:\\Users\\YCXL3291\\scholaris-erp\\web\\e2e\\.results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "name": "desktop-1280",
+        "testDir": "C:\\Users\\YCXL3291\\scholaris-erp\\web\\e2e\\specs",
+        "snapshotDir": "C:\\Users\\YCXL3291\\scholaris-erp\\web\\e2e\\specs",
+        "testIgnore": [],
+        "testMatch": "**/*.@(spec|test).?(c|m)[jt]s?(x)",
+        "timeout": 45000,
+        "use": {
+          "baseURL": "http://127.0.0.1:4317",
+          "serviceWorkers": "block",
+          "testIdAttribute": "data-test",
+          "locale": "fr-FR",
+          "timezoneId": "Africa/Douala",
+          "trace": "retain-on-failure",
+          "screenshot": "only-on-failure",
+          "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.8078.4 Safari/537.36",
+          "viewport": {
+            "width": 1280,
+            "height": 800
+          },
+          "screen": {
+            "width": 1920,
+            "height": 1080
+          },
+          "deviceScaleFactor": 1,
+          "isMobile": false,
+          "hasTouch": false,
+          "defaultBrowserType": "chromium"
+        },
+        "dependencies": [],
+        "ignoreSnapshots": false,
+        "__projectId": "desktop-1280"
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "./.results/report.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "default",
+    "updateSourceMethod": "patch",
+    "version": "1.64.0",
+    "workers": 1,
+    "webServer": {
+      "command": "npx vite preview --outDir e2e/.dist --port 4317 --strictPort --host 127.0.0.1",
+      "cwd": "..",
+      "url": "http://127.0.0.1:4317",
+      "reuseExistingServer": false,
+      "timeout": 60000
+    }
+  },
+  "suites": [
+    {
+      "title": "04-famille-paiement.spec.ts",
+      "file": "04-famille-paiement.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "portail famille : enfant, solde et paiement mobile money confirmé",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 45000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile-390",
+              "projectName": "mobile-390",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 11672,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-13T00:31:15.802Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "axe-famille",
+                      "contentType": "application/json",
+                      "body": "W10="
+                    },
+                    {
+                      "name": "axe-famille-paiement",
+                      "contentType": "application/json",
+                      "body": "W10="
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "de4225fef17c2a72d559-3d5ccbb7c982f6202326",
+          "file": "04-famille-paiement.spec.ts",
+          "line": 4,
+          "column": 1
+        },
+        {
+          "title": "refus du serveur (403) pendant un paiement : l'écran le dit",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 45000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile-390",
+              "projectName": "mobile-390",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 7841,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-13T00:31:33.370Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "de4225fef17c2a72d559-7c32973d1ed0ce18cbdc",
+          "file": "04-famille-paiement.spec.ts",
+          "line": 24,
+          "column": 1
+        },
+        {
+          "title": "portail famille : enfant, solde et paiement mobile money confirmé",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 45000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop-1280",
+              "projectName": "desktop-1280",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 9926,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-13T00:31:42.654Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "axe-famille",
+                      "contentType": "application/json",
+                      "body": "W10="
+                    },
+                    {
+                      "name": "axe-famille-paiement",
+                      "contentType": "application/json",
+                      "body": "W10="
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "de4225fef17c2a72d559-63cf5dcdba69f64abd0d",
+          "file": "04-famille-paiement.spec.ts",
+          "line": 4,
+          "column": 1
+        },
+        {
+          "title": "refus du serveur (403) pendant un paiement : l'écran le dit",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 45000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop-1280",
+              "projectName": "desktop-1280",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 4093,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-13T00:31:52.840Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "de4225fef17c2a72d559-3ce99f9a9d117069f01a",
+          "file": "04-famille-paiement.spec.ts",
+          "line": 24,
+          "column": 1
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-13T00:31:11.200Z",
+    "duration": 46862.782,
+    "expected": 4,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

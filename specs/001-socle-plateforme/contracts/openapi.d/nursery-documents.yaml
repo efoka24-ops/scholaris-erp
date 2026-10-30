@@ -1,0 +1,228 @@
+# Contrat OpenAPI 3.1 de la Maternelle privée, sous-module Documents (application nursery) : carnet, carte des autorisés, registre du jour, émis par le module Documents du socle.
+# Erreurs au format RFC 9457. Toutes les routes exigent l'authentification (401) et X-Establishment-Id ; application suspendue : 423 en écriture.
+paths:
+  /api/v1/nursery/documents:
+    get:
+      summary: 'GET /nursery/documents'
+      security:
+        -
+          bearer: {  }
+      parameters:
+        -
+          $ref: '#/components/parameters/EstablishmentId'
+        -
+          name: per_page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+        -
+          name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+        -
+          name: kind
+          in: query
+          required: false
+          schema:
+            type: string
+        -
+          name: learner_id
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        200:
+          description: 'Succès : enveloppe JSON {data}, avec meta {next_cursor, per_page} (pagination par curseur)'
+        400:
+          description: 'Requête invalide (en-tête X-Establishment-Id manquant, JSON illisible)'
+        401:
+          description: 'Authentification requise'
+        403:
+          description: 'Accès refusé (permission, application fermée)'
+        404:
+          description: 'Ressource introuvable ou hors périmètre'
+        422:
+          description: 'Données invalides ou refus métier (RFC 9457)'
+  '/api/v1/nursery/progress-books/{id}/document':
+    post:
+      summary: 'POST /nursery/progress-books/{id}/document'
+      description: 'Carnet PUBLIÉ seulement (409 sinon) ; émis une seule fois, contenu figé.'
+      security:
+        -
+          bearer: {  }
+      parameters:
+        -
+          $ref: '#/components/parameters/EstablishmentId'
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                locale:
+                  type: string
+                  enum:
+                    - fr
+                    - en
+      responses:
+        201:
+          description: 'Succès : enveloppe JSON {data}'
+        400:
+          description: 'Requête invalide (en-tête X-Establishment-Id manquant, JSON illisible)'
+        401:
+          description: 'Authentification requise'
+        403:
+          description: 'Accès refusé (permission, application fermée)'
+        404:
+          description: 'Ressource introuvable ou hors périmètre'
+        409:
+          description: 'Conflit (état incompatible, doublon)'
+        422:
+          description: 'Données invalides ou refus métier (RFC 9457)'
+        423:
+          description: 'Application suspendue : lecture et export seulement, écriture refusée'
+  '/api/v1/nursery/pickup/authorized-persons/{id}/card':
+    post:
+      summary: 'POST /nursery/pickup/authorized-persons/{id}/card'
+      description: 'Autorisation active, personne non visée par une restriction (409 sinon) ; révoquée avec l’autorisation.'
+      security:
+        -
+          bearer: {  }
+      parameters:
+        -
+          $ref: '#/components/parameters/EstablishmentId'
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                locale:
+                  type: string
+                  enum:
+                    - fr
+                    - en
+      responses:
+        201:
+          description: 'Succès : enveloppe JSON {data}'
+        400:
+          description: 'Requête invalide (en-tête X-Establishment-Id manquant, JSON illisible)'
+        401:
+          description: 'Authentification requise'
+        403:
+          description: 'Accès refusé (permission, application fermée)'
+        404:
+          description: 'Ressource introuvable ou hors périmètre'
+        409:
+          description: 'Conflit (état incompatible, doublon)'
+        422:
+          description: 'Données invalides ou refus métier (RFC 9457)'
+        423:
+          description: 'Application suspendue : lecture et export seulement, écriture refusée'
+  /api/v1/nursery/register/document:
+    post:
+      summary: 'POST /nursery/register/document'
+      description: 'Registre du jour de tout l’établissement ; une réédition révoque la précédente.'
+      security:
+        -
+          bearer: {  }
+      parameters:
+        -
+          $ref: '#/components/parameters/EstablishmentId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                date:
+                  type: string
+                  format: date
+                locale:
+                  type: string
+                  enum:
+                    - fr
+                    - en
+      responses:
+        201:
+          description: 'Succès : enveloppe JSON {data}'
+        400:
+          description: 'Requête invalide (en-tête X-Establishment-Id manquant, JSON illisible)'
+        401:
+          description: 'Authentification requise'
+        403:
+          description: 'Accès refusé (permission, application fermée)'
+        404:
+          description: 'Ressource introuvable ou hors périmètre'
+        409:
+          description: 'Conflit (état incompatible, doublon)'
+        422:
+          description: 'Données invalides ou refus métier (RFC 9457)'
+        423:
+          description: 'Application suspendue : lecture et export seulement, écriture refusée'
+  /api/v1/nursery/portal/documents:
+    get:
+      summary: 'GET /nursery/portal/documents'
+      security:
+        -
+          bearer: {  }
+      parameters:
+        -
+          $ref: '#/components/parameters/EstablishmentId'
+        -
+          name: per_page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+        -
+          name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+        -
+          name: learner_id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: 'Succès : enveloppe JSON {data}, avec meta {next_cursor, per_page} (pagination par curseur)'
+        400:
+          description: 'Requête invalide (en-tête X-Establishment-Id manquant, JSON illisible)'
+        401:
+          description: 'Authentification requise'
+        403:
+          description: 'Accès refusé (permission, application fermée)'
+        404:
+          description: 'Ressource introuvable ou hors périmètre'
+        422:
+          description: 'Données invalides ou refus métier (RFC 9457)'
