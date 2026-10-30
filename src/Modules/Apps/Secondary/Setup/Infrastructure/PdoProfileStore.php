@@ -33,7 +33,7 @@ final class PdoProfileStore
      * Copie un profil (valeurs de départ du type, déjà ajustées par l'appelant) et journalise l'ouverture (`opened`). Un
      * établissement déjà ouvert répond 409 (index unique).
      */
-    public function open(EstablishmentProfile $profile, string $ownership, string $reason, string $by): void
+    public function open(EstablishmentProfile $profile, string $ownership, string $reason, string $by, ?string $officialCode = null): void
     {
         $now = $this->clock->now();
         $values = [
@@ -46,6 +46,7 @@ final class PdoProfileStore
             'modules' => self::encode($profile->modules),
             'read_only_modules' => self::encode($profile->readOnlyModules),
             'head_title' => $profile->headTitle,
+            'official_code' => $officialCode,
         ];
         $this->store->transaction(function () use ($profile, $values, $now, $reason, $by): void {
             $this->store->insert(self::TABLE, $profile->tenantId, $profile->establishmentId, ['id' => (string) new Ulid()] + $values + ['created_at' => $now, 'updated_at' => $now]);
@@ -66,6 +67,25 @@ final class PdoProfileStore
         $this->store->transaction(function () use ($tenantId, $establishmentId, $values, $previous, $reason, $by): void {
             $this->store->update(self::TABLE, $tenantId, $establishmentId, $values + ['updated_at' => $this->clock->now()], ['tenant_id' => $tenantId]);
             $this->log($tenantId, $establishmentId, 'modules', $previous, $values, $reason, $by);
+        });
+    }
+
+    /**
+     * Change une ou plusieurs colonnes du profil (type, propriété, cycles, enseignements, sections, vocabulaire, modules) avec une
+     * ligne de journal du genre donné. Les listes sont encodées en JSON par l'appelant ou ici (tableaux).
+     *
+     * @param array<string, scalar|list<string>|null> $values
+     * @param array<string, mixed> $previous
+     */
+    public function saveProfile(string $tenantId, string $establishmentId, string $kind, array $values, array $previous, string $reason, string $by): void
+    {
+        $columns = [];
+        foreach ($values as $column => $value) {
+            $columns[$column] = is_array($value) ? self::encode($value) : $value;
+        }
+        $this->store->transaction(function () use ($tenantId, $establishmentId, $kind, $columns, $values, $previous, $reason, $by): void {
+            $this->store->update(self::TABLE, $tenantId, $establishmentId, $columns + ['updated_at' => $this->clock->now()], ['tenant_id' => $tenantId]);
+            $this->log($tenantId, $establishmentId, $kind, $previous, $values, $reason, $by);
         });
     }
 
