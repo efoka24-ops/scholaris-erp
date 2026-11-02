@@ -31,9 +31,18 @@ final class TemplateGuard
         $problems = self::dangers($html);
 
         $allowed = array_merge(self::SYSTEM, $declared);
-        $unknown = array_values(array_diff(self::placeholders($html), $allowed));
+        $unknown = [];
+        foreach (self::placeholders($html) as $placeholder) {
+            $table = DocumentTable::variableOf($placeholder);
+            // {{table:x}} : x doit être une variable déclarée par le type (jamais une variable du moteur).
+            $ok = $table === null ? in_array($placeholder, $allowed, true) : in_array($table, $declared, true);
+            if (!$ok) {
+                $unknown[] = $placeholder;
+            }
+        }
         if ($unknown !== []) {
-            $problems[] = 'Variables non autorisées : ' . implode(', ', $unknown) . '. Variables permises : ' . implode(', ', $allowed) . '.';
+            $problems[] = 'Variables non autorisées : ' . implode(', ', $unknown) . '. Variables permises : ' . implode(', ', $allowed)
+                . ' (et table:<variable déclarée> pour un tableau).';
         }
 
         if ($problems !== []) {

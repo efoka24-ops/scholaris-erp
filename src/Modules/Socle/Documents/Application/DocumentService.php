@@ -15,6 +15,7 @@ use Scholaris\Modules\Socle\Documents\Contracts\ExtendedDocumentIssuer;
 use Scholaris\Modules\Socle\Documents\Contracts\IssuanceContext;
 use Scholaris\Modules\Socle\Documents\Contracts\IssuedDocument;
 use Scholaris\Modules\Socle\Documents\Contracts\IssueOptions;
+use Scholaris\Modules\Socle\Documents\Domain\DocumentTable;
 use Scholaris\Modules\Socle\Documents\Domain\LightPdfProfile;
 use Scholaris\Modules\Socle\Documents\Domain\NameMask;
 use Scholaris\Modules\Socle\Documents\Domain\NumberPattern;
@@ -118,6 +119,11 @@ final class DocumentService implements ExtendedDocumentIssuer, DocumentReissuer
 
         /** @var list<string> $declared */
         $declared = $definition['variables'];
+        foreach ($options?->optionalVariables ?? [] as $optional) {
+            if (!in_array($optional, $declared, true)) {
+                unset($data[$optional]);
+            }
+        }
         $unknown = array_values(array_diff(array_map('strval', array_keys($data)), $declared));
         if ($unknown !== []) {
             throw HttpException::validation(['data' => ['Variables non déclarées pour ce type : ' . implode(', ', $unknown) . '.']]);
@@ -382,6 +388,8 @@ final class DocumentService implements ExtendedDocumentIssuer, DocumentReissuer
             . 'h1{text-align:center;font-size:20px;border-bottom:1px solid #444;padding-bottom:6px}h2{text-align:center;font-size:16px}'
             . '.qr{margin:12px 0}.qr figcaption{font-size:9px;color:#555}.duplicata{text-align:center;color:#a00}.rectificatif{text-align:center;color:#a00}'
             . '.page-break{page-break-after:always}</style>';
+        // Styles de base des tableaux produits par le moteur ({{table:x}}), placés avant ceux du modèle qui peut les surcharger.
+        $style .= '<style>' . DocumentTable::STYLE . '</style>';
         $count = 0;
         $styled = (string) preg_replace('/(<body\b[^>]*>)/i', '$1' . $style, $html, 1, $count);
 

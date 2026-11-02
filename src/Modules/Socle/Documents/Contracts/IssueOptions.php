@@ -10,15 +10,20 @@ namespace Scholaris\Modules\Socle\Documents\Contracts;
  * - `$orgUnitId` : école interne émettrice (signataire de l'école d'abord, puis celui de l'établissement) ;
  * - `$signerRole` : rôle du signataire, prioritaire sur celui du type ;
  * - `$enforceFinancialBlock` : applique le blocage `documents` pour impayé si le type est bloquable, même sans le paramètre
- *   `documents.block_single_issuance`.
+ *   `documents.block_single_issuance` ;
+ * - `$optionalVariables` : variables ajoutées par une version plus récente du modèle (ex. tableau `units_table`) ; si le type
+ *   installé dans l'établissement ne les déclare pas encore, elles sont ignorées au lieu d'être refusées (aucun modèle validé
+ *   de ce type ne peut les utiliser).
  */
 final class IssueOptions
 {
+    /** @param list<string> $optionalVariables */
     public function __construct(
         public readonly ?string $schoolCode = null,
         public readonly ?string $orgUnitId = null,
         public readonly ?string $signerRole = null,
         public readonly bool $enforceFinancialBlock = false,
+        public readonly array $optionalVariables = [],
     ) {
     }
 }

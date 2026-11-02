@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace Scholaris\Modules\Socle\Documents\Domain;
 
-/** Remplace {{variable}} en une seule passe : valeurs échappées en HTML, sauf les fragments sûrs produits par le moteur. */
+/**
+ * Remplace {{variable}} en une seule passe : valeurs échappées en HTML, sauf les fragments sûrs produits par le moteur.
+ * `{{table:variable}}` insère le tableau structuré porté par la variable (DocumentTable : HTML produit par le moteur, cellules échappées).
+ */
 final class TemplateRenderer
 {
     /**
@@ -16,6 +19,10 @@ final class TemplateRenderer
         return (string) preg_replace_callback(TemplateGuard::PLACEHOLDER, static function (array $m) use ($values, $safeHtml): string {
             if (isset($safeHtml[$m[1]])) {
                 return $safeHtml[$m[1]];
+            }
+            $table = DocumentTable::variableOf($m[1]);
+            if ($table !== null) {
+                return DocumentTable::html($values[$table] ?? '');
             }
 
             return htmlspecialchars($values[$m[1]] ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
