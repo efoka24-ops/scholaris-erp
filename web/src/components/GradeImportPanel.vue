@@ -52,9 +52,12 @@ async function send(): Promise<void> {
   lineErrors.value = [];
   done.value = null;
   try {
+    // Envoi en fichier joint (multipart) : l'hébergement refuse un corps brut text/csv.
+    const form = new FormData();
+    form.append('file', new Blob([content], { type: 'text/csv' }), fileName.value || 'notes.csv');
     const res = await http.post<{ data: { created: number; updated: number; unchanged: number } }>('/grades/import', undefined, {
       query: { assessment_id: assessmentId.value },
-      rawBody: { contentType: 'text/csv', data: content },
+      form,
     });
     done.value = res.data;
     emit('imported');

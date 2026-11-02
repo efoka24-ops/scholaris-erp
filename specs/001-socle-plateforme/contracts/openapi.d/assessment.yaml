@@ -493,7 +493,7 @@ paths:
           description: "Données invalides"
   /api/v1/grades/import:
     post:
-      summary: "Import CSV (corps text/csv, paramètre assessment_id) : séparateur « ; » ou « , », UTF-8 ou Windows-1252 ; atomique, erreurs rapportées ligne par ligne"
+      summary: "Import CSV (fichier joint multipart, champ file, ou corps text/csv ; paramètre assessment_id) : séparateur « ; » ou « , », UTF-8 ou Windows-1252 ; atomique, erreurs rapportées ligne par ligne"
       security:
         - bearer: []
       parameters:
@@ -501,6 +501,14 @@ paths:
       requestBody:
         required: true
         content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
           text/csv:
             schema:
               type: string

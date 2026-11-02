@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Assessment;
 
+use Nyholm\Psr7\ServerRequest;
+use Nyholm\Psr7\Stream;
+use Nyholm\Psr7\UploadedFile;
 use Tests\Support\Assessment\AssessmentTestCase;
 
 /** Grille de saisie, saisie en lot, hors ligne (client_uuid, version), import CSV, périmètre enseignant (T118). */
@@ -160,6 +163,21 @@ final class GradeEntryTest extends AssessmentTestCase
         self::assertSame(200, $response->getStatusCode());
         self::assertSame(['rejected', 'created'], array_column($json['data']['results'], 'status'));
         self::assertStringContainsString('dépasse le maximum de 20', $json['data']['results'][0]['message']);
+    }
+
+    /** L'application web joint le fichier (multipart, champ `file`) : l'hébergement refuse un corps brut text/csv. */
+    public function testImportCsvEnFichierJoint(): void
+    {
+        $csv = "matricule;nom;note\nMAT-P1;Abega Ada;15\nMAT-P2;Bello Boris;11\n";
+        $request = (new ServerRequest('POST', '/api/v1/grades/import?assessment_id=' . $this->devoir, [
+            'Authorization' => 'Bearer censor:t1', 'X-Establishment-Id' => 'e1', 'Content-Type' => 'multipart/form-data; boundary=x',
+        ]))->withQueryParams(['assessment_id' => $this->devoir])
+            ->withUploadedFiles(['file' => new UploadedFile(Stream::create($csv), strlen($csv), UPLOAD_ERR_OK, 'notes.csv', 'text/csv')]);
+
+        $response = $this->kernel->handle($request);
+
+        self::assertSame(200, $response->getStatusCode(), (string) $response->getBody());
+        self::assertSame(['created' => 2, 'updated' => 0, 'unchanged' => 0], $this->decode($response)['data']);
     }
 
     public function testImportCsvUtf8PointVirguleAvecAbsentEtVirguleDecimale(): void

@@ -8,6 +8,7 @@ use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\StreamFactoryInterface;
+use Psr\Http\Message\UploadedFileInterface;
 use Scholaris\Core\Http\HttpException;
 use Scholaris\Core\Http\JsonResponder;
 use Scholaris\Core\Http\ListQuery;
@@ -143,9 +144,18 @@ final class GradeController extends AssessmentController
     public function import(ServerRequestInterface $request): ResponseInterface
     {
         $principal = $this->authorize($request, AssessmentPolicy::ENTER, AssessmentPolicy::VALIDATE);
-        $content = (string) $request->getBody();
+        // Fichier joint (multipart, champ `file`) depuis l'application web ; le CSV dans le corps reste accepté (outils, tests).
+        $file = $request->getUploadedFiles()['file'] ?? null;
+        if ($file instanceof UploadedFileInterface) {
+            if ($file->getError() !== UPLOAD_ERR_OK) {
+                throw HttpException::validation(['file' => ['Le fichier n\'a pas pu être reçu (2 Mo au plus). Réessayez.']]);
+            }
+            $content = (string) $file->getStream();
+        } else {
+            $content = (string) $request->getBody();
+        }
         if (trim($content) === '') {
-            throw HttpException::badRequest('Le fichier est vide : envoyez le CSV dans le corps de la requête.');
+            throw HttpException::badRequest('Le fichier est vide : joignez le CSV dans le champ « file ».');
         }
 
         try {
