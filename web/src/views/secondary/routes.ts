@@ -8,6 +8,8 @@ type Screen = [path: string, name: string, view: () => Promise<unknown>, perms: 
 
 const screens: Screen[] = [
   ['profil', 'sec-profile', () => import('./setup/ProfileView.vue'), S.profileRead, 'sec.profile.title'],
+  ['parametrage', 'sec-setup', () => import('./setup/SetupView.vue'), [...S.settingsRead, ...S.profileRead, 'secondary.enrol.manage'], 'secs.title'],
+  ['inscriptions', 'sec-enrolment', () => import('./enrolment/EnrolmentView.vue'), [...S.enrolRead, 'secondary.settings.manage'], 'sece.title'],
   ['documents', 'sec-documents', () => import('./documents/DocumentsView.vue'), S.documentsRead, 'sec.docs.title'],
   ['frais', 'sec-fees', () => import('./fees/FeesView.vue'), S.feesRead, 'secf.title'],
   ['carte-scolaire', 'sec-cartescolaire', () => import('./cartescolaire/CarteScolaireView.vue'), S.carteScolaire, 'seccs.title'],

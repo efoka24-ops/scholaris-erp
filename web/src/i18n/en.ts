@@ -23,6 +23,7 @@ import { nurseryPrivateEn } from './nursery-private-en';
 import { primaryEn } from './primary-en';
 import { secondaryEn } from './secondary-en';
 import { secondaryFeesEn } from './secondary-fees-en';
+import { secondarySetupEn } from './secondary-setup-en';
 import { importsEn } from './imports-en';
 import { workflowsEn } from './workflows-en';
 
@@ -49,6 +50,7 @@ export const en: Record<keyof typeof fr, string> = {
   ...primaryEn,
   ...secondaryEn,
   ...secondaryFeesEn,
+  ...secondarySetupEn,
   ...importsEn,
   ...workflowsEn,
   'nav.reportcards': "Report cards",

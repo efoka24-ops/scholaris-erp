@@ -22,6 +22,7 @@ import { nurseryPrivateFr } from './nursery-private-fr';
 import { primaryFr } from './primary-fr';
 import { secondaryFr } from './secondary-fr';
 import { secondaryFeesFr } from './secondary-fees-fr';
+import { secondarySetupFr } from './secondary-setup-fr';
 import { importsFr } from './imports-fr';
 import { workflowsFr } from './workflows-fr';
 
@@ -48,6 +49,7 @@ export const fr = {
   ...primaryFr,
   ...secondaryFr,
   ...secondaryFeesFr,
+  ...secondarySetupFr,
   ...importsFr,
   ...workflowsFr,
   'nav.reportcards': "Bulletins",
