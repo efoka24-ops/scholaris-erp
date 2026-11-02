@@ -119,7 +119,7 @@ final class DocumentService implements ExtendedDocumentIssuer, DocumentReissuer
 
         /** @var list<string> $declared */
         $declared = $definition['variables'];
-        foreach ($options?->optionalVariables ?? [] as $optional) {
+        foreach ($options->optionalVariables ?? [] as $optional) {
             if (!in_array($optional, $declared, true)) {
                 unset($data[$optional]);
             }
@@ -375,14 +375,14 @@ final class DocumentService implements ExtendedDocumentIssuer, DocumentReissuer
     public function pdf(string $html, string $profile = LightPdfProfile::STANDARD): string
     {
         if ($profile === LightPdfProfile::LIGHT) {
-            return $this->pdf->render(LightPdfProfile::apply($this->withPrintStyle($html, LightPdfProfile::STYLE)));
+            return $this->pdf->render(LightPdfProfile::apply(self::withPrintStyle($html, LightPdfProfile::STYLE)));
         }
 
-        return $this->pdf->render($this->withPrintStyle($html));
+        return $this->pdf->render(self::withPrintStyle($html));
     }
 
     /** Feuille de style d'impression minimale (marges, titres centrés, code QR) injectée au début du corps. */
-    private function withPrintStyle(string $html, ?string $style = null): string
+    public static function withPrintStyle(string $html, ?string $style = null): string
     {
         $style ??= '<style>@page{margin:2cm}body{font-family:"DejaVu Sans",sans-serif;font-size:12px;line-height:1.5;color:#111}'
             . 'h1{text-align:center;font-size:20px;border-bottom:1px solid #444;padding-bottom:6px}h2{text-align:center;font-size:16px}'

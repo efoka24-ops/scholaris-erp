@@ -22,6 +22,10 @@ final class PrimarySettings
         'primary.report_card.annual' => ['default' => true, 'source' => 'Q2 (récapitulatif annuel au dernier trimestre)', 'label' => 'Récapitulatif annuel émis au dernier trimestre'],
         'primary.report_card.block_on_debt' => ['default' => false, 'source' => 'Q17', 'label' => 'Bulletin bloqué en cas d\'impayé'],
         'primary.report_card.locale' => ['default' => null, 'source' => 'Q1 (langue de la section du niveau si vide)', 'label' => 'Langue imposée des bulletins (fr, en ou vide)'],
+        'primary.report_card.letterhead' => ['default' => [
+            'authority_fr' => '', 'authority_en' => '', 'contacts' => '',
+            'footer_fr' => 'Le bulletin est délivré sans rature ni surcharge.', 'footer_en' => 'Report card issued without erasures or overwriting.',
+        ], 'source' => 'DOC-BUL (bulletin de primaire fourni par le propriétaire) : délégations régionale et départementale (une par ligne), BP, téléphone, site, mention de bas de page', 'label' => 'En-tête et mention de bas de page du bulletin'],
         'primary.council.require_locked_sheets' => ['default' => true, 'source' => 'RG-PRI-4, RG-PRI-6', 'label' => 'Le conseil exige des feuilles de compétences verrouillées'],
         'primary.council.decision_labels' => ['default' => [
             'admitted' => ['fr' => 'Admis(e) en classe supérieure', 'en' => 'Promoted'],

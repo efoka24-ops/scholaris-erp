@@ -64,6 +64,22 @@ final class ContextResolver
         }
     }
 
+    /**
+     * En-tête et pied des bulletins (`public_primary.documents.letterhead`, paramètre territorial) : délégations, contacts, mention.
+     *
+     * @return array{authority_fr: string, authority_en: string, contacts: string, footer: string}
+     */
+    public function letterhead(string $tenantId, string $establishmentId, string $locale): array
+    {
+        $value = $this->rules->array($tenantId, $establishmentId, 'public_primary.documents.letterhead');
+        $text = static fn (string $key): string => is_string($value[$key] ?? null) ? trim((string) $value[$key]) : '';
+
+        return [
+            'authority_fr' => $text('authority_fr'), 'authority_en' => $text('authority_en'), 'contacts' => $text('contacts'),
+            'footer' => $text($locale === 'en' ? 'footer_en' : 'footer_fr'),
+        ];
+    }
+
     /** @return list<array{code: string, label_fr: string, label_en: string}> échelle qualitative d'affichage */
     public function scale(string $tenantId, string $establishmentId): array
     {

@@ -99,13 +99,36 @@ final class TranscriptService
         $perimeter = $this->access->require($principal, $establishmentId, [DeliberationPermissions::PREPARE]);
         $this->access->assertWritable($principal, $perimeter, ['school' => $data['school_id'], 'program' => $data['program_id'], 'group' => $data['structure_id']], 'transcript', $personId);
         $locale = $data['locale'];
+        // Les anciens modèles installés n'ont que 10 emplacements d'UE : la limite reste tant qu'un établissement peut les utiliser.
+        if (count($data['units']) > Types::UNIT_SLOTS) {
+            throw HttpException::validation(['units' => [sprintf('Le modèle de relevé compte %d UE au plus.', Types::UNIT_SLOTS)]]);
+        }
+        $vars = self::semesterVariables($data);
+        $issued = $this->issuer->issueFor($principal->tenantId, $establishmentId, Types::TRANSCRIPT, $personId, $data['school_id'], $data['program_id'], $data['level_id'], $vars, $principal->userId, $locale);
+        $this->access->audit($principal, 'higher.deliberation.transcript_issued', 'person', $personId, null, ['period_id' => $periodId, 'number' => $issued['number'] ?? null]);
+
+        return $issued;
+    }
+
+    /**
+     * Variables du modèle DOC-09 à partir des données du relevé (build) : emplacements numérotés u01_… (anciens modèles installés)
+     * et tableau `units_table` (mise en page DOC-BUL : une ligne par UE puis ses EC, ligne de total).
+     *
+     * @param array<string, mixed> $data
+     * @return array<string, scalar|null>
+     */
+    public static function semesterVariables(array $data): array
+    {
+        $locale = $data['locale'] === 'en' ? 'en' : 'fr';
+        $synthesis = $data['synthesis'];
         $vars = [
-            'holder_last_name' => $data['student']['last_name'], 'holder_first_names' => $data['student']['first_names'], 'birth_info' => (string) $data['student']['birth_date'],
+            'holder_last_name' => (string) $data['student']['last_name'], 'holder_first_names' => (string) $data['student']['first_names'], 'birth_info' => (string) $data['student']['birth_date'],
             'holder_matricule' => (string) $data['student']['matricule'], 'authorization_ref' => (string) $data['authorization_ref'], 'tutelage_name' => (string) $data['tutelage'],
-            'semester_label' => $data['period_label'], 'session_label' => $data['session_label'], 'academic_year' => $data['academic_year_id'], 'jury_ref' => $data['jury_id'],
-            'semester_average' => self::num($data['synthesis']['average'], $locale), 'gpa' => self::num($data['synthesis']['gpa'], $locale),
-            'credits_earned' => (string) $data['synthesis']['credits_earned'], 'credits_total' => (string) $data['synthesis']['credits_total'],
-            'decision' => (string) $data['synthesis']['decision'], 'mention' => (string) ($data['synthesis']['mention'] ?? '—'),
+            'semester_label' => (string) $data['period_label'], 'session_label' => (string) $data['session_label'], 'academic_year' => (string) $data['academic_year_id'], 'jury_ref' => (string) $data['jury_id'],
+            'semester_average' => self::num($synthesis['average'], $locale), 'gpa' => self::num($synthesis['gpa'], $locale),
+            'credits_earned' => (string) $synthesis['credits_earned'], 'credits_total' => (string) $synthesis['credits_total'],
+            'decision' => (string) $synthesis['decision'], 'mention' => (string) ($synthesis['mention'] ?? '—'),
+            'rank_info' => is_int($synthesis['rank'] ?? null) ? $synthesis['rank'] . (is_int($synthesis['class_size'] ?? null) ? ' / ' . $synthesis['class_size'] : '') : '—',
         ];
         foreach (array_slice($data['units'], 0, Types::UNIT_SLOTS) as $i => $unit) {
             $p = 'u' . Types::slot($i + 1) . '_';
@@ -116,13 +139,33 @@ final class TranscriptService
                 $p . 'result' => (string) $unit['result_label'], $p . 'session' => (string) $unit['session_label'],
             ];
         }
-        if (count($data['units']) > Types::UNIT_SLOTS) {
-            throw HttpException::validation(['units' => [sprintf('Le modèle de relevé compte %d UE au plus.', Types::UNIT_SLOTS)]]);
+        $en = $locale === 'en';
+        $bi = static fn (string $fr, string $english): string => $en ? $english . "\n" . $fr : $fr . "\n" . $english;
+        $rows = [];
+        foreach ($data['units'] as $unit) {
+            $rows[] = ['kind' => 'group', 'cells' => [
+                (string) $unit['code'], (string) $unit['name'], (string) $unit['credits'], self::num($unit['average'], $locale),
+                self::num($unit['points'], $locale), (string) $unit['letter'], (string) $unit['result_label'], (string) $unit['session_label'],
+            ]];
+            foreach ($unit['elements'] as $element) {
+                $rows[] = ['', ['text' => '· ' . trim((string) $element['code'])], (string) $element['credits'], self::num($element['note'], $locale), '', '', '', ''];
+            }
         }
-        $issued = $this->issuer->issueFor($principal->tenantId, $establishmentId, Types::TRANSCRIPT, $personId, $data['school_id'], $data['program_id'], $data['level_id'], $vars, $principal->userId, $locale);
-        $this->access->audit($principal, 'higher.deliberation.transcript_issued', 'person', $personId, null, ['period_id' => $periodId, 'number' => $issued['number'] ?? null]);
+        $rows[] = ['kind' => 'total', 'cells' => [
+            ['text' => $en ? 'Semester total and average' : 'Total et moyenne du semestre', 'colspan' => 2], (string) $synthesis['credits_total'],
+            self::num($synthesis['average'], $locale), self::num($synthesis['gpa'], $locale), '', ['text' => (string) $synthesis['credits_earned'] . ' / ' . (string) $synthesis['credits_total'] . ($en ? ' credits' : ' crédits'), 'colspan' => 2],
+        ]];
+        $vars['units_table'] = json_encode([
+            'columns' => [
+                ['label' => 'Code', 'width' => 10], ['label' => $bi('Unités d\'enseignement et éléments constitutifs', 'Course units and elements'), 'width' => 36, 'align' => 'left'],
+                ['label' => $bi('Crédits', 'Credits'), 'align' => 'center'], ['label' => $bi('Note /20', 'Mark /20'), 'align' => 'center'],
+                ['label' => $bi('Cote', 'Points'), 'align' => 'center'], ['label' => 'Grade', 'align' => 'center'],
+                ['label' => 'Validation', 'align' => 'center'], ['label' => 'Session', 'align' => 'center'],
+            ],
+            'rows' => $rows,
+        ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
 
-        return $issued;
+        return $vars;
     }
 
     /**

@@ -57,7 +57,8 @@ final class ReportCardTest extends PublicPrimaryTestCase
         self::assertSame(409, $frozenChecks->getStatusCode(), 'La saisie d\'une unité publiée est figée.');
         self::assertCount(1, $this->messenger->of('pub.not04.parent'));
         $content = (string) $this->rows("SELECT content FROM documents WHERE type_code = 'pp_doc08_unit_report'")[0]['content'];
-        self::assertStringContainsString('Mathématiques : A, avec maîtrise du critère de perfectionnement', $content);
+        // DOC-BUL : tableau des disciplines produit par le moteur (mention et critère de perfectionnement).
+        self::assertStringContainsString('<tr><td>Mathématiques</td><td class="doc-center">Acquis</td><td class="doc-center">Maîtrisé</td></tr>', $content);
         self::assertStringNotContainsStringIgnoringCase('rang', $content, 'RG-EVA-1 : aucun rang.');
         self::assertStringNotContainsStringIgnoringCase('apee', $content, 'RG-DOC-3 : aucune mention de l\'APEE.');
     }

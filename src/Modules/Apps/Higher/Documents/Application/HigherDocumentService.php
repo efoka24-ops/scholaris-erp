@@ -168,7 +168,9 @@ final class HigherDocumentService implements HigherDocumentIssuer, IssuedDocumen
             $values,
             $issuedBy,
             $locale,
-            new IssueOptions((string) $profile['school_code'], $schoolId, null, $type->blockable),
+            // Les données du module sont contrôlées ci-dessus sur le catalogue en vigueur ; un type installé avant une nouvelle version
+            // du modèle (ex. tableau units_table) ne les déclare pas toutes : elles sont alors ignorées (son modèle ne peut pas les utiliser).
+            new IssueOptions((string) $profile['school_code'], $schoolId, null, $type->blockable, array_map('strval', array_keys($data))),
         );
 
         $id = (string) new Ulid();

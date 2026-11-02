@@ -160,7 +160,7 @@ final class DocumentTable
     private static function cell(array $cell, string $tag): string
     {
         $text = $cell['text'] ?? '';
-        if ($text !== null && !is_scalar($text)) {
+        if (!is_scalar($text)) {
             self::fail('le texte d\'une cellule est un texte ou un nombre.');
         }
         $text = is_bool($text) ? ($text ? '1' : '0') : (string) $text;

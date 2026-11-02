@@ -16,7 +16,9 @@ use Scholaris\Modules\Apps\Higher\Documents\Contracts\HigherDocumentType;
  *  DOC-10 relevé annuel et cumulatif (RAN) ; DOC-14 grille de délibération (GRD, document de travail, sans QR) ;
  *  DOC-15 PV de délibération (PVD, président et membres, QR, empreinte SHA-256, points de jury nominatifs) ;
  *  DOC-16 liste des résultats à afficher (LRA, après signature du PV, directeur d'école, QR).
- * Le corps HTML n'accepte que des valeurs échappées : les lignes variables sont des emplacements numérotés (u01_…, l01…).
+ * Le corps HTML n'accepte que des valeurs échappées : les lignes variables sont des emplacements numérotés (u01_…, l01…) ; depuis DOC-BUL
+ * les relevés DOC-09 et DOC-10 affichent un tableau produit par le moteur du socle ({{table:units_table}}, {{table:annual_table}}), les
+ * emplacements restant déclarés pour les modèles déjà installés.
  */
 final class DeliberationDocumentTypes implements DocumentTypeProvider
 {
@@ -54,7 +56,7 @@ final class DeliberationDocumentTypes implements DocumentTypeProvider
                 'directeur_ecole',
                 true,
                 true,
-                [...self::identity(), 'semester_label', 'session_label', ...self::slots('u', self::UNIT_SLOTS, self::UNIT_FIELDS), ...self::synthesis(), 'jury_ref'],
+                [...self::identity(), 'semester_label', 'session_label', ...self::slots('u', self::UNIT_SLOTS, self::UNIT_FIELDS), ...self::synthesis(), 'jury_ref', 'units_table', 'rank_info'],
                 ['fr' => self::transcriptBody('fr'), 'en' => self::transcriptBody('en')],
                 'bulletin',
                 typeLetter: 'R',
@@ -69,7 +71,7 @@ final class DeliberationDocumentTypes implements DocumentTypeProvider
                 true,
                 true,
                 [...self::identity(), 's1_label', 's1_average', 's1_credits', 's2_label', 's2_average', 's2_credits', 'cumulative_credits',
-                    ...self::slots('a', self::ANNUAL_SLOTS, self::ANNUAL_FIELDS), ...self::synthesis(), 'jury_ref'],
+                    ...self::slots('a', self::ANNUAL_SLOTS, self::ANNUAL_FIELDS), ...self::synthesis(), 'jury_ref', 'annual_table', 'rank_info'],
                 ['fr' => self::annualBody('fr'), 'en' => self::annualBody('en')],
                 'bulletin',
                 typeLetter: 'R',
@@ -159,6 +161,22 @@ final class DeliberationDocumentTypes implements DocumentTypeProvider
         return $out;
     }
 
+    /** Libellé bilingue, langue du document d'abord (relevés bilingues des modèles réels). */
+    private static function bi(string $locale, string $fr, string $en): string
+    {
+        return $locale === 'en' ? $en . ' / <i>' . $fr . '</i>' : $fr . ' / <i>' . $en . '</i>';
+    }
+
+    /** Mise en forme des relevés (DOC-BUL) : une page A4 portrait, tableau produit par le moteur du socle ({{table:x}}). */
+    private static function style(): string
+    {
+        return '<style>@page{margin:1cm 1.2cm}body{font-size:9.5px;line-height:1.3}header h1{font-size:15px;margin:2px 0}header h2{font-size:12px;margin:2px 0}'
+            . 'header img{float:left}header p{margin:2px 0;font-size:8.5px}h2{font-size:13px;margin:6px 0 4px 0}'
+            . '.authority{text-align:center;font-size:8.5px;margin:2px 0}.identity,.synthesis{width:100%;border-collapse:collapse;margin:4px 0}'
+            . '.identity td{padding:1px 4px;border:1px solid #999}.synthesis td{padding:3px 4px;border:1px solid #555}'
+            . '.doc-table{font-size:8.5px}.doc-table th{font-size:8px}.doc-row-group td{background:#eef2f7}.note{font-size:8px;font-style:italic}</style>';
+    }
+
     private static function header(string $locale): string
     {
         return $locale === 'en'
@@ -168,58 +186,42 @@ final class DeliberationDocumentTypes implements DocumentTypeProvider
 
     private static function identityBlock(string $locale, string $period): string
     {
-        $labels = $locale === 'en'
-            ? ['Surname', 'Given names', 'Born', 'Registration no.', 'Programme', 'Level', 'Period', 'Academic year']
-            : ['Nom', 'Prénoms', 'Né(e) le', 'Matricule', 'Filière', 'Niveau', 'Période', 'Année académique'];
+        $l = static fn (string $fr, string $en): string => self::bi($locale, $fr, $en);
 
-        return '<table class="identity"><tr><td>' . $labels[0] . ' : <strong>{{holder_last_name}}</strong></td><td>' . $labels[1] . ' : {{holder_first_names}}</td></tr>'
-            . '<tr><td>' . $labels[2] . ' : {{birth_info}}</td><td>' . $labels[3] . ' : <strong>{{holder_matricule}}</strong></td></tr>'
-            . '<tr><td>' . $labels[4] . ' : {{program_name}}</td><td>' . $labels[5] . ' : {{level_name}}</td></tr>'
-            . '<tr><td>' . $labels[6] . ' : ' . $period . '</td><td>' . $labels[7] . ' : {{academic_year}}</td></tr></table>';
+        return '<table class="identity"><tr><td>' . $l('Nom', 'Surname') . ' : <strong>{{holder_last_name}}</strong></td><td>' . $l('Prénoms', 'Given names') . ' : <strong>{{holder_first_names}}</strong></td></tr>'
+            . '<tr><td>' . $l('Né(e) le', 'Date of birth') . ' : {{birth_info}}</td><td>' . $l('Matricule', 'Registration no.') . ' : <strong>{{holder_matricule}}</strong></td></tr>'
+            . '<tr><td>' . $l('Filière', 'Programme') . ' : {{program_name}}</td><td>' . $l('Niveau', 'Level') . ' : {{level_name}}</td></tr>'
+            . '<tr><td>' . $l('Période', 'Period') . ' : ' . $period . '</td><td>' . $l('Année académique', 'Academic year') . ' : {{academic_year}}</td></tr></table>';
     }
 
     private static function synthesisBlock(string $locale): string
     {
-        return $locale === 'en'
-            ? '<table class="synthesis"><tr><td>Average: <strong>{{semester_average}}</strong>/20</td><td>GPA: <strong>{{gpa}}</strong></td><td>Credits earned: <strong>{{credits_earned}}</strong>/{{credits_total}}</td></tr>'
-                . '<tr><td colspan="2">Decision: <strong>{{decision}}</strong></td><td>Honours: {{mention}}</td></tr></table><p><small>Deliberation ref. {{jury_ref}}</small></p>'
-            : '<table class="synthesis"><tr><td>Moyenne : <strong>{{semester_average}}</strong>/20</td><td>MGP : <strong>{{gpa}}</strong></td><td>Crédits acquis : <strong>{{credits_earned}}</strong>/{{credits_total}}</td></tr>'
-                . '<tr><td colspan="2">Décision : <strong>{{decision}}</strong></td><td>Mention : {{mention}}</td></tr></table><p><small>Délibération réf. {{jury_ref}}</small></p>';
+        $l = static fn (string $fr, string $en): string => self::bi($locale, $fr, $en);
+
+        return '<table class="synthesis"><tr><td>' . $l('Moyenne', 'Average') . ' : <strong>{{semester_average}}</strong>/20</td>'
+            . '<td>' . $l('MGP', 'GPA') . ' : <strong>{{gpa}}</strong>/4</td>'
+            . '<td>' . $l('Crédits capitalisés', 'Credits earned') . ' : <strong>{{credits_earned}}</strong>/{{credits_total}}</td>'
+            . '<td>' . $l('Rang', 'Rank') . ' : {{rank_info}}</td></tr>'
+            . '<tr><td colspan="3">' . $l('Décision du jury', 'Board decision') . ' : <strong>{{decision}}</strong></td><td>' . $l('Mention', 'Honours') . ' : {{mention}}</td></tr></table>'
+            . '<p class="note">' . ($locale === 'en' ? 'Deliberation ref.' : 'Délibération réf.') . ' {{jury_ref}}</p>';
     }
 
     private static function transcriptBody(string $locale): string
     {
-        $head = $locale === 'en'
-            ? ['Code', 'Teaching unit / course elements (mark /20)', 'Credits', 'Unit average', 'Letter', 'Points', 'Result', 'Session']
-            : ['Code', 'Unité d\'enseignement / éléments constitutifs (note /20)', 'Crédits', 'Moyenne UE', 'Lettre', 'Points', 'Résultat', 'Session'];
-        $rows = '';
-        for ($i = 1; $i <= self::UNIT_SLOTS; ++$i) {
-            $u = 'u' . self::slot($i) . '_';
-            $rows .= '<tr><td>{{' . $u . 'code}}</td><td><strong>{{' . $u . 'title}}</strong><br><small>{{' . $u . 'elements}}</small></td><td>{{' . $u . 'credits}}</td>'
-                . '<td>{{' . $u . 'average}}</td><td>{{' . $u . 'letter}}</td><td>{{' . $u . 'points}}</td><td>{{' . $u . 'result}}</td><td>{{' . $u . 'session}}</td></tr>';
-        }
-
-        return self::header($locale) . self::identityBlock($locale, '{{semester_label}} ({{session_label}})')
-            . '<table class="units"><thead><tr><th>' . implode('</th><th>', $head) . '</th></tr></thead><tbody>' . $rows . '</tbody></table>'
-            . self::synthesisBlock($locale);
+        return self::style() . self::header($locale) . self::identityBlock($locale, '{{semester_label}} ({{session_label}})')
+            . '<div class="units">{{table:units_table}}</div>' . self::synthesisBlock($locale);
     }
 
     private static function annualBody(string $locale): string
     {
-        $head = $locale === 'en' ? ['Code', 'Teaching unit', 'Credits', 'Average', 'Letter', 'Result'] : ['Code', 'Unité d\'enseignement', 'Crédits', 'Moyenne', 'Lettre', 'Résultat'];
-        $rows = '';
-        for ($i = 1; $i <= self::ANNUAL_SLOTS; ++$i) {
-            $a = 'a' . self::slot($i) . '_';
-            $rows .= '<tr><td>{{' . $a . 'code}}</td><td>{{' . $a . 'title}}</td><td>{{' . $a . 'credits}}</td><td>{{' . $a . 'average}}</td><td>{{' . $a . 'letter}}</td><td>{{' . $a . 'result}}</td></tr>';
-        }
         $semesters = $locale === 'en'
             ? '<p>{{s1_label}}: {{s1_average}}/20, {{s1_credits}} credits · {{s2_label}}: {{s2_average}}/20, {{s2_credits}} credits · Cumulative credits: <strong>{{cumulative_credits}}</strong></p>'
             : '<p>{{s1_label}} : {{s1_average}}/20, {{s1_credits}} crédits · {{s2_label}} : {{s2_average}}/20, {{s2_credits}} crédits · Crédits cumulés : <strong>{{cumulative_credits}}</strong></p>';
 
-        return self::header($locale) . self::identityBlock($locale, '{{academic_year}}')
-            . '<table class="units"><thead><tr><th>' . implode('</th><th>', $head) . '</th></tr></thead><tbody>' . $rows . '</tbody></table>'
-            . $semesters . self::synthesisBlock($locale);
+        return self::style() . self::header($locale) . self::identityBlock($locale, '{{academic_year}}')
+            . '<div class="units">{{table:annual_table}}</div>' . $semesters . self::synthesisBlock($locale);
     }
+
 
     private static function linesBlock(string $prefix, int $count): string
     {

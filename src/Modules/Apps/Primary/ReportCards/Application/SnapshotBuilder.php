@@ -23,6 +23,9 @@ use Scholaris\Modules\Socle\Organisation\Contracts\OrgUnitTree;
  */
 final class SnapshotBuilder
 {
+    /** Variables ajoutées par la mise en page DOC-BUL : ignorées si un type personnalisé de l'école ne les déclare pas. */
+    public const LAYOUT_VARIABLES = ['authority_fr', 'authority_en', 'school_contacts', 'footer_note', 'class_size', 'subjects_table', 'competencies_table', 'terms_table'];
+
     public function __construct(
         private readonly Store $store,
         private readonly ClassRoster $classes,
@@ -95,6 +98,7 @@ final class SnapshotBuilder
             'remediation' => ['flag' => $l['remediation_flag'], 'note' => $l['remediation_note']] + $remediation,
             'decision' => $decision,
             'is_final_term' => (int) $council['is_final_term'] === 1,
+            'letterhead' => $this->letterhead($tenantId, $establishmentId, $locale),
         ];
         if ($kind === ReportCardService::ANNUAL) {
             $snapshot['annual'] = [
@@ -117,6 +121,7 @@ final class SnapshotBuilder
         $en = $s['locale'] === 'en';
         $fmt = static fn (mixed $v): string => is_int($v) || is_float($v) ? number_format((float) $v, 2, $en ? '.' : ',', '') : '';
         $scale = $fmt($s['numeric']['scale']);
+        $scaleLabel = is_int($s['numeric']['scale']) || (is_float($s['numeric']['scale']) && floor($s['numeric']['scale']) === $s['numeric']['scale']) ? (string) (int) $s['numeric']['scale'] : $scale;
         $rankLine = static function (mixed $rank, mixed $size) use ($en): string {
             if (!is_int($rank)) {
                 return '';
@@ -136,34 +141,58 @@ final class SnapshotBuilder
         }
         $remediationBlock = $remediation === [] ? ($en ? 'None' : 'Aucune') : implode("\n", $remediation);
         $decision = $s['decision'] === null ? '—' : (string) $s['decision']['label'];
+        $letterhead = is_array($s['letterhead'] ?? null) ? $s['letterhead'] : [];
         $common = [
             'class_name' => (string) $s['class_name'], 'level_name' => (string) $s['level_name'], 'academic_year' => (string) $s['academic_year'],
             'appraisal' => (string) ($s['appraisal'] ?? ''), 'decision' => $decision, 'remediation_block' => $remediationBlock,
+            // En-tête et pied du modèle (version DOC-BUL) : paramètre de l'école, jamais un libellé officiel inventé.
+            'authority_fr' => (string) ($letterhead['authority_fr'] ?? ''), 'authority_en' => (string) ($letterhead['authority_en'] ?? ''),
+            'school_contacts' => (string) ($letterhead['contacts'] ?? ''), 'footer_note' => (string) ($letterhead['footer'] ?? ''),
+            'class_size' => is_int($s['numeric']['class_size'] ?? null) ? (string) $s['numeric']['class_size'] : '',
         ];
+        // Libellés bilingues des tableaux (langue du bulletin d'abord) ; l'en-tête du document est bilingue comme le modèle papier.
+        $bi = static fn (string $fr, string $english, string $glue = ' / '): string => $en ? $english . $glue . $fr : $fr . $glue . $english;
+        $none = static fn (int $span): array => ['kind' => 'muted', 'cells' => [['text' => '—', 'colspan' => $span, 'align' => 'center']]];
         if ($s['kind'] === ReportCardService::ANNUAL) {
             $terms = array_map(static fn (array $t): string => $t['label'] . ' : ' . ($fmt($t['average']) === '' ? '—' : $fmt($t['average'])), $s['annual']['terms']);
             $average = $fmt($s['annual']['average']);
+            $termRows = array_map(static fn (array $t): array => [(string) $t['label'], $fmt($t['average']) === '' ? '—' : $fmt($t['average'])], $s['annual']['terms']);
+            if ($average !== '') {
+                $termRows[] = ['kind' => 'total', 'cells' => [$bi('MOYENNE ANNUELLE', 'ANNUAL AVERAGE'), $average . ' / ' . $scaleLabel]];
+            }
 
             return $common + [
                 'terms_block' => $terms === [] ? '—' : implode("\n", $terms),
+                'terms_table' => self::table([
+                    'columns' => [['label' => $bi('Trimestres', 'Terms'), 'width' => 60], ['label' => $bi('Moyenne', 'Average') . ' (/' . $scaleLabel . ')', 'align' => 'center']],
+                    'rows' => $termRows === [] ? [$none(2)] : $termRows,
+                ]),
                 'annual_average_line' => $average === '' ? '' : ($en ? 'Annual average: ' : 'Moyenne annuelle : ') . $average . ' / ' . $scale,
                 'rank_line' => $rankLine($s['annual']['rank'], $s['numeric']['class_size']),
                 'absences' => (string) $s['annual']['absences_half_days'],
             ];
         }
         $subjects = [];
+        $subjectRows = [];
         foreach ($s['numeric']['subjects'] as $subject) {
             $value = $fmt($subject['average'] ?? null);
             $subjects[] = ($subject['name'] ?? $subject['code'] ?? '') . ' : ' . ($value === '' ? '—' : $value . ' / ' . $scale);
+            $subjectRows[] = [(string) ($subject['name'] ?? $subject['code'] ?? ''), $value === '' ? '—' : $value];
         }
         $competencies = [];
+        $competencyRows = [];
         foreach ($s['competencies'] as $domain) {
             $competencies[] = (string) $domain['label'];
+            $competencyRows[] = ['kind' => 'group', 'cells' => [['text' => (string) $domain['label'], 'colspan' => 2]]];
             foreach ($domain['items'] as $item) {
                 $competencies[] = '  · ' . $item['label'] . ' : ' . ($item['value_label'] ?? '—');
+                $competencyRows[] = [(string) $item['label'], (string) ($item['value_label'] ?? '—')];
             }
         }
         $average = $fmt($s['numeric']['average']);
+        if ($subjectRows !== [] && $average !== '') {
+            $subjectRows[] = ['kind' => 'total', 'cells' => [$bi('MOYENNE GÉNÉRALE', 'OVERALL AVERAGE'), $average]];
+        }
 
         return $common + [
             'period_label' => (string) $s['period_label'],
@@ -174,6 +203,14 @@ final class SnapshotBuilder
             'lates' => (string) $s['attendance']['lates'], 'repeater' => $s['repeater'] ? ($en ? '(repeater)' : '(redoublant)') : '',
             'subjects_block' => $subjects === [] ? '—' : implode("\n", $subjects),
             'competencies_block' => $competencies === [] ? '—' : implode("\n", $competencies),
+            'subjects_table' => self::table([
+                'columns' => [['label' => $bi('Matières', 'Subjects'), 'width' => 70], ['label' => $bi('Moyenne', 'Average') . ' (/' . $scaleLabel . ')', 'align' => 'center']],
+                'rows' => $subjectRows === [] ? [$none(2)] : $subjectRows,
+            ]),
+            'competencies_table' => self::table([
+                'columns' => [['label' => $bi('Domaines et compétences', 'Areas and competencies'), 'width' => 70], ['label' => $bi('Appréciation', 'Assessment'), 'align' => 'center']],
+                'rows' => $competencyRows === [] ? [$none(2)] : $competencyRows,
+            ]),
             'scale_legend' => ($en ? 'Scale: ' : 'Échelle : ') . implode(', ', array_map(static fn (array $x): string => (string) $x['label'], $s['scale'])),
         ];
     }
@@ -219,6 +256,33 @@ final class SnapshotBuilder
         }
 
         return $out;
+    }
+
+    /**
+     * Tableau structuré pour `{{table:x}}` du socle Documents (JSON : le moteur produit le HTML et échappe chaque cellule).
+     *
+     * @param array<string, mixed> $table
+     */
+    private static function table(array $table): string
+    {
+        return json_encode($table, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
+    }
+
+    /**
+     * En-tête et pied paramétrables (`primary.report_card.letterhead`) : délégations, contacts de l'école, mention de bas de page.
+     *
+     * @return array{authority_fr: string, authority_en: string, contacts: string, footer: string}
+     */
+    private function letterhead(string $tenantId, string $establishmentId, string $locale): array
+    {
+        $raw = $this->settings->raw($tenantId, $establishmentId, 'primary.report_card.letterhead');
+        $value = is_array($raw) ? $raw : [];
+        $text = static fn (string $key): string => is_string($value[$key] ?? null) ? trim((string) $value[$key]) : '';
+
+        return [
+            'authority_fr' => $text('authority_fr'), 'authority_en' => $text('authority_en'), 'contacts' => $text('contacts'),
+            'footer' => $text($locale === 'en' ? 'footer_en' : 'footer_fr'),
+        ];
     }
 
     /** @param array<string, mixed> $council */

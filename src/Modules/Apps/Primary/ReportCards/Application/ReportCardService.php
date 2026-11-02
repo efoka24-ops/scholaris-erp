@@ -220,7 +220,7 @@ final class ReportCardService
             'period_id' => (string) $council['period_id'], 'card_kind' => $kind, 'document_type' => self::TYPES[$kind], 'locale' => (string) $snapshot['locale'],
         ];
         try {
-            $document = $this->issuer->issueWithOptions($t, $establishmentId, self::TYPES[$kind], (string) $line['person_id'], SnapshotBuilder::variables($snapshot), $principal->userId, (string) $snapshot['locale'], new IssueOptions(enforceFinancialBlock: $block));
+            $document = $this->issuer->issueWithOptions($t, $establishmentId, self::TYPES[$kind], (string) $line['person_id'], SnapshotBuilder::variables($snapshot), $principal->userId, (string) $snapshot['locale'], new IssueOptions(enforceFinancialBlock: $block, optionalVariables: SnapshotBuilder::LAYOUT_VARIABLES));
             $values = $base + [
                 'status' => 'issued', 'document_id' => $document->id, 'document_number' => $document->number, 'verification_token' => $document->verificationToken,
                 'snapshot' => json_encode($snapshot + ['number' => $document->number, 'verification_token' => $document->verificationToken], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE),

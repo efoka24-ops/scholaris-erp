@@ -20,6 +20,14 @@ final class Rules
 {
     /** @var array<string, array{default: mixed, status: string, source: string}> */
     public const DEFAULTS = [
+        'public_primary.documents.letterhead' => [
+            'default' => [
+                'authority_fr' => '', 'authority_en' => '', 'contacts' => '',
+                'footer_fr' => 'Le bulletin est délivré sans rature ni surcharge.', 'footer_en' => 'Report card issued without erasures or overwriting.',
+            ],
+            'status' => 'to_confirm',
+            'source' => 'DOC-BUL (bulletin de primaire fourni par le propriétaire) : délégations régionale et départementale (une par ligne, de préférence au niveau territorial), contacts de l\'école, mention de bas de page des bulletins DOC-08 à DOC-10.',
+        ],
         'public_primary.evaluation.scale' => [
             'default' => [
                 ['code' => 'A', 'label_fr' => 'Acquis', 'label_en' => 'Achieved'],

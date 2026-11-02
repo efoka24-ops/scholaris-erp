@@ -131,7 +131,7 @@ final class ReportCardService
         $previous = (array) json_decode((string) $card['content'], true);
         $content = $this->content($tenantId, $establishmentId, (string) $card['person_id'], (string) $card['card_kind'], (string) $card['scope_ref'], (string) $card['year_label'], (string) ($previous['level_code'] ?? ($class->levelCodes[0] ?? '')), $class->label, (string) $card['structure_id']);
         $content['appraisal'] = $card['appraisal'];
-        $document = $this->documents->issue($tenantId, $establishmentId, self::DOCUMENT_TYPES[(string) $card['card_kind']], (string) $card['person_id'], self::documentData($content, $locale), $principal->userId, $locale === 'en' ? 'en' : 'fr');
+        $document = $this->documents->issue($tenantId, $establishmentId, self::DOCUMENT_TYPES[(string) $card['card_kind']], (string) $card['person_id'], self::documentData($content, $locale, $this->layout($tenantId, $establishmentId, $locale)), $principal->userId, $locale === 'en' ? 'en' : 'fr');
         $this->cards->publish($tenantId, $cardId, $content, $document->id, $principal->userId, $this->clock->now());
         $this->messages->notifyGuardians($tenantId, $establishmentId, (string) $card['person_id'], self::NOTICE_TEMPLATE, [
             'school_year' => (string) $card['year_label'], 'details' => self::summary($content, 'fr'),
@@ -183,7 +183,7 @@ final class ReportCardService
         $this->evaluation->overrideMention($tenantId, $establishmentId, (string) $card['person_id'], (string) $frameId, (string) $card['structure_id'], (string) $card['card_kind'], (string) $card['scope_ref'], (string) $mention, (string) $reason, $principal->userId, $this->clock->now());
         $documentId = $card['document_id'] === null ? null : (string) $card['document_id'];
         if ($documentId !== null) {
-            $document = $this->reissuer->reissue($tenantId, $establishmentId, $documentId, self::documentData($content, 'fr'), (string) $reason, $principal->userId);
+            $document = $this->reissuer->reissue($tenantId, $establishmentId, $documentId, self::documentData($content, 'fr', $this->layout($tenantId, $establishmentId, 'fr')), (string) $reason, $principal->userId);
             $documentId = $document->id;
         }
         $this->cards->rectify($tenantId, $cardId, $content, $documentId, (string) $reason, $this->clock->now());
@@ -311,19 +311,116 @@ final class ReportCardService
      * Variables du modèle de document (aucune variable APEE : RG-DOC-3).
      *
      * @param array<string, mixed> $content
+     * @param array{authority_fr?: string, authority_en?: string, contacts?: string, footer?: string, scale?: list<array{code: string, label_fr: string, label_en: string}>} $layout
+     *        en-tête, pied et échelle d'affichage (mise en page DOC-BUL), lus des paramètres au moment de l'émission
      * @return array<string, scalar|null>
      */
-    public static function documentData(array $content, string $locale): array
+    public static function documentData(array $content, string $locale, array $layout = []): array
     {
+        $en = $locale === 'en';
+        $scale = $layout['scale'] ?? [];
+
         return [
             'school_year' => (string) ($content['year_label'] ?? ''),
             'class_name' => (string) ($content['class_label'] ?? ''),
             'learner_number' => (string) ($content['learner_number'] ?? ''),
-            'period_label' => (string) ($content[$locale === 'en' ? 'period_label_en' : 'period_label_fr'] ?? ''),
+            'period_label' => (string) ($content[$en ? 'period_label_en' : 'period_label_fr'] ?? ''),
             'disciplines_block' => self::disciplinesBlock($content, $locale),
             'remediation_block' => implode("\n", array_map('strval', (array) ($content['remediation'] ?? []))),
             'appraisal' => (string) ($content['appraisal'] ?? ''),
+            'disciplines_table' => self::disciplinesTable($content, $locale, $scale),
+            'scale_legend' => implode(' · ', array_map(static fn (array $s): string => $s['code'] . ' : ' . ($en ? $s['label_en'] : $s['label_fr']), $scale)),
+            'authority_fr' => (string) ($layout['authority_fr'] ?? ''),
+            'authority_en' => (string) ($layout['authority_en'] ?? ''),
+            'school_contacts' => (string) ($layout['contacts'] ?? ''),
+            'footer_note' => (string) ($layout['footer'] ?? ''),
         ];
+    }
+
+    /** @return array{authority_fr: string, authority_en: string, contacts: string, footer: string, scale: list<array{code: string, label_fr: string, label_en: string}>} */
+    private function layout(string $tenantId, string $establishmentId, string $locale): array
+    {
+        return $this->contexts->letterhead($tenantId, $establishmentId, $locale) + ['scale' => $this->contexts->scale($tenantId, $establishmentId)];
+    }
+
+    /**
+     * Tableau des disciplines pour `{{table:disciplines_table}}` (JSON : le moteur du socle produit le HTML et échappe chaque cellule).
+     * Colonnes : discipline, mentions des unités du trimestre s'il y en a, mention de la période, critère de perfectionnement (sauf
+     * livret annuel). Groupes « disciplines fondamentales » et « autres disciplines » seulement si la donnée existe. Jamais de rang.
+     *
+     * @param array<string, mixed> $content
+     * @param list<array{code: string, label_fr: string, label_en: string}> $scale
+     */
+    private static function disciplinesTable(array $content, string $locale, array $scale): string
+    {
+        $en = $locale === 'en';
+        $bi = static fn (string $fr, string $english): string => $en ? $english . ' / ' . $fr : $fr . ' / ' . $english;
+        $labels = [MentionRules::NOT_ASSESSED => $en ? 'Not assessed' : 'Non évalué'];
+        foreach ($scale as $level) {
+            $labels[$level['code']] = $en ? $level['label_en'] : $level['label_fr'];
+        }
+        $lines = array_values(array_filter((array) ($content['disciplines'] ?? []), 'is_array'));
+        $units = [];
+        foreach ($lines as $line) {
+            foreach ((array) ($line['units'] ?? []) as $unit) {
+                if (is_array($unit) && isset($unit['unit_no'])) {
+                    $units[(int) $unit['unit_no']] = true;
+                }
+            }
+        }
+        ksort($units);
+        $withPerfection = ($content['kind'] ?? '') !== 'year';
+
+        $columns = [['label' => $bi('Disciplines', 'Subjects'), 'width' => $units === [] ? 46 : 34]];
+        foreach (array_keys($units) as $no) {
+            $columns[] = ['label' => ($en ? 'Unit ' : 'Unité ') . $no, 'align' => 'center'];
+        }
+        $columns[] = ['label' => $bi('Mention', 'Grade'), 'align' => 'center'];
+        if ($withPerfection) {
+            $columns[] = ['label' => $bi('Critère de perfectionnement', 'Excellence criterion'), 'align' => 'center', 'width' => 20];
+        }
+        $row = static function (array $line) use ($en, $units, $labels, $withPerfection): array {
+            $byUnit = [];
+            foreach ((array) ($line['units'] ?? []) as $unit) {
+                if (is_array($unit) && isset($unit['unit_no'])) {
+                    $byUnit[(int) $unit['unit_no']] = (string) ($unit['mention'] ?? '');
+                }
+            }
+            $cells = [(string) ($line[$en ? 'label_en' : 'label_fr'] ?? '')];
+            foreach (array_keys($units) as $no) {
+                $code = $byUnit[$no] ?? '';
+                $cells[] = $code === MentionRules::NOT_ASSESSED ? '—' : $code;
+            }
+            $mention = (string) ($line['mention'] ?? '');
+            $cells[] = $labels[$mention] ?? $mention;
+            if ($withPerfection) {
+                $cells[] = ($line['perfection'] ?? false) === true ? ($en ? 'Mastered' : 'Maîtrisé') : '';
+            }
+
+            return $cells;
+        };
+        $width = count($columns);
+        $grouped = array_filter($lines, static fn (array $l): bool => array_key_exists('is_key', $l)) !== [];
+        $rows = [];
+        if ($grouped) {
+            foreach ([[true, $bi('Disciplines fondamentales', 'Key subjects')], [false, $bi('Autres disciplines', 'Other subjects')]] as [$key, $title]) {
+                $members = array_values(array_filter($lines, static fn (array $l): bool => (($l['is_key'] ?? false) === true) === $key));
+                if ($members === []) {
+                    continue;
+                }
+                $rows[] = ['kind' => 'group', 'cells' => [['text' => $title, 'colspan' => $width]]];
+                foreach ($members as $line) {
+                    $rows[] = $row($line);
+                }
+            }
+        } else {
+            $rows = array_map($row, $lines);
+        }
+        if ($rows === []) {
+            $rows[] = ['kind' => 'muted', 'cells' => [['text' => '—', 'colspan' => $width, 'align' => 'center']]];
+        }
+
+        return json_encode(['columns' => $columns, 'rows' => $rows], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
     }
 
     /** @param array<string, mixed> $content */
