@@ -69,3 +69,6 @@
 
 ## E. Rappel sur les réponses par défaut
 Chaque réponse par défaut est un **paramètre** (plateforme, client ou établissement) ; elle est lue au lancement d'un jeu de test ou à l'ouverture d'un établissement ; la modifier ne demande ni développement ni nouvelle version. Les nombres des jeux d'essai (T940 à T949) sont des données de test, jamais des règles.
+
+## F. Décisions du propriétaire
+- **2 novembre 2026, autorisation d'ouverture** : obligatoire pour **toute** inscription, établissements **publics compris** (aucune dispense). La garde du socle reste en place pour tous les types (rapport E1-A, décision 1).
