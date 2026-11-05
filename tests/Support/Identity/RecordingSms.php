@@ -23,7 +23,7 @@ final class RecordingSms implements SmsGateway
     public function lastCode(string $to): ?string
     {
         foreach (array_reverse($this->sent) as $sms) {
-            if ($sms['to'] === $to && preg_match('/votre code est (\d{6})/', $sms['message'], $m) === 1) {
+            if ($sms['to'] === $to && preg_match('/[Cc]ode\D{0,20}(\d{6})/', $sms['message'], $m) === 1) {
                 return $m[1];
             }
         }

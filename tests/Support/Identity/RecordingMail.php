@@ -22,7 +22,7 @@ final class RecordingMail implements MailGateway
     public function lastCode(string $to): ?string
     {
         foreach (array_reverse($this->sent) as $mail) {
-            if ($mail['to'] === $to && preg_match('/votre code est (\d{6})/', $mail['body'], $m) === 1) {
+            if ($mail['to'] === $to && preg_match('/[Cc]ode\D{0,20}(\d{6})/', $mail['body'], $m) === 1) {
                 return $m[1];
             }
         }

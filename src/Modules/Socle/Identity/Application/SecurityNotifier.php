@@ -24,7 +24,7 @@ final class SecurityNotifier
     public function sendCode(User $user, string $channel, string $code, int $ttlSeconds): void
     {
         $minutes = intdiv($ttlSeconds, 60);
-        $text = sprintf('SCHOLARIS : votre code est %s. Il expire dans %d minutes. Ne le communiquez à personne.', $code, $minutes);
+        $text = sprintf('Bonjour, votre code SCHOLARIS est %s. Il expire dans %d minutes. Ne le communiquez à personne.', $code, $minutes);
         if ($channel === 'email' && $user->email !== null) {
             $this->mail->send($user->email, 'Votre code SCHOLARIS', $text);
 

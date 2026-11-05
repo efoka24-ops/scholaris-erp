@@ -57,9 +57,16 @@ final class AccessShareMessage
     /** @param array{first_name: string, establishment_name: string, login: string, code: string, minutes: int, url: string, login_url: string, reset: bool} $v */
     private static function sms(bool $en, array $v): string
     {
+        // Formule de politesse avec le prénom (la civilité n'est pas connue) ; sans prénom, « Bonjour, ».
+        $first = trim($v['first_name']);
+        $hello = $en ? ($first === '' ? 'Hello,' : 'Hello ' . $first . ',') : ($first === '' ? 'Bonjour,' : 'Bonjour ' . $first . ',');
         $build = static fn (string $name): string => $en
-            ? sprintf('SCHOLARIS %s: login %s, code %s (valid %d min). Open %s, enter your login then the code. Expired? Request a new one there. Never share it.', $name, $v['login'], $v['code'], $v['minutes'], $v['url'])
-            : sprintf('SCHOLARIS %s : identifiant %s, code %s (valable %d min). Ouvrez %s, saisissez l\'identifiant puis le code. Expiré ? Redemandez-le sur la même page. Ne le communiquez à personne.', $name, $v['login'], $v['code'], $v['minutes'], $v['url']);
+            ? ($v['reset']
+                ? sprintf('%s here is your SCHOLARIS password reset code for %s. Login: %s. Code: %s (valid %d min). Enter it on %s. Never share this code.', $hello, $name, $v['login'], $v['code'], $v['minutes'], $v['url'])
+                : sprintf('%s your SCHOLARIS access for %s is ready. Login: %s. Code: %s (valid %d min). Activate your account on %s. Expired? Request a new code on the same page. Never share this code.', $hello, $name, $v['login'], $v['code'], $v['minutes'], $v['url']))
+            : ($v['reset']
+                ? sprintf('%s voici votre code SCHOLARIS pour réinitialiser votre mot de passe (%s). Identifiant : %s. Code : %s (valable %d min). Saisissez-le sur %s. Ne communiquez ce code à personne.', $hello, $name, $v['login'], $v['code'], $v['minutes'], $v['url'])
+                : sprintf('%s votre accès SCHOLARIS pour %s est prêt. Identifiant : %s. Code : %s (valable %d min). Activez votre compte sur %s. Code expiré ? Redemandez-le sur la même page. Ne communiquez ce code à personne.', $hello, $name, $v['login'], $v['code'], $v['minutes'], $v['url']));
         $name = $v['establishment_name'];
         $sms = $build($name);
         $excess = mb_strlen($sms) - self::SMS_MAX;
