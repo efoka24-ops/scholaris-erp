@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Support\Nursery;
 
+use Scholaris\Core\Http\HttpException;
 use Scholaris\Core\Support\Ulid;
 use Scholaris\Modules\Socle\Identity\Contracts\UserPersonLink;
 use Scholaris\Modules\Socle\People\Contracts\BirthInfo;
@@ -177,6 +178,13 @@ final class WorldPeople implements PersonDirectory, BirthInfo, FoodAllergies, Co
 
     public function enroll(string $tenantId, string $establishmentId, string $personId, string $structureId, string $academicYearId, string $date, ?string $actorId): string
     {
+        // Comme le socle (RG-ELV-4) : une seule inscription vivante à la fois dans l'ensemble des établissements du client.
+        foreach ($this->enrollments->forPerson($tenantId, $personId) as $other) {
+            if ($other->establishmentId !== $establishmentId && in_array($other->status, ['active', 'conditional', 'suspended'], true)) {
+                throw HttpException::conflict('Cet élève a déjà une inscription en cours dans un autre établissement : clôturez-la (transfert) avant d\'inscrire.');
+            }
+        }
+
         return $this->enrollments->add($tenantId, (string) new Ulid(), $personId, $establishmentId, $structureId, $academicYearId);
     }
 

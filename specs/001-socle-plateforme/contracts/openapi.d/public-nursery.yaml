@@ -1365,3 +1365,155 @@ paths:
           description: 'Ressource introuvable ou hors périmètre'
         422:
           description: 'Données invalides ou refus métier (RFC 9457)'
+
+  /api/v1/public-nursery/pickup/authorized-persons/{id}/card:
+    post:
+      summary: "DOC-21 : carte d'une personne autorisée (numéro et QR, révoquée avec l'autorisation)"
+      security:
+        - bearer: {  }
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        200: { description: "Succès : enveloppe JSON {data}" }
+        201: { description: "Créé : enveloppe JSON {data}" }
+        400: { description: "Requête invalide (en-tête X-Establishment-Id manquant, JSON illisible)" }
+        401: { description: "Authentification requise" }
+        403: { description: "Accès refusé (permission, portée de sections, application fermée)" }
+        404: { description: "Ressource introuvable ou hors périmètre" }
+        409: { description: "Conflit d'état (autorisation retirée, personne visée par une restriction)" }
+        422: { description: "Données invalides ou refus métier (RFC 9457)" }
+        423: { description: "Application suspendue : écriture fermée" }
+  /api/v1/public-nursery/register/document:
+    post:
+      summary: "DOC-19 : registre du jour en PDF par le socle Documents (direction)"
+      security:
+        - bearer: {  }
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        200: { description: "Succès : enveloppe JSON {data}" }
+        201: { description: "Créé : enveloppe JSON {data}" }
+        400: { description: "Requête invalide (en-tête X-Establishment-Id manquant, JSON illisible)" }
+        401: { description: "Authentification requise" }
+        403: { description: "Accès refusé (permission, portée de sections, application fermée)" }
+        404: { description: "Ressource introuvable ou hors périmètre" }
+        409: { description: "Conflit d'état (autorisation retirée, personne visée par une restriction)" }
+        422: { description: "Données invalides ou refus métier (RFC 9457)" }
+        423: { description: "Application suspendue : écriture fermée" }
+  /api/v1/public-nursery/documents:
+    get:
+      summary: "Documents émis à la porte (cartes et registres)"
+      security:
+        - bearer: {  }
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: learner_id
+          in: query
+          required: false
+          schema: { type: string }
+        - name: kind
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        200: { description: "Succès : enveloppe JSON {data}" }
+        201: { description: "Créé : enveloppe JSON {data}" }
+        400: { description: "Requête invalide (en-tête X-Establishment-Id manquant, JSON illisible)" }
+        401: { description: "Authentification requise" }
+        403: { description: "Accès refusé (permission, portée de sections, application fermée)" }
+        404: { description: "Ressource introuvable ou hors périmètre" }
+        409: { description: "Conflit d'état (autorisation retirée, personne visée par une restriction)" }
+        422: { description: "Données invalides ou refus métier (RFC 9457)" }
+        423: { description: "Application suspendue : écriture fermée" }
+  /api/v1/public-nursery/pickup/codes:
+    post:
+      summary: "Code à usage unique du jour pour une autorisation (rendu une seule fois, envoyé par SMS)"
+      security:
+        - bearer: {  }
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        200: { description: "Succès : enveloppe JSON {data}" }
+        201: { description: "Créé : enveloppe JSON {data}" }
+        400: { description: "Requête invalide (en-tête X-Establishment-Id manquant, JSON illisible)" }
+        401: { description: "Authentification requise" }
+        403: { description: "Accès refusé (permission, portée de sections, application fermée)" }
+        404: { description: "Ressource introuvable ou hors périmètre" }
+        409: { description: "Conflit d'état (autorisation retirée, personne visée par une restriction)" }
+        422: { description: "Données invalides ou refus métier (RFC 9457)" }
+        423: { description: "Application suspendue : écriture fermée" }
+  /api/v1/public-nursery/pickup/package:
+    get:
+      summary: "Paquet du matin pour la porte hors ligne (sans code ni donnée médicale)"
+      security:
+        - bearer: {  }
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: date
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        200: { description: "Succès : enveloppe JSON {data}" }
+        201: { description: "Créé : enveloppe JSON {data}" }
+        400: { description: "Requête invalide (en-tête X-Establishment-Id manquant, JSON illisible)" }
+        401: { description: "Authentification requise" }
+        403: { description: "Accès refusé (permission, portée de sections, application fermée)" }
+        404: { description: "Ressource introuvable ou hors périmètre" }
+        409: { description: "Conflit d'état (autorisation retirée, personne visée par une restriction)" }
+        422: { description: "Données invalides ou refus métier (RFC 9457)" }
+        423: { description: "Application suspendue : écriture fermée" }
+  /api/v1/public-nursery/portal/pickup-codes:
+    post:
+      summary: "Parent : code à usage unique du jour pour une personne autorisée de son enfant"
+      security:
+        - bearer: {  }
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        200: { description: "Succès : enveloppe JSON {data}" }
+        201: { description: "Créé : enveloppe JSON {data}" }
+        400: { description: "Requête invalide (en-tête X-Establishment-Id manquant, JSON illisible)" }
+        401: { description: "Authentification requise" }
+        403: { description: "Accès refusé (permission, portée de sections, application fermée)" }
+        404: { description: "Ressource introuvable ou hors périmètre" }
+        409: { description: "Conflit d'état (autorisation retirée, personne visée par une restriction)" }
+        422: { description: "Données invalides ou refus métier (RFC 9457)" }
+        423: { description: "Application suspendue : écriture fermée" }
+  /api/v1/public-nursery/pickup/closures:
+    post:
+      summary: "NOT-14 : déclarer une fermeture exceptionnelle (parents prévenus une fois)"
+      security:
+        - bearer: {  }
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        200: { description: "Succès : enveloppe JSON {data}" }
+        201: { description: "Créé : enveloppe JSON {data}" }
+        400: { description: "Requête invalide (en-tête X-Establishment-Id manquant, JSON illisible)" }
+        401: { description: "Authentification requise" }
+        403: { description: "Accès refusé (permission, portée de sections, application fermée)" }
+        404: { description: "Ressource introuvable ou hors périmètre" }
+        409: { description: "Conflit d'état (autorisation retirée, personne visée par une restriction)" }
+        422: { description: "Données invalides ou refus métier (RFC 9457)" }
+        423: { description: "Application suspendue : écriture fermée" }
+    get:
+      summary: "Fermetures exceptionnelles à venir"
+      security:
+        - bearer: {  }
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        200: { description: "Succès : enveloppe JSON {data}" }
+        201: { description: "Créé : enveloppe JSON {data}" }
+        400: { description: "Requête invalide (en-tête X-Establishment-Id manquant, JSON illisible)" }
+        401: { description: "Authentification requise" }
+        403: { description: "Accès refusé (permission, portée de sections, application fermée)" }
+        404: { description: "Ressource introuvable ou hors périmètre" }
+        409: { description: "Conflit d'état (autorisation retirée, personne visée par une restriction)" }
+        422: { description: "Données invalides ou refus métier (RFC 9457)" }
+        423: { description: "Application suspendue : écriture fermée" }

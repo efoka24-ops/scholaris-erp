@@ -7,6 +7,7 @@ namespace Scholaris\Modules\Apps\PublicNursery\Pickup\Application;
 use PDO;
 use Scholaris\Core\Database\ConnectionFactory;
 use Scholaris\Core\Http\HttpException;
+use Scholaris\Modules\Apps\PublicNursery\Documents\Application\CardRevoker;
 use Scholaris\Modules\Socle\Attendance\Contracts\AuthorizedPickupRegistry;
 use Scholaris\Modules\Socle\People\Contracts\MediaStore;
 
@@ -16,6 +17,7 @@ final class AuthorizedPersonsService
         private readonly ConnectionFactory $connections,
         private readonly AuthorizedPickupRegistry $pickups,
         private readonly MediaStore $media,
+        private readonly CardRevoker $cards,
     ) {
     }
 
@@ -49,6 +51,7 @@ final class AuthorizedPersonsService
     public function revoke(string $tenantId, string $establishmentId, string $id, string $actorId): array
     {
         $this->pickups->revoke($tenantId, $establishmentId, $id, $actorId);
+        $this->cards->revokeFor($tenantId, $establishmentId, $id, 'Autorisation retirée.', $actorId);
 
         return $this->find($tenantId, $establishmentId, $id) ?? throw new \LogicException('Autorisation introuvable après révocation.');
     }

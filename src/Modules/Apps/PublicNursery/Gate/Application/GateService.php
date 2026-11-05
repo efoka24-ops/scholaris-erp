@@ -45,7 +45,7 @@ final class GateService
     }
 
     /** @return array<string, mixed> arrivée (idempotente par enfant et jour) ou maintien à l'école */
-    public function record(string $tenantId, string $establishmentId, SectionScope $scope, string $learnerId, string $type, string $day, string $occurredAt, string $actorId, ?string $remark): array
+    public function record(string $tenantId, string $establishmentId, SectionScope $scope, string $learnerId, string $type, string $day, string $occurredAt, string $actorId, ?string $remark, string $origin = 'online', ?string $clientUuid = null): array
     {
         $enrollment = $this->enrollment($tenantId, $establishmentId, $learnerId);
         if ($enrollment->structureId !== null && !$scope->contains($enrollment->structureId)) {
@@ -63,8 +63,8 @@ final class GateService
         $id = (string) new Ulid();
         $this->connections->pdo()->prepare(
             'INSERT INTO pn_gate_events (id, tenant_id, establishment_id, learner_id, structure_id, school_day, event_type, pickup_id, code_id, declared_name, restriction_id, stale_authorization, origin, client_uuid, occurred_at, recorded_at, actor_id, remark)'
-            . " VALUES (?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, NULL, 0, 'online', NULL, ?, ?, ?, ?)",
-        )->execute([$id, $tenantId, $establishmentId, $learnerId, $enrollment->structureId, $day, $type, $occurredAt, $occurredAt, $actorId, $remark]);
+            . ' VALUES (?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, NULL, 0, ?, ?, ?, ?, ?, ?)',
+        )->execute([$id, $tenantId, $establishmentId, $learnerId, $enrollment->structureId, $day, $type, $origin, $clientUuid, $occurredAt, $occurredAt, $actorId, $remark]);
         $this->audit->append($tenantId, $actorId, 'public_nursery.gate.' . $type, 'learner', $learnerId, null, ['day' => $day]);
 
         return self::event($this->events($tenantId, $establishmentId, $day, $learnerId, $id)[0]);
@@ -143,6 +143,9 @@ final class GateService
             return $sent;
         }
         $day = $now->format('Y-m-d');
+        if ($this->closedOn($tenantId, $establishmentId, $day)) {
+            return $sent; // jour de fermeture exceptionnelle (NOT-14) : aucune alerte de non-récupération
+        }
         $endAt = new \DateTimeImmutable($day . 'T' . $end . ':00', $now->getTimezone());
         $parentAt = $endAt->modify('+' . $late . ' minutes');
         $directorAt = $parentAt->modify('+' . $director . ' minutes');
@@ -222,6 +225,28 @@ final class GateService
         }
 
         return $out;
+    }
+
+    /**
+     * Événement déjà enregistré sous cet identifiant client (rejeu d'un lot hors ligne) : null s'il n'y en a pas.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function byClientUuid(string $tenantId, string $establishmentId, string $clientUuid): ?array
+    {
+        $statement = $this->connections->pdo()->prepare('SELECT * FROM pn_gate_events WHERE tenant_id = ? AND establishment_id = ? AND client_uuid = ?');
+        $statement->execute([$tenantId, $establishmentId, $clientUuid]);
+        $row = $statement->fetch(PDO::FETCH_ASSOC);
+
+        return is_array($row) ? self::event($row) : null;
+    }
+
+    private function closedOn(string $tenantId, string $establishmentId, string $day): bool
+    {
+        $statement = $this->connections->pdo()->prepare('SELECT COUNT(*) FROM pn_closure_days WHERE tenant_id = ? AND establishment_id = ? AND closure_on = ?');
+        $statement->execute([$tenantId, $establishmentId, $day]);
+
+        return (int) $statement->fetchColumn() > 0;
     }
 
     private function claim(string $tenantId, string $establishmentId, string $learnerId, string $day, string $level, \DateTimeImmutable $now): bool

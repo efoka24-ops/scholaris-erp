@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Scholaris\Modules\Apps\PublicNursery\Pickup\Http\AuthorizedPersonsController;
 use Scholaris\Modules\Apps\PublicNursery\Pickup\Http\CustodyRestrictionController;
 use Scholaris\Modules\Apps\PublicNursery\Pickup\Http\HandoverController;
+use Scholaris\Modules\Apps\PublicNursery\Pickup\Http\PickupCodeController;
 use Scholaris\Modules\Apps\PublicNursery\Portal\Http\PortalPickupController;
 use Scholaris\Modules\Apps\PublicNursery\Support\NurseryRoutes;
 
@@ -16,6 +17,9 @@ return static function (NurseryRoutes $routes): void {
     $routes->post('/pickup/restrictions', [CustodyRestrictionController::class, 'store']);
     $routes->post('/pickup/restrictions/{id}/lift', [CustodyRestrictionController::class, 'lift']);
     $routes->post('/pickup/handovers', [HandoverController::class, 'store']);
+    $routes->post('/pickup/codes', [PickupCodeController::class, 'store']);
+    $routes->get('/pickup/package', [PickupCodeController::class, 'package']);
+    $routes->post('/portal/pickup-codes', [PortalPickupController::class, 'code']);
     $routes->get('/portal/pickups', [PortalPickupController::class, 'index']);
     $routes->post('/portal/pickups', [PortalPickupController::class, 'store']);
     $routes->post('/portal/pickups/{id}/revoke', [PortalPickupController::class, 'revoke']);

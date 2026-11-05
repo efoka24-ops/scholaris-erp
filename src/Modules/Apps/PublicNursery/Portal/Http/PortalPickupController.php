@@ -10,7 +10,9 @@ use Scholaris\Core\Http\HttpException;
 use Scholaris\Core\Http\JsonResponder;
 use Scholaris\Core\Security\Principal;
 use Scholaris\Modules\Apps\PublicNursery\Pickup\Application\AuthorizedPersonsService;
+use Scholaris\Modules\Apps\PublicNursery\Pickup\Application\PickupCodeService;
 use Scholaris\Modules\Apps\PublicNursery\Support\EstablishmentGuard;
+use Scholaris\Modules\Apps\PublicNursery\Support\PublicNurseryClock;
 use Scholaris\Modules\Socle\Assessment\Contracts\ActorDirectory;
 use Scholaris\Modules\Socle\People\Contracts\PersonDirectory;
 use Scholaris\Modules\Socle\People\Contracts\PersonSummary;
@@ -23,7 +25,26 @@ final class PortalPickupController
         private readonly PersonDirectory $people,
         private readonly EstablishmentGuard $guard,
         private readonly AuthorizedPersonsService $service,
+        private readonly PickupCodeService $codes,
+        private readonly PublicNurseryClock $clock,
     ) {
+    }
+
+    /** Code à usage unique du jour pour une personne autorisée de SON enfant : rendu une seule fois, envoyé aussi par SMS aux parents. */
+    public function code(ServerRequestInterface $request): ResponseInterface
+    {
+        $body = $this->jsonBody($request);
+        [$principal, $learnerId] = $this->authorizeLearner($request, $body);
+        $pickupId = trim((string) ($body['pickup_id'] ?? ''));
+        if ($pickupId === '') {
+            throw HttpException::validation(['pickup_id' => ['Champ requis.']]);
+        }
+        $validOn = isset($body['valid_on']) && is_string($body['valid_on']) ? $body['valid_on'] : $this->clock->today();
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $validOn) !== 1 || $validOn < $this->clock->today()) {
+            throw HttpException::validation(['valid_on' => ['Date AAAA-MM-JJ d’aujourd’hui ou à venir attendue.']]);
+        }
+
+        return $this->responder->json(['data' => $this->codes->issue($principal->tenantId, self::establishment($request), $learnerId, $pickupId, $validOn, $principal->userId)], 201)->withHeader('Cache-Control', 'no-store');
     }
 
     public function index(ServerRequestInterface $request): ResponseInterface

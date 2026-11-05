@@ -27,6 +27,7 @@ final class HandoverService
         private readonly EstablishmentDirectory $establishments,
         private readonly RoleDirectory $roles,
         private readonly SafetyMessenger $notifier,
+        private readonly PickupCodeService $codes,
         private readonly AuditLog $audit,
     ) {
     }
@@ -38,21 +39,41 @@ final class HandoverService
             throw HttpException::notFound('Enfant introuvable dans cet établissement.');
         }
         $pickupId = trim((string) ($data['pickup_id'] ?? ''));
-        if ($pickupId === '') {
-            throw HttpException::validation(['pickup_id' => ['Champ requis.']]);
-        }
+        $code = $this->optionalText($data['code'] ?? null, 20, 'code');
         $schoolDay = $this->date($data['school_day'] ?? null, 'school_day');
         $origin = $this->requiredText($data['origin'] ?? 'api', 10, 'origin');
         $declaredName = $this->optionalText($data['declared_name'] ?? null, 160, 'declared_name');
         $pickupPersonId = $this->optionalText($data['pickup_person_id'] ?? null, 40, 'pickup_person_id');
         $clientUuid = $this->optionalText($data['client_uuid'] ?? null, 40, 'client_uuid');
+        if ($pickupId === '' && $code === null && $declaredName === null) {
+            throw HttpException::validation(['pickup_id' => ['Indiquez l’autorisation (pickup_id), un code du jour ou le nom déclaré.']]);
+        }
+        if ($clientUuid !== null) {
+            $replayed = $this->eventByClientUuid($tenantId, $establishmentId, $clientUuid);
+            if ($replayed !== null) {
+                return new HandoverDecision((string) $replayed['event_type'] === 'handed_over' ? HandoverDecision::HANDED_OVER : HandoverDecision::REFUSED, (string) ($replayed['remark'] ?? ''), $replayed);
+            }
+        }
 
         $learner = $this->people->find($tenantId, $learnerId) ?? throw HttpException::notFound('Enfant introuvable.');
         $this->establishments->find($tenantId, $establishmentId) ?? throw HttpException::notFound('Établissement introuvable.');
-        $pickup = $this->authorizedPersons->find($tenantId, $establishmentId, $pickupId);
-        $restriction = $this->matchingRestriction($tenantId, $establishmentId, $learnerId, $schoolDay, $pickupId, $pickupPersonId);
         $now = new DateTimeImmutable('now');
         $eventId = (string) new Ulid();
+        $codeRow = null;
+        if ($code !== null) {
+            try {
+                $codeRow = $this->codes->verify($tenantId, $establishmentId, $learnerId, $schoolDay, $code);
+                $pickupId = (string) $codeRow['pickup_id'];
+            } catch (CodeRefused $refused) {
+                $event = $this->recordEvent($tenantId, $establishmentId, $learnerId, $actorId, $eventId, $schoolDay, 'refused', $origin, $clientUuid, $declaredName, null, null, 0, $refused->reason);
+                $details = $refused->reason === 'code_blocked' ? 'Code du jour bloqué après des essais erronés.' : 'Code du jour erroné.';
+                $this->notifyRefusal($tenantId, $establishmentId, $learnerId, $learner->fullName(), $schoolDay, $now, $details, $eventId, null);
+
+                return HandoverDecision::refused($refused->reason, $event);
+            }
+        }
+        $pickup = $pickupId === '' ? null : $this->authorizedPersons->find($tenantId, $establishmentId, $pickupId);
+        $restriction = $pickupId === '' ? null : $this->matchingRestriction($tenantId, $establishmentId, $learnerId, $schoolDay, $pickupId, $pickupPersonId);
 
         if ($pickup === null || (string) $pickup['learner_id'] !== $learnerId) {
             $event = $this->recordEvent($tenantId, $establishmentId, $learnerId, $actorId, $eventId, $schoolDay, 'refused', $origin, $clientUuid, $declaredName, null, null, 0, 'unauthorized');
@@ -62,6 +83,14 @@ final class HandoverService
 
         $staleAuthorization = (int) ($pickup['status'] !== 'active' || ((string) $pickup['grant_type'] === 'day' && (string) $pickup['valid_on'] !== $schoolDay));
         if ($staleAuthorization === 1) {
+            if ($origin === 'offline') {
+                // Remise faite hors ligne avec le paquet du matin : l'enfant est déjà parti, elle est ENREGISTRÉE (jamais effacée), marquée
+                // « autorisation périmée », avec alerte des parents et de la direction ; le contrôle O7 la signale.
+                $event = $this->recordEvent($tenantId, $establishmentId, $learnerId, $actorId, $eventId, $schoolDay, 'handed_over', $origin, $clientUuid, $declaredName ?: (string) $pickup['pickup_name'], (string) $pickupId, null, 1, 'stale_authorization');
+                $this->notifyRefusal($tenantId, $establishmentId, $learnerId, $learner->fullName(), $schoolDay, $now, 'Remise hors ligne avec une autorisation révoquée, expirée ou hors du jour.', $eventId, null);
+
+                return new HandoverDecision(HandoverDecision::HANDED_OVER, 'stale_authorization', $event);
+            }
             $event = $this->recordEvent($tenantId, $establishmentId, $learnerId, $actorId, $eventId, $schoolDay, 'refused', $origin, $clientUuid, $declaredName ?: (string) $pickup['pickup_name'], (string) $pickupId, null, 1, 'stale_authorization');
             $this->notifyRefusal($tenantId, $establishmentId, $learnerId, $learner->fullName(), $schoolDay, $now, 'Autorisation révoquée, expirée ou hors du jour.', $eventId, null);
             return HandoverDecision::refused('stale_authorization', $event);
@@ -73,9 +102,22 @@ final class HandoverService
             return HandoverDecision::refused('restricted', $event);
         }
 
-        $event = $this->recordEvent($tenantId, $establishmentId, $learnerId, $actorId, $eventId, $schoolDay, 'handed_over', $origin, $clientUuid, $declaredName ?: (string) $pickup['pickup_name'], (string) $pickupId, null, 0, 'authorized');
+        $event = $this->recordEvent($tenantId, $establishmentId, $learnerId, $actorId, $eventId, $schoolDay, 'handed_over', $origin, $clientUuid, $declaredName ?: (string) $pickup['pickup_name'], (string) $pickupId, null, 0, 'authorized', $codeRow !== null ? (string) $codeRow['id'] : null);
+        if ($codeRow !== null) {
+            $this->codes->markUsed($tenantId, $establishmentId, (string) $codeRow['id'], $eventId);
+        }
 
         return HandoverDecision::handedOver($event);
+    }
+
+    /** @return array<string, mixed>|null événement déjà enregistré sous cet identifiant client (rejeu) */
+    private function eventByClientUuid(string $tenantId, string $establishmentId, string $clientUuid): ?array
+    {
+        $query = $this->connections->pdo()->prepare('SELECT * FROM pn_gate_events WHERE tenant_id = ? AND establishment_id = ? AND client_uuid = ?');
+        $query->execute([$tenantId, $establishmentId, $clientUuid]);
+        $row = $query->fetch(\PDO::FETCH_ASSOC);
+
+        return is_array($row) ? $row : null;
     }
 
     /** @return array<string, mixed>|null */
@@ -94,7 +136,7 @@ final class HandoverService
     }
 
     /** @return array<string, mixed> */
-    private function recordEvent(string $tenantId, string $establishmentId, string $learnerId, string $actorId, string $eventId, string $schoolDay, string $eventType, string $origin, ?string $clientUuid, ?string $declaredName, ?string $pickupId, ?string $restrictionId, int $staleAuthorization, string $reason): array
+    private function recordEvent(string $tenantId, string $establishmentId, string $learnerId, string $actorId, string $eventId, string $schoolDay, string $eventType, string $origin, ?string $clientUuid, ?string $declaredName, ?string $pickupId, ?string $restrictionId, int $staleAuthorization, string $reason, ?string $codeId = null): array
     {
         $now = (new DateTimeImmutable('now'))->format(DATE_ATOM);
         $event = [
@@ -106,7 +148,7 @@ final class HandoverService
             'school_day' => $schoolDay,
             'event_type' => $eventType,
             'pickup_id' => $pickupId,
-            'code_id' => null,
+            'code_id' => $codeId,
             'declared_name' => $declaredName,
             'restriction_id' => $restrictionId,
             'stale_authorization' => $staleAuthorization,
@@ -128,7 +170,7 @@ final class HandoverService
             $schoolDay,
             $eventType,
             $pickupId,
-            null,
+            $codeId,
             $declaredName,
             $restrictionId,
             $staleAuthorization,

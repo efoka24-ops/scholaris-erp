@@ -65,6 +65,7 @@ onMounted(() => void load());
       <div class="field"><label for="gt-date">{{ t('pn.gate.date') }}</label><input id="gt-date" v-model="date" type="date" required /></div>
       <button type="submit" class="btn" :disabled="busy">{{ t('pn.gate.show') }}</button>
       <button type="button" class="btn btn--quiet" :disabled="busy" @click="check">{{ t('pn.gate.audit') }}</button>
+      <router-link class="btn btn--quiet" :to="{ name: 'pn-pickup-auth' }">{{ t('pn.nav.pickupAuth') }}</router-link>
     </form>
     <p v-if="audit" class="card" role="status" aria-live="polite">
       <span :class="['tag', audit.ok ? 'tag--ok' : 'tag--warn']">{{ audit.ok ? t('pn.gate.auditOk') : t('pn.gate.auditKo', { count: audit.anomalies.length }) }}</span>

@@ -200,3 +200,51 @@ export const progressBooks = {
   reissue: (id: string, label: 'duplicate' | 'rectified') => data(http.post<{ data: PublicProgressBook }>(`/public-nursery/development/progress-books/${id}/reissue`, { edition_label: label })),
   pdf: (id: string, locale: 'fr' | 'en' = 'fr') => http.get<Blob>(`/public-nursery/development/progress-books/${id}/pdf`, { locale }, { expect: 'blob' }),
 };
+
+// --- C-106 : documents de la porte (DOC-21 carte, DOC-19 registre), codes à usage unique, paquet du matin ---
+export interface PickupPerson {
+  id: string;
+  learner_id: string;
+  pickup_name: string;
+  relationship: string;
+  grant_type: 'permanent' | 'day';
+  valid_on: string | null;
+  status: 'active' | 'revoked';
+}
+export interface PickupDocument {
+  id: string;
+  kind: 'pickup_card' | 'register';
+  source_id: string;
+  learner_id: string | null;
+  document_id: string;
+  number: string;
+  verification_path: string;
+  locale: string;
+  status: 'valid' | 'revoked';
+  issued_at: string;
+  already_issued?: boolean;
+}
+export interface PickupCodeIssued {
+  id: string;
+  code: string;
+  learner_id: string;
+  pickup_id: string;
+  valid_on: string;
+}
+
+export const pickupAuth = {
+  persons: (learnerId: string) => data(http.get<{ data: PickupPerson[] }>('/public-nursery/pickup/authorized-persons', { learner_id: learnerId })),
+  card: (pickupId: string, locale: 'fr' | 'en') => data(http.post<{ data: PickupDocument }>(`/public-nursery/pickup/authorized-persons/${encodeURIComponent(pickupId)}/card`, { locale })),
+  registerDocument: (date: string, locale: 'fr' | 'en') => data(http.post<{ data: PickupDocument }>('/public-nursery/register/document', { date, locale })),
+  /** Code à usage unique : rendu UNE SEULE fois (envoyé aussi par SMS aux parents), jamais relisible ensuite. */
+  issueCode: (body: { learner_id: string; pickup_id: string; valid_on?: string }) => data(http.post<{ data: PickupCodeIssued }>('/public-nursery/pickup/codes', body)),
+  morningPackage: (date: string) => data(http.get<{ data: Record<string, unknown> }>('/public-nursery/pickup/package', { date })),
+};
+
+/** Ouvre un PDF émis par le socle Documents (lecture authentifiée : pas de lien direct). */
+export async function openIssuedPdf(documentId: string): Promise<void> {
+  const blob = await http.get<Blob>(`/documents/${encodeURIComponent(documentId)}/preview`, { profile: 'light' }, { expect: 'blob' });
+  const url = URL.createObjectURL(blob);
+  window.open(url, '_blank', 'noopener');
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}

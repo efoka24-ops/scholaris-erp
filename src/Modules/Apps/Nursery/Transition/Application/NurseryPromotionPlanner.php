@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Scholaris\Modules\Apps\Nursery\Transition\Application;
 
+use Scholaris\Core\Http\HttpException;
 use Scholaris\Modules\Apps\Nursery\Sections\Application\ChildDirectory;
 use Scholaris\Modules\Apps\Nursery\Sections\Application\SectionService;
 use Scholaris\Modules\Apps\Nursery\Support\NurseryClock;
@@ -18,7 +19,10 @@ use Scholaris\Modules\Socle\Platform\Contracts\ApplicationAccess;
  * un client qui a l'application `nursery` (un client `public_nursery` garde son propre planificateur). Pour chaque décision prise :
  * « primaire » clôt l'inscription (transfert) ; « section suivante » et « maintien » inscrivent l'enfant dans la section retenue pour
  * l'année suivante. Une décision appliquée est figée (idempotent). Les enfants sans décision reçoivent une proposition et sont
- * comptés : rien n'est décidé à la place de la direction. Un refus du socle (inscription vivante, garde) laisse la décision en attente.
+ * comptés : rien n'est décidé à la place de la direction. Un refus du socle est trié : si l'enfant a déjà une inscription vivante dans un
+ * autre établissement (RG-ELV-4, une seule inscription vivante), il n'y a plus rien à inscrire ici (inscription de cette maternelle close
+ * par transfert si elle était encore vivante, décision close et comptée « déjà ailleurs ») ; tout autre refus (garde, dossier incomplet)
+ * laisse la décision en attente de la direction.
  */
 final class NurseryPromotionPlanner implements ConditionalPromotionPlanner
 {
@@ -53,7 +57,7 @@ final class NurseryPromotionPlanner implements ConditionalPromotionPlanner
         foreach ($this->sections->inPerimeter($perimeter) as $section) {
             $this->transitions->propose(null, $perimeter, (string) $section['id']);
         }
-        $counts = ['to_primary' => 0, 'enrolled' => 0, 'pending' => 0, 'undecided' => 0, 'already_applied' => 0];
+        $counts = ['to_primary' => 0, 'enrolled' => 0, 'elsewhere' => 0, 'pending' => 0, 'undecided' => 0, 'already_applied' => 0];
         $today = $this->clock->today();
         foreach ($this->transitions->ofYear($tenantId, $establishmentId, $fromYearId) as $row) {
             $status = (string) $row['status'];
@@ -78,14 +82,27 @@ final class NurseryPromotionPlanner implements ConditionalPromotionPlanner
                     ++$counts['enrolled'];
                 }
                 $this->transitions->markApplied($tenantId, $establishmentId, (string) $row['id']);
+            } catch (HttpException $refusal) {
+                if ($refusal->status === 409 && $this->children->liveElsewhere($tenantId, $establishmentId, $learnerId) !== null) {
+                    // Déjà inscrit ailleurs (RG-ELV-4) : rien à inscrire ici ; on referme ce qui reste vivant dans cette maternelle.
+                    $current = $this->children->currentEnrollment($tenantId, $establishmentId, $learnerId);
+                    if ($current !== null) {
+                        $this->learners->closeEnrollment($tenantId, $current->id, 'transferred', $today);
+                    }
+                    $this->transitions->markApplied($tenantId, $establishmentId, (string) $row['id']);
+                    ++$counts['elsewhere'];
+                } else {
+                    ++$counts['pending'];
+                }
             } catch (\Throwable) {
                 ++$counts['pending'];
             }
         }
         $summary = sprintf(
-            '%d vers le primaire, %d inscrit(s) pour l’année suivante, %d en attente (refus du socle), %d sans décision.',
+            '%d vers le primaire, %d inscrit(s) pour l’année suivante, %d déjà inscrit(s) dans un autre établissement, %d en attente (refus du socle), %d sans décision.',
             $counts['to_primary'],
             $counts['enrolled'],
+            $counts['elsewhere'],
             $counts['pending'],
             $counts['undecided'],
         );

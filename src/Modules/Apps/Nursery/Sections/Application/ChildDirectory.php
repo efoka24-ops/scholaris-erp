@@ -108,6 +108,21 @@ final class ChildDirectory
         return null;
     }
 
+    /**
+     * Inscription vivante (active, conditionnelle ou suspendue) de l'enfant dans UN AUTRE établissement du client : le socle n'autorise
+     * qu'une inscription vivante à la fois (RG-ELV-4). Sert à reconnaître, à la clôture, un enfant déjà parti ailleurs.
+     */
+    public function liveElsewhere(string $tenantId, string $establishmentId, string $childId): ?EnrollmentInfo
+    {
+        foreach ($this->enrollments->forPerson($tenantId, $childId) as $enrollment) {
+            if ($enrollment->establishmentId !== $establishmentId && in_array($enrollment->status, [EnrollmentInfo::ACTIVE, EnrollmentInfo::CONDITIONAL, 'suspended'], true)) {
+                return $enrollment;
+            }
+        }
+
+        return null;
+    }
+
     /** Section de l'enfant dans cet établissement (null s'il n'y est pas inscrit). */
     public function sectionOf(string $tenantId, string $establishmentId, string $childId): ?string
     {

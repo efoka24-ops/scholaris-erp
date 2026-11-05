@@ -73,6 +73,25 @@ final class TransitionTest extends DevelopmentTestCase
         self::assertSame(['liaison_sheet'], array_column($this->ok('GET', '/nursery/portal/documents?learner_id=' . $this->bao['child'], null, 'parent-' . $this->bao['child']), 'kind'));
     }
 
+    public function testUnEnfantDejaInscritAilleursNEstPasCompteEnAttente(): void
+    {
+        $ada = (string) $this->decisionOf($this->sectionA)['id'];
+        $bao = (string) $this->decisionOf($this->sectionB)['id'];
+        $this->ok('POST', '/nursery/transition/decisions/' . $ada . '/decide', ['decision' => 'promote']);
+        $this->ok('POST', '/nursery/transition/decisions/' . $bao . '/decide', ['decision' => 'to_primary']);
+        // Ada est déjà inscrite dans une autre école du client (primaire du groupe) : le socle refuserait une seconde inscription vivante.
+        $this->world->enrollments->add(self::TA, 'en-ada-primary', $this->ada['child'], 'EST-PRIMARY', 'STRUCT-CP', 'AY-2027');
+
+        $result = $this->service(NurseryPromotionPlanner::class)->promote(self::TA, self::EA, 'AY-2026', 'AY-2027');
+
+        self::assertSame(['to_primary' => 1, 'enrolled' => 0, 'elsewhere' => 1, 'pending' => 0, 'undecided' => 0, 'already_applied' => 0], $result->counts);
+        $statuses = array_map(static fn (EnrollmentInfo $e): string => $e->establishmentId . ':' . $e->academicYearId . ':' . $e->status, $this->world->enrollments->forPerson(self::TA, $this->ada['child']));
+        self::assertContains('EST-PRIMARY:AY-2027:active', $statuses, 'L\'inscription ailleurs n\'est pas touchée.');
+        self::assertContains(self::EA . ':AY-2026:transferred', $statuses, 'L\'inscription de la maternelle, restée vivante, est close par transfert.');
+        self::assertNotContains(self::EA . ':AY-2027:active', $statuses);
+        self::assertSame(2, $this->service(NurseryPromotionPlanner::class)->promote(self::TA, self::EA, 'AY-2026', 'AY-2027')->counts['already_applied'], 'Idempotent : les deux décisions sont closes.');
+    }
+
     public function testClotureControleEtPlanificateurApplicableAuSeulClientNursery(): void
     {
         $readiness = $this->service(ClosureReadiness::class);
@@ -87,7 +106,7 @@ final class TransitionTest extends DevelopmentTestCase
         $planner = $this->service(NurseryPromotionPlanner::class);
         self::assertTrue($planner->appliesTo(self::TA, self::EA));
         $result = $planner->promote(self::TA, self::EA, 'AY-2026', 'AY-2027');
-        self::assertSame(['to_primary' => 1, 'enrolled' => 1, 'pending' => 0, 'undecided' => 0, 'already_applied' => 0], $result->counts);
+        self::assertSame(['to_primary' => 1, 'enrolled' => 1, 'elsewhere' => 0, 'pending' => 0, 'undecided' => 0, 'already_applied' => 0], $result->counts);
         $baoEnrollments = $this->world->enrollments->forPerson(self::TA, $this->bao['child']);
         self::assertSame('transferred', $baoEnrollments[0]->status);
         $adaYears = array_map(static fn (EnrollmentInfo $e): string => $e->academicYearId . ':' . $e->structureId, $this->world->enrollments->forPerson(self::TA, $this->ada['child']));
