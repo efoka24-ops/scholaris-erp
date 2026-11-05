@@ -57,9 +57,19 @@ final class GateController
     {
         [$principal, $establishmentId, $scope] = $this->context->require($request, self::STAFF);
         $body = RequestContext::body($request);
-        RequestContext::onlyKnown($body, ['learner_id', 'school_day', 'remark']);
+        RequestContext::onlyKnown($body, ['learner_id', 'school_day', 'remark', 'client_uuid', 'occurred_at']);
         $learner = $body['learner_id'] ?? null;
         $errors = [];
+        // Rejeu de l'écran de porte hors ligne (C-111, T735) : identifiant client stable et heure réelle du geste ; un rejeu rend
+        // l'événement déjà enregistré, jamais un second.
+        $clientUuid = $body['client_uuid'] ?? null;
+        if ($clientUuid !== null && (!is_string($clientUuid) || preg_match('/^[A-Za-z0-9_-]{8,40}$/', $clientUuid) !== 1)) {
+            $errors['client_uuid'][] = 'Identifiant client de 8 à 40 caractères (lettres, chiffres, _ et -).';
+        }
+        $occurredAt = $body['occurred_at'] ?? null;
+        if ($occurredAt !== null && (!is_string($occurredAt) || \DateTimeImmutable::createFromFormat(DATE_ATOM, $occurredAt) === false)) {
+            $errors['occurred_at'][] = 'Date et heure ISO 8601 attendues (ex. 2026-10-21T07:45:00+01:00).';
+        }
         if (!is_string($learner) || preg_match('/^[A-Za-z0-9_-]{1,40}$/', $learner) !== 1) {
             $errors['learner_id'][] = 'Identifiant de l’enfant requis.';
         }
@@ -78,7 +88,26 @@ final class GateController
             throw HttpException::validation($errors);
         }
 
-        return $this->responder->json(['data' => $this->gate->record($principal->tenantId, $establishmentId, $scope, (string) $learner, $type, (string) $day, $this->clock->now(), $principal->userId, is_string($remark) ? trim($remark) : null)], 201);
+        if (is_string($clientUuid)) {
+            $existing = $this->gate->byClientUuid($principal->tenantId, $establishmentId, $clientUuid);
+            if ($existing !== null) {
+                return $this->responder->json(['data' => $existing]);
+            }
+        }
+
+        return $this->responder->json(['data' => $this->gate->record(
+            $principal->tenantId,
+            $establishmentId,
+            $scope,
+            (string) $learner,
+            $type,
+            (string) $day,
+            is_string($occurredAt) ? $occurredAt : $this->clock->now(),
+            $principal->userId,
+            is_string($remark) ? trim($remark) : null,
+            is_string($clientUuid) ? 'offline' : 'online',
+            is_string($clientUuid) ? $clientUuid : null,
+        )], 201);
     }
 
     private function day(ServerRequestInterface $request): string

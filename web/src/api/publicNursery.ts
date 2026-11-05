@@ -184,9 +184,30 @@ export const contributions = {
   capacity: () => data(http.get<{ data: CapacityReport }>('/public-nursery/sections/capacity')),
 };
 
+/** Rejeu de l'écran hors ligne (C-111) : identifiant client stable et heure réelle du geste. */
+export interface GateReplay {
+  client_uuid?: string;
+  occurred_at?: string;
+}
+export interface HandoverBody {
+  learner_id: string;
+  school_day?: string;
+  pickup_id?: string;
+  declared_name?: string;
+  origin?: 'offline';
+  client_uuid?: string;
+}
+export interface HandoverDecision {
+  status: 'handed_over' | 'refused';
+  reason: string;
+  event: Record<string, unknown>;
+}
+
 export const gate = {
-  arrival: (body: { learner_id: string; school_day?: string }) => data(http.post<{ data: Record<string, unknown> }>('/public-nursery/pickup/arrivals', body)),
-  hold: (body: { learner_id: string; remark: string; school_day?: string }) => data(http.post<{ data: Record<string, unknown> }>('/public-nursery/pickup/holds', body)),
+  arrival: (body: { learner_id: string; school_day?: string } & GateReplay) => data(http.post<{ data: Record<string, unknown> }>('/public-nursery/pickup/arrivals', body)),
+  hold: (body: { learner_id: string; remark: string; school_day?: string } & GateReplay) => data(http.post<{ data: Record<string, unknown> }>('/public-nursery/pickup/holds', body)),
+  /** Remise ou refus : 201 si remis, 422 avec la décision `refused` dans le corps si refusé (enregistré et alerté). */
+  handover: (body: HandoverBody) => data(http.post<{ data: HandoverDecision }>('/public-nursery/pickup/handovers', body)),
   register: (date: string) => data(http.get<{ data: GateRegister }>('/public-nursery/register', { date })),
   audit: (date: string) => data(http.get<{ data: { date: string; ok: boolean; anomalies: { event_id: string; learner_id: string; reason: string; occurred_at: string }[] } }>('/public-nursery/register/audit', { date })),
 };
@@ -232,13 +253,29 @@ export interface PickupCodeIssued {
   valid_on: string;
 }
 
+/** Paquet du matin (T725) : enfants de la portée, absents, personnes autorisées du jour, restrictions, numéros de la direction. */
+export interface MorningPackageChild {
+  id: string;
+  name: string;
+  absent: boolean;
+  authorized: { id: string; name: string; relationship: string; grant_type: 'permanent' | 'day'; valid_on: string | null }[];
+  restrictions: { restricted_pickup_id: string | null; restricted_person_id: string | null; restricted_name: string }[];
+}
+export interface MorningPackage {
+  date: string;
+  generated_at: string;
+  max_age_days: number | null;
+  direction: { name: string; phone: string }[];
+  children: MorningPackageChild[];
+}
+
 export const pickupAuth = {
   persons: (learnerId: string) => data(http.get<{ data: PickupPerson[] }>('/public-nursery/pickup/authorized-persons', { learner_id: learnerId })),
   card: (pickupId: string, locale: 'fr' | 'en') => data(http.post<{ data: PickupDocument }>(`/public-nursery/pickup/authorized-persons/${encodeURIComponent(pickupId)}/card`, { locale })),
   registerDocument: (date: string, locale: 'fr' | 'en') => data(http.post<{ data: PickupDocument }>('/public-nursery/register/document', { date, locale })),
   /** Code à usage unique : rendu UNE SEULE fois (envoyé aussi par SMS aux parents), jamais relisible ensuite. */
   issueCode: (body: { learner_id: string; pickup_id: string; valid_on?: string }) => data(http.post<{ data: PickupCodeIssued }>('/public-nursery/pickup/codes', body)),
-  morningPackage: (date: string) => data(http.get<{ data: Record<string, unknown> }>('/public-nursery/pickup/package', { date })),
+  morningPackage: (date: string) => data(http.get<{ data: MorningPackage }>('/public-nursery/pickup/package', { date })),
 };
 
 /** Ouvre un PDF émis par le socle Documents (lecture authentifiée : pas de lien direct). */

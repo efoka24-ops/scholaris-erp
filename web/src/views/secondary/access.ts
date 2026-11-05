@@ -15,6 +15,8 @@ export const S = {
   payroll: ['secondary.finance.read', 'secondary.billing.manage'],
   services: ['secondary.services.manage', 'secondary.library.manage', 'secondary.infirmary.manage'],
   grades: ['secondary.grades.read', 'secondary.grades.enter', 'secondary.grades.validate', 'secondary.grades.lock'],
+  discipline: ['secondary.attendance.read', 'secondary.attendance.take', 'secondary.attendance.manage', 'secondary.discipline.manage', 'secondary.discipline.validate', 'secondary.discipline.council.preside'],
+  disciplineCouncils: ['secondary.discipline.manage', 'secondary.discipline.validate', 'secondary.discipline.council.preside'],
   self: ['secondary.self.read'],
   family: ['secondary.family.read'],
   familyPay: ['secondary.family.pay'],

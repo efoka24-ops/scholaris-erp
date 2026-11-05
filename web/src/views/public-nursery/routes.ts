@@ -23,4 +23,10 @@ export const publicNurseryRoutes: RouteRecordRaw[] = [
     component: () => import('./PickupAuthView.vue'),
     meta: { ...school, perms: ['public_nursery.pickup.handover', 'public_nursery.register.read', 'settings.manage'], titleKey: 'pn.auth.title' },
   },
+  {
+    path: '/maternelle/porte-hors-ligne',
+    name: 'pn-gate-offline',
+    component: () => import('./GateOfflineView.vue'),
+    meta: { ...school, perms: ['public_nursery.pickup.handover', 'public_nursery.arrival.record', 'settings.manage'], titleKey: 'pn.offline.title' },
+  },
 ];

@@ -1,5 +1,8 @@
 // Textes de l'application « Enseignement secondaire » (accueil, profil, documents, portails). Les autres lots ajoutent leurs clés ici.
+import { secondaryDisciplineFr } from './secondary-discipline-fr';
+
 export const secondaryFr = {
+  ...secondaryDisciplineFr,
   'nav.secondary': 'Secondaire',
 
   'sec.home.eyebrow': 'Enseignement secondaire',

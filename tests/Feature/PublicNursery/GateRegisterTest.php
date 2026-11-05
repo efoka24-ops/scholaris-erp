@@ -52,6 +52,24 @@ final class GateRegisterTest extends PublicNurseryCase
         self::assertSame(404, $this->code('POST', '/public-nursery/pickup/arrivals', 'other-director', 'tenant-other', 'est-other', ['learner_id' => $this->child]), 'Enfant d’un autre client : introuvable.');
     }
 
+    /** C-111 (T735) : rejeu de l'écran hors ligne, idempotent par client_uuid, heure réelle du geste conservée, origine « offline ». */
+    public function testRejeuHorsLigneIdempotentParIdentifiantClient(): void
+    {
+        $hold = ['learner_id' => $this->child, 'school_day' => '2026-10-08', 'remark' => 'Parent prévenu (fictif).', 'client_uuid' => '01HOLDOFFLINE0000000000001', 'occurred_at' => '2026-10-08T13:40:00+01:00'];
+        $this->ok('POST', '/public-nursery/pickup/arrivals', 'teacher', ['learner_id' => $this->child, 'school_day' => '2026-10-08', 'client_uuid' => '01ARRIVALOFFLINE0000000001', 'occurred_at' => '2026-10-08T07:30:00+01:00']);
+        $first = $this->ok('POST', '/public-nursery/pickup/holds', 'teacher', $hold);
+        $again = $this->ok('POST', '/public-nursery/pickup/holds', 'teacher', $hold);
+        self::assertSame($first['id'], $again['id'], 'Un rejeu rend le même événement, jamais un second maintien.');
+        $event = $this->gate()->byClientUuid(self::T, self::E, '01HOLDOFFLINE0000000000001');
+        self::assertNotNull($event);
+        self::assertSame('2026-10-08T13:40:00+01:00', $event['occurred_at'], 'Heure réelle du geste à la porte.');
+        $pdo = $this->kernel->container()->get(\Scholaris\Core\Database\ConnectionFactory::class)->pdo();
+        $origins = $pdo->query('SELECT DISTINCT origin FROM pn_gate_events WHERE client_uuid IS NOT NULL')->fetchAll(\PDO::FETCH_COLUMN);
+        self::assertSame(['offline'], $origins);
+        self::assertSame(422, $this->code('POST', '/public-nursery/pickup/holds', 'teacher', self::T, self::E, ['client_uuid' => 'x'] + $hold), 'Identifiant client mal formé.');
+        self::assertSame(422, $this->code('POST', '/public-nursery/pickup/arrivals', 'teacher', self::T, self::E, ['learner_id' => $this->child, 'occurred_at' => 'hier']));
+    }
+
     public function testVeilleParentsPuisDirectionUneSeuleFoisEtRienPourUnAbsent(): void
     {
         $absent = (string) $this->person('Absent', 'Fictif')['id'];

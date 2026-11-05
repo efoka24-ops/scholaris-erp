@@ -23,6 +23,8 @@ export const MENU: MenuEntry[] = [
   { name: 'sec-fees', title: 'sec.menu.fees', text: 'sec.home.feesText', perms: S.feesRead, modules: ['fees_private', 'fees_public_catalog'] },
   { name: 'sec-cartescolaire', title: 'sec.menu.cartescolaire', text: 'sec.home.cartescolaireText', perms: S.carteScolaire },
   { name: 'sec-grades', title: 'secg.title', text: 'secg.menuText', perms: S.grades },
+  { name: 'sec-discipline', title: 'sec.menu.discipline', text: 'sec.home.disciplineText', perms: S.discipline },
+  { name: 'sec-discipline-councils', title: 'sec.menu.disciplineCouncils', text: 'sec.home.disciplineCouncilsText', perms: S.disciplineCouncils },
   { name: 'sec-exams', title: 'sec.menu.exams', text: 'sec.home.examsText', perms: S.examsRead, modules: ['official_exams'] },
   { name: 'sec-orientation', title: 'sec.menu.orientation', text: 'sec.home.orientationText', perms: S.orientation, modules: ['orientation'] },
   { name: 'sec-workshops', title: 'sec.menu.workshops', text: 'sec.home.workshopsText', perms: S.workshops, modules: ['workshops'] },
