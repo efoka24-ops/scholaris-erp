@@ -147,6 +147,54 @@ paths:
         '404': {description: "Forfait introuvable"}
         '409': {description: "Deja abonne, capacite atteinte, forfait inactif"}
         '422': {description: "Eleve non inscrit"}
+  /api/v1/primary/service-plans/{id}/candidates:
+    get:
+      summary: "Eleves inscrits dans l'ecole parmi lesquels choisir l'abonne ; subscribed signale un abonnement actif a ce service"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Reponse {data: {items[]}}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Forfait introuvable"}
+  /api/v1/primary/service-plans/{id}/attendance:
+    get:
+      summary: "Presence au service un jour donne (date, defaut aujourd'hui) : abonnes actifs ce jour-la et leur marque (null si non saisie)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+        - {name: date, in: query, required: false, schema: {type: string, format: date}}
+      responses:
+        '200': {description: "Reponse {data: {plan, date, items[]}}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Forfait introuvable"}
+        '422': {description: "Date invalide"}
+    put:
+      summary: "Saisir ou corriger la presence d'un jour : une ligne par abonnement et par jour, abonnes actifs ce jour-la seulement, jamais un jour futur"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [date, entries]
+              properties:
+                date: {type: string, format: date}
+                entries:
+                  type: array
+                  maxItems: 2000
+                  items:
+                    type: object
+                    required: [subscription_id, present]
+                    properties:
+                      subscription_id: {type: string}
+                      present: {type: boolean}
+      responses:
+        '200': {description: "Reponse {data: {saved}}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Forfait introuvable"}
+        '422': {description: "Abonne inactif ce jour-la, jour futur ou donnees invalides"}
   /api/v1/primary/service-plans/{id}/invoice:
     post:
       summary: "Facturer un cycle : une facture par abonnement actif et par cycle, jamais deux"

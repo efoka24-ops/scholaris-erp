@@ -130,14 +130,23 @@ final class LogoDocumentsTest extends DocumentsTestCase
                     $problems[] = $type . ' ' . $locale . ' : une seule version';
                     continue;
                 }
-                [$latest, $previous] = $rows;
+                [$latest] = $rows;
+                // La version qui introduit le logo (C-102) est la plus ancienne contenant {{logo}} ; une version ultérieure peut exister (ex. C-104).
+                $introducing = null;
+                $previous = null;
+                foreach ($rows as $index => $row) {
+                    if (str_contains((string) $row['html'], '{{logo}}')) {
+                        $introducing = $row;
+                        $previous = $rows[$index + 1] ?? null;
+                    }
+                }
                 if (substr_count((string) $latest['html'], '{{logo}}') !== 1) {
                     $problems[] = $type . ' ' . $locale . ' : {{logo}} absent ou en double';
                 }
                 if (strpos((string) $latest['html'], '{{logo}}') > strpos((string) $latest['html'], '{{establishment_name}}')) {
                     $problems[] = $type . ' ' . $locale . ' : le logo doit précéder le nom de l\'établissement';
                 }
-                if (str_contains((string) $previous['html'], '{{logo}}') || (int) $latest['version'] !== (int) $previous['version'] + 1) {
+                if ($introducing === null || $previous === null || str_contains((string) $previous['html'], '{{logo}}') || (int) $introducing['version'] !== (int) $previous['version'] + 1) {
                     $problems[] = $type . ' ' . $locale . ' : la version précédente doit être conservée telle quelle';
                 }
                 $declared = $pdo->prepare("SELECT variables FROM document_types WHERE tenant_id = '*' AND code = ?");
@@ -158,8 +167,17 @@ final class LogoDocumentsTest extends DocumentsTestCase
             $byKey[$row['type_code'] . $row['locale']][] = $row['html'];
         }
         foreach ($byKey as $versions) {
-            [$previous, $latest] = [$versions[count($versions) - 2], $versions[count($versions) - 1]];
-            self::assertSame($previous, str_replace(['<div align="center">{{logo}}</div>', '{{logo}}'], '', $latest));
+            // Version qui introduit le logo = la plus ancienne contenant {{logo}} ; sa précédente ne diffère que par le logo.
+            $first = null;
+            foreach ($versions as $index => $html) {
+                if (str_contains($html, '{{logo}}')) {
+                    $first = $index;
+                    break;
+                }
+            }
+            self::assertIsInt($first);
+            self::assertGreaterThan(0, $first);
+            self::assertSame($versions[$first - 1], str_replace(['<div align="center">{{logo}}</div>', '{{logo}}'], '', $versions[$first]));
         }
     }
 }

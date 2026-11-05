@@ -79,6 +79,7 @@ final class ReportCardService
             throw HttpException::validation(['kind' => ['Le récapitulatif annuel se prépare au conseil du dernier trimestre.']]);
         }
         $snapshot = $this->snapshots->build($principal->tenantId, $establishmentId, $council, $line, $kind);
+        $this->snapshots->flush();
 
         return ['snapshot' => $snapshot, 'variables' => SnapshotBuilder::variables($snapshot), 'council_status' => (string) $council['status']];
     }
@@ -97,6 +98,7 @@ final class ReportCardService
         }
         $block = $this->settings->bool($t, $establishmentId, 'primary.report_card.block_on_debt');
         $counts = ['issued' => 0, 'failed' => 0, 'skipped' => 0];
+        $this->snapshots->flush();
         foreach ($this->store->select(CouncilService::LINES, $t, $establishmentId, ['council_id' => $councilId], 'id', 5000) as $line) {
             foreach ($kinds as $kind) {
                 $existing = $this->store->select(self::TABLE, $t, $establishmentId, ['council_id' => $councilId, 'person_id' => (string) $line['person_id'], 'card_kind' => $kind], 'revision DESC', 1)[0] ?? null;
@@ -107,6 +109,7 @@ final class ReportCardService
                 $counts[$this->issueOne($principal, $establishmentId, $council, $line, $kind, $existing, $block)]++;
             }
         }
+        $this->snapshots->flush();
         $this->access->audit($principal, 'primary.report_cards.issued', CouncilService::COUNCILS, $councilId, null, $counts);
 
         return $counts + ['items' => $this->list($principal, $establishmentId, $councilId)];
@@ -170,7 +173,9 @@ final class ReportCardService
             $this->store->update(CouncilService::LINES, $t, $establishmentId, $set, ['id' => (string) $old['line_id']]);
         }
         $line = $this->store->findOrFail(CouncilService::LINES, $t, $establishmentId, (string) $old['line_id']);
+        $this->snapshots->flush();
         $snapshot = $this->snapshots->build($t, $establishmentId, $council, $line, (string) $old['card_kind']);
+        $this->snapshots->flush();
         $document = $this->reissuer->reissue($t, $establishmentId, (string) $old['document_id'], SnapshotBuilder::variables($snapshot), $reason, $principal->userId);
         $now = $this->clock->now();
         $id = (string) new Ulid();

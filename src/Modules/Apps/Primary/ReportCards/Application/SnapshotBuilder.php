@@ -24,7 +24,10 @@ use Scholaris\Modules\Socle\Organisation\Contracts\OrgUnitTree;
 final class SnapshotBuilder
 {
     /** Variables ajoutées par la mise en page DOC-BUL : ignorées si un type personnalisé de l'école ne les déclare pas. */
-    public const LAYOUT_VARIABLES = ['authority_fr', 'authority_en', 'school_contacts', 'footer_note', 'class_size', 'subjects_table', 'competencies_table', 'terms_table'];
+    public const LAYOUT_VARIABLES = [
+        'authority_fr', 'authority_en', 'school_contacts', 'footer_note', 'class_size', 'subjects_table', 'competencies_table', 'terms_table',
+        'identity_line', 'subjects_detail_table', 'domain_totals_table', 'class_profile_table', 'work_table',
+    ];
 
     public function __construct(
         private readonly Store $store,
@@ -37,7 +40,14 @@ final class SnapshotBuilder
         private readonly RuleCalculator $calculator,
         private readonly EstablishmentDirectory $establishments,
         private readonly OrgUnitTree $tree,
+        private readonly BulletinDetails $details,
     ) {
+    }
+
+    /** Oublie les résultats de classe mémorisés pour le détail des bulletins (début et fin d'une émission en lot, aperçu). */
+    public function flush(): void
+    {
+        $this->details->flush();
     }
 
     /** Langue du bulletin : paramètre imposé, sinon langue de la section du niveau (Q1), sinon français. */
@@ -100,6 +110,10 @@ final class SnapshotBuilder
             'is_final_term' => (int) $council['is_final_term'] === 1,
             'letterhead' => $this->letterhead($tenantId, $establishmentId, $locale),
         ];
+        // Bulletin complet : détail par matière, domaines, profil de classe, travail (trimestre) ; identité seule au récapitulatif annuel.
+        $snapshot['detail'] = $kind === ReportCardService::ANNUAL
+            ? ['identity' => $this->details->identity($tenantId, $establishmentId, $l['person_id'])]
+            : $this->details->build($tenantId, $establishmentId, $council, $l['person_id']);
         if ($kind === ReportCardService::ANNUAL) {
             $snapshot['annual'] = [
                 'average' => $l['annual_average'], 'rank' => $showRank ? $l['annual_rank'] : null, 'terms' => $l['terms'],
@@ -149,6 +163,7 @@ final class SnapshotBuilder
             'authority_fr' => (string) ($letterhead['authority_fr'] ?? ''), 'authority_en' => (string) ($letterhead['authority_en'] ?? ''),
             'school_contacts' => (string) ($letterhead['contacts'] ?? ''), 'footer_note' => (string) ($letterhead['footer'] ?? ''),
             'class_size' => is_int($s['numeric']['class_size'] ?? null) ? (string) $s['numeric']['class_size'] : '',
+            'identity_line' => self::identityLine(is_array($s['detail']['identity'] ?? null) ? $s['detail']['identity'] : [], $en),
         ];
         // Libellés bilingues des tableaux (langue du bulletin d'abord) ; l'en-tête du document est bilingue comme le modèle papier.
         $bi = static fn (string $fr, string $english, string $glue = ' / '): string => $en ? $english . $glue . $fr : $fr . $glue . $english;
@@ -212,6 +227,132 @@ final class SnapshotBuilder
                 'rows' => $competencyRows === [] ? [$none(2)] : $competencyRows,
             ]),
             'scale_legend' => ($en ? 'Scale: ' : 'Échelle : ') . implode(', ', array_map(static fn (array $x): string => (string) $x['label'], $s['scale'])),
+        ] + self::detailVariables(is_array($s['detail'] ?? null) ? $s['detail'] : [], $s, $en);
+    }
+
+    /**
+     * @param array<string, mixed> $identity
+     */
+    private static function identityLine(array $identity, bool $en): string
+    {
+        $parts = [];
+        $birth = $identity['birth_date'] ?? null;
+        if (is_string($birth) && $birth !== '') {
+            $date = \DateTimeImmutable::createFromFormat('Y-m-d', $birth);
+            $parts[] = ($en ? 'Born on ' : 'Né(e) le ') . ($date === false ? $birth : $date->format($en ? 'Y-m-d' : 'd/m/Y'));
+        }
+        $matricule = $identity['matricule'] ?? null;
+        if (is_string($matricule) && $matricule !== '') {
+            $parts[] = ($en ? 'Reg. no. ' : 'Matricule ') . $matricule;
+        }
+
+        return implode(' · ', $parts);
+    }
+
+    /**
+     * Tableaux du bulletin complet (modèle B) : une colonne n'existe que si la donnée existe (SEQ, COEF, TOTAL, RANG), une donnée absente
+     * n'est jamais remplacée par une valeur inventée.
+     *
+     * @param array<string, mixed> $detail
+     * @param array<string, mixed> $s
+     * @return array<string, string>
+     */
+    private static function detailVariables(array $detail, array $s, bool $en): array
+    {
+        $num = static fn (mixed $v): string => is_int($v) || is_float($v) ? number_format((float) $v, 2, $en ? '.' : ',', '') : '—';
+        $coef = static fn (mixed $v): string => is_int($v) || is_float($v) ? rtrim(rtrim(number_format((float) $v, 2, $en ? '.' : ',', ''), '0'), $en ? '.' : ',') : '—';
+        $bi = static fn (string $fr, string $english): string => $en ? $english . ' / ' . $fr : $fr . ' / ' . $english;
+        $none = static fn (int $span): array => ['kind' => 'muted', 'cells' => [['text' => '—', 'colspan' => $span, 'align' => 'center']]];
+        $encode = static fn (array $t): string => json_encode($t, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
+        $sequences = is_array($detail['sequences'] ?? null) ? $detail['sequences'] : [];
+        $subjects = is_array($detail['subjects'] ?? null) ? $detail['subjects'] : [];
+        $hasCoefficient = array_filter($subjects, static fn (array $x): bool => $x['coefficient'] !== null) !== [];
+        $hasRank = array_filter($subjects, static fn (array $x): bool => $x['rank'] !== null) !== [];
+
+        $columns = [['label' => $bi('Matières', 'Subjects'), 'width' => 34]];
+        foreach ($sequences as $sequence) {
+            $columns[] = ['label' => (string) $sequence['label'], 'align' => 'center'];
+        }
+        $columns[] = ['label' => 'MOY', 'align' => 'center'];
+        if ($hasCoefficient) {
+            $columns[] = ['label' => 'COEF', 'align' => 'center'];
+            $columns[] = ['label' => 'TOTAL', 'align' => 'center'];
+        }
+        if ($hasRank) {
+            $columns[] = ['label' => $bi('RANG', 'RANK'), 'align' => 'center'];
+        }
+        $rows = [];
+        $coefficientSum = 0.0;
+        $totalSum = 0.0;
+        foreach ($subjects as $subject) {
+            $row = [(string) $subject['name']];
+            foreach ($subject['sequences'] as $value) {
+                $row[] = $num($value);
+            }
+            $row[] = $num($subject['average']);
+            if ($hasCoefficient) {
+                $row[] = $coef($subject['coefficient']);
+                $row[] = $num($subject['total']);
+                if ($subject['total'] !== null) {
+                    $coefficientSum += (float) $subject['coefficient'];
+                    $totalSum += (float) $subject['total'];
+                }
+            }
+            if ($hasRank) {
+                $row[] = is_int($subject['rank']) ? (string) $subject['rank'] : '—';
+            }
+            $rows[] = $row;
+        }
+        if ($rows !== []) {
+            $total = [['text' => $bi('MOYENNE GÉNÉRALE', 'OVERALL AVERAGE'), 'colspan' => 1 + count($sequences)], $num($s['numeric']['average'])];
+            if ($hasCoefficient) {
+                $total[] = $coef($coefficientSum);
+                $total[] = $num(round($totalSum, 2));
+            }
+            if ($hasRank) {
+                $total[] = is_int($s['numeric']['rank'] ?? null) ? (string) $s['numeric']['rank'] : '—';
+            }
+            $rows[] = ['kind' => 'total', 'cells' => $total];
+        }
+
+        $domains = is_array($detail['domains'] ?? null) ? $detail['domains'] : [];
+        $domainRows = array_map(static fn (array $d): array => [(string) ($en ? $d['label_en'] : $d['label_fr']), $coef($d['coefficient']), $num($d['total']), $num($d['average'])], $domains);
+
+        $profile = is_array($detail['class_profile'] ?? null) ? $detail['class_profile'] : null;
+        $profileRows = $profile === null ? [] : [
+            [$bi('Élèves à la moyenne de passage', 'Pupils at or above the pass mark') . ' (≥ ' . $coef($profile['pass_mark']) . ')', $profile['above_pass'] . ' / ' . $profile['size']],
+            [$bi('Moyenne de la classe', 'Class average'), $num($profile['class_average'])],
+            [$bi('Pourcentage de réussite', 'Success rate'), number_format((float) $profile['success_rate'], 1, $en ? '.' : ',', '') . ' %'],
+            [$bi('Moyenne maximale', 'Highest average'), $num($profile['max'])],
+            [$bi('Moyenne minimale', 'Lowest average'), $num($profile['min'])],
+        ];
+
+        $work = is_array($detail['work'] ?? null) ? $detail['work'] : [];
+        $labels = [
+            'honour_roll' => $bi('Tableau d\'honneur', 'Honour roll'), 'congratulations' => $bi('Félicitations', 'Congratulations'), 'encouragements' => $bi('Encouragements', 'Encouragements'),
+            'warning' => $bi('Avertissement', 'Warning'), 'blame' => $bi('Blâme', 'Reprimand'),
+        ];
+        $workRows = [];
+        foreach ($labels as $code => $label) {
+            if (array_key_exists($code, $work)) {
+                $workRows[] = [$label, $work[$code] === true ? ($en ? 'Yes' : 'Oui') : ($en ? 'No' : 'Non')];
+            }
+        }
+
+        return [
+            'subjects_detail_table' => $encode(['columns' => $columns, 'rows' => $rows === [] ? [$none(count($columns))] : $rows]),
+            'domain_totals_table' => $encode([
+                'columns' => [['label' => $bi('Totaux par domaine', 'Totals by area'), 'width' => 46], ['label' => 'COEF', 'align' => 'center'], ['label' => 'TOTAL', 'align' => 'center'], ['label' => 'MOY', 'align' => 'center']],
+                'rows' => $domainRows === [] ? [$none(4)] : $domainRows,
+            ]),
+            'class_profile_table' => $encode([
+                'columns' => [['label' => $bi('Profil de la classe', 'Class profile'), 'width' => 70], ['label' => '', 'align' => 'center']],
+                'rows' => $profileRows === [] ? [$none(2)] : $profileRows,
+            ]),
+            'work_table' => $encode([
+                'columns' => [['label' => $bi('Travail', 'Work'), 'width' => 70], ['label' => '', 'align' => 'center']],
+                'rows' => $workRows === [] ? [$none(2)] : $workRows,
+            ]),
         ];
     }
 

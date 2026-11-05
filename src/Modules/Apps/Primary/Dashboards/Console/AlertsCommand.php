@@ -28,7 +28,7 @@ final class AlertsCommand
             return 2;
         }
         $result = $this->alerts->run($day);
-        echo sprintf("Alertes d'absences : %d établissement(s) examiné(s), %d alerte(s) nouvelle(s) ; %d client(s) sauté(s).\n", $result['establishments'], $result['alerts'], $result['skipped_tenants']);
+        echo sprintf("Alertes d'absences : %d établissement(s) examiné(s), %d alerte(s) nouvelle(s), %d SMS aux parents ; %d client(s) sauté(s).\n", $result['establishments'], $result['alerts'], $this->alerts->smsSent, $result['skipped_tenants']);
 
         return 0;
     }

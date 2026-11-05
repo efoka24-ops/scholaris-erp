@@ -155,7 +155,33 @@ final class BulletinLayoutsTest extends TestCase
         self::assertIsArray($declared);
         self::assertNotSame([], $declared);
 
-        return [$html, $declared];
+        return str_starts_with($type, 'pri_') ? self::withDetailMigration($type, $locale, $html, $declared) : [$html, $declared];
+    }
+
+    /**
+     * C-104 : la migration 202611051302 déclare les nouvelles variables et remplace le modèle de la dernière version (nouvelle version + 1).
+     *
+     * @param list<string> $declared
+     *
+     * @return array{0: string, 1: list<string>}
+     */
+    private static function withDetailMigration(string $type, string $locale, string $html, array $declared): array
+    {
+        $sql = (string) file_get_contents(dirname(__DIR__, 3) . '/database/migrations/202611051302_c104_primary_report_card_detail.sql');
+        foreach (explode("\n", $sql) as $line) {
+            if (preg_match("#^UPDATE document_types SET variables = REPLACE\\(variables, '\\]', ',((?:\"[a-z_]+\",?)+)\\]'\\).* code = '" . $type . "'#", $line, $v) === 1) {
+                $declared = array_merge($declared, (array) json_decode('[' . $v[1] . ']', true));
+            }
+            if (str_starts_with($line, 'INSERT INTO document_templates') && str_contains($line, "type_code = '" . $type . "' AND locale = '" . $locale . "'")
+                && preg_match('#locale, (REPLACE\\(.*?), version \\+ 1,#', $line, $e) === 1) {
+                preg_match_all("#, '((?:[^']|'')*)', '((?:[^']|'')*)'\\)#", $e[1], $pairs, PREG_SET_ORDER);
+                foreach ($pairs as $pair) {
+                    $html = str_replace(str_replace("''", "'", $pair[1]), str_replace("''", "'", $pair[2]), $html);
+                }
+            }
+        }
+
+        return [$html, array_values(array_unique($declared))];
     }
 
     /** @return list<string> variables du type après la mise à jour de la migration */

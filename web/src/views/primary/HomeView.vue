@@ -37,6 +37,8 @@ const tiles: Tile[] = [
   { name: 'pri-exam', title: 'pri.exam.title', text: 'pri.home.examText', perms: P.examRead },
   { name: 'pri-exports', title: 'pri.exports.title', text: 'pri.home.exportsText', perms: P.tutelageExport },
   { name: 'pri-closure', title: 'pri.close.title', text: 'pri.home.closeText', perms: P.closureRead },
+  { name: 'pri-services', title: 'pri.svc.title', text: 'pri.home.svcText', perms: P.servicesRead },
+  { name: 'pri-pickup', title: 'pri.pickup.title', text: 'pri.home.pickupText', perms: P.pickupRead },
   { name: 'pri-family', title: 'pri.family.title', text: 'pri.home.familyText', perms: P.family },
 ];
 const visible = computed(() => tiles.filter((tile) => router.hasRoute(tile.name) && can(...tile.perms)));

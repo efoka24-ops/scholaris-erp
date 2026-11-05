@@ -458,6 +458,92 @@ export const primaryP2 = {
   familyExams: async (childId: string): Promise<FamilyExam[]> => (await get<{ items: FamilyExam[] }>(`/family/children/${childId}/exams`)).items,
 };
 
+// --- C-104 : services aux familles (cantine, garderie, transport) et sortie sécurisée ---
+export type ServiceCycle = 'term' | 'month' | 'year';
+export const SERVICE_CYCLES: readonly ServiceCycle[] = ['term', 'month', 'year'];
+export interface ServicePlan {
+  id: string;
+  service_kind: string;
+  label: string;
+  fee_code: string;
+  billing_cycle: ServiceCycle;
+  capacity: number | null;
+  route_label: string | null;
+  active: boolean;
+  subscribers?: number;
+}
+export interface ServicePlans {
+  kinds: Record<string, { fr: string; en: string }>;
+  plans: ServicePlan[];
+}
+export interface ServiceSubscription {
+  id: string;
+  plan_id: string;
+  person_id: string;
+  academic_year_id: string;
+  starts_on: string;
+  ends_on: string | null;
+  status: 'active' | 'ended';
+  name?: string;
+}
+export interface ServiceCandidate {
+  person_id: string;
+  name: string;
+  academic_year_id: string;
+  subscribed: boolean;
+}
+export interface ServiceAttendance {
+  plan: ServicePlan;
+  date: string;
+  items: { subscription_id: string; person_id: string; name: string; present: boolean | null }[];
+}
+export interface PickupAuthorised {
+  pickup_id: string;
+  name: string;
+  relationship: string | null;
+  grant_type: string | null;
+}
+export interface PickupLearner {
+  person_id: string;
+  name: string;
+  authorised: PickupAuthorised[];
+  events: { outcome: 'handed' | 'refused'; pickup_id: string | null; presented_name: string | null; handled_at: string }[];
+}
+export interface PickupDay {
+  class: { id: string; name: string };
+  date: string;
+  enabled: boolean;
+  learners: PickupLearner[];
+}
+export interface PickupResult {
+  id: string;
+  person_id: string;
+  outcome: 'handed' | 'refused';
+  pickup_id: string | null;
+  presented_name: string | null;
+  handled_at: string;
+  notified: number;
+}
+
+export const primaryServices = {
+  plans: (): Promise<ServicePlans> => get('/service-plans'),
+  createPlan: (body: { service_kind: string; label: string; fee_code: string; billing_cycle: ServiceCycle; capacity?: number | null; route_label?: string | null }): Promise<ServicePlan> => post('/service-plans', body),
+  updatePlan: (id: string, body: Partial<{ label: string; capacity: number | null; route_label: string | null; active: boolean }>): Promise<ServicePlan> => patch(`/service-plans/${id}`, body),
+  subscriptions: async (planId: string): Promise<ServiceSubscription[]> => (await get<{ items: ServiceSubscription[] }>(`/service-plans/${planId}/subscriptions`)).items,
+  candidates: async (planId: string): Promise<ServiceCandidate[]> => (await get<{ items: ServiceCandidate[] }>(`/service-plans/${planId}/candidates`)).items,
+  subscribe: (planId: string, body: { person_id: string; academic_year_id: string; starts_on: string }): Promise<ServiceSubscription> => post(`/service-plans/${planId}/subscriptions`, body),
+  endSubscription: (id: string, endsOn: string): Promise<ServiceSubscription> => post(`/service-subscriptions/${id}/end`, { ends_on: endsOn }),
+  invoice: (planId: string, body: { cycle_key: string; due_on: string }): Promise<{ invoiced: number; already: number }> => post(`/service-plans/${planId}/invoice`, body),
+  attendance: (planId: string, date?: string): Promise<ServiceAttendance> => get(`/service-plans/${planId}/attendance`, { date }),
+  saveAttendance: (planId: string, date: string, entries: { subscription_id: string; present: boolean }[]): Promise<{ saved: number }> => put(`/service-plans/${planId}/attendance`, { date, entries }),
+};
+
+export const primaryPickup = {
+  day: (classId: string): Promise<PickupDay> => get(`/classes/${classId}/pickups`),
+  handover: (classId: string, body: { person_id: string; pickup_id: string }): Promise<PickupResult> => post(`/classes/${classId}/pickups/handover`, body),
+  refuse: (classId: string, body: { person_id: string; presented_name: string; note?: string | null }): Promise<PickupResult> => post(`/classes/${classId}/pickups/refusals`, body),
+};
+
 export const primary = {
   setup: (): Promise<SetupStatus> => get('/setup'),
   applySetup: (): Promise<SetupStatus> => post('/setup/apply'),

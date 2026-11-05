@@ -28,11 +28,16 @@ export const P = {
   examRead: ['primary.exam.read', 'primary.exam.manage'],
   examManage: ['primary.exam.manage'],
   tutelageExport: ['primary.tutelage.export'],
+  servicesRead: ['primary.services.read', 'primary.services.manage'],
+  servicesManage: ['primary.services.manage'],
+  pickupRead: ['primary.pickup.read', 'primary.pickup.handover'],
+  pickupHandover: ['primary.pickup.handover'],
   family: ['self.read'],
   /** Accès à l'espace : au moins une permission de travail dans l'école primaire privée. */
   space: [
     'primary.council.read', 'primary.report_card.read', 'primary.remediation.read', 'primary.exam.read', 'primary.tutelage.export',
     'primary.referential.read', 'primary.referential.manage', 'primary.settings.manage', 'primary.learner.read', 'primary.enrol',
     'primary.competency.enter', 'primary.competency.read', 'primary.conduct.enter', 'primary.journal.write', 'primary.journal.read', 'primary.dashboard.read',
+    'primary.services.read', 'primary.services.manage', 'primary.pickup.read', 'primary.pickup.handover',
   ],
 } as const;

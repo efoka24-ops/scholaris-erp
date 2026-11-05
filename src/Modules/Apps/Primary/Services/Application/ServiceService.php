@@ -27,6 +27,7 @@ final class ServiceService
     public const PLANS = 'pri_service_plans';
     public const SUBSCRIPTIONS = 'pri_service_subscriptions';
     public const CHARGES = 'pri_service_charges';
+    public const ATTENDANCE = 'pri_service_attendance';
     public const READ = ['primary.services.read', 'primary.services.manage'];
     public const MANAGE = ['primary.services.manage'];
     public const CYCLES = ['term', 'month', 'year'];
@@ -105,6 +106,113 @@ final class ServiceService
         $names = $this->classes->names($t, array_map(static fn (array $r): string => (string) $r['person_id'], $rows));
 
         return array_map(static fn (array $r): array => self::subscriptionResource($r) + ['name' => $names[(string) $r['person_id']] ?? (string) $r['person_id']], $rows);
+    }
+
+    /**
+     * Élèves inscrits dans l'école (inscription active ou conditionnelle, année la plus récente de chacun) parmi lesquels choisir l'abonné ;
+     * `subscribed` signale ceux qui ont déjà un abonnement actif à ce service.
+     *
+     * @return list<array{person_id: string, name: string, academic_year_id: string, subscribed: bool}>
+     */
+    public function candidates(Principal $principal, string $establishmentId, string $planId): array
+    {
+        $this->authorise($principal, $establishmentId, self::READ);
+        $t = $principal->tenantId;
+        $this->store->findOrFail(self::PLANS, $t, $establishmentId, $planId, 'Service introuvable.');
+        $subscribed = [];
+        foreach ($this->store->select(self::SUBSCRIPTIONS, $t, $establishmentId, ['plan_id' => $planId, 'status' => 'active'], 'id', 5000) as $row) {
+            $subscribed[(string) $row['person_id']] = true;
+        }
+        $years = [];
+        foreach (array_slice(array_values(array_unique($this->enrollments->personIdsInEstablishment($t, $establishmentId))), 0, 2000) as $personId) {
+            foreach ($this->enrollments->forPerson($t, $personId) as $e) {
+                if ($e->establishmentId === $establishmentId && in_array($e->status, ['active', 'conditional'], true) && ($years[$personId] ?? '') < $e->academicYearId) {
+                    $years[$personId] = $e->academicYearId;
+                }
+            }
+        }
+        $names = $this->classes->names($t, array_keys($years));
+        $out = array_map(static fn (string $id): array => ['person_id' => $id, 'name' => $names[$id] ?? $id, 'academic_year_id' => $years[$id], 'subscribed' => isset($subscribed[$id])], array_keys($years));
+        usort($out, static fn (array $a, array $b): int => strcmp($a['name'], $b['name']));
+
+        return $out;
+    }
+
+    /**
+     * Présence du jour : abonnés actifs ce jour-là (début échu, fin non passée) et leur marque (null tant qu'elle n'est pas saisie).
+     *
+     * @return array{plan: array<string, mixed>, date: string, items: list<array{subscription_id: string, person_id: string, name: string, present: ?bool}>}
+     */
+    public function attendance(Principal $principal, string $establishmentId, string $planId, string $day): array
+    {
+        $this->authorise($principal, $establishmentId, self::READ);
+        $t = $principal->tenantId;
+        $plan = $this->store->findOrFail(self::PLANS, $t, $establishmentId, $planId, 'Service introuvable.');
+        $marks = [];
+        foreach ($this->store->select(self::ATTENDANCE, $t, $establishmentId, ['plan_id' => $planId, 'held_on' => $day], 'id', 5000) as $row) {
+            $marks[(string) $row['subscription_id']] = (int) $row['is_present'] === 1;
+        }
+        $active = $this->activeOn($t, $establishmentId, $planId, $day);
+        $names = $this->classes->names($t, array_map(static fn (array $r): string => (string) $r['person_id'], $active));
+        $items = array_map(static fn (array $r): array => [
+            'subscription_id' => (string) $r['id'], 'person_id' => (string) $r['person_id'], 'name' => $names[(string) $r['person_id']] ?? (string) $r['person_id'],
+            'present' => $marks[(string) $r['id']] ?? null,
+        ], $active);
+        usort($items, static fn (array $a, array $b): int => strcmp($a['name'], $b['name']));
+
+        return ['plan' => self::planResource($plan), 'date' => $day, 'items' => $items];
+    }
+
+    /**
+     * Saisie (ou correction) de la présence d'un jour : seuls les abonnés actifs ce jour-là sont acceptés ; une ligne par abonnement et par jour.
+     *
+     * @param list<mixed> $entries {subscription_id, present}
+     * @return array{saved: int}
+     */
+    public function markAttendance(Principal $principal, string $establishmentId, string $planId, string $day, array $entries): array
+    {
+        $this->authorise($principal, $establishmentId, self::MANAGE);
+        $t = $principal->tenantId;
+        $this->store->findOrFail(self::PLANS, $t, $establishmentId, $planId, 'Service introuvable.');
+        if ($day > $this->clock->today()) {
+            throw HttpException::validation(['date' => ['La présence ne se saisit pas pour un jour futur.']]);
+        }
+        $eligible = [];
+        foreach ($this->activeOn($t, $establishmentId, $planId, $day) as $row) {
+            $eligible[(string) $row['id']] = (string) $row['person_id'];
+        }
+        $now = $this->clock->now();
+        $saved = 0;
+        $this->store->transaction(function () use ($entries, $eligible, $t, $establishmentId, $planId, $day, $principal, $now, &$saved): void {
+            foreach ($entries as $i => $entry) {
+                $subscriptionId = is_array($entry) && is_string($entry['subscription_id'] ?? null) ? $entry['subscription_id'] : '';
+                if (!isset($eligible[$subscriptionId]) || !is_array($entry) || !is_bool($entry['present'] ?? null)) {
+                    throw HttpException::validation(['entries.' . $i => ['Abonné actif ce jour-là et présence vrai ou faux attendus.']]);
+                }
+                $existing = $this->store->select(self::ATTENDANCE, $t, $establishmentId, ['subscription_id' => $subscriptionId, 'held_on' => $day], 'id', 1)[0] ?? null;
+                if ($existing === null) {
+                    $this->store->insert(self::ATTENDANCE, $t, $establishmentId, [
+                        'id' => (string) new Ulid(), 'plan_id' => $planId, 'subscription_id' => $subscriptionId, 'person_id' => $eligible[$subscriptionId], 'held_on' => $day,
+                        'is_present' => $entry['present'] ? 1 : 0, 'recorded_by' => $principal->userId, 'created_at' => $now, 'updated_at' => $now,
+                    ]);
+                } else {
+                    $this->store->update(self::ATTENDANCE, $t, $establishmentId, ['is_present' => $entry['present'] ? 1 : 0, 'recorded_by' => $principal->userId, 'updated_at' => $now], ['id' => (string) $existing['id']]);
+                }
+                ++$saved;
+            }
+        });
+        $this->access->audit($principal, 'primary.service.attendance_saved', self::PLANS, $planId, null, ['date' => $day, 'saved' => $saved]);
+
+        return ['saved' => $saved];
+    }
+
+    /** @return list<array<string, mixed>> abonnements actifs un jour donné */
+    private function activeOn(string $tenantId, string $establishmentId, string $planId, string $day): array
+    {
+        return array_values(array_filter(
+            $this->store->select(self::SUBSCRIPTIONS, $tenantId, $establishmentId, ['plan_id' => $planId], 'starts_on, id', 5000),
+            static fn (array $r): bool => (string) $r['starts_on'] <= $day && ($r['ends_on'] === null || (string) $r['ends_on'] >= $day),
+        ));
     }
 
     /** @return array<string, mixed> */

@@ -6,17 +6,19 @@ namespace Scholaris\Modules\Apps\Primary\Services\Http;
 
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
+use Scholaris\Core\Http\HttpException;
 use Scholaris\Core\Http\JsonResponder;
 use Scholaris\Modules\Apps\Primary\Services\Application\ServiceService;
 use Scholaris\Modules\Apps\Primary\Support\Access;
 use Scholaris\Modules\Apps\Primary\Support\Controller;
 use Scholaris\Modules\Apps\Primary\Support\Input;
+use Scholaris\Modules\Apps\Primary\Support\PrimaryClock;
 use Scholaris\Modules\Apps\Primary\Support\Store;
 
 /** Cantine, garderie, transport : forfaits, abonnements, facturation par cycle. */
 final class ServiceController extends Controller
 {
-    public function __construct(JsonResponder $responder, Access $access, Store $store, private readonly ServiceService $services)
+    public function __construct(JsonResponder $responder, Access $access, Store $store, private readonly ServiceService $services, private readonly PrimaryClock $clock)
     {
         parent::__construct($responder, $access, $store);
     }
@@ -71,6 +73,42 @@ final class ServiceController extends Controller
         $v = $input->done();
 
         return $this->json($this->services->subscribe($principal, $establishmentId, self::id($request), (string) $v['person_id'], (string) $v['academic_year_id'], (string) $v['starts_on']), 201);
+    }
+
+    public function candidates(ServerRequestInterface $request): ResponseInterface
+    {
+        [$principal, $establishmentId] = $this->context($request);
+
+        return $this->json(['items' => $this->services->candidates($principal, $establishmentId, self::id($request))]);
+    }
+
+    public function attendance(ServerRequestInterface $request): ResponseInterface
+    {
+        [$principal, $establishmentId] = $this->context($request);
+        $day = $request->getQueryParams()['date'] ?? null;
+        $parsed = is_string($day) ? \DateTimeImmutable::createFromFormat('!Y-m-d', $day) : false;
+        if ($day !== null && ($parsed === false || $parsed->format('Y-m-d') !== $day)) {
+            throw HttpException::validation(['date' => ['Date au format AAAA-MM-JJ attendue.']]);
+        }
+
+        return $this->json($this->services->attendance($principal, $establishmentId, self::id($request), is_string($day) ? $day : $this->clock->today()));
+    }
+
+    public function saveAttendance(ServerRequestInterface $request): ResponseInterface
+    {
+        [$principal, $establishmentId] = $this->context($request);
+        $input = Input::of($request);
+        $input->date('date');
+        $input->custom('entries', static function (mixed $v): array {
+            if (!is_array($v) || !array_is_list($v) || count($v) > 2000) {
+                throw new \InvalidArgumentException('Liste de 2000 présences au plus attendue.');
+            }
+
+            return $v;
+        });
+        $v = $input->done();
+
+        return $this->json($this->services->markAttendance($principal, $establishmentId, self::id($request), (string) $v['date'], $v['entries']));
     }
 
     public function end(ServerRequestInterface $request): ResponseInterface

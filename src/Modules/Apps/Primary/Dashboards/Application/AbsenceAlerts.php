@@ -12,19 +12,29 @@ use Scholaris\Modules\Apps\Primary\Support\PrimaryClock;
 use Scholaris\Modules\Apps\Primary\Support\PrimarySettings;
 use Scholaris\Modules\Apps\Primary\Support\Store;
 use Scholaris\Modules\Socle\Attendance\Contracts\DailyPresence;
+use Scholaris\Modules\Socle\Messaging\Contracts\DeliveryResult;
+use Scholaris\Modules\Socle\Messaging\Contracts\Messenger;
+use Scholaris\Modules\Socle\Organisation\Contracts\EstablishmentDirectory;
+use Scholaris\Modules\Socle\People\Contracts\PersonDirectory;
 use Scholaris\Modules\Socle\Platform\Contracts\ApplicationAccess;
 
 /**
  * Alertes d'absences répétées (spec §8, T551) : un élève absent au moins `primary.alert.absences` demi-journées CONSÉCUTIVES (jours
  * ouvrés, appels validés : contrat DailyPresence) reçoit une alerte, une seule fois par série. Exécutée chaque jour par
  * `primary:alerts` ; un client dont l'application est suspendue ou fermée est sauté. Lecture au tableau de bord, résolution motivée.
+ * C-104 : à la création d'une alerte, les responsables de l'élève reçoivent un SMS (modèle `pri.not10.absence_streak`, FR/EN) : une seule
+ * fois par série puisque l'alerte est unique par série ; l'école le désactive avec `primary.alert.sms`.
  */
 final class AbsenceAlerts
 {
     public const TABLE = 'pri_alerts';
     public const KIND = 'absences';
+    public const SMS_TEMPLATE = 'pri.not10.absence_streak';
     public const READ = ['primary.dashboard.read'];
     private const PARTS = [DailyPresence::AFTERNOON, DailyPresence::MORNING];
+
+    /** SMS acceptés par la messagerie lors du dernier passage de `run()`. */
+    public int $smsSent = 0;
 
     public function __construct(
         private readonly Store $store,
@@ -34,6 +44,9 @@ final class AbsenceAlerts
         private readonly ApplicationAccess $applications,
         private readonly Access $access,
         private readonly PrimaryClock $clock,
+        private readonly Messenger $messenger,
+        private readonly PersonDirectory $people,
+        private readonly EstablishmentDirectory $establishments,
     ) {
     }
 
@@ -41,6 +54,7 @@ final class AbsenceAlerts
     public function run(?string $day = null): array
     {
         $day ??= $this->clock->today();
+        $this->smsSent = 0;
         $result = ['establishments' => 0, 'alerts' => 0, 'skipped_tenants' => 0];
         $skipped = [];
         $statement = $this->store->pdo()->query('SELECT DISTINCT tenant_id, establishment_id FROM pri_level_profiles ORDER BY tenant_id, establishment_id');
@@ -66,6 +80,7 @@ final class AbsenceAlerts
             return 0;
         }
         $slots = $this->slots($day, $threshold);
+        $sms = $this->settings->bool($tenantId, $establishmentId, 'primary.alert.sms');
         $created = 0;
         foreach ($this->classes->all($tenantId, $establishmentId) as $class) {
             $absent = [];
@@ -89,15 +104,40 @@ final class AbsenceAlerts
                     continue;
                 }
                 $now = $this->clock->now();
+                $alertId = (string) new Ulid();
                 $this->store->insert(self::TABLE, $tenantId, $establishmentId, [
-                    'id' => (string) new Ulid(), 'person_id' => $personId, 'class_structure_id' => $class->id, 'alert_kind' => self::KIND, 'streak_start' => $start,
+                    'id' => $alertId, 'person_id' => $personId, 'class_structure_id' => $class->id, 'alert_kind' => self::KIND, 'streak_start' => $start,
                     'half_days' => $streak, 'detected_on' => $day, 'status' => 'open', 'resolved_by' => null, 'resolved_at' => null, 'created_at' => $now, 'updated_at' => $now,
                 ]);
                 ++$created;
+                if ($sms) {
+                    $this->notify($tenantId, $establishmentId, $personId, $start, $streak, substr($alertId, -8));
+                }
             }
         }
 
         return $created;
+    }
+
+    /** SMS aux responsables de l'élève pour une série nouvellement détectée ; les erreurs d'envoi n'interrompent pas la détection. */
+    private function notify(string $tenantId, string $establishmentId, string $personId, string $start, int $halfDays, string $reference): void
+    {
+        $child = $this->people->find($tenantId, $personId);
+        $establishment = $this->establishments->find($tenantId, $establishmentId);
+        $variables = [
+            'child_name' => $child === null ? '' : $child->fullName(), 'date' => substr($start, 0, 10), 'details' => (string) $halfDays,
+            'establishment_name' => $establishment === null ? '' : $establishment->name, 'reference' => $reference,
+        ];
+        foreach ($this->people->guarantorsOf($tenantId, $personId) as $guardian) {
+            try {
+                $result = $this->messenger->send($tenantId, $establishmentId, $guardian->id, self::SMS_TEMPLATE, $variables);
+            } catch (\Throwable) {
+                continue;
+            }
+            if ($result->status !== DeliveryResult::BLOCKED) {
+                ++$this->smsSent;
+            }
+        }
     }
 
     /** @return list<array<string, mixed>> alertes ouvertes du périmètre (noms d'élèves compris : lecture de la direction) */

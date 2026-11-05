@@ -52,6 +52,10 @@ final class PrimarySettings
         ], 'source' => 'Q11 ; format officiel non publié (recherche-minedub §3)', 'label' => 'Champs de la fiche d\'inscription à l\'examen'],
         'primary.exam.candidate_number_prefix' => ['default' => '', 'source' => 'Q11 (numéros attribués par l\'école ou l\'inspection)', 'label' => 'Préfixe des numéros de candidat attribués par l\'école'],
         'primary.alert.absences' => ['default' => 3, 'source' => 'spec §8 (demi-journées consécutives)', 'label' => 'Absences consécutives (demi-journées) avant alerte'],
+        'primary.alert.sms' => ['default' => true, 'source' => 'C-104 : SMS aux parents à chaque série d\'absences répétées (désactivable par l\'école)', 'label' => 'SMS aux parents pour absences répétées'],
+        'primary.report_card.distinctions' => ['default' => [
+            'honour_roll_min' => null, 'congratulations_min' => null, 'encouragements_min' => null, 'warning_max' => null, 'blame_max' => null,
+        ], 'source' => 'C-104, bulletin réel (bloc Travail) : seuils non publiés, saisis par l\'école ; sans seuil, le bloc n\'affiche rien. Distinction si moyenne du trimestre >= seuil (honneur, félicitations, encouragements), sanction si moyenne < seuil (avertissement, blâme)', 'label' => 'Seuils des distinctions et sanctions du bulletin (bloc Travail)'],
         'primary.pickup.levels' => ['default' => [], 'source' => 'Q13 (désactivé par défaut)', 'label' => 'Niveaux soumis à la sortie sécurisée'],
         'primary.services.kinds' => ['default' => [
             'canteen' => ['fr' => 'Cantine', 'en' => 'Canteen'],

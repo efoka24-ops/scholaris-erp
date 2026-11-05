@@ -18,6 +18,13 @@ final class FakeClassResults implements ClassResults
     /** @var array<string, list<string>> */
     public array $roster = [];
 
+    /**
+     * Matières fictives d'un élève pour une période (« période => élève => matières ») ; sans entrée, une matière fictive `FR` à la moyenne générale.
+     *
+     * @var array<string, array<string, list<array{subject_id: string, code: string|null, name: string|null, average: float|null}>>>
+     */
+    public array $subjects = [];
+
     public function compute(string $tenantId, string $establishmentId, string $structureId, string $periodId, ?string $periodLabel = null): array
     {
         $values = $this->averages[$periodId] ?? [];
@@ -41,7 +48,7 @@ final class FakeClassResults implements ClassResults
             $average = $values[$person] ?? null;
             $out[] = [
                 'person_id' => $person, 'average' => $average, 'rank' => $ranks[$person] ?? null, 'class_size' => count($people), 'mention' => null, 'rule_version' => 1,
-                'subjects' => [['subject_id' => 'sub-fr', 'code' => 'FR', 'name' => 'Français', 'average' => $average]],
+                'subjects' => $this->subjects[$periodId][$person] ?? [['subject_id' => 'sub-fr', 'code' => 'FR', 'name' => 'Français', 'average' => $average]],
             ];
         }
 

@@ -21,6 +21,8 @@ const screens: Screen[] = [
   ['examen', 'pri-exam', () => import('./ExamView.vue'), P.examRead, 'pri.exam.title'],
   ['exports', 'pri-exports', () => import('./ExportsView.vue'), P.tutelageExport, 'pri.exports.title'],
   ['cloture', 'pri-closure', () => import('./ClosureView.vue'), P.closureRead, 'pri.close.title'],
+  ['services', 'pri-services', () => import('./ServicesView.vue'), P.servicesRead, 'pri.svc.title'],
+  ['sortie-securisee', 'pri-pickup', () => import('./PickupView.vue'), P.pickupRead, 'pri.pickup.title'],
   ['famille', 'pri-family', () => import('./FamilyView.vue'), P.family, 'pri.family.title'],
 ];
 
