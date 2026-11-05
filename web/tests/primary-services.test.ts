@@ -156,7 +156,7 @@ describe('Sortie sécurisée', () => {
     const { wrapper } = await mountView(PickupView, {}, '/primaire/sortie-securisee');
     expect(wrapper.get('[data-test="learner-A1"]').text()).toContain('Mme Awa Mère · Mère');
     expect(wrapper.get('[data-test="events-A1"]').text()).toContain('Refus (Inconnu) à 12:30');
-    expect(wrapper.get('[data-test="learner-A2"] [data-test="none-authorised"]').exists()).toBe(true);
+    expect(wrapper.find('[data-test="learner-A2"] [data-test="none-authorised"]').exists()).toBe(true);
 
     await wrapper.get('[data-test="handover-PK1"]').trigger('click');
     await flushPromises();
