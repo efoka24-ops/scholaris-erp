@@ -4,13 +4,11 @@ declare(strict_types=1);
 
 namespace Scholaris\Modules\Socle\Messaging\Application;
 
-use Psr\Log\LoggerInterface;
 use Scholaris\Core\Http\HttpException;
 use Scholaris\Core\Support\Ulid;
 use Scholaris\Modules\Socle\Documents\Contracts\DocumentCatalog;
 use Scholaris\Modules\Socle\Identity\Contracts\UserPersonLink;
 use Scholaris\Modules\Socle\Messaging\Contracts\DirectionDirectory;
-use Scholaris\Modules\Socle\Messaging\Contracts\Messenger;
 use Scholaris\Modules\Socle\Messaging\Infrastructure\ChatRepository;
 use Scholaris\Modules\Socle\Messaging\Infrastructure\Store;
 use Scholaris\Modules\Socle\People\Contracts\ConsentChecker;
@@ -19,7 +17,6 @@ use Scholaris\Modules\Socle\People\Contracts\EnrollmentInfo;
 use Scholaris\Modules\Socle\People\Contracts\PersonDirectory;
 use Scholaris\Modules\Socle\People\Contracts\TeachingScope;
 use Scholaris\Modules\Socle\Staff\Contracts\StaffDirectory;
-use Throwable;
 
 /**
  * Messagerie interne modérée. Règle de périmètre : une conversation lie UN parent (garant d'un apprenant inscrit dans
@@ -29,11 +26,16 @@ use Throwable;
  *
  * Les messages masqués par un modérateur restent en base (preuve) mais ne sont plus servis aux participants.
  * Les notifications ne contiennent jamais le texte du message.
+ *
+ * Nature « support » (C-113) : échange entre des administrateurs de l'établissement et le support SCHOLARIS (voir
+ * SupportService) ; ni apprenant ni pièce jointe, et le statut de support suit l'échange (client = ouvert).
  */
 final class ChatService
 {
     public const TEACHER_PARENT = 'teacher_parent';
     public const DIRECTION_PARENT = 'direction_parent';
+    public const SUPPORT = 'support';
+    /** Natures ouvertes par POST /conversations (le support a sa propre route). */
     public const KINDS = [self::TEACHER_PARENT, self::DIRECTION_PARENT];
 
     public const OPEN = 'open';
@@ -44,6 +46,7 @@ final class ChatService
     public const PARENT = 'parent';
     public const TEACHER = 'teacher';
     public const DIRECTION = 'direction';
+    public const CLIENT_ADMIN = 'client_admin';
 
     public const MAX_PARTICIPANTS = 4;
     public const MAX_ATTACHMENTS = 5;
@@ -59,9 +62,8 @@ final class ChatService
         private readonly DirectionDirectory $direction,
         private readonly ConsentChecker $consents,
         private readonly DocumentCatalog $documents,
-        private readonly Messenger $messenger,
+        private readonly ChatNotifier $notifier,
         private readonly MessagingClock $clock,
-        private readonly LoggerInterface $logger,
     ) {
     }
 
@@ -139,6 +141,39 @@ final class ChatService
         }
 
         return $contacts;
+    }
+
+    public const MAX_LEARNERS = 1000;
+
+    /**
+     * Apprenants au sujet desquels la personne peut ouvrir une conversation (assistance à la création) : ses enfants
+     * inscrits (parent), les élèves qu'elle suit (enseignant actif), les inscrits de l'établissement (direction).
+     *
+     * @return list<array{learner_id: string, name: string}>
+     */
+    public function learners(string $tenantId, string $establishmentId, string $actorPersonId): array
+    {
+        $candidates = array_map(static fn ($p): string => $p->id, $this->persons->learnersOf($tenantId, $actorPersonId));
+        $member = $this->staff->find($tenantId, $actorPersonId);
+        if ($member !== null && $member->status === 'active' && in_array($actorPersonId, $this->staff->teacherIdsIn($tenantId, $establishmentId), true)) {
+            $candidates = [...$candidates, ...$this->teaching->learnerIdsOf($tenantId, $actorPersonId)];
+        }
+        $enrolled = [];
+        foreach (array_unique($candidates) as $learnerId) {
+            if ($this->isEnrolled($tenantId, $establishmentId, $learnerId)) {
+                $enrolled[] = $learnerId;
+            }
+        }
+        if (in_array($actorPersonId, $this->direction->directionPersonIds($tenantId, $establishmentId), true)) {
+            $enrolled = [...$enrolled, ...array_slice($this->enrollments->personIdsInEstablishment($tenantId, $establishmentId), 0, self::MAX_LEARNERS)];
+        }
+        $out = [];
+        foreach ($this->persons->findMany($tenantId, array_slice(array_values(array_unique($enrolled)), 0, self::MAX_LEARNERS)) as $person) {
+            $out[] = ['learner_id' => $person->id, 'name' => $person->fullName()];
+        }
+        usort($out, static fn (array $a, array $b): int => strcmp($a['name'], $b['name']));
+
+        return $out;
     }
 
     /**
@@ -268,12 +303,25 @@ final class ChatService
         if ($conversation['status'] !== self::OPEN) {
             throw HttpException::conflict('Cette conversation est archivée.');
         }
-        $this->assertStillAllowed($tenantId, $establishmentId, $conversation);
-        $attachments = $this->attachments($tenantId, (string) $conversation['learner_id'], array_values((array) ($data['attachments'] ?? [])));
+        $support = ($conversation['kind'] ?? null) === self::SUPPORT;
+        if ($support) {
+            if ((array) ($data['attachments'] ?? []) !== []) {
+                throw HttpException::validation(['attachments' => ['Pas de pièce jointe dans une conversation avec le support.']]);
+            }
+            $attachments = [];
+        } else {
+            $this->assertStillAllowed($tenantId, $establishmentId, $conversation);
+            $attachments = $this->attachments($tenantId, (string) $conversation['learner_id'], array_values((array) ($data['attachments'] ?? [])));
+        }
 
         $now = $this->clock->iso();
         $messageId = $this->insertMessage($tenantId, $establishmentId, $conversationId, $actorPersonId, (string) $data['body'], $attachments, $now);
-        $this->store->update('conversations', $tenantId, $establishmentId, $conversationId, ['last_message_at' => $now, 'updated_at' => $now]);
+        $changes = ['last_message_at' => $now, 'updated_at' => $now];
+        if ($support) {
+            // Le client a écrit : la demande attend le support.
+            $changes['support_status'] = 'open';
+        }
+        $this->store->update('conversations', $tenantId, $establishmentId, $conversationId, $changes);
         $this->chat->markRead($tenantId, $conversationId, $actorPersonId, $messageId);
         $this->notify($tenantId, $establishmentId, $conversationId, $actorPersonId);
 
@@ -395,12 +443,21 @@ final class ChatService
         return $this->conversation($tenantId, $establishmentId, $conversationId);
     }
 
-    private function assertEnrolled(string $tenantId, string $establishmentId, string $learnerId): void
+    private function isEnrolled(string $tenantId, string $establishmentId, string $learnerId): bool
     {
         foreach ($this->enrollments->forPerson($tenantId, $learnerId) as $enrollment) {
             if ($enrollment->establishmentId === $establishmentId && $enrollment->status === EnrollmentInfo::ACTIVE) {
-                return;
+                return true;
             }
+        }
+
+        return false;
+    }
+
+    private function assertEnrolled(string $tenantId, string $establishmentId, string $learnerId): void
+    {
+        if ($this->isEnrolled($tenantId, $establishmentId, $learnerId)) {
+            return;
         }
 
         throw HttpException::validation(['learner_id' => ['Apprenant inconnu ou non inscrit dans cet établissement.']]);
@@ -450,7 +507,7 @@ final class ChatService
     }
 
     /** @param list<array{document_id: string, number: string, type: string}> $attachments */
-    private function insertMessage(string $tenantId, string $establishmentId, string $conversationId, string $senderId, string $body, array $attachments, string $now): string
+    public function insertMessage(string $tenantId, string $establishmentId, string $conversationId, string $senderId, string $body, array $attachments, string $now, ?string $senderSide = null): string
     {
         $id = (string) new Ulid();
         $this->store->insert('conversation_messages', [
@@ -462,6 +519,7 @@ final class ChatService
             'body' => $body,
             'attachments' => $attachments === [] ? null : json_encode($attachments, JSON_THROW_ON_ERROR),
             'moderation_status' => self::VISIBLE,
+            'sender_side' => $senderSide,
             'created_at' => $now,
         ]);
 
@@ -469,18 +527,15 @@ final class ChatService
     }
 
     /** Prévient les autres participants (sans le texte). Un échec de notification ne bloque jamais le message. */
-    private function notify(string $tenantId, string $establishmentId, string $conversationId, string $senderPersonId): void
+    public function notify(string $tenantId, string $establishmentId, string $conversationId, ?string $senderPersonId): void
     {
+        $recipients = [];
         foreach ($this->chat->participants($tenantId, $conversationId) as $participant) {
             $personId = (string) $participant['person_id'];
-            if ($personId === $senderPersonId) {
-                continue;
-            }
-            try {
-                $this->messenger->send($tenantId, $establishmentId, $personId, 'chat_new_message');
-            } catch (Throwable $e) {
-                $this->logger->warning('Notification de messagerie non envoyée', ['conversation' => $conversationId, 'error' => $e::class]);
+            if ($personId !== $senderPersonId) {
+                $recipients[] = $personId;
             }
         }
+        $this->notifier->notify($tenantId, $establishmentId, $conversationId, $recipients);
     }
 }

@@ -28,6 +28,9 @@ use Scholaris\Modules\Socle\People\Contracts\PersonDirectory;
  */
 return [
     Messenger::class => autowire(MessengerImpl::class),
+    // Réglages personnels de notification (C-112) : défaut sûr « application seulement » tant qu'ils ne sont pas livrés.
+    \Scholaris\Modules\Socle\Messaging\Contracts\NotificationChannelPreferences::class => autowire(\Scholaris\Modules\Socle\Messaging\Infrastructure\InAppOnlyPreferences::class),
+    \Scholaris\Modules\Socle\Messaging\Contracts\SupportDesk::class => autowire(\Scholaris\Modules\Socle\Messaging\Application\SupportService::class),
     SafetyMessenger::class => autowire(SafetyMessengerImpl::class),
     \Scholaris\Modules\Socle\Messaging\Contracts\OptOutRegistry::class => autowire(\Scholaris\Modules\Socle\Messaging\Infrastructure\PdoOptOutRegistry::class),
     \Scholaris\Modules\Socle\Messaging\Contracts\TerritorialAnnouncer::class => autowire(\Scholaris\Modules\Socle\Messaging\Application\TerritorialAnnouncerService::class),

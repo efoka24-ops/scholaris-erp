@@ -22,6 +22,7 @@ final class Access
     public const TEMPLATES = 'messaging.templates.manage';
     public const CHAT = 'messaging.chat';
     public const MODERATE = 'messaging.moderate';
+    public const SUPPORT = 'messaging.support';
 
     public function __construct(
         private readonly TenantContext $context,
@@ -64,6 +65,11 @@ final class Access
     public function authorizeModerate(ServerRequestInterface $request): void
     {
         $this->authorize($request, [self::MODERATE], 'modérer la messagerie interne');
+    }
+
+    public function authorizeSupport(ServerRequestInterface $request): void
+    {
+        $this->authorize($request, [self::SUPPORT], 'écrire au support SCHOLARIS');
     }
 
     public function canModerate(ServerRequestInterface $request): bool

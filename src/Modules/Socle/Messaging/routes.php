@@ -8,6 +8,7 @@ use Scholaris\Modules\Socle\Messaging\Http\Controllers\ConversationController;
 use Scholaris\Modules\Socle\Messaging\Http\Controllers\ConversationReportController;
 use Scholaris\Modules\Socle\Messaging\Http\Controllers\MessageController;
 use Scholaris\Modules\Socle\Messaging\Http\Controllers\SmsUsageController;
+use Scholaris\Modules\Socle\Messaging\Http\Controllers\SupportConversationController;
 use Scholaris\Modules\Socle\Messaging\Http\Controllers\TemplateController;
 
 /** Routes du service S05 Messaging. Toutes exigent un établissement actif (X-Establishment-Id). */
@@ -40,6 +41,10 @@ return static function (RouteRegistry $routes): void {
 
     // Messagerie interne modérée (permissions messaging.chat et messaging.moderate).
     $routes->add('GET', '/conversation-contacts', [ConversationController::class, 'contacts']);
+    $routes->add('GET', '/conversation-learners', [ConversationController::class, 'learners']);
+    $routes->add('GET', '/conversation-unread', [ConversationController::class, 'unread']);
+    // Support SCHOLARIS (C-113) : ouverture par un administrateur de l'établissement (messaging.support).
+    $routes->add('POST', '/support-conversations', [SupportConversationController::class, 'store']);
     $routes->add('GET', '/conversations', [ConversationController::class, 'index']);
     $routes->add('POST', '/conversations', [ConversationController::class, 'store']);
     $routes->add('GET', '/conversations/{id}', [ConversationController::class, 'show']);

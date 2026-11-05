@@ -8,7 +8,7 @@ final class ConversationResource extends Resource
 {
     protected function fields(): array
     {
-        return ['id', 'subject', 'kind', 'learner_id', 'status', 'created_by', 'last_message_at', 'archived_at', 'created_at', 'updated_at'];
+        return ['id', 'subject', 'kind', 'learner_id', 'status', 'created_by', 'support_status', 'last_message_at', 'archived_at', 'created_at', 'updated_at'];
     }
 
     /** @param array<string, mixed> $row */

@@ -6,7 +6,8 @@ namespace Scholaris\Modules\Socle\Messaging\Http\Resources;
 
 /**
  * Message de conversation. Un message masqué n'expose ni son texte ni ses pièces jointes aux participants ;
- * seul un modérateur voit le contenu, l'auteur de la modération et le motif.
+ * seul un modérateur voit le contenu, l'auteur de la modération et le motif. sender_side : client, ou platform pour un
+ * message du support SCHOLARIS (sans identifiant d'auteur).
  */
 final class ChatMessageResource extends Resource
 {
@@ -16,7 +17,7 @@ final class ChatMessageResource extends Resource
 
     protected function fields(): array
     {
-        return ['id', 'conversation_id', 'sender_id', 'body', 'attachments', 'moderation_status', 'created_at'];
+        return ['id', 'conversation_id', 'sender_id', 'sender_side', 'body', 'attachments', 'moderation_status', 'created_at'];
     }
 
     protected function jsonFields(): array
@@ -30,6 +31,11 @@ final class ChatMessageResource extends Resource
         $out = parent::toArray($row);
         $hidden = ($row['moderation_status'] ?? 'visible') === 'hidden';
         $out['attachments'] = $out['attachments'] ?? [];
+        // Message du support SCHOLARIS : l'agent de la plateforme n'est jamais nommé côté établissement.
+        $out['sender_side'] = ($row['sender_side'] ?? null) === 'platform' ? 'platform' : 'client';
+        if ($out['sender_side'] === 'platform') {
+            $out['sender_id'] = null;
+        }
         if ($hidden && !$this->moderator) {
             $out['body'] = null;
             $out['attachments'] = [];

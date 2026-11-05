@@ -18,6 +18,7 @@ use Scholaris\Modules\Socle\Platform\Http\PricingAdminController;
 use Scholaris\Modules\Socle\Platform\Http\PublicAccessController;
 use Scholaris\Modules\Socle\Platform\Http\RegularisationAdminController;
 use Scholaris\Modules\Socle\Platform\Http\RegularisationRequestsAdminController;
+use Scholaris\Modules\Socle\Platform\Http\SupportAdminController;
 
 /**
  * Routes du module Platform. Le préfixe /api/v1 est ajouté par le registre.
@@ -100,6 +101,15 @@ return static function (RouteRegistry $routes): void {
     $routes->add('POST', '/platform/access-requests/{id}/request-info', [AccessRequestAdminController::class, 'requestInfo'], $platform);
     $routes->add('POST', '/platform/access-requests/{id}/archive', [AccessRequestAdminController::class, 'archive'], $platform);
     $routes->add('DELETE', '/platform/access-requests/{id}', [AccessRequestAdminController::class, 'destroy'], $platform);
+    // Boîte du support SCHOLARIS (C-113) : conversations de nature « support » seulement.
+    $routes->add('GET', '/platform/support/agents', [SupportAdminController::class, 'agents'], $platform);
+    $routes->add('GET', '/platform/support/conversations', [SupportAdminController::class, 'index'], $platform);
+    $routes->add('POST', '/platform/support/conversations', [SupportAdminController::class, 'open'], $platform);
+    $routes->add('GET', '/platform/support/conversations/{id}', [SupportAdminController::class, 'show'], $platform);
+    $routes->add('GET', '/platform/support/conversations/{id}/messages', [SupportAdminController::class, 'messages'], $platform);
+    $routes->add('POST', '/platform/support/conversations/{id}/messages', [SupportAdminController::class, 'reply'], $platform);
+    $routes->add('POST', '/platform/support/conversations/{id}/status', [SupportAdminController::class, 'status'], $platform);
+    $routes->add('POST', '/platform/support/conversations/{id}/assign', [SupportAdminController::class, 'assign'], $platform);
     $routes->add('GET', '/platform/payments', [PlatformAdminController::class, 'payments'], $platform);
     $routes->add('POST', '/platform/payments', [PaymentsAdminController::class, 'store'], $platform);
     $routes->add('POST', '/platform/payments/{id}/cancel', [PaymentsAdminController::class, 'cancel'], $platform);

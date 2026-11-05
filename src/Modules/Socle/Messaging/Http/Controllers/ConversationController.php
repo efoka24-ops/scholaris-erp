@@ -73,6 +73,23 @@ final class ConversationController
         return $this->responder->json(['data' => $this->chat->contacts($this->access->tenantId(), $this->access->establishmentId(), $this->person($request), $learner)]);
     }
 
+    /** GET /conversation-unread : messages non lus de l'appelant dans l'établissement actif (compteur de la barre du haut). */
+    public function unread(ServerRequestInterface $request): ResponseInterface
+    {
+        $this->access->authorizeChat($request);
+        $count = $this->repository->unreadTotal($this->access->tenantId(), $this->access->establishmentId(), $this->person($request));
+
+        return $this->responder->json(['data' => ['unread' => $count]]);
+    }
+
+    /** GET /conversation-learners : apprenants au sujet desquels l'appelant peut ouvrir une conversation. */
+    public function learners(ServerRequestInterface $request): ResponseInterface
+    {
+        $this->access->authorizeChat($request);
+
+        return $this->responder->json(['data' => $this->chat->learners($this->access->tenantId(), $this->access->establishmentId(), $this->person($request))]);
+    }
+
     public function store(ServerRequestInterface $request): ResponseInterface
     {
         $this->access->authorizeChat($request);
