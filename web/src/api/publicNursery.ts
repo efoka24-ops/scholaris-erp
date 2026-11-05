@@ -243,7 +243,7 @@ export const pickupAuth = {
 
 /** Ouvre un PDF émis par le socle Documents (lecture authentifiée : pas de lien direct). */
 export async function openIssuedPdf(documentId: string): Promise<void> {
-  const blob = await http.get<Blob>(`/documents/${encodeURIComponent(documentId)}/preview`, { profile: 'light' }, { expect: 'blob' });
+  const blob = await http.get<Blob>(`/public-nursery/portal/documents/${encodeURIComponent(documentId)}/pdf`, {}, { expect: 'blob' });
   const url = URL.createObjectURL(blob);
   window.open(url, '_blank', 'noopener');
   setTimeout(() => URL.revokeObjectURL(url), 60_000);

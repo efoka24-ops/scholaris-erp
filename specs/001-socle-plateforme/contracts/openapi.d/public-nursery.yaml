@@ -1517,3 +1517,30 @@ paths:
         409: { description: "Conflit d'état (autorisation retirée, personne visée par une restriction)" }
         422: { description: "Données invalides ou refus métier (RFC 9457)" }
         423: { description: "Application suspendue : écriture fermée" }
+  '/api/v1/public-nursery/portal/documents/{id}/pdf':
+    get:
+      summary: 'GET /public-nursery/portal/documents/{id}/pdf'
+      description: "PDF d'un document VALIDE d'un enfant du parent connecté (C-111, contrat DocumentPdfReader du socle) ; 404 pour tout autre document."
+      security:
+        -
+          bearer: {  }
+      parameters:
+        -
+          $ref: '#/components/parameters/EstablishmentId'
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: 'Succès : octets du PDF (application/pdf)'
+        400:
+          description: 'Requête invalide (en-tête X-Establishment-Id manquant)'
+        401:
+          description: 'Authentification requise'
+        403:
+          description: 'Accès refusé (application fermée)'
+        404:
+          description: 'Document introuvable, révoqué ou hors des enfants du parent'

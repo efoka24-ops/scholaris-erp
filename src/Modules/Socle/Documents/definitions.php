@@ -10,6 +10,7 @@ use Scholaris\Core\Config\Config;
 use Scholaris\Modules\Socle\Documents\Application\DocumentService;
 use Scholaris\Modules\Socle\Documents\Contracts\DocumentCatalog;
 use Scholaris\Modules\Socle\Documents\Contracts\DocumentIssuer;
+use Scholaris\Modules\Socle\Documents\Contracts\DocumentPdfReader;
 use Scholaris\Modules\Socle\Documents\Domain\QrCodeGenerator;
 use Scholaris\Modules\Socle\Documents\Infrastructure\DompdfRenderer;
 use Scholaris\Modules\Socle\Documents\Infrastructure\LibraryQrCodeGenerator;
@@ -24,6 +25,7 @@ use Scholaris\Modules\Socle\Integrations\Contracts\PdfRenderer;
  */
 return [
     DocumentIssuer::class => get(DocumentService::class),
+    DocumentPdfReader::class => get(DocumentService::class),
     // Émission avec options pour les applications (S12, S16, S17) ; gardes d'émission : clé de liste par application (S18).
     \Scholaris\Modules\Socle\Documents\Contracts\ExtendedDocumentIssuer::class => get(DocumentService::class),
     \Scholaris\Modules\Socle\Documents\Contracts\DocumentReissuer::class => get(DocumentService::class),

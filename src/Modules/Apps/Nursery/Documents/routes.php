@@ -11,4 +11,5 @@ return static function (NurseryRoutes $routes): void {
     $routes->post('/pickup/authorized-persons/{id}/card', [DocumentController::class, 'pickupCard']);
     $routes->post('/register/document', [DocumentController::class, 'exitRegister']);
     $routes->get('/portal/documents', [DocumentController::class, 'portal']);
+    $routes->get('/portal/documents/{id}/pdf', [DocumentController::class, 'pdf']);
 };

@@ -121,4 +121,20 @@ final class DocumentsTest extends DevelopmentTestCase
         self::assertSame(404, $this->code('GET', '/nursery/portal/documents?learner_id=' . $this->ada['child'], null, 'parent-' . $this->bao['child']));
         self::assertSame([], $this->ok('GET', '/nursery/documents', null, 'educatrice-b'), 'Hors section : aucun document visible.');
     }
+
+    public function testLeParentTelechargeSeulementLePdfDeSonEnfant(): void
+    {
+        $id = $this->publishedBook();
+        $this->ok('POST', '/nursery/progress-books/' . $id . '/publish', []);
+        $document = $this->ok('POST', '/nursery/progress-books/' . $id . '/document', [], 'directrice-a');
+
+        $pdf = $this->raw('GET', '/nursery/portal/documents/' . $document['document_id'] . '/pdf', null, 'parent-' . $this->ada['child']);
+        self::assertSame(200, $pdf->getStatusCode());
+        self::assertSame('application/pdf', $pdf->getHeaderLine('Content-Type'));
+        self::assertStringContainsString('%PDF', (string) $pdf->getBody());
+        self::assertSame(404, $this->code('GET', '/nursery/portal/documents/' . $document['document_id'] . '/pdf', null, 'parent-' . $this->bao['child']));
+
+        $this->ok('POST', '/documents/' . $document['document_id'] . '/revoke', ['reason' => 'Révoqué pour test', 'replaced_by' => null], 'directrice-a');
+        self::assertSame(404, $this->code('GET', '/nursery/portal/documents/' . $document['document_id'] . '/pdf', null, 'parent-' . $this->ada['child']));
+    }
 }

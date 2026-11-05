@@ -116,6 +116,7 @@ abstract class NurseryTestCase extends TestCase
         'nursery.settings.manage', 'nursery.section.manage', 'nursery.child.read', 'nursery.enrol', 'nursery.pickup.read', 'nursery.pickup.restrict',
         'nursery.pickup.manage', 'nursery.pickup.handover', 'nursery.register.read', 'nursery.dev.read', 'nursery.dev.validate', 'nursery.frame.manage',
         'nursery.lifebook.read', 'nursery.need.read', 'nursery.allergy.read', 'nursery.message.send', 'nursery.dashboard.read', 'attendance.take',
+        'documents.read', 'documents.issue', 'documents.revoke', 'documents.rectify', 'documents.templates.manage',
         'billing.manage',
     ];
 

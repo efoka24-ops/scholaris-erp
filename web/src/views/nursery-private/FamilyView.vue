@@ -91,6 +91,14 @@ async function showPhoto(mediaId: string): Promise<void> {
   const blob = await run(() => nurseryMedia(`/portal/lifebook/media/${mediaId}`));
   if (blob) photos.value = { ...photos.value, [mediaId]: URL.createObjectURL(blob) };
 }
+async function downloadPdf(documentId: string): Promise<void> {
+  const blob = await run(() => nursery.family.pdf(documentId));
+  if (blob) {
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank', 'noopener');
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  }
+}
 onBeforeUnmount(() => Object.values(photos.value).forEach((url) => URL.revokeObjectURL(url)));
 </script>
 
@@ -191,7 +199,7 @@ onBeforeUnmount(() => Object.values(photos.value).forEach((url) => URL.revokeObj
 
       <section v-if="docs.length > 0" class="card" aria-labelledby="fa-docs">
         <h2 id="fa-docs">{{ t('nur.family.documents') }}</h2>
-        <ul class="plain"><li v-for="d in docs" :key="d.id">{{ t(`nur.doc.kind.${d.kind}` as MessageKey) }} · {{ d.number }} · <a :href="d.verification_path" target="_blank" rel="noopener">{{ t('nur.doc.verify') }}</a></li></ul>
+        <ul class="plain"><li v-for="d in docs" :key="d.id">{{ t(`nur.doc.kind.${d.kind}` as MessageKey) }} · {{ d.number }} · <a :href="d.verification_path" target="_blank" rel="noopener">{{ t('nur.doc.verify') }}</a> · <button type="button" class="btn btn--quiet" :disabled="busy" @click="downloadPdf(d.document_id)">Télécharger</button></li></ul>
       </section>
 
       <section v-if="services.length > 0" class="card" aria-labelledby="fa-svc">

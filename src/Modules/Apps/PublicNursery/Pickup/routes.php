@@ -23,4 +23,5 @@ return static function (NurseryRoutes $routes): void {
     $routes->get('/portal/pickups', [PortalPickupController::class, 'index']);
     $routes->post('/portal/pickups', [PortalPickupController::class, 'store']);
     $routes->post('/portal/pickups/{id}/revoke', [PortalPickupController::class, 'revoke']);
+    $routes->get('/portal/documents/{id}/pdf', [PortalPickupController::class, 'pdf']);
 };

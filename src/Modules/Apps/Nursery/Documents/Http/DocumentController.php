@@ -4,8 +4,12 @@ declare(strict_types=1);
 
 namespace Scholaris\Modules\Apps\Nursery\Documents\Http;
 
+use PDO;
+use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
+use Psr\Http\Message\StreamFactoryInterface;
+use Scholaris\Core\Database\ConnectionFactory;
 use Scholaris\Core\Http\HttpException;
 use Scholaris\Core\Http\JsonResponder;
 use Scholaris\Modules\Apps\Nursery\Documents\Application\DocumentRequests;
@@ -16,6 +20,7 @@ use Scholaris\Modules\Apps\Nursery\Support\Controller;
 use Scholaris\Modules\Apps\Nursery\Support\Input;
 use Scholaris\Modules\Apps\Nursery\Support\NurseryClock;
 use Scholaris\Modules\Apps\Nursery\Support\Paging;
+use Scholaris\Modules\Socle\Documents\Contracts\DocumentPdfReader;
 
 /**
  * Émission des documents de la Maternelle privée (carnet publié, carte d'autorisé, registre du jour) et registre des documents émis.
@@ -32,6 +37,10 @@ final class DocumentController extends Controller
         private readonly NurseryDocuments $documents,
         private readonly ChildDirectory $children,
         private readonly NurseryClock $clock,
+        private readonly ConnectionFactory $connections,
+        private readonly DocumentPdfReader $pdfReader,
+        private readonly ResponseFactoryInterface $responses,
+        private readonly StreamFactoryInterface $streams,
     ) {
         parent::__construct($responder, $access);
     }
@@ -93,6 +102,40 @@ final class DocumentController extends Controller
         $this->access->ownChild($principal, $establishmentId, $learnerId);
 
         return $this->page(Paging::fromRequest($request)->slice($this->documents->forParent($principal->tenantId, $establishmentId, $learnerId)));
+    }
+
+    public function pdf(ServerRequestInterface $request): ResponseInterface
+    {
+        [$principal, $establishmentId] = $this->context($request);
+        $documentId = self::id($request);
+        $query = $this->connections->pdo()->prepare(
+            'SELECT learner_id FROM ' . NurseryDocuments::TABLE . ' WHERE tenant_id = ? AND establishment_id = ? AND document_id = ? AND status = ? AND kind IN (' . implode(', ', array_fill(0, count(NurseryDocuments::PARENT_KINDS), '?')) . ') LIMIT 1',
+        );
+        $params = [$principal->tenantId, $establishmentId, $documentId, 'valid', ...NurseryDocuments::PARENT_KINDS];
+        $query->execute($params);
+        $row = $query->fetch(PDO::FETCH_ASSOC);
+        if (!is_array($row) || !is_string($row['learner_id'] ?? null) || $row['learner_id'] === '') {
+            throw HttpException::notFound('Document introuvable.');
+        }
+        $learnerId = (string) $row['learner_id'];
+        $this->access->ownChild($principal, $establishmentId, $learnerId);
+
+        $pdf = $this->pdfReader->pdfOf($principal->tenantId, $establishmentId, $documentId);
+        if ($pdf === null) {
+            throw HttpException::notFound('Document introuvable.');
+        }
+
+        return $this->binary($pdf);
+    }
+
+    private function binary(string $pdf): ResponseInterface
+    {
+        return $this->responses->createResponse(200)
+            ->withHeader('Content-Type', 'application/pdf')
+            ->withHeader('Content-Disposition', 'inline; filename="document.pdf"')
+            ->withHeader('Cache-Control', 'private, no-store')
+            ->withHeader('X-Content-Type-Options', 'nosniff')
+            ->withBody($this->streams->createStream($pdf));
     }
 
     private static function locale(ServerRequestInterface $request): string

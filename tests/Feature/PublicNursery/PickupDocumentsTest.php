@@ -106,6 +106,33 @@ final class PickupDocumentsTest extends PublicNurseryCase
         self::assertSame(422, $this->code('POST', '/public-nursery/register/document', 'director', self::T, self::E, ['date' => '2026-10-08', 'locale' => 'de']));
     }
 
+    public function testLeParentTelechargeLePdfSeulementPourSonEnfant(): void
+    {
+        $pickup = $this->authorize();
+        $card = $this->ok('POST', '/public-nursery/pickup/authorized-persons/' . $pickup . '/card', 'teacher', []);
+
+        $parent = $this->person('Parent', 'Fictif');
+        $this->linkParent($this->child, $parent['id']);
+        $this->grantAll('parent-user', 'public_nursery.pickup.handover');
+        $this->connections()->pdo()->prepare('INSERT INTO users (id, tenant_id, person_id, locale, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
+            ->execute(['parent-user', self::T, $parent['id'], 'fr', 'active', self::NOW, self::NOW]);
+
+        $pdf = $this->kernel->handle(new ServerRequest('GET', '/api/v1/public-nursery/portal/documents/' . $card['document_id'] . '/pdf', ['Authorization' => 'Bearer parent-user:' . self::T, 'X-Establishment-Id' => self::E]));
+        self::assertSame(200, $pdf->getStatusCode());
+        self::assertSame('application/pdf', $pdf->getHeaderLine('Content-Type'));
+        self::assertStringContainsString('%PDF', (string) $pdf->getBody());
+
+        $otherParent = $this->person('Autre', 'Parent');
+        $otherChild = (string) $this->person('Autre', 'Enfant')['id'];
+        $this->enrol($otherChild);
+        $this->linkParent($otherChild, $otherParent['id']);
+        $this->grantAll('other-parent-user', 'public_nursery.pickup.handover');
+        $this->access->grant('other-parent-user', self::E);
+        $this->connections()->pdo()->prepare('INSERT INTO users (id, tenant_id, person_id, locale, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
+            ->execute(['other-parent-user', self::T, $otherParent['id'], 'fr', 'active', self::NOW, self::NOW]);
+        self::assertSame(404, $this->code('GET', '/public-nursery/portal/documents/' . $card['document_id'] . '/pdf', 'other-parent-user', self::T, self::E));
+    }
+
     public function testPorteeDesSectionsEtIsolationEntreClients(): void
     {
         $pickup = $this->authorize();

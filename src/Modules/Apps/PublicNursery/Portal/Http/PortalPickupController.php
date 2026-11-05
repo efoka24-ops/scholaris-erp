@@ -4,8 +4,12 @@ declare(strict_types=1);
 
 namespace Scholaris\Modules\Apps\PublicNursery\Portal\Http;
 
+use PDO;
+use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
+use Psr\Http\Message\StreamFactoryInterface;
+use Scholaris\Core\Database\ConnectionFactory;
 use Scholaris\Core\Http\HttpException;
 use Scholaris\Core\Http\JsonResponder;
 use Scholaris\Core\Security\Principal;
@@ -14,6 +18,7 @@ use Scholaris\Modules\Apps\PublicNursery\Pickup\Application\PickupCodeService;
 use Scholaris\Modules\Apps\PublicNursery\Support\EstablishmentGuard;
 use Scholaris\Modules\Apps\PublicNursery\Support\PublicNurseryClock;
 use Scholaris\Modules\Socle\Assessment\Contracts\ActorDirectory;
+use Scholaris\Modules\Socle\Documents\Contracts\DocumentPdfReader;
 use Scholaris\Modules\Socle\People\Contracts\PersonDirectory;
 use Scholaris\Modules\Socle\People\Contracts\PersonSummary;
 
@@ -27,6 +32,10 @@ final class PortalPickupController
         private readonly AuthorizedPersonsService $service,
         private readonly PickupCodeService $codes,
         private readonly PublicNurseryClock $clock,
+        private readonly ConnectionFactory $connections,
+        private readonly DocumentPdfReader $pdfReader,
+        private readonly ResponseFactoryInterface $responses,
+        private readonly StreamFactoryInterface $streams,
     ) {
     }
 
@@ -71,6 +80,37 @@ final class PortalPickupController
         $this->assertLearnerOwned($principal->tenantId, $principal->userId, (string) $row['learner_id']);
 
         return $this->responder->json(['data' => $this->service->revoke($principal->tenantId, $establishmentId, self::id($request), $principal->userId)]);
+    }
+
+    public function pdf(ServerRequestInterface $request): ResponseInterface
+    {
+        $principal = $this->principal($request);
+        $establishmentId = self::establishment($request);
+        $this->guard->assertNursery($principal, $principal->tenantId, $establishmentId);
+        $documentId = self::id($request);
+        $query = $this->connections->pdo()->prepare('SELECT learner_id FROM pn_issued_documents WHERE tenant_id = ? AND establishment_id = ? AND document_id = ? AND status = ? AND kind = ? LIMIT 1');
+        $query->execute([$principal->tenantId, $establishmentId, $documentId, 'valid', 'pickup_card']);
+        $row = $query->fetch(PDO::FETCH_ASSOC);
+        if (!is_array($row) || !is_string($row['learner_id'] ?? null) || $row['learner_id'] === '') {
+            throw HttpException::notFound('Document introuvable.');
+        }
+        $this->assertLearnerOwned($principal->tenantId, $principal->userId, (string) $row['learner_id']);
+        $pdf = $this->pdfReader->pdfOf($principal->tenantId, $establishmentId, $documentId);
+        if ($pdf === null) {
+            throw HttpException::notFound('Document introuvable.');
+        }
+
+        return $this->binary($pdf);
+    }
+
+    private function binary(string $pdf): ResponseInterface
+    {
+        return $this->responses->createResponse(200)
+            ->withHeader('Content-Type', 'application/pdf')
+            ->withHeader('Content-Disposition', 'inline; filename="document.pdf"')
+            ->withHeader('Cache-Control', 'private, no-store')
+            ->withHeader('X-Content-Type-Options', 'nosniff')
+            ->withBody($this->streams->createStream($pdf));
     }
 
     /** @param array<string, mixed>|null $body

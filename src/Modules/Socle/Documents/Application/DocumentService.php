@@ -10,6 +10,7 @@ use Scholaris\Core\Numbering\SequenceService;
 use Scholaris\Core\Support\Ulid;
 use Scholaris\Modules\Socle\Audit\Contracts\AuditLog;
 use Scholaris\Modules\Socle\Billing\Contracts\DebtorDirectory;
+use Scholaris\Modules\Socle\Documents\Contracts\DocumentPdfReader;
 use Scholaris\Modules\Socle\Documents\Contracts\DocumentReissuer;
 use Scholaris\Modules\Socle\Documents\Contracts\ExtendedDocumentIssuer;
 use Scholaris\Modules\Socle\Documents\Contracts\IssuanceContext;
@@ -42,7 +43,7 @@ use Scholaris\Modules\Socle\People\Contracts\PersonDirectory;
  * la transaction est annulée et le numéro n'est pas consommé. Le contenu rendu est figé à l'émission
  * (version de modèle conservée) et son empreinte SHA-256 est enregistrée.
  */
-final class DocumentService implements ExtendedDocumentIssuer, DocumentReissuer
+final class DocumentService implements ExtendedDocumentIssuer, DocumentReissuer, DocumentPdfReader
 {
     public const LOCALES = ['fr', 'en'];
     public const BLOCKED_REASON = 'Pension impayée : blocage financier paramétré pour les documents.';
@@ -372,6 +373,17 @@ final class DocumentService implements ExtendedDocumentIssuer, DocumentReissuer
         $document = $this->documents->find($tenantId, $id, $establishmentId) ?? throw HttpException::notFound('Document introuvable.');
 
         return (string) $document['content'];
+    }
+
+    /** Octets PDF d'un document valide ; null si absent ou révoqué. */
+    public function pdfOf(string $tenantId, string $establishmentId, string $documentId): ?string
+    {
+        $document = $this->documents->find($tenantId, $documentId, $establishmentId);
+        if ($document === null || (string) $document['status'] !== IssuedDocument::VALID) {
+            return null;
+        }
+
+        return $this->pdf((string) $document['content']);
     }
 
     /** @param string $profile standard ou light (PP15 : polices de base, grandes images retirées, PDF parent < 200 Ko) */
