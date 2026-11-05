@@ -61,7 +61,9 @@ final class PrimaryTemplatesMigrationTest extends TestCase
             self::assertSame('sms', $row['channel']);
             $byKey[(string) $row['template_key']][] = (string) $row['locale'];
         }
-        self::assertCount(9, $byKey);
+        // 9 modèles T509, plus pri.not10.absence_streak (SMS d'absences répétées, C-104).
+        self::assertCount(10, $byKey);
+        self::assertArrayHasKey('pri.not10.absence_streak', $byKey);
         foreach ($byKey as $locales) {
             sort($locales);
             self::assertSame(['en', 'fr'], $locales);
