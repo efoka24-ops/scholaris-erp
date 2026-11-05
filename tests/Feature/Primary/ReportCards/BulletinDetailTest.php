@@ -68,21 +68,28 @@ final class BulletinDetailTest extends PrimaryTestCase
             $this->subjects[(string) $row['subject_code']] = (string) $row['subject_id'];
         }
         $catalog = $this->service(CurriculumCatalog::class);
-        foreach (['LECT' => 2.0, 'CALC' => 3.0, 'EDUC' => 1.0] as $code => $coefficient) {
+        foreach (self::COEFFICIENTS as $code => $coefficient) {
             $catalog->upsertSubject(self::TA, self::EA, new CurriculumItem('pri:' . $code, $code, 'Matière ' . $code, 'subject', $coefficient, 0));
         }
         $this->service(SettingsWriter::class)->presetIfAbsent(self::TA, self::EA, 'primary.council.require_locked_sheets', false, self::DIRECTOR);
     }
 
-    /** @param array<string, float> $marks code => note */
-    private function marks(string $periodId, string $person, array $marks): void
+    /** Coefficients du référentiel fictif (catalogue du socle) ; une autre matière prend le coefficient par défaut. */
+    private const COEFFICIENTS = ['LECT' => 2.0, 'CALC' => 3.0, 'EDUC' => 1.0];
+
+    /**
+     * Notes fictives ; la doublure du moteur pondère chaque matière comme le socle (coefficient du référentiel, sinon celui par défaut).
+     *
+     * @param array<string, float> $marks code => note
+     */
+    private function marks(string $periodId, string $person, array $marks, float $defaultCoefficient = 1.0): void
     {
         $rows = [];
         foreach ($marks as $code => $value) {
-            $rows[] = ['subject_id' => $this->subjects[$code] ?? ('sub-' . $code), 'code' => $code, 'name' => 'Matière ' . $code, 'average' => $value];
+            $rows[] = ['subject_id' => $this->subjects[$code] ?? ('sub-' . $code), 'code' => $code, 'name' => 'Matière ' . $code, 'average' => $value, 'coefficient' => self::COEFFICIENTS[$code] ?? $defaultCoefficient];
         }
         $this->results->subjects[$periodId][$person] = $rows;
-        $this->results->averages[$periodId][$person] = round(array_sum($marks) / count($marks), 2);
+        $this->results->averages[$periodId][$person] = null;
     }
 
     private function openCouncil(): string
@@ -110,7 +117,10 @@ final class BulletinDetailTest extends PrimaryTestCase
         return $this->ok('GET', "/primary/councils/$council/report-cards/preview?person_id=$person");
     }
 
-    /** @return array<string, mixed> */
+    /**
+     * @param array<string, mixed> $preview
+     * @return array<string, mixed>
+     */
     private static function table(array $preview, string $variable): array
     {
         return json_decode((string) $preview['variables'][$variable], true);
@@ -130,7 +140,7 @@ final class BulletinDetailTest extends PrimaryTestCase
         self::assertSame(['Matière CALC', '11,00', '13,00', '12,00', '3', '36,00', '1'], array_map('strval', $calcul), 'e1 et e2 ex æquo à 12 : même rang.');
         $total = end($table['rows']);
         self::assertSame('total', $total['kind']);
-        self::assertSame(['6', '80,00'], [$total['cells'][2], $total['cells'][3]], 'Somme des coefficients 2 + 3 + 1 et des totaux 28 + 36 + 16.');
+        self::assertSame(['13,33', '6', '80,00'], [$total['cells'][1], $total['cells'][2], $total['cells'][3]], 'Somme des coefficients 2 + 3 + 1, des totaux 28 + 36 + 16, moyenne 80 / 6.');
     }
 
     public function testLesColonnesAbsentesNeSontPasInventees(): void
@@ -157,12 +167,12 @@ final class BulletinDetailTest extends PrimaryTestCase
         // LECT (2 x 14 = 28) en LANG ; CALC (3 x 12 = 36) en MATH ; EDUC (1 x 16 = 16) en SOC.
         self::assertSame([['2', '28,00', '14,00'], ['3', '36,00', '12,00'], ['1', '16,00', '16,00']], array_map(static fn (array $r): array => array_slice($r, 1), $domains));
         $profile = $preview['snapshot']['detail']['class_profile'];
-        self::assertEquals(['size' => 3, 'above_pass' => 3, 'class_average' => 12.0, 'max' => 14.0, 'min' => 10.0], array_intersect_key($profile, array_flip(['size', 'above_pass', 'class_average', 'max', 'min'])));
-        self::assertEquals(100.0, $profile['success_rate']);
+        self::assertEquals(['size' => 3, 'above_pass' => 2, 'class_average' => 11.55, 'max' => 13.33, 'min' => 9.33], array_intersect_key($profile, array_flip(['size', 'above_pass', 'class_average', 'max', 'min'])));
+        self::assertEquals(66.7, $profile['success_rate'], 'Moyennes pondérées 13,33 / 12 / 9,33 : deux sur trois au-dessus de 10.');
         $rows = array_column(self::table($preview, 'class_profile_table')['rows'], 1);
-        self::assertContains('3 / 3', $rows);
-        self::assertContains('12,00', $rows);
-        self::assertContains('100,0 %', $rows);
+        self::assertContains('2 / 3', $rows);
+        self::assertContains('11,55', $rows);
+        self::assertContains('66,7 %', $rows);
     }
 
     public function testBlocTravailSelonLesSeuilsParametresEtRienSansSeuil(): void
@@ -173,19 +183,60 @@ final class BulletinDetailTest extends PrimaryTestCase
         self::assertSame('muted', $without['rows'][0]['kind'], 'Sans seuil paramétré, aucune distinction n\'est affichée.');
 
         $this->service(SettingsWriter::class)->presetIfAbsent(self::TA, self::EA, 'primary.report_card.distinctions', [
-            'honour_roll_min' => 14, 'congratulations_min' => 15, 'encouragements_min' => 12, 'warning_max' => 10, 'blame_max' => 8,
+            'honour_roll_min' => 13, 'congratulations_min' => 15, 'encouragements_min' => 12, 'warning_max' => 9, 'blame_max' => 8,
         ], self::DIRECTOR);
         $work = self::table($this->preview($council, 'e1'), 'work_table')['rows'];
         $byLabel = [];
         foreach ($work as $row) {
             $byLabel[explode(' / ', (string) $row[0])[0]] = $row[1];
         }
-        self::assertSame(['Tableau d\'honneur' => 'Oui', 'Félicitations' => 'Non', 'Encouragements' => 'Oui', 'Avertissement' => 'Non', 'Blâme' => 'Non'], $byLabel, 'Moyenne 14 : honneur et encouragements.');
+        self::assertSame(['Tableau d\'honneur' => 'Oui', 'Félicitations' => 'Non', 'Encouragements' => 'Oui', 'Avertissement' => 'Non', 'Blâme' => 'Non'], $byLabel, 'Moyenne 13,33 : honneur et encouragements.');
         $e3 = [];
         foreach (self::table($this->preview($council, 'e3'), 'work_table')['rows'] as $row) {
             $e3[explode(' / ', (string) $row[0])[0]] = $row[1];
         }
-        self::assertSame(['Non', 'Non'], [$e3['Avertissement'], $e3['Blâme']], 'Moyenne 10 : ni sous 10 ni sous 8.');
+        self::assertSame(['Non', 'Non'], [$e3['Avertissement'], $e3['Blâme']], 'Moyenne 9,33 : ni sous 9 ni sous 8.');
+    }
+
+    public function testMoyenneGeneraleCoherenteAvecCoefficientsMixtesEtCoefficientParDefaut(): void
+    {
+        // ART et MUSI n'ont pas de coefficient au référentiel : coefficient par défaut de l'école (2, paramètre « à confirmer »).
+        $this->service(SettingsWriter::class)->presetIfAbsent(self::TA, self::EA, 'primary.report_card.default_coefficient', 2, self::DIRECTOR);
+        $t1 = $this->terms[1];
+        $this->marks($t1['id'], 'e1', ['LECT' => 14.0, 'CALC' => 12.0, 'EDUC' => 16.0, 'ART' => 15.0, 'MUSI' => 9.5], 2.0);
+        $this->marks($t1['id'], 'e2', ['LECT' => 16.0, 'CALC' => 15.0, 'EDUC' => 14.0, 'ART' => 15.0, 'MUSI' => 13.0], 2.0);
+        $this->marks($t1['id'], 'e3', ['LECT' => 10.0, 'CALC' => 9.0, 'EDUC' => 12.0, 'ART' => 11.0, 'MUSI' => 10.0], 2.0);
+        $this->results->roster[$this->class] = ['e1', 'e2', 'e3'];
+        $preview = $this->preview($this->openCouncil(), 'e1');
+        $table = self::table($preview, 'subjects_detail_table');
+        $rows = $table['rows'];
+        $total = array_pop($rows);
+        $labels = array_column($table['columns'], 'label');
+        [$moy, $coef, $tot] = [(int) array_search('MOY', $labels, true), (int) array_search('COEF', $labels, true), (int) array_search('TOTAL', $labels, true)];
+        self::assertSame([1, 2, 3], [$moy, $coef, $tot], 'Colonnes : matière, MOY, COEF, TOTAL (aucune note de séquence).');
+        $num = static fn (string $v): float => (float) str_replace(',', '.', $v);
+
+        self::assertNotContains('—', array_column($rows, $coef), 'Chaque matière notée a un coefficient (référentiel ou défaut).');
+        self::assertSame(['2', '2'], [$rows[3][$coef], $rows[4][$coef]], 'Coefficient par défaut de l\'école pour ART et MUSI.');
+        $sumCoef = 0.0;
+        $sumTotal = 0.0;
+        foreach ($rows as $row) {
+            self::assertEqualsWithDelta($num($row[$moy]) * $num($row[$coef]), $num($row[$tot]), 0.001, 'TOTAL = MOY × COEF pour ' . $row[0]);
+            $sumCoef += $num($row[$coef]);
+            $sumTotal += $num($row[$tot]);
+        }
+        // Ligne de total : [libellé, MOY, COEF, TOTAL, RANG].
+        self::assertSame(['10', '129,00'], [$total['cells'][2], $total['cells'][3]], '2 + 3 + 1 + 2 + 2 ; 28 + 36 + 16 + 30 + 19.');
+        self::assertEqualsWithDelta($sumTotal, $num($total['cells'][3]), 0.001, 'TOTAL = Σ(MOY × COEF).');
+        self::assertEqualsWithDelta($sumCoef, $num($total['cells'][2]), 0.001);
+        self::assertSame('12,90', $total['cells'][1], 'Moyenne générale = TOTAL ÷ ΣCOEF = 129 / 10.');
+        self::assertSame(number_format($sumTotal / $sumCoef, 2, ',', ''), $total['cells'][1]);
+        self::assertSame('Moyenne générale : 12,90 / 20,00', $preview['variables']['average_line'], 'Bloc « Résultat de l\'élève » : même valeur.');
+        self::assertEquals(12.9, $preview['snapshot']['numeric']['average']);
+        self::assertSame('2', $total['cells'][4], 'Rang calculé sur la même moyenne (e2 : 147 / 10 = 14,70 devant).');
+        self::assertSame('Rang : 2e sur 3', $preview['variables']['rank_line']);
+        $profile = $preview['snapshot']['detail']['class_profile'];
+        self::assertEquals(['max' => 14.7, 'min' => 10.1], ['max' => $profile['max'], 'min' => $profile['min']], 'Profil de la classe sur les mêmes moyennes pondérées.');
     }
 
     public function testDateDeNaissanceEtMatriculeSeulementQuandIlsExistent(): void
@@ -212,15 +263,37 @@ final class BulletinDetailTest extends PrimaryTestCase
             self::assertStringContainsString($needle, $content, $needle);
         }
         self::assertStringNotContainsString('{{', $content);
+    }
 
-        // Rendu PDF du modèle en vigueur avec dix matières : une seule page A4.
+    /**
+     * Exemple complet (dix matières, trois élèves fictifs) : les notes existent AVANT l'ouverture du conseil, donc la moyenne générale du
+     * tableau, celle du bloc résultat, le rang et le profil de la classe viennent du même calcul. Rendu sur une seule page A4 ;
+     * DOC_BUL_EXAMPLES=1 régénère specs/006-audit-primaire-maternelle/exemples-documents/pri_report_card-fr-complet.pdf.
+     */
+    public function testExempleCompletCoherentSurUnePageA4(): void
+    {
         $t1 = $this->terms[1];
         $ten = ['LECT' => 14.0, 'CALC' => 12.0, 'EDUC' => 16.0, 'DESS' => 15.0, 'MUSI' => 13.0, 'SPOR' => 17.0, 'HIST' => 11.0, 'GEOG' => 12.5, 'SCIE' => 14.5, 'INFO' => 16.5];
-        foreach ([$t1['sequences'][0]['id'], $t1['sequences'][1]['id'], $t1['id']] as $period) {
-            $this->marks($period, 'e1', $ten);
+        $shift = static fn (float $delta, float $seq): array => array_map(static fn (float $v): float => max(0.0, min(20.0, $v + $delta + $seq)), $ten);
+        foreach (['e1' => 0.0, 'e2' => 1.0, 'e3' => -2.0] as $person => $delta) {
+            $this->marks($t1['sequences'][0]['id'], $person, $shift($delta, -0.5));
+            $this->marks($t1['sequences'][1]['id'], $person, $shift($delta, 0.5));
+            $this->marks($t1['id'], $person, $shift($delta, 0.0));
         }
+        $this->results->roster[$this->class] = ['e1', 'e2', 'e3'];
         $this->service(SettingsWriter::class)->presetIfAbsent(self::TA, self::EA, 'primary.report_card.distinctions', ['honour_roll_min' => 14, 'blame_max' => 5], self::DIRECTOR);
-        $variables = array_map(static fn (mixed $v): string => (string) $v, $this->preview($council)['variables']);
+        $preview = $this->preview($this->openCouncil());
+        $table = self::table($preview, 'subjects_detail_table');
+        $total = end($table['rows']);
+        // 7 matières au coefficient par défaut 1 + LECT 2, CALC 3, EDUC 1 : ΣCOEF 13 ; TOTAL 28 + 36 + 16 + 99,5 = 179,5 ; 179,5 / 13 = 13,81.
+        self::assertSame(['13,81', '13', '179,50', '2'], array_slice($total['cells'], 1, 4), 'MOY = TOTAL ÷ ΣCOEF ; e2 (192,5 / 13 = 14,81) est première.');
+        self::assertSame('Moyenne générale : 13,81 / 20,00', $preview['variables']['average_line']);
+        self::assertSame('Rang : 2e sur 3', $preview['variables']['rank_line']);
+        $profile = $preview['snapshot']['detail']['class_profile'];
+        self::assertEquals([14.81, 11.81], [$profile['max'], $profile['min']], 'Max et min encadrent la moyenne de l\'élève.');
+
+        $pdo = $this->kernel->container()->get(\Scholaris\Core\Database\ConnectionFactory::class)->pdo();
+        $variables = array_map(static fn (mixed $v): string => (string) $v, $preview['variables']);
         $type = $pdo->query("SELECT variables FROM document_types WHERE tenant_id = '*' AND code = 'pri_report_card'")->fetchColumn();
         $html = (string) $pdo->query("SELECT html FROM document_templates WHERE tenant_id = '*' AND type_code = 'pri_report_card' AND locale = 'fr' ORDER BY version DESC LIMIT 1")->fetchColumn();
         TemplateGuard::assertValid($html, json_decode((string) $type, true));

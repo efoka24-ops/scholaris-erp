@@ -240,7 +240,7 @@ final class BulletinLayoutsTest extends TestCase
             'kind' => $annual ? PrimaryReportCards::ANNUAL : 'term', 'locale' => $locale, 'school' => 'École privée Les Flamboyants (fictive)',
             'class_name' => 'CM1 A', 'level_name' => 'CM1', 'academic_year' => '2026-2027', 'period_label' => $en ? 'Term 1' : 'Trimestre 1',
             'learner' => ['person_id' => 'p-fictif', 'name' => self::HOLDER], 'repeater' => false,
-            'numeric' => ['scale' => 20, 'average' => 14.18, 'rank' => 3, 'class_size' => 38,
+            'numeric' => ['scale' => 20, 'average' => 14.23, 'rank' => 3, 'class_size' => 38,
                 'subjects' => array_map(static fn (array $s): array => ['name' => $en ? $s[1] : $s[0], 'average' => $s[2]], $subjects)],
             'show_rank' => true,
             'competencies' => array_map(static function (array $d) use ($en, $levels, &$i): array {
@@ -254,8 +254,8 @@ final class BulletinLayoutsTest extends TestCase
             'remediation' => ['flag' => true, 'note' => $en ? 'Reading support on Wednesdays' : 'Soutien en lecture le mercredi', 'sessions' => 4, 'minutes' => 180, 'open_plans' => ['Lecture']],
             'decision' => ['code' => 'admitted', 'label' => $en ? 'Promoted' : 'Admis(e) en classe supérieure'], 'is_final_term' => $annual,
             'letterhead' => self::letterhead($locale),
-            'annual' => ['average' => 14.02, 'rank' => 4, 'absences_half_days' => 7, 'terms' => [
-                ['period_id' => 't1', 'label' => $en ? 'Term 1' : 'Trimestre 1', 'average' => 14.18], ['period_id' => 't2', 'label' => $en ? 'Term 2' : 'Trimestre 2', 'average' => 13.6],
+            'annual' => ['average' => 14.04, 'rank' => 4, 'absences_half_days' => 7, 'terms' => [
+                ['period_id' => 't1', 'label' => $en ? 'Term 1' : 'Trimestre 1', 'average' => 14.23], ['period_id' => 't2', 'label' => $en ? 'Term 2' : 'Trimestre 2', 'average' => 13.6],
                 ['period_id' => 't3', 'label' => $en ? 'Term 3' : 'Trimestre 3', 'average' => 14.29]]],
         ];
     }

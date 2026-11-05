@@ -18,7 +18,7 @@ use Scholaris\Modules\Socle\People\Contracts\PersonDemographics;
 /**
  * Détail chiffré du bulletin complet (modèle B, DOC-BUL / C-104), uniquement à partir de données qui existent :
  *  - notes par matière de chaque séquence du trimestre (SEQ1, SEQ2…), moyenne du trimestre (MOY), coefficient de la matière au
- *    catalogue (COEF), total = MOY × COEF et rang dans la classe pour la matière, tout cela par le moteur de notes du socle ;
+ *    catalogue, sinon `primary.report_card.default_coefficient` (COEF), total = MOY × COEF et rang dans la classe pour la matière, tout cela par le moteur de notes du socle ;
  *  - totaux par domaine (somme des totaux, des coefficients, moyenne du domaine) d'après les domaines des matières du niveau ;
  *  - profil de la classe : élèves à la moyenne de passage des règles, moyenne de la classe, pourcentage de réussite, moyenne max et min ;
  *  - bloc Travail : tableau d'honneur, félicitations, encouragements, avertissement, blâme, selon les seuils PARAMÉTRÉS de l'école
@@ -104,14 +104,17 @@ final class BulletinDetails
         $ranks = $this->subjectRanks($term);
         $domainOf = $this->domainOfSubjects($tenantId, $establishmentId, $council);
         $subjects = [];
+        $defaultCoefficient = $this->settings->float($tenantId, $establishmentId, 'primary.report_card.default_coefficient');
+        $defaultCoefficient = $defaultCoefficient > 0.0 ? $defaultCoefficient : 1.0;
         foreach ($mine['subjects'] as $subject) {
             $code = $subject['code'];
             $entry = $code === null ? null : $this->catalog->find($tenantId, $establishmentId, ReferentialService::SUBJECT_KEY_PREFIX . $code);
-            $coefficient = $entry?->coefficient;
+            // Coefficient du référentiel (celui que pondère le moteur du socle) ; à défaut, coefficient par défaut de l'école (C-111).
+            $coefficient = $entry !== null ? $entry->coefficient : $defaultCoefficient;
             $average = $subject['average'];
             $subjects[] = [
                 'subject_id' => $subject['subject_id'], 'code' => $code, 'name' => $subject['name'] ?? $code ?? '', 'domain_id' => $domainOf[$subject['subject_id']] ?? null,
-                'coefficient' => $coefficient, 'average' => $average, 'total' => $average !== null && $coefficient !== null ? round($average * $coefficient, 2) : null,
+                'coefficient' => $coefficient, 'average' => $average, 'total' => $average !== null && $coefficient > 0.0 ? round($average * $coefficient, 2) : null,
                 'rank' => $ranks[$subject['subject_id']][$personId] ?? null,
                 'sequences' => array_map(static fn (array $s): ?float => $sequenceRows[$s['period_id']][$subject['subject_id']] ?? null, $detail['sequences']),
             ];

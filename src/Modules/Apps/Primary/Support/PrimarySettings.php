@@ -19,6 +19,7 @@ final class PrimarySettings
         'primary.trimesters' => ['default' => 3, 'source' => 'Q4 ; arrêté du 14 août 2026, art. 10 (trois trimestres)', 'label' => 'Nombre de trimestres de l\'année'],
         'primary.report_card.show_rank' => ['default' => true, 'source' => 'Q8', 'label' => 'Rang affiché au bulletin'],
         'primary.report_card.numeric_averages' => ['default' => true, 'source' => 'Q3, Q6 (moyennes chiffrées optionnelles)', 'label' => 'Moyennes chiffrées au bulletin (si des notes existent)'],
+        'primary.report_card.default_coefficient' => ['default' => 1.0, 'source' => 'C-111 : coefficient d\'une matière absente du référentiel de l\'école (même pondération que le moteur de notes du socle), à confirmer', 'label' => 'Coefficient par défaut des matières sans coefficient de catalogue'],
         'primary.report_card.annual' => ['default' => true, 'source' => 'Q2 (récapitulatif annuel au dernier trimestre)', 'label' => 'Récapitulatif annuel émis au dernier trimestre'],
         'primary.report_card.block_on_debt' => ['default' => false, 'source' => 'Q17', 'label' => 'Bulletin bloqué en cas d\'impayé'],
         'primary.report_card.locale' => ['default' => null, 'source' => 'Q1 (langue de la section du niveau si vide)', 'label' => 'Langue imposée des bulletins (fr, en ou vide)'],
@@ -92,6 +93,17 @@ final class PrimarySettings
         $default = self::DEFAULTS[$key]['default'] ?? 0;
 
         return is_int($default) ? $default : 0;
+    }
+
+    public function float(string $tenantId, string $establishmentId, string $key): float
+    {
+        $value = $this->raw($tenantId, $establishmentId, $key);
+        if (is_int($value) || is_float($value)) {
+            return (float) $value;
+        }
+        $default = self::DEFAULTS[$key]['default'] ?? 0.0;
+
+        return is_int($default) || is_float($default) ? (float) $default : 0.0;
     }
 
     public function string(string $tenantId, string $establishmentId, string $key): ?string
