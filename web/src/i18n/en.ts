@@ -24,8 +24,10 @@ import { primaryEn } from './primary-en';
 import { secondaryEn } from './secondary-en';
 import { secondaryFeesEn } from './secondary-fees-en';
 import { secondarySetupEn } from './secondary-setup-en';
+import { secondaryGradesEn } from './secondary-grades-en';
 import { importsEn } from './imports-en';
 import { workflowsEn } from './workflows-en';
+import { messagingEn } from './messaging-en';
 
 export const en: Record<keyof typeof fr, string> = {
   ...adminEn,
@@ -51,8 +53,10 @@ export const en: Record<keyof typeof fr, string> = {
   ...secondaryEn,
   ...secondaryFeesEn,
   ...secondarySetupEn,
+  ...secondaryGradesEn,
   ...importsEn,
   ...workflowsEn,
+  ...messagingEn,
   'nav.reportcards': "Report cards",
   'reportcards.eyebrow': "Results",
   'reportcards.title': "Report cards",

@@ -14,6 +14,7 @@ export const S = {
   internships: ['secondary.internships.manage'],
   payroll: ['secondary.finance.read', 'secondary.billing.manage'],
   services: ['secondary.services.manage', 'secondary.library.manage', 'secondary.infirmary.manage'],
+  grades: ['secondary.grades.read', 'secondary.grades.enter', 'secondary.grades.validate', 'secondary.grades.lock'],
   self: ['secondary.self.read'],
   family: ['secondary.family.read'],
   familyPay: ['secondary.family.pay'],

@@ -13,6 +13,7 @@ const screens: Screen[] = [
   ['documents', 'sec-documents', () => import('./documents/DocumentsView.vue'), S.documentsRead, 'sec.docs.title'],
   ['frais', 'sec-fees', () => import('./fees/FeesView.vue'), S.feesRead, 'secf.title'],
   ['carte-scolaire', 'sec-cartescolaire', () => import('./cartescolaire/CarteScolaireView.vue'), S.carteScolaire, 'seccs.title'],
+  ['notes', 'sec-grades', () => import('./grades/GradesView.vue'), S.grades, 'secg.title'],
   ['mon-espace', 'sec-student', () => import('./portals/StudentPortalView.vue'), S.self, 'sec.portal.studentTitle'],
   ['famille', 'sec-family', () => import('./portals/FamilyPortalView.vue'), S.family, 'sec.portal.familyTitle'],
 ];

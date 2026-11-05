@@ -23,8 +23,10 @@ import { primaryFr } from './primary-fr';
 import { secondaryFr } from './secondary-fr';
 import { secondaryFeesFr } from './secondary-fees-fr';
 import { secondarySetupFr } from './secondary-setup-fr';
+import { secondaryGradesFr } from './secondary-grades-fr';
 import { importsFr } from './imports-fr';
 import { workflowsFr } from './workflows-fr';
+import { messagingFr } from './messaging-fr';
 
 export const fr = {
   ...adminFr,
@@ -50,8 +52,10 @@ export const fr = {
   ...secondaryFr,
   ...secondaryFeesFr,
   ...secondarySetupFr,
+  ...secondaryGradesFr,
   ...importsFr,
   ...workflowsFr,
+  ...messagingFr,
   'nav.reportcards': "Bulletins",
   'reportcards.eyebrow': "Résultats",
   'reportcards.title': "Bulletins de notes",
