@@ -11,6 +11,11 @@ final class Role
     public const GROUP_DIRECTION = 'direction_groupe';
     /** Rôle global de la plateforme : rattaché au client technique `platform`, jamais attribuable par une route ni par un administrateur de client. */
     public const PLATFORM_ADMIN = 'platform_admin';
+    /** Rôles de la plateforme (C-112) : mêmes règles que platform_admin (client `platform`, jamais attribuables par une route d'un client). */
+    public const PLATFORM_SUPPORT = 'platform_support';
+    public const PLATFORM_FINANCE = 'platform_finance';
+    public const PLATFORM_AUDITOR = 'platform_auditor';
+    public const PLATFORM_ROLES = [self::PLATFORM_ADMIN, self::PLATFORM_SUPPORT, self::PLATFORM_FINANCE, self::PLATFORM_AUDITOR];
     public const PLATFORM_TENANT = 'platform';
 
     public function __construct(

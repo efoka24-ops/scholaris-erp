@@ -33,7 +33,7 @@ final class AccessCodeAdminController
     /** GET /platform/clients/{tenant}/users */
     public function users(ServerRequestInterface $request): ResponseInterface
     {
-        $this->guard->platformAdmin($request, 'platform.clients.read');
+        $this->guard->platformAny($request, ['platform.users.read', 'platform.clients.manage']);
         $client = $this->clients->show(PlatformGuard::param($request, 'tenant'));
 
         return $this->responder->json(['data' => $this->codes->users((string) $client['id'])]);
@@ -70,7 +70,7 @@ final class AccessCodeAdminController
     private function scope(ServerRequestInterface $request): array
     {
         $platform = $request->getAttribute('tenant') === null;
-        $principal = $this->guard->platformAdmin($request, $platform ? 'platform.admins.manage' : 'platform.clients.manage', true);
+        $principal = $this->guard->platformAny($request, $platform ? ['platform.admins.manage'] : ['platform.users.access_code', 'platform.clients.manage'], true);
         if ($platform) {
             return [PlatformAudit::PLATFORM_TENANT, self::PLATFORM_NAME, $principal];
         }

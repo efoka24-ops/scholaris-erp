@@ -28,8 +28,11 @@ final class DashboardService
     ) {
     }
 
-    /** @return array<string, mixed> */
-    public function summary(): array
+    /**
+     * @param bool $finance indicateurs financiers (revenu, encaissements, impayés) : rôles finance, audit et administrateur seulement
+     * @return array<string, mixed>
+     */
+    public function summary(bool $finance = true): array
     {
         $today = $this->clock->today();
         $horizon = Calendar::addDays($today, self::TRIAL_HORIZON_DAYS);
@@ -62,6 +65,8 @@ final class DashboardService
             $paying++;
         }
 
+        $restricted = ['available' => false, 'reason' => 'Indicateur financier réservé aux rôles finance, audit et administrateur.'];
+
         return [
             'as_of' => $this->clock->iso(),
             'clients' => ['available' => true, 'total' => count($this->clients->tenants())],
@@ -73,14 +78,14 @@ final class DashboardService
                 'total' => count($trialsEnding),
                 'items' => array_map(fn (array $row): array => $this->entitlements->present($row) + ['tenant_name' => $this->entitlements->tenantName((string) $row['tenant_id'])], array_slice($trialsEnding, 0, 50)),
             ],
-            'unpaid' => [
+            'unpaid' => $finance ? [
                 'available' => true,
                 'total' => count($unpaid),
                 'items' => array_map(fn (array $row): array => $this->entitlements->present($row) + ['tenant_name' => $this->entitlements->tenantName((string) $row['tenant_id'])], array_slice($unpaid, 0, 50)),
-            ],
+            ] : $restricted,
             // Revenu mensuel récurrent : somme des tarifs effectifs des abonnements payés et en cours (hors essais).
-            'mrr_xaf' => ['available' => true, 'value' => $mrr, 'paying_subscriptions' => $paying],
-            'collected_last_30_days_xaf' => ['available' => true, 'value' => $this->payments->collectedSince(Calendar::addDays($today, -30))],
+            'mrr_xaf' => $finance ? ['available' => true, 'value' => $mrr, 'paying_subscriptions' => $paying] : $restricted,
+            'collected_last_30_days_xaf' => $finance ? ['available' => true, 'value' => $this->payments->collectedSince(Calendar::addDays($today, -30))] : $restricted,
             'health' => ['available' => false, 'reason' => 'Aucune sonde de santé n\'alimente encore le tableau de bord de la plateforme.'],
         ];
     }

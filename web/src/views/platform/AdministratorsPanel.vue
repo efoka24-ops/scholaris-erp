@@ -1,5 +1,8 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
+import { backofficeActions } from '@/api/platformBackoffice';
+import { PLATFORM_ROLES, type PlatformRole } from '@/lib/permissions';
+import { platformCan } from './platformAccess';
 import ErrorNotice from '@/components/ErrorNotice.vue';
 import { accessChannels, actions, fetchAdministrators, normalizePhone, type Administrator } from '@/api/platform';
 import { useI18n, type MessageKey } from '@/i18n';
@@ -17,7 +20,22 @@ const loadError = ref<unknown>(null);
 const loaded = ref(false);
 const done = ref<string | null>(null);
 const inviting = ref(false);
-const form = reactive({ first_name: '', last_name: '', email: '', phone: '' });
+const form = reactive({ first_name: '', last_name: '', email: '', phone: '', role: 'platform_admin' as PlatformRole });
+/** Écriture permise : rôle administrateur (gestion des membres) ; les autres rôles voient la liste en lecture seule. */
+const canManage = computed(() => !props.readonly && platformCan(props.tenant ? 'platform.clients.manage' : 'platform.admins.manage'));
+const roleKey = (r: string): MessageKey => `pa.role.${r}` as MessageKey;
+
+async function changeRole(admin: Administrator, role: PlatformRole): Promise<void> {
+  done.value = null;
+  if (role === admin.role) return;
+  const res = await action.run<Administrator>(backofficeActions.setRole(admin.id, role), `${t('pa.role.change')} · ${admin.first_name} ${admin.last_name}`);
+  if (!res) {
+    await load();
+    return;
+  }
+  done.value = t('pa.done');
+  await load();
+}
 const errors = ref<Record<string, string>>({});
 const action = useSensitiveAction();
 /** Compte dont le panneau « Code d'accès » est ouvert. */
@@ -39,7 +57,7 @@ async function load(): Promise<void> {
 }
 
 function kinds(admin: Administrator): Kind[] {
-  if (props.readonly) return [];
+  if (!canManage.value) return [];
   if (admin.status === 'locked') return ['unblock', 'reset-access'];
   if (admin.status === 'pending') return ['resend-invitation', 'block'];
   return ['block', 'reset-access'];
@@ -69,13 +87,19 @@ async function invite(): Promise<void> {
   errors.value = e;
   if (Object.keys(e).length > 0) return;
   const res = await action.run<Administrator>(
-    actions.inviteAdministrator(props.tenant, { first_name: form.first_name.trim(), last_name: form.last_name.trim(), ...(email ? { email } : {}), ...(phone ? { phone } : {}) }),
+    actions.inviteAdministrator(props.tenant, {
+      first_name: form.first_name.trim(),
+      last_name: form.last_name.trim(),
+      ...(email ? { email } : {}),
+      ...(phone ? { phone } : {}),
+      ...(props.tenant ? {} : { role: form.role }),
+    }),
     t('pa.adm.invite'),
   );
   if (!res) return;
   done.value = res.invitation === 'sent' ? t('pa.adm.invited') : t('pa.adm.invitedNoMail');
   inviting.value = false;
-  Object.assign(form, { first_name: '', last_name: '', email: '', phone: '' });
+  Object.assign(form, { first_name: '', last_name: '', email: '', phone: '', role: 'platform_admin' });
   await load();
 }
 
@@ -86,7 +110,7 @@ onMounted(load);
   <section class="block" aria-labelledby="adm-title">
     <div class="row row--between">
       <h2 id="adm-title">{{ tenant ? t('pa.adm.clientTitle') : t('pa.adm.platformTitle') }}</h2>
-      <button v-if="!readonly" type="button" class="btn" :aria-expanded="inviting" aria-controls="adm-invite" @click="inviting = !inviting">{{ t('pa.adm.invite') }}</button>
+      <button v-if="canManage" type="button" class="btn" :aria-expanded="inviting" aria-controls="adm-invite" @click="inviting = !inviting">{{ t('pa.adm.invite') }}</button>
     </div>
     <p class="muted">{{ tenant ? t('pa.adm.clientHint') : t('pa.adm.platformHint') }}</p>
     <p v-if="done" class="notice notice--success" role="status">{{ done }}</p>
@@ -117,6 +141,13 @@ onMounted(load);
           <input id="adm-phone" v-model="form.phone" type="tel" maxlength="25" autocomplete="off" :aria-invalid="!!errors.phone" />
           <span v-if="errors.phone" class="error-line">{{ errors.phone }}</span>
         </div>
+        <div v-if="!tenant" class="field">
+          <label for="adm-role">{{ t('pa.role.label') }}</label>
+          <select id="adm-role" v-model="form.role" aria-describedby="adm-role-hint">
+            <option v-for="r in PLATFORM_ROLES" :key="r" :value="r">{{ t(roleKey(r)) }}</option>
+          </select>
+          <span id="adm-role-hint" class="hint">{{ t(roleKey(`${form.role}.hint`)) }}</span>
+        </div>
       </div>
       <button type="submit" class="btn btn--primary" :disabled="action.busy.value">{{ action.busy.value ? t('common.loading') : t('pa.adm.sendInvite') }}</button>
     </form>
@@ -138,6 +169,7 @@ onMounted(load);
           <tr>
             <th scope="col">{{ t('pa.name') }}</th>
             <th scope="col">{{ t('pa.login') }}</th>
+            <th v-if="!tenant" scope="col">{{ t('pa.role.label') }}</th>
             <th scope="col">{{ t('plat.col.status') }}</th>
             <th scope="col">{{ t('pa.adm.twoFactor') }}</th>
             <th scope="col">{{ t('pa.adm.lastLogin') }}</th>
@@ -148,12 +180,25 @@ onMounted(load);
           <tr v-for="a in items" :key="a.id">
             <th scope="row">{{ a.first_name }} {{ a.last_name }}</th>
             <td>{{ a.email ?? a.phone }}</td>
+            <td v-if="!tenant">
+              <select
+                v-if="canManage && a.role"
+                :value="a.role"
+                :aria-label="`${t('pa.role.change')} · ${a.first_name} ${a.last_name}`"
+                :disabled="action.busy.value"
+                data-test="role-select"
+                @change="changeRole(a, ($event.target as HTMLSelectElement).value as PlatformRole)"
+              >
+                <option v-for="r in PLATFORM_ROLES" :key="r" :value="r">{{ t(roleKey(r)) }}</option>
+              </select>
+              <span v-else>{{ a.role ? t(roleKey(a.role)) : '—' }}</span>
+            </td>
             <td><span class="tag" :class="a.status === 'active' ? 'tag--success' : a.status === 'locked' ? 'tag--warning' : ''">{{ t(statusKey(a.status)) }}</span></td>
             <td>{{ a.two_factor_enabled ? t('pa.yes') : t('pa.no') }}</td>
             <td>{{ a.last_login_at ? formatDateTime(a.last_login_at, locale) : '—' }}</td>
             <td>
               <div class="row actions">
-                <button v-if="!readonly && a.status !== 'locked'" type="button" class="btn btn--quiet" data-test="access-code-action" @click="codeFor = a">{{ t('pa.code.action') }}</button>
+                <button v-if="canManage && a.status !== 'locked'" type="button" class="btn btn--quiet" data-test="access-code-action" @click="codeFor = a">{{ t('pa.code.action') }}</button>
                 <button v-for="k in kinds(a)" :key="k" type="button" class="btn btn--quiet" :disabled="action.busy.value" @click="act(a, k)">{{ kindLabel(k) }}</button>
               </div>
             </td>

@@ -10,6 +10,7 @@ use Scholaris\Core\Security\PermissionChecker;
 use Scholaris\Core\Security\Principal;
 use Scholaris\Modules\Socle\Identity\Contracts\RecentSecondFactor;
 use Scholaris\Modules\Socle\Platform\Application\PlatformAudit;
+use Scholaris\Modules\Socle\Platform\Domain\PlatformPermissions;
 
 /**
  * Séparation plateforme / client :
@@ -40,13 +41,49 @@ final class PlatformGuard
 
     public function platformAdmin(ServerRequestInterface $request, string $permission, bool $sensitive = false): Principal
     {
+        return $this->platformAny($request, [$permission], $sensitive);
+    }
+
+    /**
+     * Membre de la plateforme détenant AU MOINS UNE des permissions (rôles fins C-112 : support, finance, audit ; une
+     * permission de lecture dédiée accompagne une ancienne permission de gestion, qui continue d'ouvrir la lecture).
+     *
+     * @param non-empty-list<string> $permissions
+     */
+    public function platformAny(ServerRequestInterface $request, array $permissions, bool $sensitive = false): Principal
+    {
         $principal = $this->principal($request);
-        if ($principal->tenantId !== PlatformAudit::PLATFORM_TENANT
-            || str_starts_with($principal->userId, 'svc:')
-            || !$this->permissions->can($principal, 'platform.access')
-            || !$this->permissions->can($principal, $permission)) {
+        $granted = false;
+        foreach ($permissions as $permission) {
+            $granted = $granted || $this->permissions->can($principal, $permission);
+        }
+        if (!$this->isMember($principal) || !$granted) {
             throw HttpException::forbidden('Réservé à l\'administrateur de plateforme.');
         }
+        $this->assertSecondFactor($principal, $sensitive);
+
+        return $principal;
+    }
+
+    /** Vrai si le membre de la plateforme détient la permission (champs facultatifs d'une réponse). */
+    public function can(Principal $principal, string $permission): bool
+    {
+        return $this->isMember($principal) && $this->permissions->can($principal, $permission);
+    }
+
+    /**
+     * Permissions `platform.*` détenues (GET /platform/me : menus et écrans du front ; le serveur vérifie de toute façon).
+     *
+     * @return list<string>
+     */
+    public function permissionsOf(Principal $principal): array
+    {
+        return array_values(array_filter(PlatformPermissions::ALL, fn (string $p): bool => $this->can($principal, $p)));
+    }
+
+    /** Double authentification validée depuis moins de 15 minutes (actions sensibles). */
+    public function assertSecondFactor(Principal $principal, bool $sensitive = true): void
+    {
         if ($sensitive && !$this->secondFactor->hasRecent($principal->tenantId, $principal->userId, self::SECOND_FACTOR_MAX_AGE)) {
             throw new HttpException(
                 403,
@@ -55,8 +92,13 @@ final class PlatformGuard
                 'https://api.scholaris.cm/errors/two-factor-recent-required',
             );
         }
+    }
 
-        return $principal;
+    private function isMember(Principal $principal): bool
+    {
+        return $principal->tenantId === PlatformAudit::PLATFORM_TENANT
+            && !str_starts_with($principal->userId, 'svc:')
+            && $this->permissions->can($principal, 'platform.access');
     }
 
     /** Utilisateur d'un client autorisé à ouvrir et payer des applications pour l'établissement actif. */

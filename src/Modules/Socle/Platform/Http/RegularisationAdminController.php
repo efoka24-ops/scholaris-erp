@@ -67,7 +67,7 @@ final class RegularisationAdminController
     /** POST /platform/clients/{tenant}/regularisation/lock { reason, level?, app_key? } */
     public function lock(ServerRequestInterface $request): ResponseInterface
     {
-        $principal = $this->guard->platformAdmin($request, 'platform.applications.manage', true);
+        $principal = $this->guard->platformAny($request, ['platform.regularisation.manage', 'platform.applications.manage'], true);
         $tenantId = $this->tenantId($request);
         $input = Input::of($request, ['reason', 'level', 'app_key']);
         $reason = $input->longText('reason', 500, true);
@@ -81,7 +81,7 @@ final class RegularisationAdminController
     /** POST /platform/clients/{tenant}/regularisation/unlock { reason, until?, app_key? } */
     public function unlock(ServerRequestInterface $request): ResponseInterface
     {
-        $principal = $this->guard->platformAdmin($request, 'platform.applications.manage', true);
+        $principal = $this->guard->platformAny($request, ['platform.regularisation.manage', 'platform.applications.manage'], true);
         $tenantId = $this->tenantId($request);
         $input = Input::of($request, ['reason', 'until', 'app_key']);
         $reason = $input->longText('reason', 500, true);
@@ -95,7 +95,7 @@ final class RegularisationAdminController
     /** POST /platform/clients/{tenant}/regularisation/delay { until, reason, app_key? } : promesse de paiement. */
     public function delay(ServerRequestInterface $request): ResponseInterface
     {
-        $principal = $this->guard->platformAdmin($request, 'platform.applications.manage', true);
+        $principal = $this->guard->platformAny($request, ['platform.regularisation.manage', 'platform.applications.manage'], true);
         $tenantId = $this->tenantId($request);
         $input = Input::of($request, ['until', 'reason', 'app_key']);
         $until = $input->date('until');

@@ -188,3 +188,41 @@ export function permissionsForRoles(roles: string[]): Set<string> {
   for (const role of roles) for (const p of ROLE_PERMISSIONS[role] ?? []) set.add(p);
   return set;
 }
+
+// Rôles de la plateforme (client technique `platform`, migration 202611060101_platform_roles.sql, C-112). Miroir de
+// role_permissions : GET /platform/me rend les permissions effectives, qui priment ; ce miroir sert de repli.
+const PLATFORM_SUPPORT = [
+  'platform.access', 'platform.dashboard.read', 'platform.health.read', 'platform.clients.read', 'platform.catalog.read',
+  'platform.requests.read', 'platform.users.read', 'platform.users.logout', 'platform.users.access_code', 'platform.audit.read',
+  'platform.messages.read', 'platform.messages.retry', 'platform.messages.send',
+];
+const PLATFORM_FINANCE = [
+  'platform.access', 'platform.dashboard.read', 'platform.kpi.finance', 'platform.clients.read', 'platform.catalog.read',
+  'platform.payments.read', 'platform.payments.manage', 'platform.pricing.manage', 'platform.regularisation.manage',
+];
+const PLATFORM_AUDITOR = [
+  'platform.access', 'platform.dashboard.read', 'platform.kpi.finance', 'platform.health.read', 'platform.clients.read',
+  'platform.catalog.read', 'platform.requests.read', 'platform.payments.read', 'platform.settings.read', 'platform.users.read',
+  'platform.admins.read', 'platform.audit.read', 'platform.audit.export', 'platform.messages.read',
+];
+const PLATFORM_ADMIN = [
+  ...new Set([
+    ...PLATFORM_SUPPORT, ...PLATFORM_FINANCE, ...PLATFORM_AUDITOR,
+    'platform.clients.manage', 'platform.catalog.manage', 'platform.requests.decide', 'platform.applications.manage',
+    'platform.admins.manage', 'platform.messages.broadcast', 'platform.settings.manage',
+  ]),
+];
+
+export const PLATFORM_ROLES = ['platform_admin', 'platform_support', 'platform_finance', 'platform_auditor'] as const;
+export type PlatformRole = (typeof PLATFORM_ROLES)[number];
+
+export const PLATFORM_ROLE_PERMISSIONS: Record<PlatformRole, string[]> = {
+  platform_admin: PLATFORM_ADMIN,
+  platform_support: PLATFORM_SUPPORT,
+  platform_finance: PLATFORM_FINANCE,
+  platform_auditor: PLATFORM_AUDITOR,
+};
+
+export function platformPermissionsFor(role: string | null | undefined): Set<string> {
+  return new Set(role && role in PLATFORM_ROLE_PERMISSIONS ? PLATFORM_ROLE_PERMISSIONS[role as PlatformRole] : []);
+}

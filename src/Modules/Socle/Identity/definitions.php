@@ -56,6 +56,8 @@ return [
     RoleDirectory::class => autowire(PdoRoleDirectory::class),
     RecentSecondFactor::class => autowire(PdoRecentSecondFactor::class),
     PlatformAdministrators::class => autowire(PlatformAdministratorService::class),
+    // C-112 : membres de la plateforme et attribution de leur rôle (admin, support, finance, audit).
+    \Scholaris\Modules\Socle\Identity\Contracts\PlatformStaff::class => autowire(\Scholaris\Modules\Socle\Identity\Application\PlatformStaffService::class),
     ClientAdministrators::class => autowire(ClientAdministratorService::class),
     \Scholaris\Modules\Socle\Identity\Contracts\AccountAdministration::class => autowire(\Scholaris\Modules\Socle\Identity\Application\AccountAdministrationService::class),
     \Scholaris\Modules\Socle\Identity\Contracts\RoleAssignmentGateway::class => autowire(\Scholaris\Modules\Socle\Identity\Application\RoleAssignmentGatewayService::class),

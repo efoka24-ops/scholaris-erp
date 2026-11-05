@@ -42,15 +42,16 @@ final class PlatformAdminController
     /** GET /platform/dashboard */
     public function dashboard(ServerRequestInterface $request): ResponseInterface
     {
-        $this->guard->platformAdmin($request, 'platform.dashboard.read');
+        $principal = $this->guard->platformAdmin($request, 'platform.dashboard.read');
+        $finance = $this->guard->can($principal, 'platform.kpi.finance') || $this->guard->can($principal, 'platform.payments.read');
 
-        return $this->responder->json(['data' => $this->dashboard->summary()]);
+        return $this->responder->json(['data' => $this->dashboard->summary($finance)]);
     }
 
     /** GET /platform/settings : réglages de la plateforme (valeur, défaut, bornes). */
     public function settings(ServerRequestInterface $request): ResponseInterface
     {
-        $this->guard->platformAdmin($request, 'platform.dashboard.read');
+        $this->guard->platformAny($request, ['platform.settings.read', 'platform.settings.manage']);
 
         return $this->responder->json(['data' => $this->settings->all()]);
     }
@@ -115,7 +116,7 @@ final class PlatformAdminController
     /** GET /platform/applications */
     public function catalog(ServerRequestInterface $request): ResponseInterface
     {
-        $this->guard->platformAdmin($request, 'platform.catalog.manage');
+        $this->guard->platformAny($request, ['platform.catalog.read', 'platform.catalog.manage']);
 
         return $this->responder->json(['data' => $this->catalog->all()]);
     }

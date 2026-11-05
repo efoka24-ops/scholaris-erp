@@ -1,0 +1,47 @@
+# Contrat OpenAPI 3.1 du back-office de la plateforme (C-112) : rôles fins, santé, indicateurs, journal d'activité,
+# suivi des messages et envoi direct, profil personnel. Fusionné avec openapi.yaml par le test de contrat.
+# Routes /platform/** : membre du client technique `platform` (platform_admin, platform_support, platform_finance,
+# platform_auditor) détenant la permission `platform.*` de l'action ; « 2FA récente » : double authentification validée
+# depuis moins de 15 minutes (403 two-factor-recent-required). Téléphones et e-mails toujours masqués dans les listes.
+paths:
+  /api/v1/platform/me:
+    get:
+      summary: "Rôle de plateforme et permissions platform.* du membre connecté (menus du front)"
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: "{ user_id, role, permissions }"
+        '403':
+          description: "Réservé aux membres de la plateforme"
+  /api/v1/platform/administrators/{user}/role:
+    patch:
+      summary: "Attribue un rôle de plateforme { role : platform_admin | platform_support | platform_finance | platform_auditor } (platform.admins.manage, 2FA récente) ; jamais son propre rôle ni celui du dernier administrateur actif (409)"
+      security:
+        - bearer: []
+      parameters:
+        - name: user
+          in: path
+          required: true
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [role]
+              properties:
+                role: {type: string, enum: [platform_admin, platform_support, platform_finance, platform_auditor]}
+      responses:
+        '200':
+          description: "Membre avec son nouveau rôle"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Membre introuvable"
+        '409':
+          description: "Son propre rôle ou dernier administrateur actif"
+        '422':
+          description: "Rôle inconnu"

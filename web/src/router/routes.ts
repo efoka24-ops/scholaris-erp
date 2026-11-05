@@ -22,6 +22,7 @@ import { primaryRoutes } from '@/views/primary/routes';
 import { secondaryRoutes } from '@/views/secondary/routes';
 import { importRoutes } from '@/views/admin/import/routes';
 import { workflowRoutes } from '@/views/admin/workflows/routes';
+import { messagingRoutes } from '@/views/messaging/routes';
 
 declare module 'vue-router' {
   interface RouteMeta {
@@ -316,69 +317,69 @@ export const routes: RouteRecordRaw[] = [
     path: '/platform',
     name: 'platform-dashboard',
     component: () => import('@/views/platform/PlatformDashboardView.vue'),
-    meta: { platform: true, titleKey: 'plat.dash.title', nav: { labelKey: 'nav.platform.dashboard', order: 1 } },
+    meta: { platform: true, perms: ['platform.dashboard.read'], titleKey: 'plat.dash.title', nav: { labelKey: 'nav.platform.dashboard', order: 1 } },
   },
   {
     path: '/platform/demandes',
     name: 'platform-requests',
     component: () => import('@/views/platform/PlatformRequestsView.vue'),
-    meta: { platform: true, titleKey: 'plat.req.title', nav: { labelKey: 'nav.platform.requests', order: 2 } },
+    meta: { platform: true, perms: ['platform.requests.read'], titleKey: 'plat.req.title', nav: { labelKey: 'nav.platform.requests', order: 2 } },
   },
   {
     path: '/platform/demandes/:id',
     name: 'platform-request',
     component: () => import('@/views/platform/PlatformRequestView.vue'),
     props: true,
-    meta: { platform: true, titleKey: 'plat.req.title' },
+    meta: { platform: true, perms: ['platform.requests.read'], titleKey: 'plat.req.title' },
   },
   {
     path: '/platform/clients',
     name: 'platform-clients',
     component: () => import('@/views/platform/PlatformClientsView.vue'),
-    meta: { platform: true, titleKey: 'plat.cli.title', nav: { labelKey: 'nav.platform.clients', order: 3 } },
+    meta: { platform: true, perms: ['platform.clients.read'], titleKey: 'plat.cli.title', nav: { labelKey: 'nav.platform.clients', order: 3 } },
   },
   {
     path: '/platform/clients/:tenant',
     name: 'platform-client',
     component: () => import('@/views/platform/PlatformClientView.vue'),
     props: true,
-    meta: { platform: true, titleKey: 'plat.cli.title' },
+    meta: { platform: true, perms: ['platform.clients.read'], titleKey: 'plat.cli.title' },
   },
   {
     path: '/platform/catalogue',
     name: 'platform-catalog',
     component: () => import('@/views/platform/PlatformCatalogView.vue'),
-    meta: { platform: true, titleKey: 'plat.cat.title', nav: { labelKey: 'nav.platform.catalog', order: 4 } },
+    meta: { platform: true, perms: ['platform.catalog.read', 'platform.catalog.manage'], titleKey: 'plat.cat.title', nav: { labelKey: 'nav.platform.catalog', order: 4 } },
   },
   {
     path: '/platform/a-regulariser',
     name: 'platform-regularisation',
     component: () => import('@/views/platform/PlatformRegularisationView.vue'),
-    meta: { platform: true, titleKey: 'rg.list.title' },
+    meta: { platform: true, perms: ['platform.payments.read'], titleKey: 'rg.list.title' },
   },
   {
     path: '/platform/paiements',
     name: 'platform-payments',
     component: () => import('@/views/platform/PlatformPaymentsView.vue'),
-    meta: { platform: true, titleKey: 'plat.pay.title', nav: { labelKey: 'nav.platform.payments', order: 5 } },
+    meta: { platform: true, perms: ['platform.payments.read'], titleKey: 'plat.pay.title', nav: { labelKey: 'nav.platform.payments', order: 5 } },
   },
   {
     path: '/platform/administrateurs',
     name: 'platform-admins',
     component: () => import('@/views/platform/PlatformAdminsView.vue'),
-    meta: { platform: true, titleKey: 'pa.adm.platformTitle', nav: { labelKey: 'pa.nav.admins', order: 6 } },
+    meta: { platform: true, perms: ['platform.admins.read', 'platform.admins.manage'], titleKey: 'pa.adm.platformTitle', nav: { labelKey: 'pa.nav.admins', order: 6 } },
   },
   {
     path: '/platform/journal',
     name: 'platform-audit',
     component: () => import('@/views/platform/PlatformAuditView.vue'),
-    meta: { platform: true, titleKey: 'pa.audit.title', nav: { labelKey: 'pa.nav.audit', order: 7 } },
+    meta: { platform: true, perms: ['platform.audit.read'], titleKey: 'pa.audit.title', nav: { labelKey: 'pa.nav.audit', order: 7 } },
   },
   {
     path: '/platform/reglages',
     name: 'platform-settings',
     component: () => import('@/views/platform/PlatformSettingsView.vue'),
-    meta: { platform: true, titleKey: 'pa.set.title', nav: { labelKey: 'pa.nav.settings', order: 8 } },
+    meta: { platform: true, perms: ['platform.settings.read', 'platform.settings.manage'], titleKey: 'pa.set.title', nav: { labelKey: 'pa.nav.settings', order: 8 } },
   },
   ...higherRoutes,
   ...higherGradesRoutes,
@@ -402,6 +403,7 @@ export const routes: RouteRecordRaw[] = [
   ...secondaryRoutes,
   ...importRoutes,
   ...workflowRoutes,
+  ...messagingRoutes,
   { path: '/interdit', name: 'forbidden', component: () => import('@/views/ForbiddenView.vue'), meta: { titleKey: 'forbidden.title' } },
   { path: '/:pathMatch(.*)*', name: 'not-found', component: () => import('@/views/NotFoundView.vue'), meta: { public: true, titleKey: 'notFound.title' } },
 ];

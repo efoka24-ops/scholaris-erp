@@ -98,7 +98,7 @@ final class PricingAdminController
     /** GET /platform/service-options */
     public function index(ServerRequestInterface $request): ResponseInterface
     {
-        $this->guard->platformAdmin($request, 'platform.catalog.manage');
+        $this->guard->platformAny($request, ['platform.catalog.read', 'platform.catalog.manage']);
 
         return $this->responder->json(['data' => $this->options->all()]);
     }

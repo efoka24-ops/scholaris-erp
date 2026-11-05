@@ -23,7 +23,7 @@ use Scholaris\Modules\Socle\Identity\Infrastructure\PdoUserRepository;
 /** Comptes d'administration gérés par la plateforme (super_admin d'un client, platform_admin). Voir le contrat. */
 final class AccountAdministrationService implements AccountAdministration
 {
-    private const ROLES = [Role::SUPER_ADMIN, Role::PLATFORM_ADMIN];
+    private const ROLES = [Role::SUPER_ADMIN, ...Role::PLATFORM_ROLES];
 
     public function __construct(
         private readonly ConnectionFactory $connections,
@@ -185,17 +185,30 @@ final class AccountAdministrationService implements AccountAdministration
         if ($user === null) {
             throw HttpException::notFound('Utilisateur introuvable dans ce client.');
         }
-        if ($tenantId === Role::PLATFORM_TENANT) {
-            $this->holder($tenantId, Role::PLATFORM_ADMIN, $userId);
+        if ($tenantId === Role::PLATFORM_TENANT && !$this->isPlatformMember($userId)) {
+            throw HttpException::notFound('Administrateur introuvable.');
         }
 
         return $user;
     }
 
+    private function isPlatformMember(string $userId): bool
+    {
+        foreach (Role::PLATFORM_ROLES as $role) {
+            foreach ($this->holders(Role::PLATFORM_TENANT, $role) as $holder) {
+                if ($holder['user_id'] === $userId) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
     private function assertRole(string $tenantId, string $role): void
     {
         $platform = $tenantId === Role::PLATFORM_TENANT;
-        if (!in_array($role, self::ROLES, true) || $platform !== ($role === Role::PLATFORM_ADMIN)) {
+        if (!in_array($role, self::ROLES, true) || $platform !== in_array($role, Role::PLATFORM_ROLES, true)) {
             throw HttpException::notFound();
         }
     }

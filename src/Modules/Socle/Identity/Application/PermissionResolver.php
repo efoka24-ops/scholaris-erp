@@ -89,10 +89,22 @@ final class PermissionResolver
         return false;
     }
 
-    /** Administrateur de plateforme : rôle global, rattaché au client technique `platform`. */
+    /**
+     * Membre de la plateforme : un des rôles globaux `platform_*` (administrateur, support, finance, audit, C-112), rattaché au
+     * client technique `platform`. Double authentification toujours exigée, sans dispense d'appareil de confiance.
+     */
     public function isPlatformAdmin(string $tenantId, string $personId): bool
     {
-        return $tenantId === Role::PLATFORM_TENANT && $this->hasRole($tenantId, $personId, Role::PLATFORM_ADMIN);
+        if ($tenantId !== Role::PLATFORM_TENANT) {
+            return false;
+        }
+        foreach ($this->activeAssignments($tenantId, $personId) as $assignment) {
+            if (in_array($assignment->role, Role::PLATFORM_ROLES, true)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /** Vrai si la personne exerce actuellement au moins un rôle sensible (double authentification obligatoire). */

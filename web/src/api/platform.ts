@@ -2,6 +2,7 @@
 // plateforme (/platform/**, jamais d'en-tête X-Establishment-Id) et applications du client (/me/applications,
 // /applications/**). Contrat : specs/001-socle-plateforme/contracts/openapi.d/platform.yaml.
 import { ApiError, http } from './http';
+import type { PlatformRole } from '@/lib/permissions';
 
 export type AppTarget = 'higher' | 'secondary' | 'primary' | 'nursery';
 export type AppStatus = 'available' | 'coming_soon' | 'retired';
@@ -391,6 +392,8 @@ export interface Administrator {
   created_at: string;
   /** Résultat de l'envoi de l'invitation (sent, blocked…), présent après une invitation. */
   invitation?: string;
+  /** Membre de la plateforme : son rôle (platform_admin, platform_support, platform_finance, platform_auditor). */
+  role?: PlatformRole;
 }
 
 export interface AdministratorInput {
@@ -399,6 +402,7 @@ export interface AdministratorInput {
   email?: string;
   phone?: string;
   locale?: 'fr' | 'en';
+  role?: PlatformRole;
 }
 
 export interface AuditEntry {

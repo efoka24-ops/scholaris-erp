@@ -244,7 +244,7 @@ final class RoleAssignmentService
 
     private static function assertAssignable(Role $role): void
     {
-        if ($role->code === Role::PLATFORM_ADMIN) {
+        if (in_array($role->code, Role::PLATFORM_ROLES, true)) {
             throw HttpException::forbidden('Ce rôle est réservé à la plateforme et ne peut pas être attribué.');
         }
     }

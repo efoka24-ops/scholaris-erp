@@ -8,9 +8,11 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Scholaris\Core\Http\JsonResponder;
 use Scholaris\Core\Security\Principal;
+use Scholaris\Modules\Socle\Identity\Contracts\PlatformStaff;
 use Scholaris\Modules\Socle\Platform\Application\AdministratorAccounts;
 use Scholaris\Modules\Socle\Platform\Application\ClientLifecycle;
 use Scholaris\Modules\Socle\Platform\Application\PlatformAudit;
+use Scholaris\Modules\Socle\Platform\Domain\PlatformPermissions;
 
 /**
  * Administrateurs des clients (/platform/clients/{tenant}/administrators/**) et de la plateforme
@@ -27,6 +29,7 @@ final class AdministratorsAdminController
         private readonly PlatformGuard $guard,
         private readonly AdministratorAccounts $accounts,
         private readonly ClientLifecycle $clients,
+        private readonly PlatformStaff $staff,
     ) {
     }
 
@@ -42,7 +45,8 @@ final class AdministratorsAdminController
     public function store(ServerRequestInterface $request): ResponseInterface
     {
         [$tenantId, $tenantName, $principal] = $this->scope($request, true);
-        $input = Input::of($request, ['first_name', 'last_name', 'email', 'phone', 'locale']);
+        $platform = $tenantId === PlatformAudit::PLATFORM_TENANT;
+        $input = Input::of($request, $platform ? ['first_name', 'last_name', 'email', 'phone', 'locale', 'role'] : ['first_name', 'last_name', 'email', 'phone', 'locale']);
         $person = [
             'first_name' => (string) $input->text('first_name', 1, 80, true, self::NAME),
             'last_name' => (string) $input->text('last_name', 1, 80, true, self::NAME),
@@ -53,9 +57,33 @@ final class AdministratorsAdminController
         if ($person['email'] === null && $person['phone'] === null) {
             $input->fail('email', 'Indiquez un e-mail ou un téléphone : il servira d\'identifiant de connexion.');
         }
+        $role = $platform ? ($input->choice('role', PlatformPermissions::ROLES, false) ?? AdministratorAccounts::PLATFORM_ROLE) : AdministratorAccounts::PLATFORM_ROLE;
         $input->validate();
 
-        return $this->responder->json(['data' => $this->accounts->invite($tenantId, $tenantName, $person, $principal->userId, PlatformGuard::ip($request))], 201);
+        return $this->responder->json(['data' => $this->accounts->invite($tenantId, $tenantName, $person, $principal->userId, PlatformGuard::ip($request), $role)], 201);
+    }
+
+    /** PATCH /platform/administrators/{user}/role { role } : rôle de plateforme (administrateur, support, finance, audit). */
+    public function role(ServerRequestInterface $request): ResponseInterface
+    {
+        $principal = $this->guard->platformAdmin($request, 'platform.admins.manage', true);
+        $input = Input::of($request, ['role']);
+        $role = (string) $input->choice('role', PlatformPermissions::ROLES);
+        $input->validate();
+
+        return $this->responder->json(['data' => $this->accounts->setRole(PlatformGuard::param($request, 'user'), $role, $principal->userId, PlatformGuard::ip($request))]);
+    }
+
+    /** GET /platform/me : rôle et permissions `platform.*` du membre connecté (menus et écrans du front). */
+    public function me(ServerRequestInterface $request): ResponseInterface
+    {
+        $principal = $this->guard->platformAdmin($request, 'platform.access');
+
+        return $this->responder->json(['data' => [
+            'user_id' => $principal->userId,
+            'role' => $this->staff->roleOf($principal->userId),
+            'permissions' => $this->guard->permissionsOf($principal),
+        ]]);
     }
 
     /** POST …/administrators/{user}/resend-invitation */
@@ -104,8 +132,10 @@ final class AdministratorsAdminController
     private function scope(ServerRequestInterface $request, bool $write): array
     {
         $platform = $request->getAttribute('tenant') === null;
-        $permission = $platform ? ($write ? 'platform.admins.manage' : 'platform.access') : ($write ? 'platform.clients.manage' : 'platform.clients.read');
-        $principal = $this->guard->platformAdmin($request, $permission, $write);
+        $permissions = $platform
+            ? ($write ? ['platform.admins.manage'] : ['platform.admins.read', 'platform.admins.manage'])
+            : ($write ? ['platform.clients.manage'] : ['platform.users.read', 'platform.clients.manage']);
+        $principal = $this->guard->platformAny($request, $permissions, $write);
         if ($platform) {
             return [PlatformAudit::PLATFORM_TENANT, self::PLATFORM_NAME, $principal];
         }

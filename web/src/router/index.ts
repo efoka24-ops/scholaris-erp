@@ -3,6 +3,7 @@ import { routes } from './routes';
 import { useAuthStore } from '@/stores/auth';
 import { useContextStore } from '@/stores/context';
 import { usePlatformStore } from '@/stores/platform';
+import { ensurePlatformAccess, platformCan } from '@/views/platform/platformAccess';
 import { translate } from '@/i18n';
 import { http, type RegularisationLevel } from '@/api/http';
 import type { Problem } from '@/api/types';
@@ -46,7 +47,12 @@ export async function guard(to: RouteLocationNormalized): Promise<RouteLocationR
   const platform = usePlatformStore();
   if (await platform.ensure(auth.me, { loaded: ctx.loaded, tiles: ctx.tiles.length })) {
     if (auth.me && !auth.me.two_factor.verified) return { name: 'twofactor' };
-    if (to.meta.platform || to.name === 'security' || to.name === 'forbidden') return true;
+    if (to.meta.platform && auth.me) {
+      // Rôles fins de la plateforme (C-112) : écran hors du périmètre du rôle refusé (le serveur refuse de toute façon).
+      await ensurePlatformAccess(auth.me.id);
+      return platformCan(...(to.meta.perms ?? [])) ? true : { name: 'forbidden' };
+    }
+    if (to.meta.platform || to.name === 'security' || to.name === 'profile' || to.name === 'forbidden') return true;
     return { name: 'platform-dashboard' };
   }
   if (to.meta.platform) return { name: 'forbidden' };

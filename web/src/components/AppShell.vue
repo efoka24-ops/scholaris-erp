@@ -6,8 +6,10 @@ import { useAuthStore } from '@/stores/auth';
 import { useContextStore } from '@/stores/context';
 import { useOfflineStore } from '@/stores/offline';
 import { usePlatformStore } from '@/stores/platform';
+import { platformCan } from '@/views/platform/platformAccess';
 import { useI18n } from '@/i18n';
 import ErrorNotice from './ErrorNotice.vue';
+import InboxBadge from '@/views/messaging/InboxBadge.vue';
 import OfflineBanner from './OfflineBanner.vue';
 import RegularisationBanner from './RegularisationBanner.vue';
 
@@ -30,7 +32,7 @@ const navItems = computed(() =>
     .filter((r) => {
       const m = r.meta!;
       // Administrateur de plateforme : ses écrans et la sécurité de son compte seulement ; compte client : jamais les écrans /platform.
-      if (platform.isAdmin) return !!m.platform || r.name === 'security';
+      if (platform.isAdmin) return (!!m.platform && platformCan(...(m.perms ?? []))) || r.name === 'security' || r.name === 'profile';
       if (m.platform) return false;
       if (m.roles && !m.roles.some((role) => role === ctx.activeRole)) return false;
       if (m.perms && ctx.loaded && !ctx.can(...m.perms)) return false;
@@ -135,6 +137,7 @@ const initials = computed(() => {
           <button type="button" class="sel" :aria-pressed="locale === 'fr'" @click="setLocale('fr')">FR</button>
           <button type="button" class="sel" :aria-pressed="locale === 'en'" @click="setLocale('en')">EN</button>
         </div>
+        <InboxBadge v-if="!platform.isAdmin" />
         <router-link :to="{ name: 'sync' }" class="sel bell" :aria-label="t('shell.notifications', { count: alerts })">
           <span aria-hidden="true">🔔</span>
           <span v-if="alerts > 0" class="count">{{ alerts }}</span>
