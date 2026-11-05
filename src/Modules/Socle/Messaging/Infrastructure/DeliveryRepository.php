@@ -124,6 +124,44 @@ final class DeliveryRepository
         return $statement->rowCount();
     }
 
+    /**
+     * SMS confiés au fournisseur (référence commençant par `$referencePrefix`) et pas encore remis ni échoués, envoyés depuis
+     * `$since`, les plus anciens d'abord (tous clients : usage worker).
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function sentSmsToTrack(string $referencePrefix, string $since, int $limit): array
+    {
+        $statement = $this->connections->pdo()->prepare(
+            sprintf(
+                "SELECT id, tenant_id, provider_reference FROM message_deliveries WHERE channel = 'sms' AND status = 'sent' "
+                . 'AND provider_reference LIKE ? AND sent_at >= ? ORDER BY sent_at, id LIMIT %d',
+                max(1, $limit),
+            ),
+        );
+        $statement->execute([str_replace(['%', '_'], ['', ''], $referencePrefix) . '%', $since]);
+
+        return array_values($statement->fetchAll(PDO::FETCH_ASSOC));
+    }
+
+    /**
+     * Passe une livraison « sent » à « delivered » ou « failed » d'après le suivi du fournisseur, une seule fois (garde sur le statut).
+     *
+     * @return bool vrai si la livraison a changé d'état
+     */
+    public function resolveSent(string $tenantId, string $id, string $status, ?string $reason, string $at): bool
+    {
+        if (!in_array($status, ['delivered', 'failed'], true)) {
+            throw new InvalidArgumentException('Statut de suivi inattendu : ' . $status);
+        }
+        $statement = $this->connections->pdo()->prepare(
+            'UPDATE message_deliveries SET status = ?, reason = ?, delivered_at = ?, updated_at = ? WHERE tenant_id = ? AND id = ? AND status = \'sent\'',
+        );
+        $statement->execute([$status, $reason, $status === 'delivered' ? $at : null, $at, $tenantId, $id]);
+
+        return $statement->rowCount() === 1;
+    }
+
     /** @return array<string, int> statut => nombre */
     public function countsByStatus(string $tenantId, string $establishmentId, string $messageId): array
     {

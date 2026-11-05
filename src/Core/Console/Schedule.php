@@ -22,6 +22,7 @@ final class Schedule
     public const TASKS = [
         ['* * * * *', ['queue:send']],
         ['* * * * *', ['documents:process-jobs']],
+        ['*/15 * * * *', ['sms:sync-status']],
         ['0 * * * *', ['attendance:retry-absences']],
         ['0 2 * * *', ['backup:run']],
         ['0 3 * * *', ['reporting:aggregate-territories']],

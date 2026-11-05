@@ -77,6 +77,8 @@ final class Application
 ';
         echo '  sungku:check          contrôle la configuration du mobile money Sungku (sans appel réseau)
 ';
+        echo "  sms:check             interroge TeeeOTP (GET /v1/me) : mode, quota, consommation ; n'envoie aucun SMS\n";
+        echo "  sms:sync-status [--limit=N]  met à jour l'état (envoyé/remis/échec) des SMS TeeeOTP (toutes les 15 minutes)\n";
         echo '  external:export <cartescolaire|tutelle> <client> <établissement> <fichier>  export fichier générique
 ';
         echo '  backup:run [--keep=N] [--path=dossier]  sauvegarde chiffrée de la base (rétention appliquée, chaque nuit)

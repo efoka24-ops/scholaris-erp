@@ -9,10 +9,12 @@ use Scholaris\Core\Config\Config;
 use Scholaris\Core\Kernel;
 use Scholaris\Modules\Socle\Integrations\Contracts\MailGateway;
 use Scholaris\Modules\Socle\Integrations\Contracts\SmsGateway;
+use Scholaris\Modules\Socle\Integrations\Contracts\SmsStatusLookup;
 use Scholaris\Modules\Socle\Integrations\Infrastructure\LogMailGateway;
 use Scholaris\Modules\Socle\Integrations\Infrastructure\LogSmsGateway;
 use Scholaris\Modules\Socle\Integrations\Infrastructure\Mail\SmtpMailGateway;
 use Scholaris\Modules\Socle\Integrations\Infrastructure\Sms\HttpSmsGateway;
+use Scholaris\Modules\Socle\Integrations\Infrastructure\Sms\TeeeOtpSmsGateway;
 
 /** Garde-fou : aucune passerelle réseau n'est choisie sans demande explicite ET configuration complète. */
 final class MailSmsGatewaySelectionTest extends TestCase
@@ -52,5 +54,42 @@ final class MailSmsGatewaySelectionTest extends TestCase
 
         $http = $this->container(['sms' => ['gateway' => 'http', 'http' => ['url' => 'https://sms.example.test/send', 'token' => 't']]]);
         self::assertInstanceOf(HttpSmsGateway::class, $http->get(SmsGateway::class));
+    }
+
+    public function testTeeeOtpSeulementSiPiloteTeeeOtpEtCleRenseignee(): void
+    {
+        $base = 'https://teeeotp.example.test';
+        foreach ([
+            ['driver' => 'log', 'teeeotp' => ['base_url' => $base, 'api_key' => 'sk_test_x']],
+            ['driver' => 'teeeotp', 'teeeotp' => ['base_url' => $base, 'api_key' => '']],
+            ['driver' => 'teeeotp', 'teeeotp' => ['base_url' => '', 'api_key' => 'sk_test_x']],
+            ['driver' => 'teeeotp'],
+            ['gateway' => 'log', 'teeeotp' => ['base_url' => $base, 'api_key' => 'sk_test_x']],
+        ] as $sms) {
+            self::assertInstanceOf(LogSmsGateway::class, $this->container(['sms' => $sms])->get(SmsGateway::class), json_encode($sms));
+        }
+
+        $teeeotp = $this->container(['sms' => ['driver' => 'teeeotp', 'teeeotp' => ['base_url' => $base, 'api_key' => 'sk_test_x']]]);
+        self::assertInstanceOf(TeeeOtpSmsGateway::class, $teeeotp->get(SmsGateway::class));
+        self::assertInstanceOf(TeeeOtpSmsGateway::class, $teeeotp->get(SmsStatusLookup::class), 'Le suivi d\'état s\'appuie sur la même passerelle.');
+    }
+
+    public function testPiloteLEmporteSurLAncienneVariable(): void
+    {
+        $sms = ['driver' => 'teeeotp', 'gateway' => 'http', 'http' => ['url' => 'https://sms.example.test/send'], 'teeeotp' => ['base_url' => 'https://teeeotp.example.test', 'api_key' => 'sk_test_x']];
+        self::assertInstanceOf(TeeeOtpSmsGateway::class, $this->container(['sms' => $sms])->get(SmsGateway::class));
+
+        $sms['driver'] = 'http';
+        self::assertInstanceOf(HttpSmsGateway::class, $this->container(['sms' => $sms])->get(SmsGateway::class));
+
+        $sms['driver'] = '';
+        self::assertInstanceOf(HttpSmsGateway::class, $this->container(['sms' => $sms])->get(SmsGateway::class), 'Sans SMS_DRIVER, SMS_GATEWAY reste respecté.');
+    }
+
+    public function testSansSuiviDEtatLesAutresPilotes(): void
+    {
+        $container = $this->container([]);
+        self::assertInstanceOf(LogSmsGateway::class, $container->get(SmsGateway::class));
+        self::assertNull($container->get(SmsStatusLookup::class)->referencePrefix());
     }
 }

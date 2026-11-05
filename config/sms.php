@@ -18,6 +18,14 @@ $json = static function (string $key, array $default) use ($env): array {
 return [
     // « log » (défaut) : simulateur. « http » n'est effectif que si SMS_HTTP_URL est renseigné.
     'gateway' => strtolower((string) $env('SMS_GATEWAY', 'log')),
+    // SMS_DRIVER (log | http | teeeotp) l'emporte sur SMS_GATEWAY. « teeeotp » n'est effectif que si TEEEOTP_API_KEY est renseignée.
+    'driver' => strtolower((string) $env('SMS_DRIVER', '')),
+    // TeeeOTP (service SMS mutualisé de TRU GROUP). La clé (sk_test_… puis sk_live_…) vient UNIQUEMENT de l'environnement du serveur.
+    'teeeotp' => [
+        'base_url' => (string) $env('TEEEOTP_BASE_URL', 'https://trugroup.cm/teeeotp'),
+        'api_key' => (string) $env('TEEEOTP_API_KEY', ''),
+        'timeout_seconds' => max(1, min(60, (int) $env('TEEEOTP_TIMEOUT_SECONDS', 10))),
+    ],
     'http' => [
         'url' => (string) $env('SMS_HTTP_URL', ''),
         'method' => strtoupper((string) $env('SMS_HTTP_METHOD', 'POST')),

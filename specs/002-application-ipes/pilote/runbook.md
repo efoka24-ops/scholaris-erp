@@ -122,6 +122,7 @@ Créer les tâches cron du panneau d'hébergement (chemin du projet : le dossier
 |---|---|---|
 | `queue:send` | chaque minute | reprend les envois de messages en échec |
 | `documents:process-jobs` | chaque minute | génère les documents en lot (PDF) |
+| `sms:sync-status` | toutes les 15 minutes | met à jour l'état des SMS TeeeOTP (envoyé, remis, échec) |
 | `attendance:retry-absences` | chaque heure | rejoue les notifications d'absence échouées |
 | `reminders:send` | chaque jour (7 h) | relances de tranches de scolarité |
 | `platform:billing-run` | chaque jour (6 h) | relances, impayés et suspensions des abonnements |
@@ -134,6 +135,31 @@ Créer les tâches cron du panneau d'hébergement (chemin du projet : le dossier
 | `retention:run --apply` | selon la politique de rétention (mensuel) | purge des données arrivées à échéance ; commencer par `retention:run` sans `--apply` |
 
 Vérification : après 24 h, chaque tâche a laissé une trace dans `storage/logs` sans erreur ; la file de messages ne grossit pas.
+
+### 6 bis. SMS par TeeeOTP
+
+Les SMS de SCHOLARIS partent par TeeeOTP, le service SMS mutualisé de TRU GROUP (https://github.com/efoka24-ops/teeeotp). Les codes d'accès restent générés et vérifiés par SCHOLARIS : seul `POST /v1/sms` est utilisé, jamais `/v1/otp/*`. Sans configuration, les SMS restent sur le journal (simulateur).
+
+Variables à poser dans le `.env` **du serveur** (jamais dans le dépôt, jamais dans un message ni un ticket) :
+
+| Variable | Valeur | Remarque |
+|---|---|---|
+| `SMS_DRIVER` | `teeeotp` | l'emporte sur `SMS_GATEWAY` ; autres valeurs : `log` (défaut), `http` |
+| `TEEEOTP_BASE_URL` | `https://trugroup.cm/teeeotp` | défaut si absente ; HTTPS obligatoire |
+| `TEEEOTP_API_KEY` | `sk_test_…` puis `sk_live_…` | fournie par TRU GROUP ; sans clé, le pilote reste sur le journal |
+| `TEEEOTP_TIMEOUT_SECONDS` | `10` (défaut) | délai maximal d'un appel, de 1 à 60 s |
+
+Mise en service en deux temps :
+
+1. **Clé de test `sk_test_…`** : quelques vrais SMS (5 par défaut), puis les envois sont **simulés** (rien ne part, TeeeOTP répond « simulated »). Lancer `php artisan sms:check` : il appelle `GET /v1/me` et affiche le mode (test ou live), le quota, l'allocation de test et la consommation du jour, sans jamais afficher la clé. Envoyer un message de test depuis l'écran Messagerie vers un numéro de l'équipe, et vérifier la réception.
+2. **Clé de production `sk_live_…`** : remplacer `TEEEOTP_API_KEY` (la clé live est une décision de TRU GROUP), relancer `php artisan sms:check` (mode `live` attendu), puis refaire un envoi de test. Prévenir TRU GROUP avant un envoi de masse (quota quotidien du projet).
+
+Exploitation :
+
+- Numéros acceptés : mobiles camerounais (`6XXXXXXXX`, `2376XXXXXXXX`, `+2376XXXXXXXX`) ; un autre numéro est refusé avant tout appel. Les messages de plus de 480 caractères sont raccourcis proprement (coupure à une espace, « … »).
+- La référence de chaque SMS est « teeeotp-<identifiant TeeeOTP> », mémorisée avec la livraison (champ « Référence opérateur » de l'export des messages). `php artisan sms:sync-status` (planifié toutes les 15 minutes, §6) relit l'état chez TeeeOTP : `delivered` marque le SMS remis ; `failed` ou `expired` le marque en échec (motif `provider_failed`) et il rejoint la file de reprise `queue:send` ; `queued`/`sending`/`sent` laissent le SMS « envoyé ». Les SMS plus vieux de 3 jours ne sont plus suivis.
+- Erreurs possibles dans les journaux (code seul, jamais la clé, le numéro ni le texte) : `QUOTA_EXCEEDED` (quota du jour atteint : attendre le lendemain ou demander une hausse), `TOO_MANY_REQUESTS` (réessai automatique), `INVALID_PHONE`, `UNREACHABLE` (service injoignable : réessai automatique), `UNAUTHORIZED` (clé refusée ou révoquée : refaire `sms:check`).
+- Retour arrière : retirer `SMS_DRIVER` (ou le mettre à `log`) du `.env` ; les SMS repassent sur le simulateur.
 
 ## 7. Sauvegarde, restauration, surveillance
 
