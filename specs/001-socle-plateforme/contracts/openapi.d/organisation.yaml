@@ -101,6 +101,74 @@ paths:
           description: "Introuvable"
         '422':
           description: "Couleur ou logo refusé"
+  /api/v1/establishments/{id}/logo:
+    get:
+      summary: "Logo de l'établissement (image PNG ou JPEG ; droit organisation.read)"
+      security:
+        - bearer: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Image du logo"
+          content:
+            image/png: {}
+            image/jpeg: {}
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Établissement introuvable ou sans logo"
+    post:
+      summary: "Téléverse ou remplace le logo (multipart, champ file : PNG ou JPEG vérifié par le contenu, 1 Mo au plus, ramené à 300 px de large ; droit organisation.manage ; journalisé)"
+      security:
+        - bearer: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: "Identité visuelle mise à jour"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable"
+        '422':
+          description: "Image refusée (type, taille ou contenu)"
+    delete:
+      summary: "Supprime le logo (droit organisation.manage ; journalisé)"
+      security:
+        - bearer: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Identité visuelle sans logo"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable"
   /api/v1/establishments/{id}/modules:
     get:
       summary: "Modules activés pour l'établissement"

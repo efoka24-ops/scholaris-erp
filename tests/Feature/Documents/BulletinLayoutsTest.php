@@ -75,6 +75,47 @@ final class BulletinLayoutsTest extends TestCase
         }
     }
 
+    /**
+     * C-102 : avec le fragment {{logo}} du moteur (image de 120 x 70 px, la plus grande que le moteur produise), chaque modèle reste sur UNE page A4.
+     * Le modèle est celui de la migration 202611051101 (remplacement de l'en-tête appliqué à la dernière version précédente).
+     *
+     * @dataProvider layouts
+     */
+    public function testLeModeleTientSurUnePageA4AvecLeLogo(string $type, string $locale): void
+    {
+        [$html, $declared] = $type === 'hi_doc09' ? self::higherTemplate($locale) : self::migrationTemplate($type, $locale);
+        if ($type !== 'hi_doc09') {
+            $sql = (string) file_get_contents(dirname(__DIR__, 3) . '/database/migrations/202611051101_c102_document_templates_logo.sql');
+            self::assertSame(1, preg_match("#type_code = '" . $type . "' AND locale = '" . $locale . "'#", $sql), 'Le modèle ' . $type . ' ' . $locale . ' reçoit un logo.');
+            self::assertSame(1, preg_match("#REPLACE\\(html, '([^']*)', '([^']*)'\\)#", $sql, $m));
+            $html = str_replace(str_replace("''", "'", $m[1]), str_replace("''", "'", $m[2]), $html);
+        }
+        self::assertStringContainsString('{{logo}}', $html);
+        TemplateGuard::assertValid($html, $declared);
+
+        $image = imagecreatetruecolor(300, 175);
+        imagefill($image, 0, 0, (int) imagecolorallocate($image, 20, 90, 160));
+        ob_start();
+        imagepng($image);
+        $logo = '<img class="logo" src="data:image/png;base64,' . base64_encode((string) ob_get_clean()) . '" alt="Logo" width="120" height="70">';
+
+        $content = TemplateRenderer::render($html, self::values($type, $locale) + [
+            'number' => 'ECF-26-B-000042', 'verification_url' => 'https://verif.scholaris.example/v/EXEMPLEFICTIF', 'holder_name' => self::HOLDER,
+            'establishment_name' => self::school($type), 'issued_on' => $locale === 'fr' ? '31/10/2026' : '2026-10-31', 'year' => '2026',
+        ], ['qr' => (new LibraryQrCodeGenerator())->markup('https://verif.scholaris.example/v/EXEMPLEFICTIF'), 'signature' => '<div class="signature"><div>Signataire fictif</div></div>', 'stamp' => '', 'logo' => $logo]);
+        self::assertStringContainsString('<img class="logo"', $content);
+
+        $pdf = (new DompdfRenderer(sys_get_temp_dir() . '/scholaris-dompdf-test'))->render(DocumentService::withPrintStyle($content));
+        self::assertSame(1, preg_match_all('#/Type\s*/Page[^s]#', $pdf), 'Une seule page A4 avec le logo.');
+        if (getenv('DOC_BUL_EXAMPLES') === '1') {
+            $dir = dirname(__DIR__, 3) . '/specs/006-audit-primaire-maternelle/exemples-documents';
+            if (!is_dir($dir)) {
+                mkdir($dir, 0775, true);
+            }
+            file_put_contents($dir . '/' . $type . '-' . $locale . '-logo.pdf', $pdf);
+        }
+    }
+
     public function testLeTableauDuSecondaireSuitLeModeleAnnuel(): void
     {
         $values = self::values('secondary_report_annual', 'fr');

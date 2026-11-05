@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue';
 import AdminSubnav from './AdminSubnav.vue';
+import EstablishmentLogoCard from './EstablishmentLogoCard.vue';
 import ErrorNotice from '@/components/ErrorNotice.vue';
 import { useAction } from './useAction';
 import { refreshContexts } from './refresh';
@@ -163,6 +164,8 @@ onMounted(load);
           <span v-if="done === 'branding'" role="status" class="ok">{{ t('admin.saved') }}</span>
         </div>
       </form>
+
+      <EstablishmentLogoCard :id="id" :can-manage="canManage" @changed="refreshContexts().catch(() => undefined)" />
 
       <form class="card" novalidate aria-labelledby="mod-title" @submit.prevent="saveMods">
         <h2 id="mod-title">{{ t('admin.est.modulesTitle') }}</h2>

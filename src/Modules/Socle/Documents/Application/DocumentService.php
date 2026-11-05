@@ -30,6 +30,8 @@ use Scholaris\Modules\Socle\Documents\Infrastructure\TemplateRepository;
 use Scholaris\Modules\Socle\Documents\Infrastructure\TypeRepository;
 use Scholaris\Modules\Socle\Integrations\Contracts\PdfRenderer;
 use Scholaris\Modules\Socle\Organisation\Contracts\EstablishmentDirectory;
+use Scholaris\Modules\Socle\Organisation\Contracts\EstablishmentLogo;
+use Scholaris\Modules\Socle\Organisation\Contracts\LogoImage;
 use Scholaris\Modules\Socle\Organisation\Contracts\SettingsReader;
 use Scholaris\Modules\Socle\People\Contracts\PersonDirectory;
 
@@ -63,6 +65,7 @@ final class DocumentService implements ExtendedDocumentIssuer, DocumentReissuer
         private readonly IssuanceGuards $guards,
         private readonly DebtorDirectory $debtors,
         private readonly SettingsReader $settings,
+        private readonly EstablishmentLogo $logos,
     ) {
     }
 
@@ -205,7 +208,7 @@ final class DocumentService implements ExtendedDocumentIssuer, DocumentReissuer
             }
 
             $html = (string) $template['html'];
-            [$safe, $signedAt] = $this->safeFragments($html, $definition['qr_enabled'] === true, $url, $seal, $issuedAt, $locale);
+            [$safe, $signedAt] = $this->safeFragments($html, $definition['qr_enabled'] === true, $url, $seal, $issuedAt, $locale, $tenantId, $establishmentId);
             $content = TemplateRenderer::render($html, $values + [
                 'number' => $number,
                 'verification_url' => $url,
@@ -400,12 +403,15 @@ final class DocumentService implements ExtendedDocumentIssuer, DocumentReissuer
      * @return array{0: array<string, string>, 1: ?string} fragments sûrs (qr, signature, cachet) et date de signature
      * @param array<string, mixed>|null $seal
      */
-    private function safeFragments(string $html, bool $qrEnabled, string $url, ?array $seal, string $issuedAt, string $locale): array
+    private function safeFragments(string $html, bool $qrEnabled, string $url, ?array $seal, string $issuedAt, string $locale, string $tenantId, string $establishmentId): array
     {
-        $safe = ['qr' => $qrEnabled ? $this->qr->markup($url) : '', 'signature' => '', 'stamp' => ''];
+        $safe = ['qr' => $qrEnabled ? $this->qr->markup($url) : '', 'signature' => '', 'stamp' => '', 'logo' => ''];
         $signedAt = null;
         $used = TemplateGuard::placeholders($html);
-
+        if (in_array('logo', $used, true)) {
+            $logo = $this->logos->find($tenantId, $establishmentId);
+            $safe['logo'] = $logo === null ? '' : self::logoMarkup($logo);
+        }
         if ($seal !== null && in_array('signature', $used, true)) {
             $e = static fn (mixed $v): string => htmlspecialchars((string) $v, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
             $image = $seal['signature_image'] !== null ? '<img src="' . $e($seal['signature_image']) . '" alt="Signature" height="60">' : '';
@@ -421,6 +427,19 @@ final class DocumentService implements ExtendedDocumentIssuer, DocumentReissuer
         }
 
         return [$safe, $signedAt];
+    }
+
+    /**
+     * Fragment `{{logo}}` : image intégrée (data URI) pour que le document émis ne change plus si le logo est remplacé ensuite.
+     * Inscrite dans un cadre de 120 × 70 px au plus (ratio conservé) : l'en-tête garde la même hauteur sur une page A4.
+     */
+    private static function logoMarkup(LogoImage $logo): string
+    {
+        $scale = min(120 / max(1, $logo->width), 70 / max(1, $logo->height), 1.0);
+        $width = max(1, (int) round($logo->width * $scale));
+        $height = max(1, (int) round($logo->height * $scale));
+
+        return '<img class="logo" src="' . $logo->dataUri() . '" alt="Logo" width="' . $width . '" height="' . $height . '">';
     }
 
     /** Code d'école du jeton {ECOLE} (S16) : obligatoire si le gabarit l'utilise, ignoré sinon. */

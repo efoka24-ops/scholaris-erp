@@ -1,7 +1,7 @@
 // Appels de l'API d'administration (services S01 Identité et S02 Organisation).
 // Les routes /establishments n'exigent pas d'établissement actif : l'en-tête X-Establishment-Id n'y est jamais envoyé,
 // ce qui permet à un super administrateur sans établissement de créer le premier.
-import { http } from './http';
+import { ApiError, http } from './http';
 
 export interface Branding {
   accent?: string | null;
@@ -147,6 +147,34 @@ export const saveBranding = async (id: string, changes: Branding): Promise<Brand
 export const getModules = async (id: string): Promise<ModulesPayload> => (await http.get<{ data: ModulesPayload }>(`/establishments/${id}/modules`, undefined, NO_HEADER)).data;
 export const saveModules = async (id: string, modules: string[]): Promise<ModulesPayload> =>
   (await http.put<{ data: ModulesPayload }>(`/establishments/${id}/modules`, { modules }, NO_HEADER)).data;
+
+// --- Logo de l'établissement (envoi en fichier joint : l'hébergeur refuse les corps bruts) -------------------------------------
+/** Types et taille acceptés (le serveur revérifie par le contenu et ramène l'image à 300 px de large). */
+export const LOGO_TYPES = ['image/png', 'image/jpeg'] as const;
+export const LOGO_MAX_BYTES = 1_048_576;
+
+/** Contrôle côté navigateur avant l'envoi : null si le fichier est acceptable, sinon la cause du refus. */
+export function checkLogoFile(file: { type: string; size: number }): 'type' | 'size' | null {
+  if (!(LOGO_TYPES as readonly string[]).includes(file.type)) return 'type';
+  if (file.size < 1 || file.size > LOGO_MAX_BYTES) return 'size';
+  return null;
+}
+
+/** Image du logo, ou null si l'établissement n'en a pas. */
+export async function fetchLogo(id: string): Promise<Blob | null> {
+  try {
+    return await http.get<Blob>(`/establishments/${id}/logo`, undefined, { ...NO_HEADER, expect: 'blob' });
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 404) return null;
+    throw e;
+  }
+}
+export async function uploadLogo(id: string, file: File): Promise<Branding> {
+  const form = new FormData();
+  form.append('file', file, file.name);
+  return (await http.post<{ data: Branding }>(`/establishments/${id}/logo`, undefined, { ...NO_HEADER, form })).data;
+}
+export const deleteLogo = async (id: string): Promise<Branding> => (await http.delete<{ data: Branding }>(`/establishments/${id}/logo`, NO_HEADER)).data;
 
 // --- Années académiques, périodes, clôture (établissement actif) --------------------------------------------------------
 export const listYears = (): Promise<AcademicYear[]> => http.all<AcademicYear>('/academic-years', { sort: '-starts_on' });

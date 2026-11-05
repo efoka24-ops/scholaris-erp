@@ -10,7 +10,7 @@ use Scholaris\Core\Http\HttpException;
 final class TemplateGuard
 {
     /** Variables fournies par le moteur, utilisables dans tout modèle. */
-    public const SYSTEM = ['number', 'verification_url', 'qr', 'holder_name', 'establishment_name', 'issued_on', 'year', 'signature', 'stamp'];
+    public const SYSTEM = ['number', 'verification_url', 'qr', 'holder_name', 'establishment_name', 'issued_on', 'year', 'signature', 'stamp', 'logo'];
 
     public const PLACEHOLDER = '/\{\{\s*([^{}]*?)\s*\}\}/';
 

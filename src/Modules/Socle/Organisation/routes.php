@@ -6,6 +6,7 @@ use Scholaris\Core\Http\RouteRegistry;
 use Scholaris\Modules\Socle\Organisation\Http\Controllers\AcademicYearController;
 use Scholaris\Modules\Socle\Organisation\Http\Controllers\AuthorizationController;
 use Scholaris\Modules\Socle\Organisation\Http\Controllers\EstablishmentController;
+use Scholaris\Modules\Socle\Organisation\Http\Controllers\LogoController;
 use Scholaris\Modules\Socle\Organisation\Http\Controllers\OrgUnitController;
 use Scholaris\Modules\Socle\Organisation\Http\Controllers\PeriodController;
 use Scholaris\Modules\Socle\Organisation\Http\Controllers\RoomController;
@@ -29,6 +30,10 @@ return static function (RouteRegistry $routes): void {
     $routes->add('PATCH', '/establishments/{id}', [EstablishmentController::class, 'update'], $noEstablishment);
     $routes->add('GET', '/establishments/{id}/branding', [EstablishmentController::class, 'branding'], $noEstablishment);
     $routes->add('PUT', '/establishments/{id}/branding', [EstablishmentController::class, 'updateBranding'], $noEstablishment);
+    // Logo : lecture, téléversement/remplacement (multipart, champ `file`) et suppression.
+    $routes->add('GET', '/establishments/{id}/logo', [LogoController::class, 'show'], $noEstablishment);
+    $routes->add('POST', '/establishments/{id}/logo', [LogoController::class, 'store'], $noEstablishment);
+    $routes->add('DELETE', '/establishments/{id}/logo', [LogoController::class, 'destroy'], $noEstablishment);
     $routes->add('GET', '/establishments/{id}/modules', [EstablishmentController::class, 'modules'], $noEstablishment);
     $routes->add('PUT', '/establishments/{id}/modules', [EstablishmentController::class, 'updateModules'], $noEstablishment);
 

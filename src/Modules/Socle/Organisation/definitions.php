@@ -24,6 +24,13 @@ return [
     \Scholaris\Modules\Socle\Organisation\Contracts\CurrentPeriod::class => autowire(\Scholaris\Modules\Socle\Organisation\Infrastructure\PdoCurrentPeriod::class),
     EnrolmentGate::class => autowire(PdoEnrolmentGate::class),
     ModuleAvailability::class => autowire(PdoModuleAvailability::class),
+    // Logo des établissements : stockage privé hors racine web (réglage facultatif `organisation.storage_path`, à défaut storage/uploads) et lecture pour les documents.
+    \Scholaris\Modules\Socle\Organisation\Infrastructure\LogoStorage::class => factory(static function (\Scholaris\Core\Config\Config $config): \Scholaris\Modules\Socle\Organisation\Infrastructure\LogoStorage {
+        $path = (string) $config->get('organisation.storage_path', '');
+
+        return new \Scholaris\Modules\Socle\Organisation\Infrastructure\LogoStorage($path !== '' ? $path : dirname(__DIR__, 4) . '/storage/uploads');
+    }),
+    \Scholaris\Modules\Socle\Organisation\Contracts\EstablishmentLogo::class => autowire(\Scholaris\Modules\Socle\Organisation\Application\EstablishmentLogoReader::class),
     SettingsReader::class => get(SettingsService::class),
     \Scholaris\Modules\Socle\Organisation\Contracts\SettingsWriter::class => get(SettingsService::class),
     \Scholaris\Modules\Socle\Organisation\Contracts\TerritorySettings::class => autowire(\Scholaris\Modules\Socle\Organisation\Application\TerritorySettingsService::class),
