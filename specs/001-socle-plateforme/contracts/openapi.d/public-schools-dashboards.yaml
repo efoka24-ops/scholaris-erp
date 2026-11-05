@@ -49,6 +49,16 @@ paths:
         '409': { description: "Conflit : état incompatible ou rejeu différent" }
         '422': { description: "Données invalides" }
         '423': { description: "Application en lecture seule" }
+  /api/v1/public/dashboards/territories:
+    get:
+      summary: "Territoires du client portant des écoles (régions, départements, arrondissements), rôles nationaux seulement"
+      security:
+        - bearer: []
+      responses:
+        '200': { description: "Succès : {data: {territories: [{id, type, label_fr, label_en, code, parent_id}]}}" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Réservé aux rôles nationaux" }
+        '404': { description: "Application des écoles publiques non ouverte à ce client" }
   /api/v1/public/dashboards/{territory}:
     get:
       summary: DashboardController::show

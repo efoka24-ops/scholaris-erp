@@ -1,13 +1,16 @@
 <script setup lang="ts">
 // Tableau de bord territorial (DOC-28, API-12) pour les rôles R01 à R07 et R19 : agrégats calculés chaque nuit, MASQUÉS sous le seuil
 // de petits effectifs (aucun nom), indicateurs du CDC (parité, élèves par enseignant, réussite = admis ÷ présents, écart O1…) et
-// descente vers les territoires enfants. Le point d'entrée suit l'école active ; sans école, saisir l'identifiant du territoire.
+// descente vers les territoires enfants. Le point d'entrée suit l'école active ; sans école (rôle national), on choisit dans la liste des
+// régions, départements et arrondissements (jamais un identifiant à saisir). La direction des examens (R02) a ici son entrée vers la
+// consolidation des examens.
 import { computed, onMounted, ref } from 'vue';
 import ErrorNotice from '@/components/ErrorNotice.vue';
 import { openDocument, publicDashboards, type TerritoryDashboard, type TerritoryNodeView } from '@/api/publicSchools';
 import { useI18n } from '@/i18n';
 import { formatDate } from '@/lib/format';
 import { useContextStore } from '@/stores/context';
+import { P } from './access';
 import { useAction } from './usePs';
 
 const { t, locale } = useI18n();
@@ -15,21 +18,37 @@ const ctx = useContextStore();
 const { error, busy, run } = useAction();
 
 const entry = ref<TerritoryNodeView[]>([]);
+const catalogue = ref<TerritoryNodeView[]>([]);
+const regionId = ref('');
+const departmentId = ref('');
+const subdivisionId = ref('');
 const children = ref<TerritoryNodeView[]>([]);
 const territoryId = ref('');
 const dashboard = ref<TerritoryDashboard | null>(null);
 const label = (n: { label_fr: string; label_en: string }): string => (locale.value === 'en' ? n.label_en : n.label_fr);
 const canIssue = computed(() => ctx.establishmentId !== null && ctx.can('documents.read'));
+const canExams = computed(() => ctx.can(...P.examsConsolidation));
+const regions = computed(() => catalogue.value.filter((n) => n.type === 'region'));
+const departments = computed(() => catalogue.value.filter((n) => n.type === 'departement' && n.parent_id === regionId.value));
+const subdivisions = computed(() => catalogue.value.filter((n) => n.type === 'arrondissement' && n.parent_id === departmentId.value));
+const chosen = computed(() => subdivisionId.value || departmentId.value || regionId.value);
 
 onMounted(async () => {
-  if (ctx.establishmentId) {
-    await run(async () => {
-      entry.value = await publicDashboards.entry();
-    });
-  }
+  await run(async () => {
+    if (ctx.establishmentId) entry.value = await publicDashboards.entry();
+    if (entry.value.length === 0) catalogue.value = await publicDashboards.territories();
+  });
   territoryId.value = entry.value[0]?.id ?? '';
   if (territoryId.value) await open(territoryId.value);
 });
+
+function pickRegion(): void {
+  departmentId.value = '';
+  subdivisionId.value = '';
+}
+function pickDepartment(): void {
+  subdivisionId.value = '';
+}
 
 async function open(id: string): Promise<void> {
   territoryId.value = id;
@@ -53,17 +72,39 @@ async function issue(): Promise<void> {
     </header>
     <ErrorNotice :error="error" />
 
+    <p v-if="canExams" class="card">
+      <router-link :to="{ name: 'pp-exams-delegation' }">{{ t('ps.dash.examsEntry') }}</router-link>
+    </p>
+
     <section class="card controls">
       <div v-if="entry.length > 0" class="actions">
         <button v-for="n in entry" :key="n.id" type="button" class="btn btn--small" :class="{ 'btn--primary': n.id === territoryId }" @click="open(n.id)">{{ label(n) }}</button>
       </div>
-      <form class="controls" @submit.prevent="open(territoryId)">
+      <form v-else-if="catalogue.length > 0" class="controls" @submit.prevent="open(chosen)">
         <div class="field">
-          <label for="db-territory">{{ t('ps.dash.territoryId') }}</label>
-          <input id="db-territory" v-model="territoryId" type="text" maxlength="40" required />
+          <label for="db-region">{{ t('ps.dash.region') }}</label>
+          <select id="db-region" v-model="regionId" @change="pickRegion">
+            <option value="">{{ t('ps.dash.anyOption') }}</option>
+            <option v-for="n in regions" :key="n.id" :value="n.id">{{ label(n) }}</option>
+          </select>
         </div>
-        <button type="submit" class="btn" :disabled="busy">{{ t('ps.dash.show') }}</button>
+        <div v-if="regionId" class="field">
+          <label for="db-department">{{ t('ps.dash.department') }}</label>
+          <select id="db-department" v-model="departmentId" @change="pickDepartment">
+            <option value="">{{ t('ps.dash.anyOption') }}</option>
+            <option v-for="n in departments" :key="n.id" :value="n.id">{{ label(n) }}</option>
+          </select>
+        </div>
+        <div v-if="departmentId" class="field">
+          <label for="db-subdivision">{{ t('ps.dash.subdivision') }}</label>
+          <select id="db-subdivision" v-model="subdivisionId">
+            <option value="">{{ t('ps.dash.anyOption') }}</option>
+            <option v-for="n in subdivisions" :key="n.id" :value="n.id">{{ label(n) }}</option>
+          </select>
+        </div>
+        <button type="submit" class="btn btn--primary" :disabled="busy || chosen === ''">{{ t('ps.dash.show') }}</button>
       </form>
+      <p v-else class="muted">{{ t('ps.dash.noTerritory') }}</p>
     </section>
 
     <section v-if="dashboard" class="card" aria-labelledby="db-head">

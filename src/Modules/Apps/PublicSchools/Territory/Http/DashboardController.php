@@ -21,6 +21,12 @@ final class DashboardController
         return $this->responder->json(['data' => ['territories' => $this->service->entry(ApiRequest::principal($request), ApiRequest::establishment($request))]]);
     }
 
+    /** C-105 : GET /public/dashboards/territories (rôle national, sans établissement imposé) : liste plate avec parent_id. */
+    public function territories(ServerRequestInterface $request): ResponseInterface
+    {
+        return $this->responder->json(['data' => ['territories' => $this->service->catalogue(ApiRequest::principal($request))]]);
+    }
+
     /** API-12 : GET /public/dashboards/{territory} (sans établissement imposé, comme GET /dashboards/territories/{territory}). */
     public function show(ServerRequestInterface $request): ResponseInterface
     {

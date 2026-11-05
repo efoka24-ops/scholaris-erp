@@ -6,6 +6,7 @@ use Scholaris\Modules\Apps\PublicSchools\Pupils\Http\BatchController;
 use Scholaris\Modules\Apps\PublicSchools\Pupils\Http\ClassController;
 use Scholaris\Modules\Apps\PublicSchools\Pupils\Http\DropoutController;
 use Scholaris\Modules\Apps\PublicSchools\Pupils\Http\PupilController;
+use Scholaris\Modules\Apps\PublicSchools\Pupils\Http\RegisterPhotoController;
 use Scholaris\Modules\Apps\PublicSchools\Pupils\Http\TransferController;
 use Scholaris\Modules\Apps\PublicSchools\Support\PublicRoutes;
 
@@ -24,6 +25,9 @@ return static function (PublicRoutes $routes): void {
     $routes->get('/pupils', [PupilController::class, 'search']);
     $routes->post('/pupils/batches', [BatchController::class, 'create']);
     $routes->get('/pupils/batches', [BatchController::class, 'index']);
+    $routes->post('/pupils/batches/photos', [RegisterPhotoController::class, 'upload']);
+    $routes->get('/pupils/batches/{id}/register-photo', [RegisterPhotoController::class, 'show']);
+    $routes->get('/pupils/batches/{id}/register-photo/content', [RegisterPhotoController::class, 'content']);
     $routes->get('/pupils/without-birth-act', [PupilController::class, 'withoutBirthAct']);
     $routes->post('/pupils/without-birth-act/transmissions', [PupilController::class, 'transmit']);
     $routes->get('/pupils/without-birth-act/transmissions', [PupilController::class, 'transmissions']);

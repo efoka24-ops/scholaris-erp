@@ -55,6 +55,22 @@ final class PdoAttendanceCalls
         return array_values($query->fetchAll(PDO::FETCH_ASSOC));
     }
 
+    /**
+     * Totaux des appels de l'école à une date (toutes classes et demi-journées) : appels faits, élèves appelés et absents. Aucun nom.
+     *
+     * @return array{calls: int, headcount: int, absent: int}
+     */
+    public function totalsOn(string $tenantId, string $establishmentId, string $day): array
+    {
+        $query = $this->connections->pdo()->prepare(
+            'SELECT COUNT(*) AS calls, COALESCE(SUM(headcount), 0) AS headcount, COALESCE(SUM(absent_count), 0) AS absent FROM pub_attendance_calls WHERE tenant_id = ? AND establishment_id = ? AND day_on = ?',
+        );
+        $query->execute([$tenantId, $establishmentId, $day]);
+        $row = $query->fetch(PDO::FETCH_ASSOC);
+
+        return is_array($row) ? ['calls' => (int) $row['calls'], 'headcount' => (int) $row['headcount'], 'absent' => (int) $row['absent']] : ['calls' => 0, 'headcount' => 0, 'absent' => 0];
+    }
+
     /** @return list<array<string, mixed>> */
     public function forDay(string $tenantId, string $establishmentId, string $structureId, string $day): array
     {

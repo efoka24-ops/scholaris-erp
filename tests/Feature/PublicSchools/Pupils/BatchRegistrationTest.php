@@ -48,6 +48,52 @@ final class BatchRegistrationTest extends PublicSchoolsTestCase
         self::assertCount(1, $listJson['data']);
     }
 
+    private function png(): string
+    {
+        return (string) base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', true);
+    }
+
+    public function testLaPhotoDuRegistreEstTeleverseeJointeEtLueParLienSigne(): void
+    {
+        [$up, $upJson] = $this->api('POST', '/public/pupils/batches/photos', 'dir1', 't1', 'e1', ['content_base64' => base64_encode($this->png())]);
+        self::assertSame(201, $up->getStatusCode(), json_encode($upJson, JSON_THROW_ON_ERROR));
+        $photoId = (string) $upJson['data']['id'];
+
+        $body = ['client_uuid' => 'syn-registre-photo', 'register_photo_id' => $photoId, 'class_id' => $this->class1, 'rows' => [$this->row('SYN-Mvondo', 'Eric')]];
+        [$created, $json] = $this->api('POST', '/public/pupils/batches', 'dir1', 't1', 'e1', $body);
+        self::assertSame(201, $created->getStatusCode(), json_encode($json, JSON_THROW_ON_ERROR));
+        self::assertTrue($json['data']['has_register_photo']);
+        [$replay, $replayJson] = $this->api('POST', '/public/pupils/batches', 'dir1', 't1', 'e1', $body);
+        self::assertSame(200, $replay->getStatusCode(), 'Le rejeu du même lot reste idempotent malgré la photo déjà jointe.');
+        self::assertTrue($replayJson['data']['replayed']);
+
+        [$other] = $this->api('POST', '/public/pupils/batches', 'dir1', 't1', 'e1', ['client_uuid' => 'syn-registre-photo-2', 'register_photo_id' => $photoId, 'rows' => [$this->row('SYN-Eto', 'Paul')]]);
+        self::assertSame(422, $other->getStatusCode(), 'Une photo ne se joint qu\'à un seul lot.');
+        self::assertSame(422, $this->code('POST', '/public/pupils/batches', 'dir1', 't1', 'e1', ['client_uuid' => 'syn-registre-photo-3', 'register_photo_id' => 'inconnue', 'rows' => [$this->row('SYN-Eto', 'Paul')]]));
+
+        [$link, $linkJson] = $this->api('GET', '/public/pupils/batches/' . $json['data']['id'] . '/register-photo', 'dir1', 't1', 'e1');
+        self::assertSame(200, $link->getStatusCode(), json_encode($linkJson, JSON_THROW_ON_ERROR));
+        $url = (string) $linkJson['data']['url'];
+        $path = (string) parse_url($url, PHP_URL_PATH) . '?' . (string) parse_url($url, PHP_URL_QUERY);
+        $content = $this->call('GET', $path, ['Authorization' => 'Bearer dir1:t1', 'X-Establishment-Id' => 'e1']);
+        self::assertSame(200, $content->getStatusCode());
+        self::assertSame('image/png', $content->getHeaderLine('Content-Type'));
+        self::assertSame($this->png(), (string) $content->getBody());
+        $forged = $this->call('GET', preg_replace('/signature=[^&]+/', 'signature=falsifie', $path) ?? '', ['Authorization' => 'Bearer dir1:t1', 'X-Establishment-Id' => 'e1']);
+        self::assertSame(403, $forged->getStatusCode());
+        self::assertSame(1, (int) $this->scalar("SELECT COUNT(*) FROM audit_log WHERE action = 'public_schools.pupils.register_photo_read'", []));
+    }
+
+    public function testLaPhotoDuRegistreRefuseUnContenuActifEtLesSansPermission(): void
+    {
+        self::assertSame(422, $this->code('POST', '/public/pupils/batches/photos', 'dir1', 't1', 'e1', ['content_base64' => base64_encode('<?php echo 1;')]));
+        self::assertSame(422, $this->code('POST', '/public/pupils/batches/photos', 'dir1', 't1', 'e1', ['content_base64' => '***']));
+        self::assertContains($this->code('POST', '/public/pupils/batches/photos', 'outsider', 't1', 'e1', ['content_base64' => base64_encode($this->png())]), [401, 403, 404]);
+        [$created, $json] = $this->api('POST', '/public/pupils/batches', 'dir1', 't1', 'e1', ['client_uuid' => 'syn-sans-photo', 'rows' => [$this->row('SYN-Eto', 'Paul')]]);
+        self::assertSame(201, $created->getStatusCode());
+        self::assertSame(404, $this->code('GET', '/public/pupils/batches/' . $json['data']['id'] . '/register-photo', 'dir1', 't1', 'e1'));
+    }
+
     public function testValidationDuLotEtDroits(): void
     {
         self::assertSame(422, $this->code('POST', '/public/pupils/batches', 'dir1', 't1', 'e1', ['rows' => []]));

@@ -61,5 +61,7 @@ return [
     DropoutController::class => autowire(),
     \Scholaris\Modules\Apps\PublicSchools\Pupils\Application\BatchRegistrationService::class => autowire(),
     \Scholaris\Modules\Apps\PublicSchools\Pupils\Http\BatchController::class => autowire(),
+    \Scholaris\Modules\Apps\PublicSchools\Pupils\Application\RegisterPhotoService::class => autowire(),
+    \Scholaris\Modules\Apps\PublicSchools\Pupils\Http\RegisterPhotoController::class => autowire(),
     'console.command.' . DropoutAlertsCommand::NAME => autowire(DropoutAlertsCommand::class),
 ];

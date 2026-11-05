@@ -27,11 +27,12 @@ final class BatchRegistrationService
         private readonly PupilEnrolmentService $enrolment,
         private readonly PupilClock $clock,
         private readonly AuditLog $audit,
+        private readonly RegisterPhotoService $photos,
     ) {
     }
 
     /**
-     * @param array<string, mixed> $input client_uuid, register_photo_ref?, register_label?, class_id?, rows [corps d'inscription]
+     * @param array<string, mixed> $input client_uuid, register_photo_id? (photo téléversée), register_photo_ref?, register_label?, class_id?, rows [corps d'inscription]
      * @return array<string, mixed>
      */
     public function register(Principal $principal, string $establishmentId, array $input, bool $proxy): array
@@ -45,6 +46,10 @@ final class BatchRegistrationService
         $photo = $input['register_photo_ref'] ?? null;
         if ($photo !== null && (!is_string($photo) || mb_strlen($photo) > 255)) {
             $errors['register_photo_ref'][] = 'Référence de la photo du registre (255 caractères au plus).';
+        }
+        $photoId = $input['register_photo_id'] ?? null;
+        if ($photoId !== null && !is_string($photoId)) {
+            $errors['register_photo_id'][] = 'Identifiant de la photo du registre téléversée attendu.';
         }
         $label = $input['register_label'] ?? null;
         if ($label !== null && (!is_string($label) || mb_strlen($label) > 160)) {
@@ -61,6 +66,9 @@ final class BatchRegistrationService
         if ($previous !== null) {
             return self::resource($previous) + ['replayed' => true];
         }
+        if ($photoId !== null && !$this->photos->isAttachable($tenantId, $establishmentId, (string) $photoId)) {
+            throw HttpException::validation(['register_photo_id' => ['Photo du registre inconnue ou déjà jointe à un autre lot : téléversez-la d’abord.']]);
+        }
         $defaultClass = is_string($input['class_id'] ?? null) ? (string) $input['class_id'] : null;
         $results = [];
         $created = 0;
@@ -68,8 +76,8 @@ final class BatchRegistrationService
             $results[] = $this->row($principal, $establishmentId, (int) $index, is_array($row) ? $row : [], $defaultClass, (string) $uuid, $created);
         }
         $id = (string) new Ulid();
-        $this->connections->pdo()->prepare('INSERT INTO pub_registration_batches (id, tenant_id, establishment_id, client_uuid, register_photo_ref, register_label, entered_by, entered_by_proxy, rows_count, created_count, results, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
-            ->execute([$id, $tenantId, $establishmentId, $uuid, $photo, $label, $principal->userId, $proxy ? 1 : 0, count((array) $rows), $created, json_encode($results, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE), $this->clock->now()]);
+        $this->connections->pdo()->prepare('INSERT INTO pub_registration_batches (id, tenant_id, establishment_id, client_uuid, register_photo_ref, register_photo_id, register_label, entered_by, entered_by_proxy, rows_count, created_count, results, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+            ->execute([$id, $tenantId, $establishmentId, $uuid, $photo, $photoId, $label, $principal->userId, $proxy ? 1 : 0, count((array) $rows), $created, json_encode($results, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE), $this->clock->now()]);
         $this->audit->append($tenantId, $principal->userId, 'public_schools.pupils.batch_registered', 'pub_registration_batch', $id, null, [
             'establishment_id' => $establishmentId, 'rows' => count((array) $rows), 'created' => $created, 'proxy' => $proxy,
         ]);
@@ -93,6 +101,7 @@ final class BatchRegistrationService
     {
         return $row === [] ? [] : [
             'id' => (string) $row['id'], 'client_uuid' => (string) $row['client_uuid'], 'register_photo_ref' => $row['register_photo_ref'],
+            'register_photo_id' => $row['register_photo_id'] ?? null, 'has_register_photo' => ($row['register_photo_id'] ?? null) !== null,
             'register_label' => $row['register_label'], 'entered_by_proxy' => (int) $row['entered_by_proxy'] === 1, 'rows_count' => (int) $row['rows_count'],
             'created_count' => (int) $row['created_count'], 'results' => (array) json_decode((string) $row['results'], true), 'created_at' => (string) $row['created_at'],
         ];

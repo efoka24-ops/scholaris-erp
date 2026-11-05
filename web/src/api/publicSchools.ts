@@ -928,6 +928,8 @@ export interface RegistrationBatch {
   id: string;
   client_uuid: string;
   register_photo_ref: string | null;
+  register_photo_id?: string | null;
+  has_register_photo?: boolean;
   register_label: string | null;
   entered_by_proxy: boolean;
   rows_count: number;
@@ -960,8 +962,20 @@ export const publicSchoolsP2 = {
   correctCensus: (id: string, reason: string): Promise<CensusForm> => post(`/census/${enc(id)}/corrections`, { reason }),
   censusDocument: (id: string): Promise<{ document: IssuedRef }> => post(`/census/${enc(id)}/document`, {}),
   censusExport: (id: string): Promise<Blob> => http.get<Blob>(`${ROOT}/census/${enc(id)}/export`, { format: 'csv' }, { ...options(), expect: 'blob' }),
-  registerBatch: (body: { client_uuid: string; register_photo_ref?: string; register_label?: string; class_id?: string; rows: Record<string, unknown>[] }): Promise<RegistrationBatch> =>
+  registerBatch: (body: { client_uuid: string; register_photo_ref?: string; register_photo_id?: string; register_label?: string; class_id?: string; rows: Record<string, unknown>[] }): Promise<RegistrationBatch> =>
     post('/pupils/batches', body),
+  /** Photo du registre papier (C-105) : envoi réel du fichier (FormData, champ `file`) ; l'identifiant rendu se joint ensuite au lot. */
+  uploadRegisterPhoto: async (file: File): Promise<{ id: string; created_at: string }> => {
+    const form = new FormData();
+    form.append('file', file);
+    return (await http.post<{ data: { id: string; created_at: string } }>(`${ROOT}/pupils/batches/photos`, undefined, { ...options(), form })).data;
+  },
+  /** Contenu de la photo du registre d'un lot, par lien signé à durée limitée (lecture authentifiée, journalisée). */
+  registerPhoto: async (batchId: string): Promise<Blob> => {
+    const link = await get<{ url: string }>(`/pupils/batches/${enc(batchId)}/register-photo`);
+    const url = new URL(link.url, window.location.origin);
+    return http.get<Blob>(url.pathname.replace(/^\/api\/v1/, ''), Object.fromEntries(url.searchParams.entries()), { ...options(), expect: 'blob' });
+  },
   registrationBatches: (): Promise<RegistrationBatch[]> => all('/pupils/batches'),
   registerDocument: (classId: string, month: string, locale: string): Promise<IssuedRef> => post(`/classes/${enc(classId)}/attendance-register/document`, { month, locale }),
   presenceDocument: (month: string, locale: string): Promise<IssuedRef> => post('/teacher-presence/summary/document', { month, locale }),
@@ -1295,6 +1309,7 @@ export interface TerritoryNodeView {
   label_fr: string;
   label_en: string;
   code?: string;
+  parent_id?: string | null;
 }
 export interface DerivedIndicator {
   code: string;
@@ -1314,6 +1329,8 @@ export interface TerritoryDashboard {
 
 export const publicDashboards = {
   entry: async (): Promise<TerritoryNodeView[]> => (await get<{ territories: TerritoryNodeView[] }>('/dashboards/entry')).territories,
+  /** Territoires du client qui portent des écoles (rôles nationaux, sans école active) : liste plate avec `parent_id`. */
+  territories: async (): Promise<TerritoryNodeView[]> => (await http.get<{ data: { territories: TerritoryNodeView[] } }>(`${ROOT}/dashboards/territories`, undefined, options())).data.territories,
   show: (territoryId: string, date?: string): Promise<TerritoryDashboard> => get(`/dashboards/${enc(territoryId)}`, date ? { date } : {}),
   children: async (territoryId: string): Promise<TerritoryNodeView[]> => (await get<{ territories: TerritoryNodeView[] }>(`/dashboards/${enc(territoryId)}/children`)).territories,
   document: (territoryId: string, locale: string): Promise<{ document: IssuedRef }> => post(`/dashboards/${enc(territoryId)}/document`, { locale }),

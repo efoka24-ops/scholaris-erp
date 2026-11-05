@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // Inscription groupée depuis un registre papier (EX-ELV-07) : le directeur ou l'agent de saisie de l'inspection recopie les lignes du
-// registre (photo du registre jointe par sa référence) ; chaque ligne suit l'inscription normale (doublons, identifiant, acte
-// facultatif) et une ligne refusée n'empêche pas les autres. Le lot est envoyé une seule fois (identifiant client conservé).
+// registre et téléverse sa photo (fichier réel, jamais une simple référence) ; chaque ligne suit l'inscription normale (doublons,
+// identifiant, acte facultatif) et une ligne refusée n'empêche pas les autres. Le lot est envoyé une seule fois (identifiant client conservé).
 import { onMounted, ref } from 'vue';
 import ErrorNotice from '@/components/ErrorNotice.vue';
 import { publicSchools, publicSchoolsP2, type ClassRow, type RegistrationBatch } from '@/api/publicSchools';
@@ -24,7 +24,10 @@ interface Line {
 const blank = (): Line => ({ last_name: '', first_name: '', birth_date: '', sex: '', birth_act_ref: '', guardian: '', phone: '' });
 const classes = ref<ClassRow[]>([]);
 const classId = ref('');
-const photoRef = ref('');
+const photoFile = ref<File | null>(null);
+const photoInput = ref<HTMLInputElement | null>(null);
+/** Photo déjé téléversée pour ce lot : conservée si l'envoi du lot échoue, pour ne pas la téléverser deux fois. */
+const uploadedPhotoId = ref<string | null>(null);
 const registerLabel = ref('');
 const lines = ref<Line[]>([blank()]);
 const clientUuid = ref(ulid());
@@ -42,6 +45,18 @@ onMounted(async () => {
 function add(): void {
   lines.value = [...lines.value, blank()];
 }
+function pickPhoto(event: Event): void {
+  const input = event.target as HTMLInputElement;
+  photoFile.value = input.files?.[0] ?? null;
+  uploadedPhotoId.value = null;
+}
+async function viewPhoto(batch: RegistrationBatch): Promise<void> {
+  await run(async () => {
+    const url = URL.createObjectURL(await publicSchoolsP2.registerPhoto(batch.id));
+    window.open(url, '_blank', 'noopener');
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  });
+}
 function remove(index: number): void {
   lines.value = lines.value.filter((_, i) => i !== index);
 }
@@ -58,15 +73,21 @@ async function send(): Promise<void> {
       guardians: l.guardian.trim() !== '' ? [{ kind: 'parent', identity: { first_name: l.guardian.trim(), last_name: l.last_name.trim(), phone: l.phone.trim() } }] : [],
     }));
   await run(async () => {
+    if (photoFile.value && uploadedPhotoId.value === null) {
+      uploadedPhotoId.value = (await publicSchoolsP2.uploadRegisterPhoto(photoFile.value)).id;
+    }
     result.value = await publicSchoolsP2.registerBatch({
       client_uuid: clientUuid.value,
-      register_photo_ref: photoRef.value || undefined,
+      register_photo_id: uploadedPhotoId.value ?? undefined,
       register_label: registerLabel.value || undefined,
       class_id: classId.value || undefined,
       rows,
     });
     clientUuid.value = ulid();
     lines.value = [blank()];
+    photoFile.value = null;
+    uploadedPhotoId.value = null;
+    if (photoInput.value) photoInput.value.value = '';
     history.value = await publicSchoolsP2.registrationBatches();
   });
 }
@@ -88,7 +109,11 @@ const statusLabel = (s: string): string => t(s === 'created' ? 'pp.batch.created
         <label for="be-class">{{ t('pp.common.class') }}</label>
         <select id="be-class" v-model="classId"><option value="">—</option><option v-for="c in classes" :key="c.structure_id" :value="c.structure_id">{{ c.label }}</option></select>
       </div>
-      <div class="field"><label for="be-photo">{{ t('pp.batch.photo') }}</label><input id="be-photo" v-model="photoRef" type="text" maxlength="255" /></div>
+      <div class="field">
+        <label for="be-photo">{{ t('pp.batch.photo') }}</label>
+        <input id="be-photo" ref="photoInput" type="file" accept="image/jpeg,image/png,application/pdf" capture="environment" @change="pickPhoto" />
+        <span v-if="uploadedPhotoId" class="muted" role="status">{{ t('pp.batch.photoSent') }}</span>
+      </div>
       <div class="field"><label for="be-label">{{ t('pp.batch.label') }}</label><input id="be-label" v-model="registerLabel" type="text" maxlength="160" /></div>
       <fieldset v-for="(l, i) in lines" :key="i" class="line">
         <legend>{{ t('pp.batch.line', { n: i + 1 }) }}</legend>
@@ -121,7 +146,12 @@ const statusLabel = (s: string): string => t(s === 'created' ? 'pp.batch.created
 
     <section v-if="history.length > 0" class="card" aria-labelledby="be-hist">
       <h2 id="be-hist">{{ t('pp.batch.history') }}</h2>
-      <ul><li v-for="h in history" :key="h.id">{{ h.register_label ?? h.client_uuid }} · {{ h.created_count }} / {{ h.rows_count }}<span v-if="h.entered_by_proxy"> · {{ t('pp.census.proxy') }}</span></li></ul>
+      <ul>
+        <li v-for="h in history" :key="h.id">
+          {{ h.register_label ?? h.client_uuid }} · {{ h.created_count }} / {{ h.rows_count }}<span v-if="h.entered_by_proxy"> · {{ t('pp.census.proxy') }}</span>
+          <button v-if="h.has_register_photo" type="button" class="btn btn--small" :disabled="busy" @click="viewPhoto(h)">{{ t('pp.batch.photoView') }}</button>
+        </li>
+      </ul>
     </section>
   </div>
 </template>

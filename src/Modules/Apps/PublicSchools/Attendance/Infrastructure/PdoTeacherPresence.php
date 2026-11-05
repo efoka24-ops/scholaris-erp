@@ -67,6 +67,21 @@ final class PdoTeacherPresence
         return array_values($query->fetchAll(PDO::FETCH_ASSOC));
     }
 
+    /** @return array<string, int> nombre de déclarations de l'école à une date, par type de présence (aucun nom) */
+    public function countsByPresence(string $tenantId, string $establishmentId, string $day): array
+    {
+        $query = $this->connections->pdo()->prepare(
+            'SELECT presence, COUNT(*) AS total FROM pub_teacher_presence WHERE tenant_id = ? AND establishment_id = ? AND day_on = ? GROUP BY presence ORDER BY presence',
+        );
+        $query->execute([$tenantId, $establishmentId, $day]);
+        $counts = [];
+        foreach ($query->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $counts[(string) $row['presence']] = (int) $row['total'];
+        }
+
+        return $counts;
+    }
+
     /** @return list<array<string, mixed>> déclarations entre deux jours inclus, par enseignant puis jour */
     public function between(string $tenantId, string $establishmentId, string $from, string $to): array
     {

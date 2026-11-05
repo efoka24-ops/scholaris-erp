@@ -66,6 +66,25 @@ final class TerritoryDashboardTest extends PublicPrimaryTestCase
         self::assertSame(201, $doc->getStatusCode(), (string) $doc->getBody());
     }
 
+    public function testLaListeDesTerritoiresEstReserveeAuxRolesNationaux(): void
+    {
+        [$response, $json] = $this->api('GET', '/public/dashboards/territories', 'cabinet');
+        self::assertSame(200, $response->getStatusCode(), (string) $response->getBody());
+        $nodes = array_column($json['data']['territories'], null, 'id');
+        self::assertArrayHasKey('reg-1', $nodes);
+        self::assertArrayHasKey('dep-1', $nodes);
+        self::assertArrayHasKey('arr-1', $nodes);
+        self::assertSame('dep-1', $nodes['arr-1']['parent_id']);
+        self::assertSame('reg-1', $nodes['dep-1']['parent_id']);
+        $types = array_column($json['data']['territories'], 'type');
+        self::assertSame($types, array_values(array_merge(array_filter($types, static fn ($t): bool => $t === 'region'), array_filter($types, static fn ($t): bool => $t === 'departement'), array_filter($types, static fn ($t): bool => $t === 'arrondissement'))), 'Tri : régions, départements, arrondissements.');
+
+        self::assertSame(403, $this->api('GET', '/public/dashboards/territories', 'inspector')[0]->getStatusCode());
+        self::assertSame(403, $this->api('GET', '/public/dashboards/territories', 'delegate')[0]->getStatusCode());
+        self::assertSame(403, $this->api('GET', '/public/dashboards/territories', 'director')[0]->getStatusCode());
+        self::assertStringNotContainsString('"person_id"', (string) $response->getBody());
+    }
+
     public function testUnDepartementDeCinqCentsEcolesEstServiEnMoinsDeTroisSecondes(): void
     {
         for ($i = 1; $i <= 500; ++$i) {

@@ -509,6 +509,73 @@ paths:
         '409': { description: "Conflit d’état (version close, doublon, transition interdite)" }
         '422': { description: "Données invalides ou règle métier (RFC 9457, errors par champ)" }
         '423': { description: "Application en lecture seule (écriture fermée)" }
+  /api/v1/public/pupils/batches/photos:
+    post:
+      summary: "Téléverser la photo d’un registre papier (jointe ensuite au lot par register_photo_id)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file: { type: string, format: binary }
+          application/json:
+            schema:
+              type: object
+              properties:
+                content_base64: { type: string }
+      responses:
+        '201': { description: "Photo rangée : {data: {id, created_at}}" }
+        '400': { description: "Requête invalide" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission ou périmètre insuffisant" }
+        '422': { description: "Fichier refusé (type, taille, contenu actif)" }
+        '423': { description: "Application en lecture seule" }
+  /api/v1/public/pupils/batches/{id}/register-photo:
+    get:
+      summary: "Lien signé à durée limitée vers la photo du registre d’un lot"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: "Succès : {data: {url, expires_in}}" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission ou périmètre insuffisant" }
+        '404': { description: "Lot ou photo introuvable dans le périmètre" }
+  /api/v1/public/pupils/batches/{id}/register-photo/content:
+    get:
+      summary: "Contenu binaire de la photo du registre (lecture journalisée)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: expires
+          in: query
+          required: true
+          schema: { type: integer }
+        - name: signature
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: "Image ou PDF du registre" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Lien falsifié ou expiré, ou permission insuffisante" }
+        '404': { description: "Photo introuvable (autre client, supprimée)" }
   /api/v1/public/pupils/batches:
     post:
       summary: BatchController::create

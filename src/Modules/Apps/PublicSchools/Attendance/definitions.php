@@ -9,6 +9,8 @@ use Scholaris\Modules\Apps\PublicSchools\Attendance\Application\AttendanceBatchH
 use Scholaris\Modules\Apps\PublicSchools\Attendance\Application\AttendanceRegisterService;
 use Scholaris\Modules\Apps\PublicSchools\Attendance\Application\CallClock;
 use Scholaris\Modules\Apps\PublicSchools\Attendance\Application\DailyAttendanceService;
+use Scholaris\Modules\Apps\PublicSchools\Attendance\Application\PupilPresenceAggregates;
+use Scholaris\Modules\Apps\PublicSchools\Attendance\Application\TeacherPresenceAggregates;
 use Scholaris\Modules\Apps\PublicSchools\Attendance\Application\TeacherPresenceService;
 use Scholaris\Modules\Apps\PublicSchools\Attendance\Console\AbsenceAlertsCommand;
 use Scholaris\Modules\Apps\PublicSchools\Attendance\Http\AlertController;
@@ -33,6 +35,10 @@ return [
     \Scholaris\Modules\Apps\PublicSchools\Attendance\Application\AttendanceDocuments::class => autowire(),
     \Scholaris\Modules\Apps\PublicSchools\Attendance\Http\DocumentController::class => autowire(),
     AttendanceBatchHandler::class => autowire(),
+    PupilPresenceAggregates::class => autowire(),
+    TeacherPresenceAggregates::class => autowire(),
+    // Indicateurs territoriaux de présence (C-105) lus par reporting:aggregate-territories, puis masqués par le socle.
+    'reporting.territory_aggregates.public_schools.attendance' => [PupilPresenceAggregates::class, TeacherPresenceAggregates::class],
     // Hors ligne (API-04) : point d'extension unique du socle Sync, un élément = l'appel d'une classe pour une demi-journée.
     'sync.handlers.public.attendance' => autowire(AttendanceBatchHandler::class),
     // Cron quotidien : artisan public:absence-alerts (NOT-03, NOT-12).

@@ -8,9 +8,11 @@ use DateTimeImmutable;
 use Scholaris\Core\Http\HttpException;
 use Scholaris\Core\Security\Principal;
 use Scholaris\Modules\Apps\PublicSchools\Policies\RoleMatrix;
+use Scholaris\Modules\Apps\PublicSchools\Support\Perimeter;
 use Scholaris\Modules\Apps\PublicSchools\Support\ScopedByTerritory;
 use Scholaris\Modules\Socle\Documents\Contracts\DocumentIssuer;
 use Scholaris\Modules\Socle\Identity\Contracts\UserPersonLink;
+use Scholaris\Modules\Socle\Organisation\Contracts\EstablishmentDirectory;
 use Scholaris\Modules\Socle\Organisation\Contracts\TerritoryDirectory;
 use Scholaris\Modules\Socle\Reporting\Contracts\TerritoryAggregates;
 
@@ -31,7 +33,7 @@ final class DashboardService
     public const OBJECTIVES = [
         'O1' => ['indicator' => 'headcount_gap_rate', 'target_fr' => 'écart déclaré / présent < 2 %', 'target_en' => 'declared / present gap < 2%'],
         'O5' => ['indicator' => 'exam_blocked', 'target_fr' => '0 candidat rejeté pour état civil', 'target_en' => '0 candidate rejected for civil status'],
-        'O4' => ['indicator' => 'teachers', 'target_fr' => '90 % des écoles remontent la présence', 'target_en' => '90% of schools report presence'],
+        'O4' => ['indicator' => 'presence_reporting_rate', 'target_fr' => '90 % des écoles remontent la présence', 'target_en' => '90% of schools report presence'],
         'O6' => ['indicator' => 'fee_reports_open', 'target_fr' => 'gratuité contrôlée, signalements traités', 'target_en' => 'free schooling checked, reports handled'],
     ];
 
@@ -41,7 +43,41 @@ final class DashboardService
         private readonly ScopedByTerritory $scope,
         private readonly DocumentIssuer $documents,
         private readonly UserPersonLink $users,
+        private readonly EstablishmentDirectory $establishments,
     ) {
+    }
+
+    /**
+     * Territoires du client qui portent au moins une école (régions, départements, arrondissements), pour choisir un territoire sans
+     * école active : réservé aux rôles nationaux (niveau client). Le socle n'expose pas de liste des racines : la liste est reconstruite
+     * par la lignée du territoire de chaque établissement (contrats Organisation seulement).
+     *
+     * @return list<array<string, mixed>> nœuds triés par type (région, département, arrondissement) puis libellé, avec `parent_id`
+     */
+    public function catalogue(Principal $principal): array
+    {
+        $schools = $this->establishments->forTenant($principal->tenantId);
+        if ($schools === [] || !$this->isNational($principal, $schools[0]->id)) {
+            throw HttpException::forbidden('La liste des territoires est réservée aux rôles nationaux.');
+        }
+        $at = (new DateTimeImmutable())->format(DATE_ATOM);
+        $seen = [];
+        $nodes = [];
+        foreach ($schools as $school) {
+            $own = $this->territories->territoryOf($principal->tenantId, $school->id, $at);
+            if ($own === null || isset($seen[$own->id])) {
+                continue;
+            }
+            $seen[$own->id] = true;
+            foreach ($this->territories->lineage($principal->tenantId, $own->id, $at) as $node) {
+                $nodes[$node->id] ??= ['id' => $node->id, 'type' => $node->type, 'label_fr' => $node->labelFr, 'label_en' => $node->labelEn, 'code' => $node->code, 'parent_id' => $node->parentId];
+            }
+        }
+        $order = ['region' => 0, 'departement' => 1, 'arrondissement' => 2];
+        $rows = array_values($nodes);
+        usort($rows, static fn (array $a, array $b): int => [$order[$a['type']] ?? 9, $a['label_fr'], $a['id']] <=> [$order[$b['type']] ?? 9, $b['label_fr'], $b['id']]);
+
+        return $rows;
     }
 
     /**
@@ -173,6 +209,18 @@ final class DashboardService
         $mentionA = $sum('public_primary.unit_mentions', static fn (string $k): bool => str_ends_with($k, 'mention=A'));
         $assessed = $sum('public_primary.unit_mentions', static fn (string $k): bool => !$has($k, 'mention=not_assessed'));
         $ratio = static fn (?int $a, ?int $b, int $scale, int $digits): ?float => $a === null || $b === null || $b === 0 ? null : round($a * $scale / $b, $digits);
+        $pupilsPresent = $sum('public_schools.pupil_presence', static fn (string $k): bool => $k === 'state=present');
+        $pupilsAbsent = $sum('public_schools.pupil_presence', static fn (string $k): bool => $k === 'state=absent');
+        $reporting = $sum('public_schools.pupil_presence', static fn (string $k): bool => $k === 'reporting=school');
+        $schoolCount = null;
+        foreach ($indicators as $indicator) {
+            if ($indicator['key'] === 'public_schools.pupil_presence') {
+                $schoolCount = $indicator['establishment_count'];
+            }
+        }
+        $teachersPresent = $sum('public_schools.teacher_presence', static fn (string $k): bool => $k === 'presence=present');
+        $teachersDeclared = $sum('public_schools.teacher_presence');
+        $rooms = $sum('public_schools.classrooms_in_use');
         $present = $passed === null || $failed === null ? null : $passed + $failed;
         $gap = $counted === null || $registry === null ? null : abs($registry - $counted);
         $line = static fn (string $code, string $fr, string $en, string $formula, float|int|null $value, bool $masked): array => ['code' => $code, 'label_fr' => $fr, 'label_en' => $en, 'formula' => $formula, 'value' => $value, 'masked' => $masked];
@@ -183,6 +231,10 @@ final class DashboardService
             $line('parity_index', 'Indice de parité (filles ÷ garçons)', 'Gender parity index (girls ÷ boys)', 'F / M', $ratio($girls, $boys, 1, 2), $masked('public_schools.enrolment', $girls, $boys)),
             $line('teachers', 'Enseignants en poste', 'Teachers in post', 'somme', $teachers, $masked('public_schools.teachers', $teachers)),
             $line('pupils_per_teacher', 'Élèves par enseignant', 'Pupils per teacher', 'élèves / enseignants', $ratio($pupils, $teachers, 1, 1), $masked('public_schools.teachers', $teachers, $pupils)),
+            $line('pupils_per_classroom', 'Élèves par salle utilisée', 'Pupils per classroom in use', 'élèves / salles utilisées (recensement)', $ratio($pupils, $rooms, 1, 1), $masked('public_schools.classrooms_in_use', $rooms) || $masked('public_schools.enrolment', $girls, $boys)),
+            $line('pupil_attendance_rate', 'Présence des élèves (%)', 'Pupil attendance (%)', 'présents / (présents + absents) à l\'appel', $ratio($pupilsPresent, $pupilsPresent === null || $pupilsAbsent === null ? null : $pupilsPresent + $pupilsAbsent, 100, 1), $masked('public_schools.pupil_presence', $pupilsPresent, $pupilsAbsent)),
+            $line('teacher_attendance_rate', 'Présence des enseignants (%)', 'Teacher attendance (%)', 'présents / enseignants déclarés', $ratio($teachersPresent, $teachersDeclared, 100, 1), $masked('public_schools.teacher_presence', $teachersPresent, $teachersDeclared)),
+            $line('presence_reporting_rate', 'Écoles qui remontent la présence (O4, %)', 'Schools reporting presence (O4, %)', 'écoles avec un appel / écoles du territoire', $ratio($reporting, $schoolCount, 100, 1), $masked('public_schools.pupil_presence', $reporting)),
             $line('birth_act_missing_rate', 'Élèves sans acte de naissance (%)', 'Pupils without birth certificate (%)', 'signalés / inscrits', $ratio($missing, $missing === null || $verified === null ? null : $missing + $verified, 100, 1), $masked('public_schools.birth_act', $missing, $verified)),
             $line('a_share', 'Part de A (%)', 'Share of A (%)', 'mentions A / élèves évalués', $ratio($mentionA, $assessed, 100, 1), $masked('public_primary.unit_mentions', $mentionA, $assessed)),
             $line('repeat_rate', 'Redoublement (%)', 'Repetition (%)', 'redoublants / décisions', $ratio($repeat, $decisions, 100, 1), $masked('public_primary.promotion_decisions', $repeat, $decisions)),
@@ -223,15 +275,31 @@ final class DashboardService
         if ($perimeter->isEmpty()) {
             return false;
         }
-        if ($perimeter->wholeSchool) {
-            foreach ($perimeter->roles as $role) {
-                if (RoleMatrix::levelOf($role) === 'tenant') {
-                    return true;
-                }
-            }
+        if ($this->isNationalPerimeter($perimeter)) {
+            return true;
         }
         $lineage = array_map(static fn ($node): string => $node->id, $this->territories->lineage($principal->tenantId, $territoryId, $at));
 
         return array_intersect($lineage, $perimeter->territoryIds) !== [];
+    }
+
+    /** Rôle national (niveau client) pour la permission du tableau de bord, jugé sur une école donnée. */
+    private function isNational(Principal $principal, string $establishmentId): bool
+    {
+        return $this->isNationalPerimeter($this->scope->perimeter($principal, self::PERMISSION, $establishmentId));
+    }
+
+    private function isNationalPerimeter(Perimeter $perimeter): bool
+    {
+        if ($perimeter->isEmpty() || !$perimeter->wholeSchool) {
+            return false;
+        }
+        foreach ($perimeter->roles as $role) {
+            if (RoleMatrix::levelOf($role) === 'tenant') {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
