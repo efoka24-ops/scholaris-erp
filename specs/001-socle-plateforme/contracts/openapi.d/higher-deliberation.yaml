@@ -168,6 +168,33 @@ paths:
         '409': {description: "État incompatible (cycle de vie, version)"}
         '422': {description: "Données invalides"}
         '423': {description: "Application suspendue (écriture refusée)"}
+  /api/v1/higher/deliberation/annual-transcripts:
+    get:
+      summary: "Aperçu du relevé de notes et de crédits annuel DOC-10 d'un étudiant : person_id, academic_year_id, locale"
+      responses:
+        '200': {description: "Succès"}
+        '403': {description: "Permission absente ou hors périmètre (journalisé)"}
+        '404': {description: "Aucun relevé semestriel publié pour l'année"}
+        '409': {description: "Aucune décision de fin d'année enregistrée"}
+        '422': {description: "Filtre invalide"}
+    post:
+      summary: "Émettre le relevé annuel DOC-10 d'un étudiant (décision annuelle et PV signés exigés, RG-DOC-3)"
+      responses:
+        '201': {description: "Succès"}
+        '403': {description: "Permission absente ou hors périmètre (journalisé)"}
+        '404': {description: "Introuvable ou hors périmètre"}
+        '409': {description: "État incompatible (décision annuelle absente)"}
+        '422': {description: "Données invalides"}
+        '423': {description: "Application suspendue (écriture refusée)"}
+  /api/v1/higher/deliberation/annual-transcripts/batch:
+    post:
+      summary: "Émettre les relevés annuels DOC-10 d'une promotion (groupe et année) : liste des émis et des sautés avec leur raison"
+      responses:
+        '201': {description: "Succès"}
+        '403': {description: "Permission absente ou hors périmètre (journalisé)"}
+        '404': {description: "Introuvable ou hors périmètre"}
+        '422': {description: "Données invalides"}
+        '423': {description: "Application suspendue (écriture refusée)"}
   /api/v1/higher/deliberation/my-results:
     get:
       summary: "Résultats publiés de l'étudiant connecté"

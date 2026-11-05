@@ -30,5 +30,8 @@ return static function (HigherRoutes $routes): void {
     $routes->post('/deliberation/year-decisions', [ResultController::class, 'yearRecord']);
     $routes->get('/deliberation/transcripts', [ResultController::class, 'transcript']);
     $routes->post('/deliberation/transcripts', [ResultController::class, 'issueTranscript']);
+    $routes->get('/deliberation/annual-transcripts', [ResultController::class, 'annualTranscript']);
+    $routes->post('/deliberation/annual-transcripts', [ResultController::class, 'issueAnnualTranscript']);
+    $routes->post('/deliberation/annual-transcripts/batch', [ResultController::class, 'issueAnnualBatch']);
     $routes->get('/deliberation/my-results', [ResultController::class, 'mine']);
 };

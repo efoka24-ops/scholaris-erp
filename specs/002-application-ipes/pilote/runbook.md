@@ -87,14 +87,14 @@ Principe : **limitée à l'année en cours et aux UE capitalisées** ; pas de re
 4. personnel enseignant et affectations ;
 5. notes de l'année en cours (verrouillées, motif « reprise »).
 
-Procédure pour chaque jeu (API `/api/v1/higher/migration` appelée par l'équipe SCHOLARIS ; pas d'écran dans cette version ; permission `higher.migration.manage`) :
+Procédure pour chaque jeu (**écran « Reprise des données »**, accueil IPES puis `/superieur/reprise-des-donnees`, ou API `/api/v1/higher/migration` ; permission `higher.migration.manage`) :
 
-1. Télécharger le **modèle** (`GET /higher/migration/templates/{students|credits|balances|staff|marks}`, CSV UTF-8 séparateur « ; », ou `?format=xlsx`).
+1. Télécharger le **modèle** (bouton « Télécharger le modèle de fichier », ou `GET /higher/migration/templates/{students|credits|balances|staff|marks}`, CSV UTF-8 séparateur « ; », ou `?format=xlsx`).
 2. Remplir le fichier avec l'établissement, **sans données réelles dans le dépôt**.
-3. **Simulation obligatoire** : `POST /higher/migration/batches` avec `dry_run=true` ; rien n'est écrit. Lire le rapport ligne par ligne (erreurs, doublons, avertissements). Corriger le fichier et refaire la simulation jusqu'à zéro erreur.
-4. **Application** : `POST /higher/migration/batches/{id}/apply` (2FA récente). Une seule transaction : tout ou rien. Relancer le même fichier ne crée rien en double (clé de reprise : matricule, sinon nom + prénom + date de naissance).
-5. **Annulation** si le fichier était faux : `POST /higher/migration/batches/{id}/revert` avec un motif, possible tant qu'aucune donnée dépendante n'existe (un lot d'étudiants ne s'annule pas tant que des soldes, notes ou UE reprises le référencent : annuler d'abord ces lots). Les **soldes d'ouverture ne s'annulent pas** (une facture émise ne se supprime pas) : vérifier très soigneusement la simulation.
-6. Tout est journalisé (simulation, application, annulation). Contrôler par sondage 5 % des lignes dans les écrans (fiche étudiant, compte de scolarité, notes).
+3. **Simulation obligatoire** : choisir le jeu et l'année, joindre le fichier (CSV ou XLSX, 8 Mo au plus) puis « Lancer la simulation » (API : `POST /higher/migration/batches` avec `dry_run=true`, fichier en `multipart/form-data` champ `file`, ou JSON `content`/`content_base64`) ; rien n'est écrit. Lire le rapport ligne par ligne (erreurs, doublons, avertissements, colonnes inconnues ; filtre par état). Corriger le fichier et refaire la simulation jusqu'à zéro erreur : le bouton « Appliquer le lot » reste désactivé tant qu'il reste une erreur.
+4. **Application** : « Appliquer le lot » puis confirmation (API : `POST /higher/migration/batches/{id}/apply`, 2FA récente ; sans 2FA récente l'écran renvoie vers la confirmation puis revient). Une seule transaction : tout ou rien. Relancer le même fichier ne crée rien en double (clé de reprise : matricule, sinon nom + prénom + date de naissance).
+5. **Annulation** si le fichier était faux : « Annuler ce lot » avec un motif de 5 caractères au moins (API : `POST /higher/migration/batches/{id}/revert`), possible tant qu'aucune donnée dépendante n'existe (un lot d'étudiants ne s'annule pas tant que des soldes, notes ou UE reprises le référencent : annuler d'abord ces lots). Les **soldes d'ouverture ne s'annulent pas** (une facture émise ne se supprime pas) : vérifier très soigneusement la simulation.
+6. Tout est journalisé (simulation, application, annulation) ; la liste « Historique des lots » de l'écran permet de rouvrir le rapport de chaque lot. Contrôler par sondage 5 % des lignes dans les écrans (fiche étudiant, compte de scolarité, notes).
 
 Mineurs : la reprise refuse les étudiants de moins de 18 ans (garant exigé) ; les inscrire par l'écran Inscriptions.
 
@@ -170,14 +170,30 @@ Exploitation :
 
 ## 8. Permission `higher.migration.manage`
 
-La reprise exige la permission `higher.migration.manage`. Elle n'est **pas encore** dans la matrice des rôles (`RoleMatrix`) : tant qu'elle n'y est pas, l'ajouter à `higher_dir_ecole` et `higher_scolarite` par une migration datée **et** dans `RoleMatrix::ROLES` (les deux ensemble, sinon `HigherRolesMigrationTest` échoue) :
+La reprise exige la permission `higher.migration.manage`. Elle est **déjà accordée** à `higher_dir_ecole` et `higher_scolarite` : par la migration `database/migrations/202610191200_higher_migration_dashboard_permissions.sql` et dans `RoleMatrix::ROLES` (les deux vont ensemble, sinon `HigherRolesMigrationTest` échoue). L'écran de reprise lit les permissions du rôle actif fournies par le serveur : aucune liste à tenir côté interface. Pour l'accorder à un autre rôle :
 
 ```sql
-INSERT INTO role_permissions (role, permission) VALUES ('higher_dir_ecole', 'higher.migration.manage');
-INSERT INTO role_permissions (role, permission) VALUES ('higher_scolarite', 'higher.migration.manage');
+INSERT INTO role_permissions (role, permission) VALUES ('<code du rôle>', 'higher.migration.manage');
 ```
 
 Le périmètre de la personne (école, département, filière) borne les lignes qu'elle peut reprendre.
+
+## 8 bis. Relevés de notes : mise à niveau des modèles installés et relevé annuel DOC-10
+
+**Mise à niveau (une fois, au déploiement).** Un établissement qui a installé le catalogue des documents avant la mise en page des relevés réels garde l'ancien modèle DOC-09 (10 emplacements d'UE) et DOC-10. La migration `database/migrations/202611051201_c103_higher_transcript_templates.sql`, jouée par `php artisan migrate`, met à niveau **tous les clients d'un coup**, de façon idempotente :
+
+1. elle ajoute aux types `hi_doc09` et `hi_doc10` les variables du nouveau modèle (`units_table`, `annual_table`, `rank_info`) ;
+2. elle crée une **nouvelle version validée** du modèle FR et EN (version précédente + 1) ; l'**ancienne version est conservée** (documents déjà émis, retour arrière possible en rouvrant l'ancienne version) ;
+3. elle ne touche pas un modèle dont la dernière version utilise déjà un tableau du moteur (déjà à jour ou personnalisé sur le nouveau modèle) ;
+4. la rejouer ne change rien. Contrôle après déploiement : `php artisan migrate:status` sans migration en attente, puis émettre un relevé de test.
+
+Un modèle à emplacements `u01_…` **personnalisé par l'établissement** est lui aussi remplacé par la nouvelle version (l'ancienne reste consultable) : l'établissement reprend ses personnalisations sur la nouvelle version. Les nouveaux clients installent directement le nouveau modèle depuis le catalogue.
+
+La limite de 10 UE par relevé semestriel est levée : le tableau du nouveau modèle liste toutes les UE et leurs EC.
+
+**Relevé de notes et de crédits DOC-10 (annuel et cumulatif).** Écran Délibérations > Relevés, section « Relevé de notes et de crédits » : un étudiant, ou toute une promotion (groupe et année). Prérequis : décision de fin d'année enregistrée et PV des semestres signés (RG-DOC-3). Le relevé porte toutes les UE de l'année avec crédits, note /20, cote /4, grade et mention de l'UE (selon l'échelle des règles du jury, jamais pour une UE non acquise), la moyenne annuelle, la MGP sur 4, les crédits capitalisés et cumulés et la décision. Émission en lot : les étudiants sans décision ou sans relevé publié sont listés avec leur raison, ceux qui ont déjà un relevé valide postérieur à la décision sont sautés : relancer le lot n'émet rien en double. API : `GET|POST /higher/deliberation/annual-transcripts`, `POST /higher/deliberation/annual-transcripts/batch`.
+
+_Pas de commande artisan de mise à niveau par client_ : écrire dans les types et modèles du socle Documents exige un contrat du socle que l'application IPES n'a pas le droit de contourner (accès inter-modules par Contracts seulement). La migration ci-dessus couvre tous les clients existants au déploiement.
 
 ## 9. Plan de retour arrière
 

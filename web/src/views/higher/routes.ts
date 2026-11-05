@@ -48,4 +48,11 @@ export const higherRoutes: RouteRecordRaw[] = [
     meta: { ...higherOnly, perms: [...perms], titleKey },
   })),
   ...higherApplyRoutes,
+  {
+    path: '/superieur/reprise-des-donnees',
+    name: 'higher-migration',
+    component: () => import('./migration/MigrationView.vue'),
+    beforeEnter: higherGuard,
+    meta: { ...higherOnly, perms: [...P.migration], titleKey: 'hmg.title' as MessageKey },
+  },
 ];

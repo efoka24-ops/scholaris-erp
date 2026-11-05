@@ -178,6 +178,28 @@ final class StudentsImportTest extends MigrationTestCase
         self::assertSame(404, $this->api('GET', '/higher/migration/templates/inconnu', self::IMPORTER, self::T, self::E)[0]->getStatusCode());
     }
 
+    public function testLeFichierEstTeleverseParFormulaireMultipart(): void
+    {
+        $csv = $this->studentsCsv(2);
+        $file = new \Nyholm\Psr7\UploadedFile(\Nyholm\Psr7\Stream::create($csv), strlen($csv), UPLOAD_ERR_OK, 'reprise-etudiants.csv', 'text/csv');
+        $request = (new \Nyholm\Psr7\ServerRequest('POST', '/api/v1/higher/migration/batches', [
+            'Authorization' => 'Bearer ' . self::IMPORTER . ':' . self::T, 'X-Establishment-Id' => self::E,
+        ]))->withUploadedFiles(['file' => $file])->withParsedBody(['kind' => 'students', 'academic_year_id' => self::YEAR, 'dry_run' => 'true']);
+        $response = $this->kernel->handle($request);
+        $json = json_decode((string) $response->getBody(), true);
+
+        self::assertSame(201, $response->getStatusCode(), (string) $response->getBody());
+        self::assertSame('simulated', $json['data']['status']);
+        self::assertSame('reprise-etudiants.csv', $json['data']['file_name']);
+        self::assertSame(2, $json['data']['counts']['ok']);
+        self::assertSame(0, $this->rows('hi_students'), 'Simulation : rien d\'écrit.');
+
+        $forced = $this->kernel->handle($request->withParsedBody(['kind' => 'students', 'academic_year_id' => self::YEAR, 'dry_run' => 'false']));
+        self::assertSame(422, $forced->getStatusCode(), 'La simulation reste obligatoire d\'abord.');
+        $missing = $this->kernel->handle($request->withUploadedFiles([]));
+        self::assertSame(422, $missing->getStatusCode(), 'Fichier absent.');
+    }
+
     public function testDeuxMilleLignesEnUnTempsRaisonnable(): void
     {
         $csv = $this->studentsCsv(2000);

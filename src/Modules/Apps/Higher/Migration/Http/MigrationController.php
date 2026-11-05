@@ -8,6 +8,7 @@ use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\StreamFactoryInterface;
+use Psr\Http\Message\UploadedFileInterface;
 use Scholaris\Core\Http\ExportsList;
 use Scholaris\Core\Http\HttpException;
 use Scholaris\Core\Http\JsonResponder;
@@ -64,7 +65,7 @@ final class MigrationController
     public function create(ServerRequestInterface $request): ResponseInterface
     {
         [$principal, $establishmentId] = self::context($request);
-        $body = self::body($request);
+        $body = self::createBody($request);
         $errors = [];
         $kind = is_string($body['kind'] ?? null) ? $body['kind'] : '';
         if (!ImportKind::exists($kind)) {
@@ -128,6 +129,44 @@ final class MigrationController
         }
 
         return $this->responder->json(['data' => $this->batches->revert($principal, $establishmentId, self::id($request), trim($reason))]);
+    }
+
+    /**
+     * Corps de la simulation : JSON (content ou content_base64) ou, depuis l'écran de reprise, multipart/form-data (champs kind,
+     * academic_year_id, format?, dry_run, et fichier `file` en CSV ou XLSX, dont le nom et l'extension donnent file_name et format).
+     *
+     * @return array<string, mixed>
+     */
+    private static function createBody(ServerRequestInterface $request): array
+    {
+        $files = $request->getUploadedFiles();
+        $form = $request->getParsedBody();
+        if ($files === [] && !(is_array($form) && $form !== [] && trim((string) $request->getBody()) === '')) {
+            return self::body($request);
+        }
+        $body = [];
+        foreach (is_array($form) ? $form : [] as $field => $value) {
+            if (is_string($value)) {
+                $body[(string) $field] = $value;
+            }
+        }
+        if (isset($body['dry_run'])) {
+            $body['dry_run'] = in_array(strtolower($body['dry_run']), ['true', '1'], true);
+        }
+        $file = $files['file'] ?? null;
+        if (!$file instanceof UploadedFileInterface || $file->getError() !== UPLOAD_ERR_OK) {
+            $big = $file instanceof UploadedFileInterface && in_array($file->getError(), [UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE], true);
+
+            throw HttpException::validation(['file' => [$big ? 'Fichier trop volumineux (8 Mo au plus) : découpez-le en plusieurs lots.' : 'Joignez le fichier de reprise (champ « file », CSV ou XLSX).']]);
+        }
+        $name = basename(str_replace('\\', '/', (string) $file->getClientFilename()));
+        $body['content'] = (string) $file->getStream();
+        $body['file_name'] = $name;
+        if (!isset($body['format'])) {
+            $body['format'] = strtolower(pathinfo($name, PATHINFO_EXTENSION)) === 'xlsx' ? 'xlsx' : 'csv';
+        }
+
+        return $body;
     }
 
     /** @return array{0: Principal, 1: string} */

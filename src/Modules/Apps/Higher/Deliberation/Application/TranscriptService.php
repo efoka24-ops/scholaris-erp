@@ -10,6 +10,7 @@ use Scholaris\Core\Security\Principal;
 use Scholaris\Modules\Apps\Higher\Academic\Application\Access;
 use Scholaris\Modules\Apps\Higher\Academic\Contracts\AcademicDirectory;
 use Scholaris\Modules\Apps\Higher\Academic\Infrastructure\Store;
+use Scholaris\Modules\Apps\Higher\Deliberation\Contracts\SemesterTranscripts;
 use Scholaris\Modules\Apps\Higher\Deliberation\Documents\DeliberationDocumentTypes as Types;
 use Scholaris\Modules\Apps\Higher\Deliberation\Domain\LmdCalculator;
 use Scholaris\Modules\Apps\Higher\Deliberation\Infrastructure\PdoDeliberationRecords;
@@ -28,7 +29,7 @@ use Scholaris\Modules\Socle\People\Contracts\PersonDirectory;
  * RG-DOC-3), aperçu fidèle au modèle du CDC et émission par le module Documents (numéro REL-EC-AAAA-NNNNNN, QR, page de
  * vérification sans les notes). Résultats publiés de l'étudiant connecté (API-16).
  */
-final class TranscriptService
+final class TranscriptService implements SemesterTranscripts
 {
     public const RESULT_LABELS = [
         'fr' => [LmdCalculator::ACQUIRED => 'Acquise', LmdCalculator::COMPENSATED => 'Acquise par compensation', LmdCalculator::CAPITALIZED => 'Capitalisée', LmdCalculator::NOT_ACQUIRED => 'Non acquise', 'passed' => 'Validée', 'failed' => 'Non validée'],
@@ -99,10 +100,8 @@ final class TranscriptService
         $perimeter = $this->access->require($principal, $establishmentId, [DeliberationPermissions::PREPARE]);
         $this->access->assertWritable($principal, $perimeter, ['school' => $data['school_id'], 'program' => $data['program_id'], 'group' => $data['structure_id']], 'transcript', $personId);
         $locale = $data['locale'];
-        // Les anciens modèles installés n'ont que 10 emplacements d'UE : la limite reste tant qu'un établissement peut les utiliser.
-        if (count($data['units']) > Types::UNIT_SLOTS) {
-            throw HttpException::validation(['units' => [sprintf('Le modèle de relevé compte %d UE au plus.', Types::UNIT_SLOTS)]]);
-        }
+        // C-103 : plus de limite à 10 UE. Le modèle de relevé en vigueur (tableau `units_table`, installé ou mis à niveau par la
+        // migration 202611051201) liste toutes les UE ; les emplacements u01 à u10 ne servent qu'aux modèles personnalisés anciens.
         $vars = self::semesterVariables($data);
         $issued = $this->issuer->issueFor($principal->tenantId, $establishmentId, Types::TRANSCRIPT, $personId, $data['school_id'], $data['program_id'], $data['level_id'], $vars, $principal->userId, $locale);
         $this->access->audit($principal, 'higher.deliberation.transcript_issued', 'person', $personId, null, ['period_id' => $periodId, 'number' => $issued['number'] ?? null]);

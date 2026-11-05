@@ -52,6 +52,12 @@ export interface Transcript {
   synthesis: { average: number | null; gpa: number | null; credits_earned: number; credits_total: number; decision: string | null; mention: string | null; rank: number | null; class_size: number | null };
 }
 
+export interface AnnualBatchResult {
+  academic_year_id: string; structure_id: string; total: number;
+  issued: Array<IssuedJuryDoc & { person_id: string }>;
+  skipped: Array<{ person_id: string; matricule: string | null; reason: string }>;
+}
+
 export const deliberation = {
   juries: (q: Q = {}): Promise<Jury[]> => unwrap(http.get(`${D}/juries`, { per_page: 100, ...q })),
   jury: (id: string): Promise<Jury> => unwrap(http.get(`${D}/juries/${seg(id)}`)),
@@ -70,6 +76,11 @@ export const deliberation = {
   transcript: (personId: string, periodId: string, locale: 'fr' | 'en' = 'fr'): Promise<Transcript> => unwrap(http.get(`${D}/transcripts`, { person_id: personId, period_id: periodId, locale })),
   issueTranscript: (b: { person_id: string; period_id: string; locale?: 'fr' | 'en' }): Promise<IssuedJuryDoc> => unwrap(http.post(`${D}/transcripts`, b)),
   issuedTranscripts: (q: Q = {}): Promise<IssuedDoc[]> => documents.list({ code: 'DOC-09', ...q }),
+  /** DOC-10 : relevé de notes et de crédits annuel d'un étudiant (décision annuelle et PV signés exigés). */
+  issueAnnualTranscript: (b: { person_id: string; academic_year_id: string; locale?: 'fr' | 'en' }): Promise<IssuedJuryDoc> => unwrap(http.post(`${D}/annual-transcripts`, b)),
+  /** DOC-10 pour toute une promotion (groupe et année) : relancer ne réémet rien. */
+  issueAnnualBatch: (b: { structure_id: string; academic_year_id: string; locale?: 'fr' | 'en' }): Promise<AnnualBatchResult> => unwrap(http.post(`${D}/annual-transcripts/batch`, b)),
+  issuedAnnualTranscripts: (q: Q = {}): Promise<IssuedDoc[]> => documents.list({ code: 'DOC-10', ...q }),
   myResults: (locale: 'fr' | 'en' = 'fr'): Promise<Transcript[]> => unwrap(http.get(`${D}/my-results`, { locale })),
   /** Séance du socle (décisions du jury, motifs) : alimente le PV et la liste des résultats une fois la séance tenue. */
   session: (deliberationId: string): Promise<{ id: string; status: string; lines?: Array<DocLine & { name?: string | null }> }> =>

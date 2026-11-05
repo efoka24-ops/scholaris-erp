@@ -47,6 +47,16 @@ paths:
                 content_base64: {type: string, description: "Fichier encodé en base64 (CSV ou XLSX)"}
                 file_name: {type: string}
                 dry_run: {type: boolean, enum: [true], default: true, description: "Toujours vrai : la simulation précède l'application"}
+          multipart/form-data:
+            schema:
+              type: object
+              required: [kind, academic_year_id, file]
+              properties:
+                kind: {type: string, enum: [students, credits, balances, staff, marks]}
+                academic_year_id: {type: string}
+                format: {type: string, enum: [csv, xlsx], description: "Déduit de l'extension du fichier s'il est absent"}
+                dry_run: {type: string, enum: ["true"], description: "Toujours vrai (omis = vrai)"}
+                file: {type: string, format: binary, description: "Fichier de reprise CSV ou XLSX (8 Mo au plus) ; son nom devient file_name"}
       responses:
         '201': {description: "Lot simulé (status simulated) : counts, applicable, lines des lignes non ok"}
         '403': {description: "Permission absente"}

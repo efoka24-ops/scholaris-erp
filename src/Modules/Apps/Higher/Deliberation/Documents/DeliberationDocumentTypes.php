@@ -167,21 +167,29 @@ final class DeliberationDocumentTypes implements DocumentTypeProvider
         return $locale === 'en' ? $en . ' / <i>' . $fr . '</i>' : $fr . ' / <i>' . $en . '</i>';
     }
 
-    /** Mise en forme des relevés (DOC-BUL) : une page A4 portrait, tableau produit par le moteur du socle ({{table:x}}). */
+    /**
+     * Mise en forme des relevés (DOC-BUL) : une page A4 portrait, tableau produit par le moteur du socle ({{table:x}}). Une seule
+     * déclaration par règle, donc aucun « ; » : le même HTML est repris tel quel par la migration de mise à niveau des modèles installés
+     * (le Migrator découpe sur « ; »).
+     */
     private static function style(): string
     {
-        return '<style>@page{margin:1cm 1.2cm}body{font-size:9.5px;line-height:1.3}header h1{font-size:15px;margin:2px 0}header h2{font-size:12px;margin:2px 0}'
-            . 'header img{float:left}header p{margin:2px 0;font-size:8.5px}h2{font-size:13px;margin:6px 0 4px 0}'
-            . '.authority{text-align:center;font-size:8.5px;margin:2px 0}.identity,.synthesis{width:100%;border-collapse:collapse;margin:4px 0}'
-            . '.identity td{padding:1px 4px;border:1px solid #999}.synthesis td{padding:3px 4px;border:1px solid #555}'
-            . '.doc-table{font-size:8.5px}.doc-table th{font-size:8px}.doc-row-group td{background:#eef2f7}.note{font-size:8px;font-style:italic}</style>';
+        return '<style>@page{margin:1cm 1.2cm}body{font-size:9.5px}body{line-height:1.3}header h1{font-size:15px}header h1{margin:2px 0}'
+            . 'header h2{font-size:12px}header h2{margin:2px 0}header img{float:left}header p{margin:2px 0}header p{font-size:8.5px}'
+            . 'h2{font-size:13px}h2{margin:6px 0 4px 0}.authority{text-align:center}.authority{font-size:8.5px}.authority{margin:2px 0}'
+            . '.identity,.synthesis{width:100%}.identity,.synthesis{border-collapse:collapse}.identity,.synthesis{margin:4px 0}'
+            . '.identity td{padding:1px 4px}.identity td{border:1px solid #999}.synthesis td{padding:3px 4px}.synthesis td{border:1px solid #555}'
+            . '.doc-table{font-size:8.5px}.doc-table th{font-size:8px}.doc-row-group td{background:#eef2f7}.note{font-size:8px}.note{font-style:italic}</style>';
     }
 
     private static function header(string $locale): string
     {
-        return $locale === 'en'
+        // C-102 : {{logo}} (fragment sûr du moteur, vide sans logo) au centre de l'en-tête, avant les mentions d'autorisation.
+        $logo = '<div align="center">{{logo}}</div>';
+
+        return $logo . ($locale === 'en'
             ? '<p class="authority">Authorisation no. {{authorization_ref}} · Supervising university: {{tutelage_name}}</p>'
-            : '<p class="authority">Autorisation n° {{authorization_ref}} · Université de tutelle : {{tutelage_name}}</p>';
+            : '<p class="authority">Autorisation n° {{authorization_ref}} · Université de tutelle : {{tutelage_name}}</p>');
     }
 
     private static function identityBlock(string $locale, string $period): string

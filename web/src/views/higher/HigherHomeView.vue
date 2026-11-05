@@ -7,6 +7,7 @@ import { P } from './access';
 import { useHigherStore } from './store';
 import { useRouter } from 'vue-router';
 import { useApplyI18n } from './apply/i18n';
+import { useMigrationI18n } from './migration/i18n';
 import type { HigherApplyKey } from '@/i18n/higher-apply-fr';
 
 // Accueil de l'application IPES (maquette Dashboard.html : cartes à bordure, liens d'action) : rubriques ouvertes selon les permissions.
@@ -56,6 +57,10 @@ const visibleApplyCards = computed(() =>
   applyCards.filter((c) => router.hasRoute(c.name) && (c.perms ? ctx.can(...c.perms) : true) && (c.roles ? c.roles.includes(ctx.activeRole ?? '') : true)),
 );
 
+// Reprise de données : textes du dictionnaire propre au module (higher-migration-*.ts).
+const { tm } = useMigrationI18n();
+const showMigration = computed(() => router.hasRoute('higher-migration') && ctx.can(...P.migration));
+
 const visibleCards = computed(() =>
   cards.filter((c) => router.hasRoute(c.name) && ((c.perms ?? (router.resolve({ name: c.name }).meta.perms as string[] | undefined)) ? ctx.can(...(c.perms ?? (router.resolve({ name: c.name }).meta.perms as string[]))) : true) && (c.roles ? c.roles.includes(ctx.activeRole ?? '') : true)),
 );
@@ -85,6 +90,13 @@ onMounted(() => void higher.ensure());
             <h2>{{ ta(c.title) }}</h2>
             <p class="muted">{{ ta(c.text) }}</p>
             <router-link class="btn btn--quiet" :to="{ name: c.name }" :aria-label="`${t('hi.home.open')} : ${ta(c.title)}`">{{ t('hi.home.open') }} →</router-link>
+          </article>
+        </li>
+        <li v-if="showMigration">
+          <article class="card hi-card">
+            <h2>{{ tm('hmg.title') }}</h2>
+            <p class="muted">{{ tm('hmg.safe') }}</p>
+            <router-link class="btn btn--quiet" :to="{ name: 'higher-migration' }" :aria-label="`${t('hi.home.open')} : ${tm('hmg.title')}`">{{ t('hi.home.open') }} →</router-link>
           </article>
         </li>
       </ul>

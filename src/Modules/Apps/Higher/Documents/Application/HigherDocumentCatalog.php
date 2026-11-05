@@ -102,9 +102,10 @@ final class HigherDocumentCatalog
         $done = $en ? 'Issued at {{issue_place}} on {{issued_on}}.' : 'Fait à {{issue_place}}, le {{issued_on}}.';
 
         return '<html><body>'
-            . '<header style="border-bottom:3px solid {{school_color}};padding-bottom:6px">'
+            . '<style>header{border-bottom:3px solid {{school_color}}}header{padding-bottom:6px}header h2{color:{{school_color}}}</style>'
+            . '<header>'
             . '<img src="{{school_logo_url}}" alt="" height="60">'
-            . '<h1>{{establishment_name}}</h1><h2 style="color:{{school_color}}">{{school_name}}</h2><p>{{school_header}}</p></header>'
+            . '<h1>{{establishment_name}}</h1><h2>{{school_name}}</h2><p>{{school_header}}</p></header>'
             . '<h2>{{document_title}}</h2>'
             . $body
             . '<p>' . $done . '</p>'

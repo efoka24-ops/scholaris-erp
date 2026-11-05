@@ -8,7 +8,9 @@ use Scholaris\Modules\Apps\Higher\Deliberation\Application\HigherDeliberationGua
 use Scholaris\Modules\Apps\Higher\Deliberation\Application\SignedMinutesIssuanceGuard;
 use Scholaris\Modules\Apps\Higher\Deliberation\Application\Strategies\HigherBtsHndStrategy;
 use Scholaris\Modules\Apps\Higher\Deliberation\Application\Strategies\HigherLmdStrategy;
+use Scholaris\Modules\Apps\Higher\Deliberation\Application\TranscriptService;
 use Scholaris\Modules\Apps\Higher\Deliberation\Contracts\DeliberationRecords;
+use Scholaris\Modules\Apps\Higher\Deliberation\Contracts\SemesterTranscripts;
 use Scholaris\Modules\Apps\Higher\Deliberation\Documents\DeliberationDocumentTypes;
 use Scholaris\Modules\Apps\Higher\Deliberation\Documents\SuccessCertificateType;
 use Scholaris\Modules\Apps\Higher\Deliberation\Infrastructure\HigherRuleScopes;
@@ -22,6 +24,7 @@ use Scholaris\Modules\Apps\Higher\Deliberation\Infrastructure\PdoDeliberationRec
  */
 return [
     DeliberationRecords::class => autowire(PdoDeliberationRecords::class),
+    SemesterTranscripts::class => autowire(TranscriptService::class),
     'assessment.rule_strategies.higher_deliberation' => [HigherLmdStrategy::class, HigherBtsHndStrategy::class],
     'assessment.rule_scopes.higher_deliberation' => [HigherRuleScopes::class],
     'assessment.deliberation_guards.higher_deliberation' => [HigherDeliberationGuard::class],

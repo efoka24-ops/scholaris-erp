@@ -29,6 +29,7 @@ export const P = {
   documentIssue: ['documents.issue'],
   documentTemplates: ['documents.templates.manage'],
   quitus: ['higher.quitus.issue'],
+  migration: ['higher.migration.manage'],
 } as const;
 
 /** Les routes IPES ne s'ouvrent que si l'application est visible pour le client ; sinon retour à l'accueil IPES (message). */

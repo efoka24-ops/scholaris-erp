@@ -13,6 +13,7 @@ use Scholaris\Modules\Apps\Higher\Academic\Application\Listing;
 use Scholaris\Modules\Apps\Higher\Academic\Http\Controller;
 use Scholaris\Modules\Apps\Higher\Academic\Http\Input;
 use Scholaris\Modules\Apps\Higher\Academic\Infrastructure\Store;
+use Scholaris\Modules\Apps\Higher\Deliberation\Application\AnnualTranscriptService;
 use Scholaris\Modules\Apps\Higher\Deliberation\Application\DeliberationPermissions as P;
 use Scholaris\Modules\Apps\Higher\Deliberation\Application\TranscriptService;
 use Scholaris\Modules\Apps\Higher\Deliberation\Application\YearDecisionService;
@@ -29,6 +30,7 @@ final class ResultController extends Controller
         Listing $listing,
         private readonly YearDecisionService $years,
         private readonly TranscriptService $transcripts,
+        private readonly AnnualTranscriptService $annual,
     ) {
         parent::__construct($responder, $access, $store, $listing);
     }
@@ -85,6 +87,40 @@ final class ResultController extends Controller
         $values = $input->done();
 
         return $this->json($this->transcripts->issueSemester($principal, $establishmentId, (string) $values['person_id'], (string) $values['period_id'], isset($values['locale']) ? (string) $values['locale'] : null), 201);
+    }
+
+    public function annualTranscript(ServerRequestInterface $request): ResponseInterface
+    {
+        [$principal, $establishmentId] = $this->context($request);
+        $query = $request->getQueryParams();
+        $person = is_string($query['person_id'] ?? null) ? $query['person_id'] : throw HttpException::validation(['person_id' => ['Obligatoire.']]);
+        $year = is_string($query['academic_year_id'] ?? null) ? $query['academic_year_id'] : throw HttpException::validation(['academic_year_id' => ['Obligatoire.']]);
+
+        return $this->json($this->annual->preview($principal, $establishmentId, $person, $year, ($query['locale'] ?? 'fr') === 'en' ? 'en' : 'fr'));
+    }
+
+    public function issueAnnualTranscript(ServerRequestInterface $request): ResponseInterface
+    {
+        [$principal, $establishmentId] = $this->context($request);
+        $input = Input::of($request);
+        $input->reference('person_id');
+        $input->reference('academic_year_id');
+        $input->enum('locale', ['fr', 'en'], false);
+        $values = $input->done();
+
+        return $this->json($this->annual->issue($principal, $establishmentId, (string) $values['person_id'], (string) $values['academic_year_id'], isset($values['locale']) ? (string) $values['locale'] : null), 201);
+    }
+
+    public function issueAnnualBatch(ServerRequestInterface $request): ResponseInterface
+    {
+        [$principal, $establishmentId] = $this->context($request);
+        $input = Input::of($request);
+        $input->reference('structure_id');
+        $input->reference('academic_year_id');
+        $input->enum('locale', ['fr', 'en'], false);
+        $values = $input->done();
+
+        return $this->responder->json(['data' => $this->annual->issueBatch($principal, $establishmentId, (string) $values['structure_id'], (string) $values['academic_year_id'], isset($values['locale']) ? (string) $values['locale'] : null)], 201);
     }
 
     public function mine(ServerRequestInterface $request): ResponseInterface
