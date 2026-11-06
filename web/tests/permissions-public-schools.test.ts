@@ -32,7 +32,8 @@ describe('permissions des écoles publiques (miroir de la migration)', () => {
   });
 
   it('le rôle « parent » garde ses permissions de libre-service', () => {
-    expect(permissionsForRoles(['parent'])).toEqual(new Set(['self.read', 'documents.request', 'public_schools.apee.read_receipts']));
+    // messaging.chat : messagerie interne (migration 202610090901, miroir ajouté par C-112 à la demande de C-113).
+    expect(permissionsForRoles(['parent'])).toEqual(new Set(['self.read', 'documents.request', 'public_schools.apee.read_receipts', 'messaging.chat']));
   });
 
   it("seul l'administrateur fonctionnel peut rattacher les écoles aux territoires", () => {
