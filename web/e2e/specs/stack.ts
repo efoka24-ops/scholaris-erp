@@ -1,4 +1,4 @@
-import { expect as baseExpect, type Browser, type BrowserContext, type Page, type TestInfo } from '@playwright/test';
+import { expect as baseExpect, type Browser, type BrowserContext, type Locator, type Page, type TestInfo } from '@playwright/test';
 import { spawn, execFile, execFileSync, type ChildProcess } from 'node:child_process';
 import { promisify } from 'node:util';
 import { randomBytes, createHmac } from 'node:crypto';
@@ -210,6 +210,13 @@ export class Stack {
     expect(direct, 'Aucune écriture ne part en PATCH/PUT/DELETE direct (le front surcharge par X-HTTP-Method-Override).').toEqual([]);
   }
 
+  /** Joint au rapport les appels du navigateur refusés (4xx, 5xx) : utile au diagnostic d'un écran incomplet. */
+  async attachRefusals(info: TestInfo): Promise<void> {
+    const refused = this.calls.filter((c) => c.status >= 400).map((c) => `${c.method}${c.override ? ' (' + c.override + ')' : ''} ${c.path} -> ${c.status}`);
+    console.log(`Appels refusés (${info.title}) : ${refused.join(' ; ') || '(aucun)'}`);
+    await info.attach('appels-refuses', { body: refused.join('\n') || '(aucun)', contentType: 'text/plain' });
+  }
+
   /** Appels du navigateur refusés par le serveur avec un statut 5xx (défaut serveur). */
   serverErrors(): string[] {
     return this.calls.filter((c) => c.status >= 500).map((c) => `${c.method} ${c.path} -> ${c.status}`);
@@ -326,4 +333,11 @@ export async function typeCode(page: Page, code: string): Promise<void> {
   const first = page.getByRole('textbox', { name: /chiffre 1|1er chiffre|Chiffre 1/i }).first();
   await first.click();
   await page.keyboard.type(code);
+}
+
+/** Choisit dans une liste déroulante la première option dont le texte contient `text`. */
+export async function selectContaining(select: Locator, text: string): Promise<void> {
+  const option = select.locator('option', { hasText: text }).first();
+  await expect(option).toBeAttached();
+  await select.selectOption((await option.getAttribute('value')) ?? (await option.textContent()) ?? '');
 }
