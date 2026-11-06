@@ -3,8 +3,8 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { permissionsForRoles, ROLE_PERMISSIONS } from '@/lib/permissions';
 
-// Parité du miroir front avec les migrations des rôles du secondaire (T808, puis droits Billing). Vitest s'exécute depuis web/.
-const MIGRATIONS = ['202610281601_roles_secondary.sql', '202610291001_roles_secondary_billing.sql'].map((name) =>
+// Parité du miroir front avec les migrations des rôles du secondaire (T808, droits Billing, puis droits E2). Vitest s'exécute depuis web/.
+const MIGRATIONS = ['202610281601_roles_secondary.sql', '202610291001_roles_secondary_billing.sql', '202611052030_roles_secondary_e2.sql'].map((name) =>
   resolve(process.cwd(), '../database/migrations', name),
 );
 

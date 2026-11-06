@@ -35,20 +35,22 @@ const SECONDARY_ROLE_PERMISSIONS: Record<string, string[]> = {
     'settings.read', 'settings.manage', 'enrol.read', 'enrol.validate', 'timetable.read', 'timetable.validate', 'syllabus.read', 'attendance.read',
     'discipline.validate', 'grades.read', 'reportcard.read', 'reportcard.validate', 'council.preside', 'exams.read', 'exams.validate', 'fees.read',
     'workshops.read', 'dashboard.read', 'discipline.council.preside', 'document.sign', 'profile.read', 'catalogue.read', 'fees.validate', '@billing.read',
+    '@assessment.read',
   ),
   sec_censeur: sec(
     'settings.read', 'settings.write', 'enrol.read', 'timetable.read', 'timetable.manage', 'syllabus.read', 'syllabus.visa', 'attendance.read',
     'grades.read', 'grades.validate', 'grades.lock', 'reportcard.read', 'council.prepare', 'exams.read', 'exams.manage', 'workshops.read',
-    'dashboard.read', 'profile.read', 'catalogue.read',
+    'dashboard.read', 'profile.read', 'catalogue.read', '@assessment.read', '@assessment.validate',
   ),
   sec_surveillant_general: sec(
     'enrol.read', 'timetable.read', 'attendance.read', 'attendance.manage', 'discipline.manage', 'reportcard.read', 'conduct.enter', 'dashboard.read', 'profile.read',
+    '@attendance.read', '@attendance.justify',
   ),
   sec_chef_travaux: sec('workshops.manage', 'stock.manage', 'safety.manage', 'internships.manage'),
   sec_animateur_pedagogique: sec('syllabus.manage', 'commontests.manage', 'catalogue.read'),
   sec_professeur_principal: sec(
     'enrol.read', 'timetable.read', 'syllabus.read', 'attendance.read', 'grades.read', 'reportcard.read', 'appraisal.general', 'class.synthesis',
-    'exams.read', 'dashboard.read',
+    'exams.read', 'dashboard.read', '@assessment.read',
   ),
   sec_conseiller_orientation: sec('orientation.manage', 'catalogue.read'),
   sec_intendant: sec(
