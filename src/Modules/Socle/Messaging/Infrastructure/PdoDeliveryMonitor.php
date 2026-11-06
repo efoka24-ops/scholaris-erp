@@ -49,7 +49,7 @@ final class PdoDeliveryMonitor implements DeliveryMonitor
     {
         $where = ['1 = 1'];
         $params = [];
-        foreach (['channel' => 'd.channel', 'tenant_id' => 'd.tenant_id', 'status' => 'd.status'] as $key => $column) {
+        foreach (['channel' => 'd.channel', 'tenant_id' => 'd.tenant_id', 'status' => 'd.status', 'recipient_id' => 'd.recipient_id'] as $key => $column) {
             if (isset($filters[$key]) && $filters[$key] !== '') {
                 $where[] = $column . ' = ?';
                 $params[] = $filters[$key];

@@ -61,7 +61,7 @@ final class PdoActivityJournal implements ActivityJournal
                 'object_id' => (string) $row['object_id'],
                 'details' => is_array($details) ? $details : [],
                 'ip' => $row['ip'] === null ? null : (string) $row['ip'],
-                'cursor' => base64_encode(json_encode([(string) $row['occurred_at'], (string) $row['tenant_id'], (int) $row['seq']], JSON_THROW_ON_ERROR)),
+                'cursor' => rtrim(strtr(base64_encode(json_encode([(string) $row['occurred_at'], (string) $row['tenant_id'], (int) $row['seq']], JSON_THROW_ON_ERROR)), '+/', '-_'), '='),
             ];
         }
 
@@ -123,7 +123,7 @@ final class PdoActivityJournal implements ActivityJournal
         if ($cursor === null || $cursor === '') {
             return null;
         }
-        $data = json_decode((string) base64_decode($cursor, true), true);
+        $data = json_decode((string) base64_decode(strtr($cursor, '-_', '+/'), true), true);
         if (!is_array($data) || count($data) !== 3 || !is_string($data[0]) || !is_string($data[1]) || !is_int($data[2])) {
             return null;
         }

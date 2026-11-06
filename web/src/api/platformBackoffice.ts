@@ -17,6 +17,7 @@ export const fetchPlatformMe = async (): Promise<PlatformMe> => (await http.get<
 
 export const backofficeActions = {
   setRole: (user: string, role: PlatformRole): PlatformAction => ({ method: 'PATCH', path: `/platform/administrators/${seg(user)}/role`, body: { role } }),
+  logoutUser: (tenant: string, user: string): PlatformAction => ({ method: 'POST', path: `/platform/clients/${seg(tenant)}/users/${seg(user)}/logout`, body: {} }),
 };
 
 // --- Santé de la plateforme (point 1) ---------------------------------------------------------------------------------------
@@ -74,3 +75,80 @@ export interface PlatformKpi {
 }
 
 export const fetchPlatformKpi = async (): Promise<PlatformKpi> => (await http.get<{ data: PlatformKpi }>('/platform/kpi', undefined, NO_ESTABLISHMENT)).data;
+
+// --- Suivi des actions (point 3) ------------------------------------------------------------------------------------------
+export interface ActivityEntry {
+  id: string;
+  tenant_id: string;
+  tenant_name: string;
+  seq: number;
+  occurred_at: string;
+  actor_id: string | null;
+  action: string;
+  object_type: string;
+  object_id: string;
+  details: Record<string, unknown>;
+  ip: string | null;
+}
+export interface ActivityFilters { tenantId?: string; actorId?: string; action?: string; from?: string; to?: string }
+const activityQuery = (f: ActivityFilters): Record<string, string | undefined> => ({
+  'filter[tenant_id]': f.tenantId || undefined,
+  'filter[actor_id]': f.actorId || undefined,
+  'filter[action]': f.action || undefined,
+  'filter[from]': f.from || undefined,
+  'filter[to]': f.to || undefined,
+});
+
+export const fetchActivity = (filters: ActivityFilters, cursor: string | null = null) =>
+  http.page<ActivityEntry>('/platform/activity', { ...activityQuery(filters), cursor, per_page: 50 }, NO_ESTABLISHMENT);
+export const fetchActivityCsv = (filters: ActivityFilters): Promise<Blob> =>
+  http.get<Blob>('/platform/activity/export', activityQuery(filters), { expect: 'blob', ...NO_ESTABLISHMENT });
+
+export interface ClientDelivery {
+  id: string;
+  tenant_id: string;
+  channel: string;
+  recipient: string;
+  template_key: string | null;
+  status: string;
+  reason: string | null;
+  provider_reference: string | null;
+  attempts: number;
+  created_at: string;
+  sent_at: string | null;
+  delivered_at: string | null;
+}
+
+export interface PlatformUserCard {
+  id: string;
+  person_id: string;
+  tenant_id: string;
+  first_name: string;
+  last_name: string;
+  phone: string;
+  email: string;
+  status: string;
+  roles: string[];
+  two_factor_enabled: boolean;
+  last_login_at: string | null;
+  created_at: string;
+  sessions: Array<{ id: string; device: string | null; created_at: string; last_used_at: string | null; expires_at: string }>;
+  logins: Array<{ occurred_at: string; ip: string | null; method: string | null }>;
+  actions: Array<{ occurred_at: string; action: string; object_type: string; object_id: string }>;
+  messages: ClientDelivery[];
+}
+
+export const fetchPlatformUser = async (tenant: string, user: string): Promise<PlatformUserCard> =>
+  (await http.get<{ data: PlatformUserCard }>(`/platform/clients/${seg(tenant)}/users/${seg(user)}`, undefined, NO_ESTABLISHMENT)).data;
+
+/** Masquage d'affichage des coordonnées dans les listes : « 6•• •• •• 12 », « p•••@domaine ». */
+export function maskAddress(value: string | null | undefined): string {
+  if (!value) return '—';
+  if (value.includes('@')) {
+    const [local, domain] = value.split('@', 2);
+    return `${local.slice(0, 1)}•••@${domain}`;
+  }
+  let digits = value.replace(/\D/g, '');
+  if (digits.startsWith('237') && digits.length === 12) digits = digits.slice(3);
+  return digits.length < 4 ? '—' : `${digits.slice(0, 1)}•• •• •• ${digits.slice(-2)}`;
+}

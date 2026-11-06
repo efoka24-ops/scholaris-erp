@@ -376,6 +376,19 @@ export const routes: RouteRecordRaw[] = [
     meta: { platform: true, perms: ['platform.audit.read'], titleKey: 'pa.audit.title', nav: { labelKey: 'pa.nav.audit', order: 7 } },
   },
   {
+    path: '/platform/activite',
+    name: 'platform-activity',
+    component: () => import('@/views/platform/PlatformActivityView.vue'),
+    meta: { platform: true, perms: ['platform.audit.read'], titleKey: 'pact.title', nav: { labelKey: 'pact.nav', order: 7.2 } },
+  },
+  {
+    path: '/platform/clients/:tenant/utilisateurs/:user',
+    name: 'platform-user',
+    component: () => import('@/views/platform/PlatformUserView.vue'),
+    props: true,
+    meta: { platform: true, perms: ['platform.users.read'], titleKey: 'pu.title' },
+  },
+  {
     path: '/platform/sante',
     name: 'platform-health',
     component: () => import('@/views/platform/PlatformHealthView.vue'),

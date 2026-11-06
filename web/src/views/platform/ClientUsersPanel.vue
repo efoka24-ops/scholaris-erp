@@ -5,6 +5,8 @@ import { accessChannels, fetchClientUsers, type ClientUser } from '@/api/platfor
 import { useI18n, type MessageKey } from '@/i18n';
 import { formatDateTime } from '@/lib/format';
 import AccessCodePanel from './AccessCodePanel.vue';
+import { maskAddress } from '@/api/platformBackoffice';
+import { platformCan } from './platformAccess';
 
 // Utilisateurs d'un client, en lecture seule (aucune donnée métier), avec l'action « Code d'accès » pour dépanner un compte.
 const props = defineProps<{ tenant: string; readonly?: boolean }>();
@@ -59,8 +61,11 @@ onMounted(load);
         </thead>
         <tbody>
           <tr v-for="u in items" :key="u.id">
-            <th scope="row">{{ u.first_name }} {{ u.last_name }}</th>
-            <td>{{ u.email ?? u.phone }}</td>
+            <th scope="row">
+              <router-link v-if="platformCan('platform.users.read')" :to="{ name: 'platform-user', params: { tenant, user: u.id } }">{{ u.first_name }} {{ u.last_name }}</router-link>
+              <template v-else>{{ u.first_name }} {{ u.last_name }}</template>
+            </th>
+            <td>{{ maskAddress(u.email ?? u.phone) }}</td>
             <td>{{ u.roles.join(', ') || '—' }}</td>
             <td>{{ t(statusKey(u.status)) }}</td>
             <td>{{ u.last_login_at ? formatDateTime(u.last_login_at, locale) : '—' }}</td>

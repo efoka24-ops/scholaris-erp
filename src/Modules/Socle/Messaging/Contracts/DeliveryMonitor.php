@@ -24,7 +24,7 @@ interface DeliveryMonitor
     /**
      * Journal des livraisons, la plus récente d'abord (identifiant décroissant, strictement avant `$beforeId`).
      *
-     * @param array{channel?: string, tenant_id?: string, status?: string, from?: string, to?: string} $filters dates AAAA-MM-JJ incluses
+     * @param array{channel?: string, tenant_id?: string, status?: string, recipient_id?: string, from?: string, to?: string} $filters dates AAAA-MM-JJ incluses ; recipient_id : personne destinataire (avec tenant_id)
      * @return list<array{id: string, tenant_id: string, channel: string, recipient: string, template_key: ?string, status: string, reason: ?string, provider_reference: ?string, attempts: int, created_at: string, sent_at: ?string, delivered_at: ?string}>
      */
     public function journal(array $filters, ?string $beforeId, int $limit): array;

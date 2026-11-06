@@ -65,3 +65,62 @@ paths:
           description: "Indicateurs"
         '403':
           description: "Réservé aux membres de la plateforme"
+  /api/v1/platform/activity:
+    get:
+      summary: "Journal d'activité transversal, le plus récent d'abord (platform.audit.read) ; filtres filter[tenant_id], filter[actor_id], filter[action] (préfixe), filter[from], filter[to] (AAAA-MM-JJ) ; pagination par curseur"
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: "{ data, meta.next_cursor } : client, acteur, action, objet, détails, ip"
+        '403':
+          description: "Réservé aux rôles administrateur, support et audit"
+        '422':
+          description: "Filtre invalide"
+  /api/v1/platform/activity/export:
+    get:
+      summary: "Export CSV du journal d'activité filtré (platform.audit.export), 5 000 lignes au plus"
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: "Fichier CSV téléchargé"
+          content:
+            text/csv: {}
+        '403':
+          description: "Réservé aux rôles administrateur et audit"
+  /api/v1/platform/clients/{tenant}/users/{user}:
+    get:
+      summary: "Fiche d'un utilisateur vue par la plateforme (platform.users.read) : identité, contact masqué, statut, rôles, sessions ouvertes, 20 dernières connexions, 50 dernières actions, 50 derniers messages reçus (destinataire masqué, jamais le texte)"
+      security:
+        - bearer: []
+      parameters:
+        - {name: tenant, in: path, required: true, schema: {type: string}}
+        - {name: user, in: path, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: "Fiche"
+        '403':
+          description: "Refusé"
+        '404':
+          description: "Client ou utilisateur introuvable"
+  /api/v1/platform/clients/{tenant}/users/{user}/logout:
+    post:
+      summary: "Force la déconnexion : toutes les sessions ouvertes du compte sont révoquées (platform.users.logout, 2FA récente), journalisé dans la plateforme et le client"
+      security:
+        - bearer: []
+      parameters:
+        - {name: tenant, in: path, required: true, schema: {type: string}}
+        - {name: user, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: {type: object, additionalProperties: false}
+      responses:
+        '200':
+          description: "{ revoked_sessions }"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Client ou utilisateur introuvable"

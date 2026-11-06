@@ -61,6 +61,10 @@ return static function (RouteRegistry $routes): void {
     $routes->add('POST', '/platform/clients/{tenant}/administrators/{user}/unblock', [AdministratorsAdminController::class, 'unblock'], $platform);
     $routes->add('POST', '/platform/clients/{tenant}/administrators/{user}/reset-access', [AdministratorsAdminController::class, 'reset'], $platform);
     $routes->add('GET', '/platform/clients/{tenant}/users', [AccessCodeAdminController::class, 'users'], $platform);
+    $routes->add('GET', '/platform/clients/{tenant}/users/{user}', [\Scholaris\Modules\Socle\Platform\Http\ActivityAdminController::class, 'user'], $platform);
+    $routes->add('POST', '/platform/clients/{tenant}/users/{user}/logout', [\Scholaris\Modules\Socle\Platform\Http\ActivityAdminController::class, 'logout'], $platform);
+    $routes->add('GET', '/platform/activity', [\Scholaris\Modules\Socle\Platform\Http\ActivityAdminController::class, 'index'], $platform);
+    $routes->add('GET', '/platform/activity/export', [\Scholaris\Modules\Socle\Platform\Http\ActivityAdminController::class, 'export'], $platform);
     $routes->add('POST', '/platform/clients/{tenant}/users/{user}/access-code', [AccessCodeAdminController::class, 'issue'], $platform);
     $routes->add('POST', '/platform/clients/{tenant}/users/{user}/access-code/send', [AccessCodeAdminController::class, 'send'], $platform);
     $routes->add('POST', '/platform/administrators/{user}/access-code', [AccessCodeAdminController::class, 'issue'], $platform);
