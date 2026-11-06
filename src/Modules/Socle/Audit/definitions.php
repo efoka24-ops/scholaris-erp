@@ -24,6 +24,8 @@ use Scholaris\Modules\Socle\Audit\Infrastructure\PdoPendingApprovals;
 return [
     PendingApprovals::class => autowire(PdoPendingApprovals::class),
     \Scholaris\Modules\Socle\Audit\Contracts\AuditTrail::class => autowire(\Scholaris\Modules\Socle\Audit\Infrastructure\PdoAuditTrail::class),
+    // C-112 : lecture transversale pour le back-office de la plateforme (journal d'activité, indicateurs).
+    \Scholaris\Modules\Socle\Audit\Contracts\ActivityJournal::class => autowire(\Scholaris\Modules\Socle\Audit\Infrastructure\PdoActivityJournal::class),
 
     'privacy.tenant_data_source.audit' => get(AuditDataSources::class),
     'privacy.subject_data_source.audit' => get(AuditDataSources::class),

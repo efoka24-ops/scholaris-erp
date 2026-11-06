@@ -8,6 +8,7 @@ import { useI18n } from '@/i18n';
 import { formatDate, formatDateTime, formatXaf } from '@/lib/format';
 import { appStatusKey, appStatusTone, stateKey, stateTone } from './display';
 import StatusTag from '@/components/StatusTag.vue';
+import PlatformKpiPanel from './PlatformKpiPanel.vue';
 import { healthTone, type HealthTile } from '@/api/platformBackoffice';
 import type { MessageKey } from '@/i18n';
 
@@ -85,6 +86,8 @@ onMounted(load);
           <span v-else class="muted small">{{ t('ph.allGood') }}</span>
         </router-link>
       </section>
+
+      <PlatformKpiPanel />
 
       <section v-if="data.applications?.available && data.applications.items?.length" class="block" aria-labelledby="pd-apps">
         <h2 id="pd-apps">{{ t('plat.dash.apps') }}</h2>

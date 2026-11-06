@@ -55,3 +55,13 @@ paths:
           description: "{ status, as_of, probes }"
         '403':
           description: "Réservé aux rôles administrateur, support et audit de la plateforme"
+  /api/v1/platform/kpi:
+    get:
+      summary: "Indicateurs d'usage (platform.dashboard.read) : connectés (sessions des 15 dernières minutes ; liste nominative seulement avec platform.users.read), connexions jour / semaine / mois et série de 30 jours, actifs 7 j et 30 j, échecs de connexion et verrouillages 24 h, clients actifs / inactifs (réglage kpi_inactive_days), usage par application, 10 clients les plus et les moins actifs, conversion essai → payant, SMS et e-mails (jour, mois) avec quota TeeeOTP restant"
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: "Indicateurs"
+        '403':
+          description: "Réservé aux membres de la plateforme"

@@ -58,6 +58,8 @@ return [
     PlatformAdministrators::class => autowire(PlatformAdministratorService::class),
     // C-112 : membres de la plateforme et attribution de leur rôle (admin, support, finance, audit).
     \Scholaris\Modules\Socle\Identity\Contracts\PlatformStaff::class => autowire(\Scholaris\Modules\Socle\Identity\Application\PlatformStaffService::class),
+    // C-112 : activité des comptes de tous les clients (sessions, connexions, verrouillages) et déconnexion forcée par la plateforme.
+    \Scholaris\Modules\Socle\Identity\Contracts\AccountActivity::class => autowire(\Scholaris\Modules\Socle\Identity\Infrastructure\PdoAccountActivity::class),
     ClientAdministrators::class => autowire(ClientAdministratorService::class),
     \Scholaris\Modules\Socle\Identity\Contracts\AccountAdministration::class => autowire(\Scholaris\Modules\Socle\Identity\Application\AccountAdministrationService::class),
     \Scholaris\Modules\Socle\Identity\Contracts\RoleAssignmentGateway::class => autowire(\Scholaris\Modules\Socle\Identity\Application\RoleAssignmentGatewayService::class),

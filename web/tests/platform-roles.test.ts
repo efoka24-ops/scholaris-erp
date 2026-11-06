@@ -38,7 +38,8 @@ describe('rôles de la plateforme', () => {
     expect(finance.has('platform.users.read')).toBe(false);
     const auditor = [...platformPermissionsFor('platform_auditor')];
     expect(auditor.filter((p) => /\.(manage|decide|send|retry|broadcast|logout|access_code)$/.test(p))).toEqual([]);
-    expect(PLATFORM_ROLE_PERMISSIONS.platform_admin).toHaveLength(28);
+    expect(PLATFORM_ROLE_PERMISSIONS.platform_admin).toHaveLength(30);
+    expect(PLATFORM_ROLE_PERMISSIONS.platform_support).toContain('platform.support.manage');
   });
 
   it('les écrans du support : clients et journal oui, paiements et réglages non', async () => {

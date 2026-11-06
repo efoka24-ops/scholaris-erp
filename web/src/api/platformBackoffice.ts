@@ -53,3 +53,24 @@ export interface HealthTile {
 export const fetchPlatformHealth = async (): Promise<HealthReport> => (await http.get<{ data: HealthReport }>('/platform/health', undefined, NO_ESTABLISHMENT)).data;
 
 export const healthTone = (s: HealthStatus): 'success' | 'warning' | 'ink' | 'neutral' => (s === 'ok' ? 'success' : s === 'warning' ? 'warning' : s === 'critical' ? 'ink' : 'neutral');
+
+// --- Indicateurs d'usage (point 2) ------------------------------------------------------------------------------------------
+export interface ClientActivityRow { tenant_id: string; name: string; actions_7d: number; last_login_at: string | null; active: boolean }
+export interface PlatformKpi {
+  as_of: string;
+  online: { window_minutes: number; total: number; items: Array<{ tenant_id: string; tenant_name: string; user_id: string; first_name: string; last_name: string; role: string | null; since: string; last_seen_at: string; device: string | null }> };
+  logins: { today: number; week: number; month: number; series: Array<{ date: string; count: number }> };
+  active_users: { d7: number; d30: number };
+  security: { failed_logins_24h: number; lockouts_24h: number; locked_accounts: number };
+  clients_activity: { inactive_days: number; active: number; inactive: number; top_active: ClientActivityRow[]; least_active: ClientActivityRow[] };
+  usage_by_app: Array<{ key: string; label: string; clients: number; establishments: number; learners: number; actions_7d: number }>;
+  conversion: { trials: number; converted: number; rate_percent: number | null };
+  messages: {
+    today: { sms: { sent: number; delivered: number; failed: number }; email: { sent: number; failed: number } };
+    month: { sms: { sent: number; delivered: number; failed: number }; email: { sent: number; failed: number } };
+    sms_quota_remaining: number | null;
+    sms_mode: string | null;
+  };
+}
+
+export const fetchPlatformKpi = async (): Promise<PlatformKpi> => (await http.get<{ data: PlatformKpi }>('/platform/kpi', undefined, NO_ESTABLISHMENT)).data;

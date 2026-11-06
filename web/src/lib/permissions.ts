@@ -185,6 +185,15 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
   ...SECONDARY_ROLE_PERMISSIONS,
 };
 
+// Messagerie interne et support SCHOLARIS (migrations 202610090901 et 202611060201, C-113).
+const MESSAGING_EXTRA: Record<string, string[]> = {
+  super_admin: ['messaging.chat', 'messaging.moderate', 'messaging.support'],
+  directeur: ['messaging.chat', 'messaging.moderate', 'messaging.support'],
+  enseignant: ['messaging.chat'],
+  parent: ['messaging.chat'],
+};
+for (const [role, extra] of Object.entries(MESSAGING_EXTRA)) ROLE_PERMISSIONS[role] = [...new Set([...(ROLE_PERMISSIONS[role] ?? []), ...extra])];
+
 export function permissionsForRoles(roles: string[]): Set<string> {
   const set = new Set<string>();
   for (const role of roles) for (const p of ROLE_PERMISSIONS[role] ?? []) set.add(p);
@@ -197,6 +206,8 @@ const PLATFORM_SUPPORT = [
   'platform.access', 'platform.dashboard.read', 'platform.health.read', 'platform.clients.read', 'platform.catalog.read',
   'platform.requests.read', 'platform.users.read', 'platform.users.logout', 'platform.users.access_code', 'platform.audit.read',
   'platform.messages.read', 'platform.messages.retry', 'platform.messages.send',
+  // Boîte du support SCHOLARIS (migration 202611060202, C-113).
+  'platform.support.manage',
 ];
 const PLATFORM_FINANCE = [
   'platform.access', 'platform.dashboard.read', 'platform.kpi.finance', 'platform.clients.read', 'platform.catalog.read',
@@ -211,7 +222,7 @@ const PLATFORM_ADMIN = [
   ...new Set([
     ...PLATFORM_SUPPORT, ...PLATFORM_FINANCE, ...PLATFORM_AUDITOR,
     'platform.clients.manage', 'platform.catalog.manage', 'platform.requests.decide', 'platform.applications.manage',
-    'platform.admins.manage', 'platform.messages.broadcast', 'platform.settings.manage',
+    'platform.admins.manage', 'platform.messages.broadcast', 'platform.settings.manage', 'platform.support.open',
   ]),
 ];
 

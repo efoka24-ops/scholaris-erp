@@ -46,6 +46,9 @@ final class PlatformPermissions
         'platform.messages.broadcast',
         'platform.settings.read',
         'platform.settings.manage',
+        // Boîte du support SCHOLARIS (migration 202611060202, C-113).
+        'platform.support.manage',
+        'platform.support.open',
     ];
 
     private function __construct()
