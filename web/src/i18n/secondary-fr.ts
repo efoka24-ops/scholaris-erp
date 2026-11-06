@@ -1,8 +1,10 @@
 // Textes de l'application « Enseignement secondaire » (accueil, profil, documents, portails). Les autres lots ajoutent leurs clés ici.
 import { secondaryDisciplineFr } from './secondary-discipline-fr';
+import { secondaryTimetableFr } from './secondary-timetable-fr';
 
 export const secondaryFr = {
   ...secondaryDisciplineFr,
+  ...secondaryTimetableFr,
   'nav.secondary': 'Secondaire',
 
   'sec.home.eyebrow': 'Enseignement secondaire',

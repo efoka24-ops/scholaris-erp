@@ -17,6 +17,8 @@ export const S = {
   grades: ['secondary.grades.read', 'secondary.grades.enter', 'secondary.grades.validate', 'secondary.grades.lock'],
   discipline: ['secondary.attendance.read', 'secondary.attendance.take', 'secondary.attendance.manage', 'secondary.discipline.manage', 'secondary.discipline.validate', 'secondary.discipline.council.preside'],
   disciplineCouncils: ['secondary.discipline.manage', 'secondary.discipline.validate', 'secondary.discipline.council.preside'],
+  timetable: ['secondary.timetable.read', 'secondary.timetable.manage', 'secondary.timetable.validate', 'secondary.lesson.log'],
+  syllabus: ['secondary.syllabus.read', 'secondary.syllabus.manage', 'secondary.syllabus.visa', 'secondary.lesson.log', 'secondary.inspection.read'],
   self: ['secondary.self.read'],
   family: ['secondary.family.read'],
   familyPay: ['secondary.family.pay'],

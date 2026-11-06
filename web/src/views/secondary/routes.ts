@@ -16,6 +16,8 @@ const screens: Screen[] = [
   ['notes', 'sec-grades', () => import('./grades/GradesView.vue'), S.grades, 'secg.title'],
   ['discipline', 'sec-discipline', () => import('./discipline/DisciplineView.vue'), S.discipline, 'secd.title'],
   ['conseils-de-discipline', 'sec-discipline-councils', () => import('./discipline/DisciplineCouncilsView.vue'), S.disciplineCouncils, 'secdc.title'],
+  ['emploi-du-temps', 'sec-timetable', () => import('./timetable/TimetableView.vue'), S.timetable, 'sectt.title'],
+  ['cahier-de-textes', 'sec-syllabus', () => import('./syllabus/SyllabusView.vue'), S.syllabus, 'secsy.title'],
   ['mon-espace', 'sec-student', () => import('./portals/StudentPortalView.vue'), S.self, 'sec.portal.studentTitle'],
   ['famille', 'sec-family', () => import('./portals/FamilyPortalView.vue'), S.family, 'sec.portal.familyTitle'],
 ];
