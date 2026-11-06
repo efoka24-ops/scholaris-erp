@@ -7,6 +7,7 @@ import { useSensitiveAction } from './useSensitiveAction';
 import TwoFactorPrompt from './TwoFactorPrompt.vue';
 import ReplayNotice from './ReplayNotice.vue';
 import ContactSettingsPanel from './ContactSettingsPanel.vue';
+import PlatformSecurityPanel from './PlatformSecurityPanel.vue';
 
 // Réglages de la plateforme : durée de validité des codes d'accès créés depuis le back-office (5 minutes à 7 jours), niveau de blocage
 // par défaut des impayés, vérification des paiements déclarés (expiration, tolérance, paiement partiel), contact et numéros de paiement.
@@ -171,5 +172,6 @@ onMounted(load);
     </form>
 
     <ContactSettingsPanel />
+    <PlatformSecurityPanel />
   </section>
 </template>

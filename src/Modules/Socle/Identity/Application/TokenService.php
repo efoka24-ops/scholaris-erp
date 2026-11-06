@@ -6,17 +6,19 @@ namespace Scholaris\Modules\Socle\Identity\Application;
 
 use Scholaris\Modules\Socle\Identity\Domain\AccessToken;
 use Scholaris\Modules\Socle\Identity\Infrastructure\PdoAccessTokenRepository;
+use Scholaris\Modules\Socle\Identity\Infrastructure\PdoSecurityPolicies;
 
 /** Émission et contrôle des jetons d'accès opaques (43 caractères aléatoires, empreinte SHA-256 en base). */
 final class TokenService
 {
     public const PREFIX = 'sch_';
-    public const TTL_DEFAULT = 28800;      // 8 heures
+    public const TTL_DEFAULT = 28800;      // 8 heures (réglable : back-office → Réglages, C-112)
     public const TTL_REMEMBER = 2592000;   // 30 jours
 
     public function __construct(
         private readonly PdoAccessTokenRepository $tokens,
         private readonly Moment $moment,
+        private readonly PdoSecurityPolicies $policies,
     ) {
     }
 
@@ -33,7 +35,7 @@ final class TokenService
     public function issue(string $tenantId, string $userId, string $deviceId, bool $remember, bool $needsTwoFactor, bool $passwordConfirmed = false): array
     {
         $plain = self::PREFIX . rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');
-        $expiresAt = $this->moment->in($remember ? self::TTL_REMEMBER : self::TTL_DEFAULT);
+        $expiresAt = $this->moment->in($remember ? self::TTL_REMEMBER : $this->policies->sessionHours() * 3600);
         $id = $this->tokens->insert($tenantId, $userId, $deviceId, self::hash($plain), $remember, $expiresAt, $needsTwoFactor, $this->moment->iso(), $passwordConfirmed ? $this->moment->iso() : null);
 
         return ['token' => $plain, 'expires_at' => $expiresAt, 'id' => $id];

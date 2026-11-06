@@ -29,5 +29,9 @@ return [
 
     'console.command.platform:admin-create' => autowire(AdminCreateCommand::class),
     'console.command.platform:billing-run' => autowire(BillingRunCommand::class),
+    'console.command.platform:daily-digest' => autowire(\Scholaris\Modules\Socle\Platform\Console\DailyDigestCommand::class),
+    // C-112 point 6 (raccord C-113) : canaux de notification de la messagerie choisis dans « Mon profil » ; remplace la liaison
+    // par défaut de Messaging (application seulement), les définitions de Platform étant chargées après celles de Messaging.
+    \Scholaris\Modules\Socle\Messaging\Contracts\NotificationChannelPreferences::class => autowire(\Scholaris\Modules\Socle\Platform\Infrastructure\PreferenceChannels::class),
     'console.command.' . ClientCreateCommand::NAME => autowire(ClientCreateCommand::class),
 ];

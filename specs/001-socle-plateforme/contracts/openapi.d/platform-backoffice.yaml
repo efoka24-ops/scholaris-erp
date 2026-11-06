@@ -258,3 +258,106 @@ paths:
           description: "Comptes par client"
         '403':
           description: "Refusé"
+  /api/v1/me/profile:
+    get:
+      summary: "Mon profil (tout utilisateur connecté, plateforme comprise) : nom, téléphone, e-mail, langue, double authentification, sessions ouvertes (current = celle-ci), réglages personnels"
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: "Profil"
+        '401':
+          description: "Non connecté"
+    patch:
+      summary: "Modifie son nom, son téléphone (mobile camerounais), son e-mail ou sa langue ; un identifiant de connexion reste obligatoire. Le mot de passe et la 2FA restent sur /auth/change-password et /auth/2fa/*"
+      security:
+        - bearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                first_name: {type: string, maxLength: 80}
+                last_name: {type: string, maxLength: 80}
+                phone: {type: [string, 'null']}
+                email: {type: [string, 'null']}
+                locale: {type: string, enum: [fr, en]}
+      responses:
+        '200':
+          description: "Profil à jour"
+        '409':
+          description: "Téléphone ou e-mail déjà utilisé"
+        '422':
+          description: "Données invalides"
+  /api/v1/me/preferences:
+    patch:
+      summary: "Réglages personnels : canaux de notification des nouveaux messages en plus de l'application (notify_sms, notify_email) et résumé quotidien par e-mail (daily_digest, rôles de la plateforme seulement)"
+      security:
+        - bearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                notify_sms: {type: boolean}
+                notify_email: {type: boolean}
+                daily_digest: {type: boolean}
+      responses:
+        '200':
+          description: "Profil à jour"
+        '422':
+          description: "Valeur invalide ou résumé hors plateforme"
+  /api/v1/me/sessions/logout-others:
+    post:
+      summary: "Déconnecte tous ses autres appareils (la session courante reste ouverte), journalisé"
+      security:
+        - bearer: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: {type: object, additionalProperties: false}
+      responses:
+        '200':
+          description: "{ revoked_sessions }"
+  /api/v1/platform/settings/security:
+    get:
+      summary: "Réglages de sécurité (platform.settings.read) : durée d'une session (heures) et double authentification obligatoire par rôle (rôles de la plateforme : toujours, locked)"
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: "{ session_hours, roles }"
+        '403':
+          description: "Refusé"
+    patch:
+      summary: "Modifie la durée de session et la 2FA obligatoire par rôle (platform.settings.manage, 2FA récente), journalisé"
+      security:
+        - bearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                session_hours: {type: integer, minimum: 1, maximum: 72}
+                two_factor: {type: object, additionalProperties: {type: boolean}}
+      responses:
+        '200':
+          description: "Réglages à jour"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Rôle inconnu"
+        '409':
+          description: "Rôle de la plateforme (2FA toujours exigée)"
+        '422':
+          description: "Valeur hors bornes"

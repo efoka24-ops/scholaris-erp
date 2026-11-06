@@ -145,8 +145,8 @@ export const fetchPlatformUser = async (tenant: string, user: string): Promise<P
 export function maskAddress(value: string | null | undefined): string {
   if (!value) return '—';
   if (value.includes('@')) {
-    const [local, domain] = value.split('@', 2);
-    return `${local.slice(0, 1)}•••@${domain}`;
+    const at = value.indexOf('@');
+    return `${value.slice(0, 1)}•••@${value.slice(at + 1)}`;
   }
   let digits = value.replace(/\D/g, '');
   if (digits.startsWith('237') && digits.length === 12) digits = digits.slice(3);
@@ -206,4 +206,14 @@ export const messageActions = {
   send: (input: DirectMessageInput): PlatformAction => ({ method: 'POST', path: '/platform/messages/direct', body: { ...input } }),
   retryDelivery: (tenant: string, id: string): PlatformAction => ({ method: 'POST', path: `/platform/messages/deliveries/${seg(tenant)}/${seg(id)}/retry`, body: {} }),
   retryDirect: (id: string): PlatformAction => ({ method: 'POST', path: `/platform/messages/direct/${seg(id)}/retry`, body: {} }),
+};
+
+// --- Réglages de sécurité par rôle (point 6, super administrateur) -----------------------------------------------------------
+export interface SecuritySettings {
+  session_hours: { value: number; default: number; min: number; max: number };
+  roles: Array<{ code: string; label_fr: string; label_en: string; level: string; two_factor_required: boolean; locked: boolean }>;
+}
+export const fetchSecuritySettings = async (): Promise<SecuritySettings> => (await http.get<{ data: SecuritySettings }>('/platform/settings/security', undefined, NO_ESTABLISHMENT)).data;
+export const securityActions = {
+  update: (changes: { session_hours?: number; two_factor?: Record<string, boolean> }): PlatformAction => ({ method: 'PATCH', path: '/platform/settings/security', body: { ...changes } }),
 };

@@ -131,6 +131,13 @@ return static function (RouteRegistry $routes): void {
     $routes->add('GET', '/platform/payments/{id}/receipt', [PaymentsAdminController::class, 'receipt'], $platform);
     $routes->add('POST', '/platform/payments/webhook', [PaymentWebhookController::class, 'receive'], $public);
 
+    // « Mon profil » et réglages personnels (C-112 point 6) : tout utilisateur connecté, plateforme comprise.
+    $routes->add('GET', '/me/profile', [\Scholaris\Modules\Socle\Platform\Http\ProfileController::class, 'show'], ['tenant' => false]);
+    $routes->add('PATCH', '/me/profile', [\Scholaris\Modules\Socle\Platform\Http\ProfileController::class, 'update'], ['tenant' => false]);
+    $routes->add('PATCH', '/me/preferences', [\Scholaris\Modules\Socle\Platform\Http\ProfileController::class, 'preferences'], ['tenant' => false]);
+    $routes->add('POST', '/me/sessions/logout-others', [\Scholaris\Modules\Socle\Platform\Http\ProfileController::class, 'logoutOthers'], ['tenant' => false]);
+    $routes->add('GET', '/platform/settings/security', [\Scholaris\Modules\Socle\Platform\Http\ProfileController::class, 'security'], $platform);
+    $routes->add('PATCH', '/platform/settings/security', [\Scholaris\Modules\Socle\Platform\Http\ProfileController::class, 'updateSecurity'], $platform);
     $routes->add('GET', '/me/applications', [ClientApplicationController::class, 'mine'], ['tenant' => false]);
     $routes->add('GET', '/me/regularisation', [ClientRegularisationController::class, 'mine'], ['tenant' => false]);
     $routes->add('POST', '/me/regularisation/declarations', [ClientRegularisationController::class, 'declare'], ['tenant' => false]);

@@ -60,6 +60,9 @@ return [
     \Scholaris\Modules\Socle\Identity\Contracts\PlatformStaff::class => autowire(\Scholaris\Modules\Socle\Identity\Application\PlatformStaffService::class),
     // C-112 : activité des comptes de tous les clients (sessions, connexions, verrouillages) et déconnexion forcée par la plateforme.
     \Scholaris\Modules\Socle\Identity\Contracts\AccountActivity::class => autowire(\Scholaris\Modules\Socle\Identity\Infrastructure\PdoAccountActivity::class),
+    // C-112 point 6 : « Mon profil » et règles de sécurité réglables (2FA par rôle, durée de session).
+    \Scholaris\Modules\Socle\Identity\Contracts\OwnAccount::class => autowire(\Scholaris\Modules\Socle\Identity\Infrastructure\PdoOwnAccount::class),
+    \Scholaris\Modules\Socle\Identity\Contracts\SecurityPolicies::class => get(\Scholaris\Modules\Socle\Identity\Infrastructure\PdoSecurityPolicies::class),
     ClientAdministrators::class => autowire(ClientAdministratorService::class),
     \Scholaris\Modules\Socle\Identity\Contracts\AccountAdministration::class => autowire(\Scholaris\Modules\Socle\Identity\Application\AccountAdministrationService::class),
     \Scholaris\Modules\Socle\Identity\Contracts\RoleAssignmentGateway::class => autowire(\Scholaris\Modules\Socle\Identity\Application\RoleAssignmentGatewayService::class),
