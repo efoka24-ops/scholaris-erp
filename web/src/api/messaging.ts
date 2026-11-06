@@ -121,7 +121,7 @@ export const reportMessage = async (conversationId: string, messageId: string, r
 
 export const fetchUnread = async (): Promise<number> => (await http.get<{ data: { unread: number } }>('/conversation-unread')).data.unread;
 
-export const fetchLearners = async (): Promise<LearnerChoice[]> => (await http.get<{ data: LearnerChoice[] }>('/conversation-learners')).data;
+export const fetchLearners = async (): Promise<LearnerChoice[]> => (await http.get<{ data: LearnerChoice[] }>('/conversation-learners', { per_page: 200 })).data;
 
 export const fetchContacts = async (learnerId: string): Promise<Contact[]> =>
   (await http.get<{ data: Contact[] }>('/conversation-contacts', { learner_id: learnerId })).data;

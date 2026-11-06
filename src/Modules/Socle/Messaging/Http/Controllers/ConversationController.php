@@ -87,7 +87,14 @@ final class ConversationController
     {
         $this->access->authorizeChat($request);
 
-        return $this->responder->json(['data' => $this->chat->learners($this->access->tenantId(), $this->access->establishmentId(), $this->person($request))]);
+        $query = ListQuery::fromRequest($request);
+        $all = $this->chat->learners($this->access->tenantId(), $this->access->establishmentId(), $this->person($request));
+        // Liste triée par nom, paginée par position (curseur = rang du premier élément suivant).
+        $offset = (int) (ListQuery::decodeCursor($query->cursor) ?? '0');
+        $items = array_slice($all, max(0, $offset), $query->perPage);
+        $nextOffset = $offset + $query->perPage;
+
+        return $this->responder->json(['data' => $items, 'meta' => ['next_cursor' => $nextOffset < count($all) ? ListQuery::encodeCursor((string) $nextOffset) : null]]);
     }
 
     public function store(ServerRequestInterface $request): ResponseInterface
