@@ -1,5 +1,6 @@
-import { expect as baseExpect, type BrowserContext, type Page } from '@playwright/test';
-import { spawn, execFileSync, type ChildProcess } from 'node:child_process';
+import { expect as baseExpect, type Browser, type BrowserContext, type Page, type TestInfo } from '@playwright/test';
+import { spawn, execFile, execFileSync, type ChildProcess } from 'node:child_process';
+import { promisify } from 'node:util';
 import { randomBytes, createHmac } from 'node:crypto';
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { createServer } from 'node:net';
@@ -22,6 +23,8 @@ const here = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(here, '..', '..', '..');
 const TOOL = join(here, '..', 'fixtures', 'stack', 'tool.php');
 const SERVER = join(here, '..', 'fixtures', 'stack', 'server.php');
+const SEED = join(here, '..', 'fixtures', 'stack', 'seed.php');
+const OPCACHE = ['-d', 'zend_extension=opcache', '-d', 'opcache.enable=1', '-d', 'opcache.enable_cli=1', '-d', 'opcache.memory_consumption=256', '-d', 'opcache.max_accelerated_files=20000'];
 const PHP = process.env.E2E_PHP ?? 'php';
 
 export interface ApiOptions {
@@ -63,6 +66,14 @@ export class Stack {
     this.dir = dir;
     this.env = env;
     this.procs = procs;
+  }
+
+  /**
+   * Semis d'un scénario (fixtures/stack/seed.php) par l'API réelle, en mémoire : identifiants fictifs et ressources en JSON.
+   */
+  async seed<T = any>(scenario: string, ...args: string[]): Promise<T> {
+    const { stdout: out } = await promisify(execFile)(PHP, [...OPCACHE, SEED, scenario, ...args], { cwd: ROOT, env: this.env, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, timeout: 600_000 });
+    return JSON.parse(out.trim().split('\n').pop()!) as T;
   }
 
   /** Outil d'installation (fixtures/stack/tool.php) : réponse JSON. */
@@ -130,11 +141,11 @@ export class Stack {
     if (res.two_factor_required !== true) return { token };
     if (res.two_factor_setup_required === true) {
       const setup = await this.api('POST', '/auth/2fa/setup', {}, { token });
-      await this.api('POST', '/auth/2fa/confirm', { code: totp(String(setup.secret)) }, { token });
+      await this.api('POST', '/auth/2fa/confirm', { code: await freshTotp(String(setup.secret)) }, { token });
       return { token, secret: String(setup.secret) };
     }
     if (!totpSecret) throw new Error('Secret TOTP requis pour ' + login);
-    await this.api('POST', '/auth/2fa/verify', { code: totp(totpSecret) }, { token });
+    await this.api('POST', '/auth/2fa/verify', { code: await freshTotp(totpSecret) }, { token });
     return { token, secret: totpSecret };
   }
 
@@ -234,12 +245,11 @@ export async function startStack(opts: { twoFactor?: boolean; workers?: number }
   const dir = mkdtempSync(join(tmpdir(), 'scholaris-e2e-'));
   const env: NodeJS.ProcessEnv = { ...process.env, E2E_DIR: dir, E2E_APP_KEY: randomBytes(32).toString('base64'), E2E_2FA: opts.twoFactor ? '1' : '0' };
   execFileSync(PHP, [TOOL, 'migrate'], { cwd: ROOT, env, encoding: 'utf8' });
-  const opcache = ['-d', 'zend_extension=opcache', '-d', 'opcache.enable=1', '-d', 'opcache.enable_cli=1', '-d', 'opcache.memory_consumption=256', '-d', 'opcache.max_accelerated_files=20000'];
   const procs: ChildProcess[] = [];
   const workers: string[] = [];
   for (let i = 0; i < (opts.workers ?? 4); i++) {
     const port = await freePort();
-    procs.push(spawn(PHP, [...opcache, '-S', `127.0.0.1:${port}`, SERVER], { cwd: ROOT, env, stdio: 'ignore' }));
+    procs.push(spawn(PHP, [...OPCACHE, '-S', `127.0.0.1:${port}`, SERVER], { cwd: ROOT, env, stdio: 'ignore' }));
     workers.push(`http://127.0.0.1:${port}`);
   }
   const deadline = Date.now() + 20_000;
@@ -284,4 +294,36 @@ export async function uiLogin(page: Page, identifier: string, password: string):
 /** Date du jour à Douala (AAAA-MM-JJ). */
 export function isoDate(d = new Date()): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Douala', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+}
+
+/** Contexte de navigateur propre à un acteur (sa session, ses cookies), relié à la pile. */
+export async function actorPage(browser: Browser, stack: Stack, info: TestInfo): Promise<Page> {
+  const viewport = info.project.use.viewport ?? { width: 1280, height: 800 };
+  const context = await browser.newContext({ baseURL: String(info.project.use.baseURL), viewport, locale: 'fr-FR', timezoneId: 'Africa/Douala', serviceWorkers: 'block' });
+  await stack.attach(context);
+  return context.newPage();
+}
+
+const usedTotp = new Map<string, string>();
+
+/**
+ * Code TOTP jamais présenté pour ce secret (le serveur refuse le rejeu d'un code) : si le code courant a déjà servi, attend
+ * la fenêtre de 30 s suivante, comme le ferait la personne devant son application d'authentification.
+ */
+export async function freshTotp(secret: string): Promise<string> {
+  for (;;) {
+    const code = totp(secret);
+    if (usedTotp.get(secret) !== code) {
+      usedTotp.set(secret, code);
+      return code;
+    }
+    await new Promise((r) => setTimeout(r, 30_000 - (Date.now() % 30_000) + 200));
+  }
+}
+
+/** Saisie d'un code à 6 chiffres dans le composant à cases (CodeInput) : collage dans la première case. */
+export async function typeCode(page: Page, code: string): Promise<void> {
+  const first = page.getByRole('textbox', { name: /chiffre 1|1er chiffre|Chiffre 1/i }).first();
+  await first.click();
+  await page.keyboard.type(code);
 }

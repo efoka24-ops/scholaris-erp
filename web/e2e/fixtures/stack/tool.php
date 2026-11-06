@@ -7,6 +7,7 @@ declare(strict_types=1);
  *   php tool.php migrate
  *   php tool.php platform-admin <téléphone> <prénom> <nom>
  *   php tool.php client <application> <type> <téléphone> <prénom> <nom> <établissement> [ville] [région]
+ *   php tool.php artisan <commande> [arguments...]   (commande console réelle, ex. platform:billing-run)
  *   php tool.php sql <requête>              (lecture ou réglage ponctuel de la base de test)
  */
 
@@ -45,6 +46,12 @@ switch ($args[0] ?? '') {
             'first_name' => $first, 'last_name' => $last, 'phone' => $phone, 'email' => null, 'locale' => 'fr',
         ], 'console', null);
         $out(['tenant_id' => $tenant, 'establishment_id' => $client['establishments'][0]['id'] ?? null, 'entitlement' => $entitlement, 'admin' => $admin]);
+        break;
+    case 'artisan':
+        // Commande console réelle (ex. platform:billing-run 2027-03-01) : sortie texte reprise dans le JSON.
+        ob_start();
+        $code = $c->get('console.command.' . $args[1])->run(array_slice($args, 2));
+        $out(['code' => $code, 'output' => ob_get_clean()]);
         break;
     case 'sql':
         $pdo = $c->get(ConnectionFactory::class)->pdo();

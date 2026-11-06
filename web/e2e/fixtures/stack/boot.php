@@ -70,7 +70,8 @@ $items['api']['rate_limits'] = [];
 
 $outbox = new E2eOutbox($dir . '/outbox.jsonl');
 
-$kernel = Kernel::boot($root, Config::fromArray($items), [SmsGateway::class => $outbox, MailGateway::class => $outbox]);
+// $e2eOverrides (facultatif, défini par seed.php avant inclusion) : passerelles d'enregistrement des tests réutilisés.
+$kernel = Kernel::boot($root, Config::fromArray($items), ($e2eOverrides ?? []) + [SmsGateway::class => $outbox, MailGateway::class => $outbox]);
 // Base jetable : journal WAL et écriture sans attente disque (sous Windows, la migration complète passe de ~50 s à ~10 s).
 $kernel->container()->get(ConnectionFactory::class)->pdo()->exec('PRAGMA journal_mode = WAL; PRAGMA synchronous = OFF');
 
