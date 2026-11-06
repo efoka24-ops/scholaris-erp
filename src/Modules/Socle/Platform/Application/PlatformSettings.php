@@ -33,6 +33,15 @@ final class PlatformSettings
     /** Paiement partiel confirmé : 0 = la période est prolongée proportionnellement, 1 = le montant n'est que porté au crédit du solde. */
     public const PARTIAL_MODE = 'regularisation_partial_mode';
 
+    /** Seuils des sondes de santé (C-112) : clé `health_<sonde>_<warning|critical>`, unité dans le nom. */
+    public const HEALTH_PREFIX = 'health_';
+
+    /** Client inactif : aucune connexion depuis ce nombre de jours (tableau de bord). */
+    public const INACTIVE_DAYS = 'kpi_inactive_days';
+
+    /** Plafond de destinataires d'un envoi direct en masse depuis le back-office. */
+    public const BROADCAST_MAX = 'broadcast_max_recipients';
+
     private const CONTACT_KEY = 'platform_contact';
     private const DEFAULT_NAME = 'TRU GROUP';
     public const PAYMENT_CHANNELS = ['orange_money', 'mtn_momo'];
@@ -49,6 +58,24 @@ final class PlatformSettings
         self::AMOUNT_TOLERANCE => ['default' => 100, 'min' => 0, 'max' => 10000],
         self::PARTIAL_MIN => ['default' => 1000, 'min' => 100, 'max' => 1000000],
         self::PARTIAL_MODE => ['default' => 0, 'min' => 0, 'max' => 1],
+        'health_db_warning_ms' => ['default' => 300, 'min' => 10, 'max' => 10000],
+        'health_db_critical_ms' => ['default' => 2000, 'min' => 10, 'max' => 60000],
+        'health_cron_warning_minutes' => ['default' => 20, 'min' => 2, 'max' => 1440],
+        'health_cron_critical_minutes' => ['default' => 60, 'min' => 2, 'max' => 10080],
+        'health_queue_warning' => ['default' => 200, 'min' => 1, 'max' => 1000000],
+        'health_queue_critical' => ['default' => 2000, 'min' => 1, 'max' => 1000000],
+        'health_failed_warning' => ['default' => 20, 'min' => 1, 'max' => 1000000],
+        'health_failed_critical' => ['default' => 200, 'min' => 1, 'max' => 1000000],
+        'health_disk_warning_percent' => ['default' => 80, 'min' => 10, 'max' => 99],
+        'health_disk_critical_percent' => ['default' => 90, 'min' => 10, 'max' => 99],
+        'health_backup_warning_hours' => ['default' => 26, 'min' => 1, 'max' => 720],
+        'health_backup_critical_hours' => ['default' => 72, 'min' => 1, 'max' => 2160],
+        'health_errors_warning' => ['default' => 5, 'min' => 1, 'max' => 100000],
+        'health_errors_critical' => ['default' => 50, 'min' => 1, 'max' => 100000],
+        'health_sms_quota_warning' => ['default' => 500, 'min' => 0, 'max' => 10000000],
+        'health_sms_quota_critical' => ['default' => 50, 'min' => 0, 'max' => 10000000],
+        self::INACTIVE_DAYS => ['default' => 14, 'min' => 1, 'max' => 365],
+        self::BROADCAST_MAX => ['default' => 500, 'min' => 1, 'max' => 100000],
     ];
 
     public function __construct(

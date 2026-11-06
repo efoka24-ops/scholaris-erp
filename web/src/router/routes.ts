@@ -376,6 +376,12 @@ export const routes: RouteRecordRaw[] = [
     meta: { platform: true, perms: ['platform.audit.read'], titleKey: 'pa.audit.title', nav: { labelKey: 'pa.nav.audit', order: 7 } },
   },
   {
+    path: '/platform/sante',
+    name: 'platform-health',
+    component: () => import('@/views/platform/PlatformHealthView.vue'),
+    meta: { platform: true, perms: ['platform.health.read'], titleKey: 'ph.title', nav: { labelKey: 'ph.nav', order: 7.5 } },
+  },
+  {
     path: '/platform/reglages',
     name: 'platform-settings',
     component: () => import('@/views/platform/PlatformSettingsView.vue'),

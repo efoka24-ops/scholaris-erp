@@ -7,6 +7,9 @@ import { fetchPlatformDashboard, type Metric, type PlatformDashboard } from '@/a
 import { useI18n } from '@/i18n';
 import { formatDate, formatDateTime, formatXaf } from '@/lib/format';
 import { appStatusKey, appStatusTone, stateKey, stateTone } from './display';
+import StatusTag from '@/components/StatusTag.vue';
+import { healthTone, type HealthTile } from '@/api/platformBackoffice';
+import type { MessageKey } from '@/i18n';
 
 // Tableau de bord de l'administrateur de plateforme — design : Dashboard.html (cartes KPI, tableaux à filet noir).
 // Un indicateur sans source (available:false) est affiché « Indisponible » avec la raison donnée par le serveur.
@@ -45,9 +48,11 @@ const kpis = computed<Indicator[]>(() => {
     indicator('unpaid', t('plat.kpi.unpaid'), d.unpaid, d.unpaid?.total),
     indicator('mrr', t('plat.kpi.mrr'), d.mrr_xaf, d.mrr_xaf?.value, 'xaf', typeof d.mrr_xaf?.paying_subscriptions === 'number' ? { paying: t('plat.kpi.mrrDetail', { count: d.mrr_xaf.paying_subscriptions }) } : undefined),
     indicator('collected', t('plat.kpi.collected'), d.collected_last_30_days_xaf, d.collected_last_30_days_xaf?.value, 'xaf'),
-    indicator('health', t('plat.kpi.health'), d.health, d.health?.value),
+    // Santé : tuile dédiée (état et alertes) quand les sondes sont lisibles ; sinon « Indisponible » avec la raison.
+    ...(d.health?.available ? [] : [indicator('health', t('plat.kpi.health'), d.health, d.health?.value)]),
   ];
 });
+const health = computed<HealthTile | null>(() => (data.value?.health?.available ? (data.value.health as HealthTile) : null));
 
 onMounted(load);
 </script>
@@ -73,6 +78,12 @@ onMounted(load);
     <template v-if="data">
       <section class="grid grid--kpi" :aria-label="t('plat.dash.title')">
         <KpiCard v-for="k in kpis" :key="k.key" :indicator="k" />
+        <router-link v-if="health && health.status" class="card health" :to="{ name: 'platform-health' }" data-test="health-tile">
+          <span class="eyebrow">{{ t('plat.kpi.health') }}</span>
+          <StatusTag :tone="healthTone(health.status)">{{ t(`ph.status.${health.status}` as MessageKey) }}</StatusTag>
+          <span v-if="health.alerts?.length" class="muted small">{{ health.alerts.map((a) => t(`ph.probe.${a.key}` as MessageKey)).join(' · ') }}</span>
+          <span v-else class="muted small">{{ t('ph.allGood') }}</span>
+        </router-link>
       </section>
 
       <section v-if="data.applications?.available && data.applications.items?.length" class="block" aria-labelledby="pd-apps">
@@ -167,6 +178,13 @@ onMounted(load);
 }
 .block {
   margin-top: 32px;
+}
+.health {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: inherit;
+  text-decoration: none;
 }
 .two {
   display: grid;

@@ -72,6 +72,9 @@ return [
         );
     }),
 
+    // C-112 : état des passerelles pour la santé de la plateforme (pilote, configuration, compte TeeeOTP) et aperçu d'un e-mail.
+    \Scholaris\Modules\Socle\Integrations\Contracts\GatewayStatus::class => \DI\autowire(\Scholaris\Modules\Socle\Integrations\Application\ConfiguredGatewayStatus::class),
+
     // Suivi d'acheminement : seul TeeeOTP sait relire l'état d'un SMS ; les autres pilotes répondent null.
     SmsStatusLookup::class => factory(static fn (SmsGateway $gateway): SmsStatusLookup => $gateway instanceof SmsStatusLookup ? $gateway : new NoSmsStatusLookup()),
     'console.command.sms:check' => factory(static fn (Config $config, TeeeOtpClient $client): \Scholaris\Modules\Socle\Integrations\Console\SmsCheckCommand => new \Scholaris\Modules\Socle\Integrations\Console\SmsCheckCommand(

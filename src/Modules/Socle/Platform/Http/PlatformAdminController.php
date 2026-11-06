@@ -45,7 +45,7 @@ final class PlatformAdminController
         $principal = $this->guard->platformAdmin($request, 'platform.dashboard.read');
         $finance = $this->guard->can($principal, 'platform.kpi.finance') || $this->guard->can($principal, 'platform.payments.read');
 
-        return $this->responder->json(['data' => $this->dashboard->summary($finance)]);
+        return $this->responder->json(['data' => $this->dashboard->summary($finance, $this->guard->can($principal, 'platform.health.read'))]);
     }
 
     /** GET /platform/settings : réglages de la plateforme (valeur, défaut, bornes). */

@@ -45,3 +45,13 @@ paths:
           description: "Son propre rôle ou dernier administrateur actif"
         '422':
           description: "Rôle inconnu"
+  /api/v1/platform/health:
+    get:
+      summary: "Santé de la plateforme (platform.health.read) : sondes database, cron_last_run, cron_failures, message_queue, message_failures, document_batches, sms_gateway (TeeeOTP GET /v1/me en cache 10 min : mode, quota restant), smtp, disk, backup, errors_24h (avec trace_ids) ; chacune { key, status : ok | warning | critical | unknown, value, unit, thresholds { warning, critical, direction }, detail } ; seuils réglables (réglages health_*)"
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: "{ status, as_of, probes }"
+        '403':
+          description: "Réservé aux rôles administrateur, support et audit de la plateforme"

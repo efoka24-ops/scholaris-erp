@@ -66,6 +66,7 @@ return static function (RouteRegistry $routes): void {
     $routes->add('POST', '/platform/administrators/{user}/access-code', [AccessCodeAdminController::class, 'issue'], $platform);
     $routes->add('POST', '/platform/administrators/{user}/access-code/send', [AccessCodeAdminController::class, 'send'], $platform);
     $routes->add('GET', '/platform/me', [AdministratorsAdminController::class, 'me'], $platform);
+    $routes->add('GET', '/platform/health', [\Scholaris\Modules\Socle\Platform\Http\HealthAdminController::class, 'show'], $platform);
     $routes->add('GET', '/platform/administrators', [AdministratorsAdminController::class, 'index'], $platform);
     $routes->add('PATCH', '/platform/administrators/{user}/role', [AdministratorsAdminController::class, 'role'], $platform);
     $routes->add('POST', '/platform/administrators', [AdministratorsAdminController::class, 'store'], $platform);

@@ -24,6 +24,8 @@ return [
     RegularisationStatus::class => get(ApplicationAccess::class),
     // Blocage central des routes d'un client en régularisation de paiement (middleware du noyau EnforceTenantRestriction).
     TenantRestriction::class => autowire(PdoTenantRestriction::class),
+    // C-112 : emplacements lus par les sondes de santé (planificateur, journaux, fichiers, sauvegardes).
+    \Scholaris\Modules\Socle\Platform\Infrastructure\HealthPaths::class => \DI\factory(static fn (\Scholaris\Core\Config\Config $config): \Scholaris\Modules\Socle\Platform\Infrastructure\HealthPaths => \Scholaris\Modules\Socle\Platform\Infrastructure\HealthPaths::fromConfig($config, dirname(__DIR__, 4))),
 
     'console.command.platform:admin-create' => autowire(AdminCreateCommand::class),
     'console.command.platform:billing-run' => autowire(BillingRunCommand::class),

@@ -23,6 +23,12 @@ final class PlatformClock
         return $this->moment()->format(DATE_ATOM);
     }
 
+    /** Instant courant en secondes (âge des fichiers lus par les sondes de santé). */
+    public function timestamp(): int
+    {
+        return $this->clock->now();
+    }
+
     public function today(): string
     {
         return $this->moment()->format('Y-m-d');

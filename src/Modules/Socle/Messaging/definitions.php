@@ -37,6 +37,8 @@ return [
     VoiceGateway::class => autowire(DisabledVoiceGateway::class),
     'console.command.sms:sync-status' => autowire(\Scholaris\Modules\Socle\Messaging\Console\SyncSmsStatusCommand::class),
     \Scholaris\Modules\Socle\Messaging\Contracts\DirectNotifier::class => autowire(\Scholaris\Modules\Socle\Messaging\Application\PlatformDirectNotifier::class),
+    // C-112 : suivi des envois de tous les clients pour le back-office de la plateforme (destinataires masqués).
+    \Scholaris\Modules\Socle\Messaging\Contracts\DeliveryMonitor::class => autowire(\Scholaris\Modules\Socle\Messaging\Infrastructure\PdoDeliveryMonitor::class),
     DirectionDirectory::class => autowire(RoleBasedDirectionDirectory::class),
     AudienceResolver::class => factory(static fn (ContainerInterface $c): AudienceResolver => new AudienceResolver(
         $c->get(PersonDirectory::class),

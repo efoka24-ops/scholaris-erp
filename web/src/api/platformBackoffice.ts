@@ -18,3 +18,38 @@ export const fetchPlatformMe = async (): Promise<PlatformMe> => (await http.get<
 export const backofficeActions = {
   setRole: (user: string, role: PlatformRole): PlatformAction => ({ method: 'PATCH', path: `/platform/administrators/${seg(user)}/role`, body: { role } }),
 };
+
+// --- Santé de la plateforme (point 1) ---------------------------------------------------------------------------------------
+export type HealthStatus = 'ok' | 'warning' | 'critical' | 'unknown';
+
+export interface HealthProbe {
+  key: string;
+  status: HealthStatus;
+  value: number | null;
+  unit: string;
+  thresholds: { warning: number; critical: number; direction: 'above' | 'below' } | null;
+  detail: string | null;
+  trace_ids?: string[];
+  mode?: string | null;
+  driver?: string;
+  last_backup_at?: string;
+  free_mb?: number;
+}
+
+export interface HealthReport {
+  status: HealthStatus;
+  as_of: string;
+  probes: HealthProbe[];
+}
+
+export interface HealthTile {
+  available: boolean;
+  reason?: string;
+  status?: HealthStatus;
+  counts?: Record<HealthStatus, number>;
+  alerts?: Array<{ key: string; status: HealthStatus }>;
+}
+
+export const fetchPlatformHealth = async (): Promise<HealthReport> => (await http.get<{ data: HealthReport }>('/platform/health', undefined, NO_ESTABLISHMENT)).data;
+
+export const healthTone = (s: HealthStatus): 'success' | 'warning' | 'ink' | 'neutral' => (s === 'ok' ? 'success' : s === 'warning' ? 'warning' : s === 'critical' ? 'ink' : 'neutral');

@@ -25,14 +25,35 @@ final class DashboardService
         private readonly EntitlementService $entitlements,
         private readonly SubscriptionPayments $payments,
         private readonly PlatformClock $clock,
+        private readonly HealthService $health,
     ) {
+    }
+
+    /**
+     * Tuile de santé : état global et nombre de sondes par état (détail : GET /platform/health).
+     *
+     * @return array<string, mixed>
+     */
+    private function healthTile(): array
+    {
+        $report = $this->health->report();
+        $counts = [HealthService::OK => 0, HealthService::WARNING => 0, HealthService::CRITICAL => 0, HealthService::UNKNOWN => 0];
+        $alerts = [];
+        foreach ($report['probes'] as $probe) {
+            $counts[(string) $probe['status']]++;
+            if (in_array($probe['status'], [HealthService::WARNING, HealthService::CRITICAL], true)) {
+                $alerts[] = ['key' => $probe['key'], 'status' => $probe['status']];
+            }
+        }
+
+        return ['available' => true, 'status' => $report['status'], 'counts' => $counts, 'alerts' => $alerts];
     }
 
     /**
      * @param bool $finance indicateurs financiers (revenu, encaissements, impayés) : rôles finance, audit et administrateur seulement
      * @return array<string, mixed>
      */
-    public function summary(bool $finance = true): array
+    public function summary(bool $finance = true, bool $health = true): array
     {
         $today = $this->clock->today();
         $horizon = Calendar::addDays($today, self::TRIAL_HORIZON_DAYS);
@@ -86,7 +107,7 @@ final class DashboardService
             // Revenu mensuel récurrent : somme des tarifs effectifs des abonnements payés et en cours (hors essais).
             'mrr_xaf' => $finance ? ['available' => true, 'value' => $mrr, 'paying_subscriptions' => $paying] : $restricted,
             'collected_last_30_days_xaf' => $finance ? ['available' => true, 'value' => $this->payments->collectedSince(Calendar::addDays($today, -30))] : $restricted,
-            'health' => ['available' => false, 'reason' => 'Aucune sonde de santé n\'alimente encore le tableau de bord de la plateforme.'],
+            'health' => $health ? $this->healthTile() : ['available' => false, 'reason' => 'Santé de la plateforme réservée aux rôles administrateur, support et audit.'],
         ];
     }
 }
