@@ -124,3 +124,137 @@ paths:
           description: "Refusé ou 2FA récente requise"
         '404':
           description: "Client ou utilisateur introuvable"
+  /api/v1/platform/messages/deliveries:
+    get:
+      summary: "Journal des SMS et e-mails des clients (platform.messages.read) : destinataire masqué, client, modèle, statut (TeeeOTP), motif d'échec, tentatives, dates ; jamais le texte. Filtres filter[channel] (sms, email), filter[tenant_id], filter[status], filter[from], filter[to] ; curseur"
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: "{ data, meta.next_cursor }"
+        '403':
+          description: "Refusé"
+        '422':
+          description: "Filtre invalide"
+  /api/v1/platform/messages/deliveries/{tenant}/{id}/retry:
+    post:
+      summary: "Relance une livraison en échec (platform.messages.retry, 2FA récente), journalisé"
+      security:
+        - bearer: []
+      parameters:
+        - {name: tenant, in: path, required: true, schema: {type: string}}
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: {type: object, additionalProperties: false}
+      responses:
+        '200':
+          description: "Remise en file"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '409':
+          description: "Livraison absente ou pas en échec"
+  /api/v1/platform/messages/direct:
+    get:
+      summary: "Journal des envois directs de la plateforme (platform.messages.read), destinataire masqué ; filtres filter[channel], filter[tenant_id], filter[status]"
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: "{ data, meta.next_cursor }"
+        '403':
+          description: "Refusé"
+    post:
+      summary: "Envoi direct par SMS, e-mail ou notification dans l'application (conversation du support) : à une personne (platform.messages.send), aux administrateurs d'un client ou de tous les clients d'une application (envoi en masse : platform.messages.broadcast et 2FA récente) ; plafond broadcast_max_recipients ; journalisé"
+      security:
+        - bearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [target_type, channel, subject, body]
+              properties:
+                target_type: {type: string, enum: [person, client_admins, app_clients]}
+                tenant_id: {type: string}
+                user_id: {type: string}
+                app_key: {type: string}
+                channel: {type: string, enum: [sms, email, app]}
+                subject: {type: string, maxLength: 120}
+                body: {type: string, maxLength: 4000}
+      responses:
+        '201':
+          description: "{ batch_id, recipients, sent, failed }"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Client ou utilisateur introuvable"
+        '409':
+          description: "Aucun destinataire ou plafond dépassé"
+        '422':
+          description: "Données invalides"
+  /api/v1/platform/messages/direct/preview:
+    post:
+      summary: "Aperçu d'un envoi direct : nombre de destinataires (joignables), échantillon masqué, segments et coût SMS estimé, plafond, rendu HTML de l'e-mail (EmailLayout) ; même corps que l'envoi"
+      security:
+        - bearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [target_type, channel, subject, body]
+              properties:
+                target_type: {type: string, enum: [person, client_admins, app_clients]}
+                tenant_id: {type: string}
+                user_id: {type: string}
+                app_key: {type: string}
+                channel: {type: string, enum: [sms, email, app]}
+                subject: {type: string, maxLength: 120}
+                body: {type: string, maxLength: 4000}
+      responses:
+        '200':
+          description: "Aperçu"
+        '403':
+          description: "Refusé"
+        '404':
+          description: "Client ou utilisateur introuvable"
+        '422':
+          description: "Données invalides"
+  /api/v1/platform/messages/direct/{id}/retry:
+    post:
+      summary: "Relance un envoi direct SMS ou e-mail en échec (platform.messages.retry, 2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: {type: object, additionalProperties: false}
+      responses:
+        '200':
+          description: "Envoi relancé"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Envoi introuvable"
+        '409':
+          description: "Envoi déjà parti ou notification dans l'application"
+  /api/v1/platform/messages/internal:
+    get:
+      summary: "Messagerie interne, comptes par client (conversations, messages, messages masqués par la modération) ; jamais le contenu (platform.messages.read)"
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: "Comptes par client"
+        '403':
+          description: "Refusé"

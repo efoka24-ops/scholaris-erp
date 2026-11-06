@@ -382,6 +382,12 @@ export const routes: RouteRecordRaw[] = [
     meta: { platform: true, perms: ['platform.audit.read'], titleKey: 'pact.title', nav: { labelKey: 'pact.nav', order: 7.2 } },
   },
   {
+    path: '/platform/messages',
+    name: 'platform-messages',
+    component: () => import('@/views/platform/PlatformMessagesView.vue'),
+    meta: { platform: true, perms: ['platform.messages.read'], titleKey: 'pm.title', nav: { labelKey: 'pm.nav', order: 7.3 } },
+  },
+  {
     path: '/platform/clients/:tenant/utilisateurs/:user',
     name: 'platform-user',
     component: () => import('@/views/platform/PlatformUserView.vue'),

@@ -152,3 +152,58 @@ export function maskAddress(value: string | null | undefined): string {
   if (digits.startsWith('237') && digits.length === 12) digits = digits.slice(3);
   return digits.length < 4 ? '—' : `${digits.slice(0, 1)}•• •• •• ${digits.slice(-2)}`;
 }
+
+// --- Suivi des messages et envoi direct (point 4) ---------------------------------------------------------------------------
+export type DirectTarget = 'person' | 'client_admins' | 'app_clients';
+export type DirectChannel = 'sms' | 'email' | 'app';
+export interface DirectMessageInput {
+  target_type: DirectTarget;
+  tenant_id?: string;
+  user_id?: string;
+  app_key?: string;
+  channel: DirectChannel;
+  subject: string;
+  body: string;
+}
+export interface DirectPreview {
+  recipients: number;
+  reachable: number;
+  sample: Array<{ tenant_id: string; first_name: string; address: string }>;
+  sms_segments: number;
+  estimated_cost_xaf: number;
+  max_recipients: number;
+  bulk: boolean;
+  email_html: string | null;
+}
+export interface DirectRow {
+  id: string;
+  batch_id: string;
+  tenant_id: string;
+  tenant_name: string;
+  recipient_user_id: string;
+  recipient_masked: string;
+  channel: DirectChannel;
+  subject: string;
+  status: string;
+  reason: string | null;
+  provider_reference: string | null;
+  attempts: number;
+  created_at: string;
+}
+export interface InternalStats { tenant_id: string; tenant_name: string; conversations: number; messages: number; hidden: number }
+
+export const fetchClientDeliveries = (filters: { channel?: string; tenantId?: string; status?: string }, cursor: string | null = null) =>
+  http.page<ClientDelivery & { tenant_name: string }>('/platform/messages/deliveries', {
+    'filter[channel]': filters.channel || undefined, 'filter[tenant_id]': filters.tenantId || undefined, 'filter[status]': filters.status || undefined, cursor, per_page: 50,
+  }, NO_ESTABLISHMENT);
+export const fetchDirectMessages = (filters: { channel?: string }, cursor: string | null = null) =>
+  http.page<DirectRow>('/platform/messages/direct', { 'filter[channel]': filters.channel || undefined, cursor, per_page: 50 }, NO_ESTABLISHMENT);
+export const fetchInternalStats = async (): Promise<InternalStats[]> => (await http.get<{ data: InternalStats[] }>('/platform/messages/internal', undefined, NO_ESTABLISHMENT)).data ?? [];
+export const previewDirectMessage = async (input: DirectMessageInput): Promise<DirectPreview> =>
+  (await http.post<{ data: DirectPreview }>('/platform/messages/direct/preview', { ...input }, NO_ESTABLISHMENT)).data;
+
+export const messageActions = {
+  send: (input: DirectMessageInput): PlatformAction => ({ method: 'POST', path: '/platform/messages/direct', body: { ...input } }),
+  retryDelivery: (tenant: string, id: string): PlatformAction => ({ method: 'POST', path: `/platform/messages/deliveries/${seg(tenant)}/${seg(id)}/retry`, body: {} }),
+  retryDirect: (id: string): PlatformAction => ({ method: 'POST', path: `/platform/messages/direct/${seg(id)}/retry`, body: {} }),
+};

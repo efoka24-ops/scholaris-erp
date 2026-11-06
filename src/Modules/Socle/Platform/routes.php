@@ -63,6 +63,13 @@ return static function (RouteRegistry $routes): void {
     $routes->add('GET', '/platform/clients/{tenant}/users', [AccessCodeAdminController::class, 'users'], $platform);
     $routes->add('GET', '/platform/clients/{tenant}/users/{user}', [\Scholaris\Modules\Socle\Platform\Http\ActivityAdminController::class, 'user'], $platform);
     $routes->add('POST', '/platform/clients/{tenant}/users/{user}/logout', [\Scholaris\Modules\Socle\Platform\Http\ActivityAdminController::class, 'logout'], $platform);
+    $routes->add('GET', '/platform/messages/deliveries', [\Scholaris\Modules\Socle\Platform\Http\MessagesAdminController::class, 'deliveries'], $platform);
+    $routes->add('POST', '/platform/messages/deliveries/{tenant}/{id}/retry', [\Scholaris\Modules\Socle\Platform\Http\MessagesAdminController::class, 'retryDelivery'], $platform);
+    $routes->add('GET', '/platform/messages/direct', [\Scholaris\Modules\Socle\Platform\Http\MessagesAdminController::class, 'directJournal'], $platform);
+    $routes->add('POST', '/platform/messages/direct/preview', [\Scholaris\Modules\Socle\Platform\Http\MessagesAdminController::class, 'preview'], $platform);
+    $routes->add('POST', '/platform/messages/direct', [\Scholaris\Modules\Socle\Platform\Http\MessagesAdminController::class, 'send'], $platform);
+    $routes->add('POST', '/platform/messages/direct/{id}/retry', [\Scholaris\Modules\Socle\Platform\Http\MessagesAdminController::class, 'retryDirect'], $platform);
+    $routes->add('GET', '/platform/messages/internal', [\Scholaris\Modules\Socle\Platform\Http\MessagesAdminController::class, 'internal'], $platform);
     $routes->add('GET', '/platform/activity', [\Scholaris\Modules\Socle\Platform\Http\ActivityAdminController::class, 'index'], $platform);
     $routes->add('GET', '/platform/activity/export', [\Scholaris\Modules\Socle\Platform\Http\ActivityAdminController::class, 'export'], $platform);
     $routes->add('POST', '/platform/clients/{tenant}/users/{user}/access-code', [AccessCodeAdminController::class, 'issue'], $platform);
