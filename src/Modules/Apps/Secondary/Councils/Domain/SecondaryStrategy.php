@@ -27,6 +27,9 @@ use Scholaris\Modules\Socle\Assessment\Contracts\RuleStrategy;
  *    matières de pratique sous `practical.min`, proposition du travail (`work_proposals`) et, au niveau `promotion.at_depth`,
  *    proposition de passage (PromotionPolicy). Toujours des propositions : le conseil décide.
  *  - decideYear : agrégat des périodes reçues + proposition de passage avec le contexte (redoublant, âge limite).
+ *  - Options du niveau (T900, version de règles publiée sur la structure du niveau ou de la classe) : `coefficients` (coefficients
+ *    versionnés de Setup, matière hors moyenne officielle à poids nul, rôle `practical`), `not_evaluated` (exclue ou zéro),
+ *    `final_exam` (poids de la composition de fin d'année).
  *
  * Fonctions pures, sans lecture de base.
  */
@@ -40,9 +43,19 @@ final class SecondaryStrategy implements RuleStrategy, PeriodAggregatingStrategy
     public const OPTION_MODES = 'aggregation_modes';
     public const OPTION_SUBJECT_ALERT = 'subject_alert_below';
     public const OPTION_EXAMPLE = 'example';
+    /** Coefficients versionnés de Setup portés par la version de règles du niveau : identifiant de matière => {coefficient, counts_in_average, role}. */
+    public const OPTION_COEFFICIENTS = 'coefficients';
+    /** Matière sans aucune note sur la période : `exclude` (hors moyenne avec son coefficient, par défaut) ou `zero` (comptée 0). */
+    public const OPTION_NOT_EVALUATED = 'not_evaluated';
+    public const NOT_EVALUATED_EXCLUDE = 'exclude';
+    public const NOT_EVALUATED_ZERO = 'zero';
+    /** Composition de fin d'année (ou de trimestre) : {assessment_kinds: [..], weight: n} remplace le poids de ces épreuves. */
+    public const OPTION_FINAL_EXAM = 'final_exam';
+    public const ROLE_PRACTICAL = 'practical';
 
     private const KNOWN = [
         self::OPTION_EXAMPLE, self::OPTION_PERIOD_WEIGHTS, self::OPTION_ROUND_EACH_STEP, self::OPTION_MODES, self::OPTION_SUBJECT_ALERT,
+        self::OPTION_COEFFICIENTS, self::OPTION_NOT_EVALUATED, self::OPTION_FINAL_EXAM,
         WorkProposals::OPTION, WorkProposals::OPTION_BLOCKED, PracticalSubjects::OPTION, PromotionPolicy::OPTION,
     ];
 
@@ -81,6 +94,11 @@ final class SecondaryStrategy implements RuleStrategy, PeriodAggregatingStrategy
         if (array_key_exists(self::OPTION_SUBJECT_ALERT, $options) && $options[self::OPTION_SUBJECT_ALERT] !== null && !self::isNumber($options[self::OPTION_SUBJECT_ALERT])) {
             $errors[] = '« subject_alert_below » est un nombre.';
         }
+        $errors = [...$errors, ...self::coefficientErrors($options[self::OPTION_COEFFICIENTS] ?? [])];
+        if (array_key_exists(self::OPTION_NOT_EVALUATED, $options) && !in_array($options[self::OPTION_NOT_EVALUATED], [self::NOT_EVALUATED_EXCLUDE, self::NOT_EVALUATED_ZERO], true)) {
+            $errors[] = '« not_evaluated » vaut « exclude » (hors moyenne) ou « zero » (comptée zéro).';
+        }
+        $errors = [...$errors, ...self::finalExamErrors($options[self::OPTION_FINAL_EXAM] ?? null)];
         if (array_key_exists(WorkProposals::OPTION, $options)) {
             $errors = [...$errors, ...WorkProposals::errors($options[WorkProposals::OPTION])];
         }
@@ -103,9 +121,10 @@ final class SecondaryStrategy implements RuleStrategy, PeriodAggregatingStrategy
             $raw = $this->unitAverage($rules, $unit['groups']);
             $average = $raw === null ? null : $rules->round($raw);
             $averages[$unit['subject_id']] = $average;
+            [$factor, $role] = self::coefficientOf($rules, (string) $unit['subject_id'], (float) $unit['coefficient']);
             $details[$unit['subject_id']] = [
-                'average' => $average, 'raw' => $raw, 'coefficient' => $unit['coefficient'], 'kind' => $unit['kind'], 'evaluated' => $raw !== null,
-                'practical' => $practical->covers($unit['kind'], $unit['code']), 'depth' => 0,
+                'average' => $average, 'raw' => $raw, 'coefficient' => $factor, 'kind' => $unit['kind'], 'evaluated' => $raw !== null,
+                'practical' => $role === self::ROLE_PRACTICAL || $practical->covers($unit['kind'], $unit['code']), 'depth' => 0,
             ];
         }
         $overall = $this->general($rules, $details);
@@ -136,10 +155,12 @@ final class SecondaryStrategy implements RuleStrategy, PeriodAggregatingStrategy
             foreach ($period['units'] as $unitId => $unit) {
                 $unitId = (string) $unitId;
                 $childDepth = max($childDepth, is_int($unit['depth'] ?? null) ? $unit['depth'] : 0);
+                $inherited = self::isNumber($unit['coefficient'] ?? null) ? (float) $unit['coefficient'] : ($meta[$unitId]['coefficient'] ?? 0.0);
+                [$factor, $role] = self::coefficientOf($rules, $unitId, $inherited);
                 $meta[$unitId] = [
-                    'coefficient' => self::isNumber($unit['coefficient'] ?? null) ? (float) $unit['coefficient'] : ($meta[$unitId]['coefficient'] ?? 0.0),
+                    'coefficient' => $factor,
                     'kind' => is_string($unit['kind'] ?? null) ? $unit['kind'] : ($meta[$unitId]['kind'] ?? null),
-                    'practical' => ($unit['practical'] ?? false) === true || ($meta[$unitId]['practical'] ?? false),
+                    'practical' => $role === self::ROLE_PRACTICAL || ($unit['practical'] ?? false) === true || ($meta[$unitId]['practical'] ?? false),
                 ];
             }
             $weight = $this->periodWeight($rules, $period['period_id']);
@@ -206,11 +227,15 @@ final class SecondaryStrategy implements RuleStrategy, PeriodAggregatingStrategy
     private function general(CalculationRules $rules, array $units): ?float
     {
         $roundEach = $this->roundEachStep($rules);
+        $zero = ($rules->options[self::OPTION_NOT_EVALUATED] ?? self::NOT_EVALUATED_EXCLUDE) === self::NOT_EVALUATED_ZERO;
         $sum = 0.0;
         $weights = 0.0;
         foreach ($units as $unit) {
             $value = $roundEach ? $unit['average'] : $unit['raw'];
             $factor = (float) $unit['coefficient'];
+            if ($zero && !self::isNumber($value)) {
+                $value = 0.0;
+            }
             if (self::isNumber($value) && $factor > 0.0) {
                 $sum += (float) $value * $factor;
                 $weights += $factor;
@@ -302,7 +327,7 @@ final class SecondaryStrategy implements RuleStrategy, PeriodAggregatingStrategy
             if (($entry['session'] ?? 'normal') === 'resit') {
                 continue;
             }
-            $weight = (float) $entry['weight'];
+            $weight = $this->entryWeight($rules, $entry);
             $normalised = $this->normalise($rules, $entry);
             if ($normalised === null || $weight <= 0.0) {
                 continue;
@@ -355,6 +380,80 @@ final class SecondaryStrategy implements RuleStrategy, PeriodAggregatingStrategy
         $weight = is_array($weights) ? ($weights[$periodId] ?? null) : null;
 
         return self::isNumber($weight) ? (float) $weight : 1.0;
+    }
+
+    /**
+     * Coefficient en vigueur d'une matière : celui de la version de règles (coefficients versionnés de Setup, par niveau ou série) s'il
+     * est déclaré, sinon celui du référentiel. Une matière qui ne compte pas dans la moyenne officielle (projet, RG-ORG-4) a un poids nul
+     * dans la moyenne générale mais garde sa moyenne propre.
+     *
+     * @return array{0: float, 1: ?string} coefficient, rôle de la matière (official, project, practical, internship)
+     */
+    private static function coefficientOf(CalculationRules $rules, string $subjectId, float $fallback): array
+    {
+        $book = $rules->options[self::OPTION_COEFFICIENTS] ?? null;
+        $line = is_array($book) ? ($book[$subjectId] ?? null) : null;
+        if (self::isNumber($line)) {
+            return [(float) $line, null];
+        }
+        if (!is_array($line)) {
+            return [$fallback, null];
+        }
+        $role = is_string($line['role'] ?? null) ? $line['role'] : null;
+        if (($line['counts_in_average'] ?? true) === false) {
+            return [0.0, $role];
+        }
+
+        return [self::isNumber($line['coefficient'] ?? null) ? (float) $line['coefficient'] : $fallback, $role];
+    }
+
+    /**
+     * Poids d'une épreuve : celui de l'épreuve, remplacé pour la composition déclarée par `final_exam`.
+     *
+     * @param array<string, mixed> $entry
+     */
+    private function entryWeight(CalculationRules $rules, array $entry): float
+    {
+        $final = $rules->options[self::OPTION_FINAL_EXAM] ?? null;
+        if (is_array($final) && self::isNumber($final['weight'] ?? null) && in_array($entry['kind'] ?? null, (array) ($final['assessment_kinds'] ?? []), true)) {
+            return (float) $final['weight'];
+        }
+
+        return (float) $entry['weight'];
+    }
+
+    /** @return list<string> */
+    private static function coefficientErrors(mixed $book): array
+    {
+        if (!is_array($book)) {
+            return ['« coefficients » est une table « identifiant de matière => coefficient ou {coefficient, counts_in_average, role} ».'];
+        }
+        $errors = [];
+        foreach ($book as $subject => $line) {
+            $value = is_array($line) ? ($line['coefficient'] ?? null) : $line;
+            if (!is_string($subject) || !self::isNumber($value) || $value < 0
+                || (is_array($line) && array_key_exists('counts_in_average', $line) && !is_bool($line['counts_in_average']))
+                || (is_array($line) && array_key_exists('role', $line) && !is_string($line['role']))) {
+                $errors[] = 'Coefficient invalide pour la matière « ' . (string) $subject . ' » : un nombre positif ou nul est attendu.';
+            }
+        }
+
+        return $errors;
+    }
+
+    /** @return list<string> */
+    private static function finalExamErrors(mixed $final): array
+    {
+        if ($final === null) {
+            return [];
+        }
+        $kinds = is_array($final) ? ($final['assessment_kinds'] ?? null) : null;
+        if (!is_array($final) || !is_array($kinds) || $kinds === [] || !array_is_list($kinds) || array_filter($kinds, 'is_string') !== $kinds
+            || !self::isNumber($final['weight'] ?? null) || $final['weight'] <= 0) {
+            return ['« final_exam » est {assessment_kinds: [nature d\'épreuve...], weight: poids positif} (composition de fin d\'année).'];
+        }
+
+        return [];
     }
 
     private static function isNumber(mixed $value): bool

@@ -22,6 +22,7 @@ final class Defaults
     public const STRATEGY_OPTIONS = [
         'example' => self::SOURCE,
         'round_each_step' => true,
+        'not_evaluated' => SecondaryStrategy::NOT_EVALUATED_EXCLUDE,
         // séquences → trimestre : Σ (moyenne × coefficient) ÷ Σ coefficients ; trimestres → année : moyenne des trimestres.
         'aggregation_modes' => [SecondaryStrategy::MODE_SUBJECTS, SecondaryStrategy::MODE_PERIODS],
         'subject_alert_below' => 10.0,
@@ -69,6 +70,12 @@ final class Defaults
             ['code' => 'time', 'label' => 'Temps alloué respecté', 'points' => 2.0],
         ],
     ];
+
+    /** Types de document des bulletins par nature de période (SS5, paramètre assessment.report_card_types ; modèles DOC-BUL). */
+    public const REPORT_CARD_TYPES = ['trimester' => 'secondary_report_trimester', 'year' => 'secondary_report_annual'];
+
+    /** Une séance d'appel validée vaut une heure de cours (D13, Q30 ; même choix que Discipline). */
+    public const HOURS_PER_SESSION = 1.0;
 
     private function __construct()
     {

@@ -1,0 +1,212 @@
+# Contrat d'orientation secondaire (T905, lot E3-D). Les routes sont attachées au module activable `orientation`.
+# Les échéances sont calculées avec le réglage versionné `secondary.appeal_days` ; aucune valeur par défaut n'est appliquée.
+paths:
+  /api/v1/secondary/orientation:
+    get:
+      summary: Élèves d'une classe et leur fiche d'orientation pour une année scolaire
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: class_id, in: query, required: true, schema: {type: string}}
+        - {name: academic_year_id, in: query, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "{data: [{id, person_id, student_name, class_id, academic_year_id, wishes, counsellor_opinion, proposed_stream_id, interview_on, latest_decision}]}"}
+        '403': {description: Permission absente ou classe hors périmètre}
+        '404': {description: Module non activé ou classe introuvable}
+        '409': {description: Module orientation inactif}
+  /api/v1/secondary/orientation/students/{personId}:
+    get:
+      summary: Fiche d'orientation de l'élève
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: personId, in: path, required: true, schema: {type: string}}
+        - {name: academic_year_id, in: query, required: true, schema: {type: string}}
+      responses:
+        '200': {description: 'Fiche, vœux, avis et dernière décision'}
+        '403': {description: 'Permission staff, self.read ou family.read requise'}
+        '404': {description: Élève hors établissement ou hors périmètre}
+        '409': {description: Module orientation inactif}
+  /api/v1/secondary/orientation/me:
+    get:
+      summary: Consulter la fiche de l'élève lié au compte
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: academic_year_id, in: query, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Fiche personnelle}
+        '403': {description: Permission self.read requise}
+        '404': {description: Compte sans lien élève ou élève hors établissement}
+        '409': {description: Module orientation inactif}
+  /api/v1/secondary/orientation/me/wishes:
+    put:
+      summary: Enregistrer les vœux de l'élève lié au compte
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [academic_year_id, wishes]
+              properties:
+                academic_year_id: {type: string, maxLength: 40}
+                wishes: {type: array, maxItems: 8, items: {type: string, maxLength: 40}}
+      responses:
+        '200': {description: Fiche personnelle mise à jour}
+        '403': {description: Permission secondary.self.read requise}
+        '404': {description: 'Compte sans lien élève, élève ou série introuvable'}
+        '409': {description: Module orientation inactif}
+        '422': {description: Corps invalide ou série inactive}
+  /api/v1/secondary/orientation/family:
+    get:
+      summary: Lister les fiches des élèves liés au compte parent
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: academic_year_id, in: query, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Fiches des seuls élèves liés à la personne du compte}
+        '403': {description: Permission secondary.family.read requise}
+        '404': {description: Application non ouverte au client ou module non activé}
+        '409': {description: Module orientation inactif}
+  /api/v1/secondary/orientation/me/appeals:
+    get:
+      summary: Recours personnels de l'élève ou de ses élèves liés pour l'année scolaire
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: academic_year_id, in: query, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Liste des recours personnels ou de ceux des élèves liés}
+        '403': {description: Permission self.read ou family.read requise}
+        '404': {description: Application non ouverte au client ou module non activé}
+        '409': {description: Module orientation inactif}
+  /api/v1/secondary/orientation/students/{personId}/wishes:
+    put:
+      summary: Enregistrer les vœux d'un élève par le personnel autorisé
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: personId, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [academic_year_id, wishes]
+              properties:
+                academic_year_id: {type: string, maxLength: 40}
+                wishes: {type: array, maxItems: 8, items: {type: string, maxLength: 40}}
+      responses:
+        '200': {description: Fiche d'orientation mise à jour}
+        '403': {description: Permission secondary.orientation.manage requise ou classe hors périmètre}
+        '404': {description: Élève ou série introuvable}
+        '409': {description: Module orientation inactif}
+        '422': {description: Corps invalide ou série inactive}
+  /api/v1/secondary/orientation/students/{personId}/advice:
+    put:
+      summary: Saisir l'avis du conseiller d'orientation et l'entretien
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: personId, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [academic_year_id]
+              properties:
+                academic_year_id: {type: string, maxLength: 40}
+                counsellor_opinion: {type: [string, 'null'], maxLength: 255}
+                proposed_stream_id: {type: [string, 'null'], maxLength: 40}
+                interview_on: {type: [string, 'null'], format: date}
+      responses:
+        '200': {description: Avis enregistré}
+        '403': {description: Permission secondary.orientation.manage requise}
+        '404': {description: Élève ou série introuvable}
+        '409': {description: Module orientation inactif}
+        '422': {description: Corps invalide ou aucune valeur à enregistrer}
+  /api/v1/secondary/orientation/students/{personId}/decisions:
+    post:
+      summary: Enregistrer la décision motivée du conseil d'orientation
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: personId, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [academic_year_id, stream_id, reason]
+              properties:
+                academic_year_id: {type: string, maxLength: 40}
+                stream_id: {type: string, maxLength: 40}
+                reason: {type: string, maxLength: 255}
+      responses:
+        '201': {description: Décision enregistrée}
+        '403': {description: Permission secondary.council.preside requise}
+        '404': {description: Élève ou série introuvable}
+        '409': {description: Module orientation inactif ou décision déjà enregistrée}
+        '422': {description: Corps invalide}
+  /api/v1/secondary/orientation/appeals:
+    get:
+      summary: Recours déposés dans une classe
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: class_id, in: query, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "{data: [{id, decision_id, person_id, class_id, submitted_on, reason, status, outcome_reason, revised_stream_id}]}"}
+        '403': {description: Permission absente ou classe hors périmètre}
+        '404': {description: Module non activé}
+        '409': {description: Module orientation inactif}
+  /api/v1/secondary/orientation/students/{personId}/appeals:
+    post:
+      summary: Déposer un recours dans le délai de secondary.appeal_days (compte élève ou parent lié, ou conseiller autorisé)
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: personId, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [academic_year_id, reason]
+              properties:
+                academic_year_id: {type: string, maxLength: 40}
+                reason: {type: string, maxLength: 255}
+      responses:
+        '201': {description: Recours déposé}
+        '403': {description: Permission absente}
+        '404': {description: Élève hors établissement}
+        '409': {description: 'Module inactif, décision absente ou délai secondary.appeal_days non paramétré'}
+        '422': {description: Recours hors délai ou corps invalide}
+  /api/v1/secondary/orientation/appeals/{id}/decide:
+    post:
+      summary: Examiner un recours en conseil ; un recours accepté impose une série révisée
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [outcome, reason]
+              properties:
+                outcome: {type: string, enum: [accepted, rejected]}
+                reason: {type: string, maxLength: 255}
+                revised_stream_id: {type: [string, 'null'], maxLength: 40}
+      responses:
+        '200': {description: Recours examiné}
+        '403': {description: Permission secondary.council.preside requise}
+        '404': {description: Recours ou série introuvable}
+        '409': {description: Module inactif ou recours déjà examiné}
+        '422': {description: Recours accepté sans série révisée}
