@@ -27,6 +27,10 @@ const SEED = join(here, '..', 'fixtures', 'stack', 'seed.php');
 const OPCACHE = ['-d', 'zend_extension=opcache', '-d', 'opcache.enable=1', '-d', 'opcache.enable_cli=1', '-d', 'opcache.memory_consumption=256', '-d', 'opcache.max_accelerated_files=20000'];
 const PHP = process.env.E2E_PHP ?? 'php';
 
+/** Réponse JSON de l'API, lue librement par chaque parcours (les specs typent ce dont elles ont besoin). */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type Json = any;
+
 export interface ApiOptions {
   token?: string | null;
   establishment?: string | null;
@@ -71,13 +75,13 @@ export class Stack {
   /**
    * Semis d'un scénario (fixtures/stack/seed.php) par l'API réelle, en mémoire : identifiants fictifs et ressources en JSON.
    */
-  async seed<T = any>(scenario: string, ...args: string[]): Promise<T> {
+  async seed<T = Json>(scenario: string, ...args: string[]): Promise<T> {
     const { stdout: out } = await promisify(execFile)(PHP, [...OPCACHE, SEED, scenario, ...args], { cwd: ROOT, env: this.env, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, timeout: 600_000 });
     return JSON.parse(out.trim().split('\n').pop()!) as T;
   }
 
   /** Outil d'installation (fixtures/stack/tool.php) : réponse JSON. */
-  tool<T = any>(...args: string[]): T {
+  tool<T = Json>(...args: string[]): T {
     const out = execFileSync(PHP, [TOOL, ...args], { cwd: ROOT, env: this.env, encoding: 'utf8' });
     return JSON.parse(out.trim().split('\n').pop()!) as T;
   }
@@ -104,7 +108,7 @@ export class Stack {
     return null;
   }
 
-  async api<T = any>(method: string, path: string, body?: unknown, opts: ApiOptions = {}): Promise<T> {
+  async api<T = Json>(method: string, path: string, body?: unknown, opts: ApiOptions = {}): Promise<T> {
     const headers: Record<string, string> = { Accept: 'application/json', 'Accept-Language': 'fr', 'User-Agent': 'Mozilla/5.0 (Recette E2E) Chrome/120.0', ...(opts.headers ?? {}) };
     if (opts.token) headers.Authorization = `Bearer ${opts.token}`;
     if (opts.establishment) headers['X-Establishment-Id'] = opts.establishment;
@@ -121,7 +125,7 @@ export class Stack {
   }
 
   /** Téléversement multipart (fichier joint) par l'API. */
-  async upload<T = any>(path: string, fields: Record<string, string>, file: { field: string; name: string; type: string; content: string | Buffer }, opts: ApiOptions = {}): Promise<T> {
+  async upload<T = Json>(path: string, fields: Record<string, string>, file: { field: string; name: string; type: string; content: string | Buffer }, opts: ApiOptions = {}): Promise<T> {
     const form = new FormData();
     for (const [k, v] of Object.entries(fields)) form.append(k, v);
     form.append(file.field, new Blob([typeof file.content === 'string' ? file.content : new Uint8Array(file.content)], { type: file.type }), file.name);
