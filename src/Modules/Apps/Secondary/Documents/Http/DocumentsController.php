@@ -47,7 +47,8 @@ final class DocumentsController extends Controller
             $items[] = [
                 'doc' => $type->doc, 'kind' => $type->kind, 'type' => $type->socleCode, 'label_fr' => $type->labelFr, 'label_en' => $type->labelEn,
                 'qr' => $type->qr, 'source' => $type->source, 'module' => $type->module,
-                'available' => $type->module === null || $profile->isActive($type->module),
+                'required_teaching_kind' => $type->requiredTeachingKind,
+                'available' => $type->isAvailableFor($profile),
                 'direct' => $type->direct && !$type->issuedBySocle(),
                 'can_issue' => !$this->access->perimeter($principal, $establishmentId, $type->permissions)->isEmpty(),
             ];

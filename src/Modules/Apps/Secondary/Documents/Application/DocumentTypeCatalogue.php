@@ -14,7 +14,7 @@ use Scholaris\Modules\Apps\Secondary\Setup\Contracts\Modules;
 
 /**
  * Catalogue des documents du secondaire : itère les fournisseurs enregistrés sous `secondary.document_types.*` (une seule liste de
- * documents pour les 7 types d'établissement ; la disponibilité dépend seulement des modules actifs) et les fournisseurs de faits
+ * documents pour les 7 types d'établissement ; la disponibilité dépend des modules et capacités du profil) et les fournisseurs de faits
  * d'élève `secondary.student_facts.*`. Refus au chargement (erreur de développement) : numéro ou nature répétés, module inconnu, code
  * de type du socle hors préfixe `sec_`.
  */

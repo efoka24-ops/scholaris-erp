@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Scholaris\Modules\Apps\Secondary\Documents\Contracts;
 
+use Scholaris\Modules\Apps\Secondary\Setup\Contracts\EstablishmentProfile;
+
 /**
  * Type de document du secondaire (catalogue du CDC, DOC-01 à DOC-34) : un numéro DOC-nn, une nature courte utilisée par l'API, le code
  * du type au socle Documents (modèles FR/EN amorcés par migration de données), le QR, le module dont il dépend (null = noyau) et la
@@ -35,11 +37,19 @@ final class SecondaryDocumentType
         public readonly ?string $module = null,
         /** Émis par la route POST /secondary/documents (sinon seulement par le contrat, par le sous-module propriétaire du parcours). */
         public readonly bool $direct = true,
+        /** Capacité du profil requise en plus du module, sans déduire le type d'établissement. */
+        public readonly ?string $requiredTeachingKind = null,
     ) {
     }
 
     public function issuedBySocle(): bool
     {
         return $this->socleCode === null;
+    }
+
+    public function isAvailableFor(EstablishmentProfile $profile): bool
+    {
+        return ($this->module === null || $profile->isActive($this->module))
+            && ($this->requiredTeachingKind === null || $profile->offersTeaching($this->requiredTeachingKind));
     }
 }

@@ -21,6 +21,8 @@ const screens: Screen[] = [
   ['examens', 'sec-exams', () => import('./exams/OfficialExamsView.vue'), S.examsRead, 'sec.menu.exams'],
   ['ateliers', 'sec-workshops', () => import('./workshops/WorkshopsView.vue'), S.workshops, 'sec.menu.workshops'],
   ['stages', 'sec-internships', () => import('./workshops/InternshipsView.vue'), S.internships, 'sec.menu.internships'],
+  ['personnel', 'sec-staff', () => import('./staff/StaffView.vue'), S.staff, 'secst.title'],
+  ['paie', 'sec-payroll', () => import('./staff/PayrollView.vue'), S.payroll, 'secpay.title'],
   ['mon-espace', 'sec-student', () => import('./portals/StudentPortalView.vue'), S.self, 'sec.portal.studentTitle'],
   ['famille', 'sec-family', () => import('./portals/FamilyPortalView.vue'), S.family, 'sec.portal.familyTitle'],
 ];

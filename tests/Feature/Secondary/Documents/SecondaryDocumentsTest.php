@@ -7,7 +7,9 @@ namespace Tests\Feature\Secondary\Documents;
 use Nyholm\Psr7\ServerRequest;
 use Scholaris\Core\Http\HttpException;
 use Scholaris\Modules\Apps\Secondary\Documents\Application\DocumentTypeCatalogue;
+use Scholaris\Modules\Apps\Secondary\Documents\Application\TechnicalDocumentTypes;
 use Scholaris\Modules\Apps\Secondary\Documents\Contracts\SecondaryDocuments;
+use Scholaris\Modules\Apps\Secondary\Setup\Infrastructure\PdoProfileStore;
 use Scholaris\Modules\Socle\Billing\Contracts\DebtorDirectory;
 use Scholaris\Modules\Socle\Billing\Contracts\InvoiceIssuer;
 use Scholaris\Modules\Socle\Documents\Domain\TemplateGuard;
@@ -23,7 +25,8 @@ use Tests\Support\Secondary\Portals\PortalWorld;
 use Tests\Support\Secondary\SecondaryTestCase;
 
 /**
- * T833 : documents du lot E1 (DOC-01 à 06, 27 à 29) par le socle Documents : une émission par type, numéro unique, QR selon le CDC,
+ * T833/T913 : documents E1 et catalogue E3-F (DOC-21 à DOC-24) : émission E1 par le socle Documents, types E3 caller-issued,
+ * disponibilité liée aux modules/capacités, numéro unique, QR selon le CDC,
  * contenu figé FR/EN, aucun montant sur un document scolaire (RG-DOC-4), exeat seulement après clôture, périmètre et isolation.
  * Données fictives.
  */
@@ -75,8 +78,8 @@ final class SecondaryDocumentsTest extends SecondaryTestCase
     {
         $items = $this->ok('GET', '/secondary/documents/kinds', null, self::SCOLARITE, self::TA, $this->school)['items'];
         $qr = array_column($items, 'qr', 'doc');
-        self::assertSame(['DOC-01', 'DOC-02', 'DOC-03', 'DOC-04', 'DOC-05', 'DOC-06', 'DOC-27', 'DOC-28', 'DOC-29'], array_keys($qr));
-        self::assertSame([false, false, true, true, true, false, true, false, true], array_values($qr));
+        $e1 = ['DOC-01' => false, 'DOC-02' => false, 'DOC-03' => true, 'DOC-04' => true, 'DOC-05' => true, 'DOC-06' => false, 'DOC-27' => true, 'DOC-28' => false, 'DOC-29' => true];
+        self::assertSame($e1, array_intersect_key($qr, $e1));
         $byKind = array_column($items, null, 'kind');
         self::assertFalse($byKind['receipt']['direct'], 'Le reçu DOC-27 est émis par le socle Billing.');
         self::assertFalse($byKind['preregistration']['direct'], 'DOC-01 : par le contrat, depuis le parcours de préinscription.');
@@ -85,13 +88,70 @@ final class SecondaryDocumentsTest extends SecondaryTestCase
         self::assertTrue($byKind['school_certificate']['available']);
     }
 
+    public function testDocumentsE3SelonLesModulesEtLEnseignementTechnique(): void
+    {
+        $technical = $this->factory->opened(self::TA, 'lycee_technique');
+        $this->grant(self::TA, self::SCOLARITE, $technical, ['secondary.documents.issue']);
+        $expected = ['DOC-21' => [true, 'internships'], 'DOC-22' => [false, 'internships'], 'DOC-23' => [false, 'workshops'], 'DOC-24' => [false, 'workshops'], 'DOC-30' => [false, 'payroll_simple']];
+        $general = array_column($this->ok('GET', '/secondary/documents/kinds', null, self::SCOLARITE, self::TA, $this->school)['items'], null, 'doc');
+        $tech = array_column($this->ok('GET', '/secondary/documents/kinds', null, self::SCOLARITE, self::TA, $technical)['items'], null, 'doc');
+        foreach ($expected as $doc => [$qr, $module]) {
+            self::assertSame([$qr, $module, false], [$general[$doc]['qr'], $general[$doc]['module'], $general[$doc]['direct']], $doc);
+            self::assertFalse($general[$doc]['available'], $doc . ' : module inactif au lycée général.');
+        }
+        foreach (['DOC-21', 'DOC-22', 'DOC-23', 'DOC-24'] as $doc) {
+            self::assertTrue($tech[$doc]['available'], $doc . ' : modules et enseignement technique du profil.');
+            self::assertSame('technical', $tech[$doc]['required_teaching_kind']);
+        }
+        self::assertFalse($tech['DOC-30']['available'], 'DOC-30 seulement avec payroll_simple.');
+        self::assertSame(422, $this->call('POST', '/secondary/documents', ['kind' => TechnicalDocumentTypes::WORKSHOP_SHEET, 'class_id' => $this->classA], self::SCOLARITE, self::TA, $technical)[0], 'Émis par le module propriétaire, pas par cette route.');
+
+        // Lycée général qui active les ateliers : le module ne suffit pas, l'enseignement technique est exigé.
+        $this->service(PdoProfileStore::class)->saveProfile(self::TA, $this->school, 'test', ['modules' => ['second_cycle', 'orientation', 'official_exams', 'fees_public_catalog', 'workshops']], [], 'Activation fictive des ateliers', 'admin-a');
+        $documents = $this->service(SecondaryDocuments::class);
+        try {
+            $documents->issue(self::TA, $this->school, TechnicalDocumentTypes::WORKSHOP_SHEET, 'eleve-1', [], 'agent-1');
+            self::fail('Ateliers actifs sans enseignement technique : refus attendu.');
+        } catch (HttpException $e) {
+            self::assertSame([409, 'profile_capability_not_offered'], [$e->status, $e->extensions['code'] ?? null]);
+        }
+        try {
+            $documents->issue(self::TA, $this->school, TechnicalDocumentTypes::INTERNSHIP_AGREEMENT, 'eleve-1', [], 'agent-1');
+            self::fail('Module internships inactif : refus attendu.');
+        } catch (HttpException $e) {
+            self::assertSame([409, 'module_not_enabled'], [$e->status, $e->extensions['code'] ?? null]);
+        }
+    }
+
+    public function testConventionDeStageEmiseParContratEtVerificationPubliqueSansContenu(): void
+    {
+        $technical = $this->factory->opened(self::TA, 'lycee_technique');
+        $issued = $this->service(SecondaryDocuments::class)->issue(self::TA, $technical, TechnicalDocumentTypes::INTERNSHIP_AGREEMENT, 'eleve-1', [
+            'academic_year' => '2026-2027', 'class_name' => '1re F3', 'company_name' => 'Atelier Fictif SARL', 'company_address' => 'Quartier Exemple',
+            'tutor_name' => 'Tuteur Exemple', 'starts_on' => '01/03/2027', 'ends_on' => '31/03/2027', 'activities_block' => 'Montage fictif 15/20',
+        ], 'agent-1', 'fr');
+        self::assertSame('sec_doc21_internship_agreement', $issued->type);
+        $content = (string) ($this->rows('SELECT content FROM documents WHERE id = ?', [$issued->id])[0]['content'] ?? '');
+        self::assertStringContainsString('Atelier Fictif SARL', $content);
+        $verify = $this->kernel->handle(new ServerRequest('GET', '/api/v1/public/verify/' . $issued->verificationToken));
+        self::assertSame(200, $verify->getStatusCode());
+        $body = (string) $verify->getBody();
+        foreach (['Atelier Fictif SARL', 'Tuteur Exemple', '15/20', 'Montage', '1re F3'] as $hidden) {
+            self::assertStringNotContainsString($hidden, $body, 'RG-DOC-2 : la page publique ne montre aucun contenu ni note.');
+        }
+    }
+
     public function testLesModelesDuSocleExistentEnFrancaisEtEnAnglaisSansPointVirgule(): void
     {
         $catalogue = $this->service(DocumentTypeCatalogue::class);
+        // Types de ce module (E1, E3 technique) et DOC-30 de Staff ; les autres sous-modules vérifient leurs propres types.
+        $owned = ['DOC-01', 'DOC-02', 'DOC-03', 'DOC-04', 'DOC-05', 'DOC-06', 'DOC-21', 'DOC-22', 'DOC-23', 'DOC-24', 'DOC-28', 'DOC-29', 'DOC-30'];
+        $seen = [];
         foreach ($catalogue->all() as $type) {
-            if ($type->socleCode === null) {
+            if ($type->socleCode === null || !in_array($type->doc, $owned, true)) {
                 continue;
             }
+            $seen[] = $type->doc;
             $row = $this->rows('SELECT qr_enabled, variables FROM document_types WHERE tenant_id = ? AND code = ?', ['*', (string) $type->socleCode])[0] ?? null;
             self::assertIsArray($row, $type->doc);
             self::assertSame($type->qr ? 1 : 0, (int) $row['qr_enabled'], $type->doc . ' : QR selon le CDC');
@@ -103,6 +163,8 @@ final class SecondaryDocumentsTest extends SecondaryTestCase
                 self::assertSame($type->qr, str_contains($html, '{{qr}}'), $type->doc . ' ' . $locale);
             }
         }
+        sort($seen);
+        self::assertSame($owned, $seen);
     }
 
     public function testUneEmissionParTypeAvecNumeroQrEtLangue(): void
@@ -202,7 +264,6 @@ final class SecondaryDocumentsTest extends SecondaryTestCase
             self::assertSame(422, $e->status);
         }
     }
-
     /**
      * @param list<mixed> $docs
      * @return list<string>

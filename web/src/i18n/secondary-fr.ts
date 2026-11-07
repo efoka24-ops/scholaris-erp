@@ -1,12 +1,14 @@
 // Textes de l'application « Enseignement secondaire » (accueil, profil, documents, portails). Les autres lots ajoutent leurs clés ici.
 import { secondaryDisciplineFr } from './secondary-discipline-fr';
 import { secondaryExamsFr } from './secondary-exams-fr';
+import { secondaryStaffFr } from './secondary-staff-fr';
 import { secondaryTimetableFr } from './secondary-timetable-fr';
 
 export const secondaryFr = {
   ...secondaryDisciplineFr,
   ...secondaryExamsFr,
   ...secondaryTimetableFr,
+  ...secondaryStaffFr,
   'nav.secondary': 'Secondaire',
 
   'sec.home.eyebrow': 'Enseignement secondaire',
@@ -175,6 +177,7 @@ export const secondaryFr = {
   'sec.docs.catalogue': 'Documents du secondaire',
   'sec.docs.qr': 'QR',
   'sec.docs.moduleOff': 'module inactif',
+  'sec.docs.notTechnical': 'réservé à l’enseignement technique',
   'sec.docs.bySocle': 'émis automatiquement au paiement',
   'sec.docs.byFlow': 'émis pendant le parcours concerné',
 

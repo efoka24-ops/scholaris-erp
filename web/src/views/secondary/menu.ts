@@ -31,6 +31,7 @@ export const MENU: MenuEntry[] = [
   { name: 'sec-orientation', title: 'sec.menu.orientation', text: 'sec.home.orientationText', perms: S.orientation, modules: ['orientation'] },
   { name: 'sec-workshops', title: 'sec.menu.workshops', text: 'sec.home.workshopsText', perms: S.workshops, modules: ['workshops'] },
   { name: 'sec-internships', title: 'sec.menu.internships', text: 'sec.home.internshipsText', perms: S.internships, modules: ['internships'] },
+  { name: 'sec-staff', title: 'secst.title', text: 'secst.menuText', perms: S.staff },
   { name: 'sec-payroll', title: 'sec.menu.payroll', text: 'sec.home.payrollText', perms: S.payroll, modules: ['payroll_simple'] },
   { name: 'sec-services', title: 'sec.menu.services', text: 'sec.home.servicesText', perms: S.services, modules: ['boarding', 'canteen_transport', 'library', 'infirmary'] },
   { name: 'sec-student', title: 'sec.portal.studentTitle', text: 'sec.home.studentText', perms: S.self },

@@ -2,12 +2,14 @@
 import type { secondaryFr } from './secondary-fr';
 import { secondaryDisciplineEn } from './secondary-discipline-en';
 import { secondaryExamsEn } from './secondary-exams-en';
+import { secondaryStaffEn } from './secondary-staff-en';
 import { secondaryTimetableEn } from './secondary-timetable-en';
 
 export const secondaryEn: Record<keyof typeof secondaryFr, string> = {
   ...secondaryDisciplineEn,
   ...secondaryExamsEn,
   ...secondaryTimetableEn,
+  ...secondaryStaffEn,
   'nav.secondary': 'Secondary',
 
   'sec.home.eyebrow': 'Secondary education',
@@ -176,6 +178,7 @@ export const secondaryEn: Record<keyof typeof secondaryFr, string> = {
   'sec.docs.catalogue': 'Secondary documents',
   'sec.docs.qr': 'QR',
   'sec.docs.moduleOff': 'module inactive',
+  'sec.docs.notTechnical': 'technical education only',
   'sec.docs.bySocle': 'issued automatically on payment',
   'sec.docs.byFlow': 'issued during the related process',
 

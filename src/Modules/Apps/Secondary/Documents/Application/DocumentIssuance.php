@@ -15,11 +15,14 @@ use Scholaris\Modules\Socle\Documents\Contracts\IssuedDocument;
 
 /**
  * Émission par le socle Documents (numéro unique par établissement, type et année, QR de vérification sans notes, contenu figé) :
- * contrôle du profil secondaire, du module du type (409 `module_not_enabled`), choix de la langue (demandée, sinon celle de la
+ * contrôle du profil secondaire, du module du type (409 `module_not_enabled`) et de la capacité déclarée au profil (409
+ * `profile_capability_not_offered`), choix de la langue (demandée, sinon celle de la
  * section si l'établissement n'a que la section anglophone, sinon le français : RG-DOC-5).
  */
 final class DocumentIssuance implements SecondaryDocuments
 {
+    private const CAPABILITY_TYPE = 'https://api.scholaris.cm/errors/profile-capability-not-offered';
+
     public function __construct(
         private readonly DocumentTypeCatalogue $catalogue,
         private readonly EstablishmentProfiles $profiles,
@@ -35,7 +38,7 @@ final class DocumentIssuance implements SecondaryDocuments
         return $this->issuer->issue($tenantId, $establishmentId, (string) $type->socleCode, $personId, $values, $issuedBy, $this->locale($tenantId, $establishmentId, $locale));
     }
 
-    /** Type connu, émis par ce module (pas par un autre module du socle), module actif. */
+    /** Type connu, émis par ce module, avec son module et sa capacité de profil requis. */
     public function issuable(string $tenantId, string $establishmentId, string $kind): SecondaryDocumentType
     {
         $type = $this->catalogue->find($kind);
@@ -44,6 +47,16 @@ final class DocumentIssuance implements SecondaryDocuments
         }
         if ($type->module !== null) {
             $this->modules->assertAvailable($tenantId, $establishmentId, $type->module, true);
+        }
+        if ($type->requiredTeachingKind !== null
+            && !$this->profiles->forEstablishment($tenantId, $establishmentId)->offersTeaching($type->requiredTeachingKind)) {
+            throw new HttpException(
+                409,
+                'Capacité non offerte',
+                'Le profil de cet établissement ne déclare pas la capacité requise pour ce document.',
+                self::CAPABILITY_TYPE,
+                extensions: ['code' => 'profile_capability_not_offered', 'teaching_kind' => $type->requiredTeachingKind],
+            );
         }
 
         return $type;

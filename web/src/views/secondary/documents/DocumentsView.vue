@@ -33,6 +33,8 @@ const ready = computed(() => {
   if (needs('enrollment_id') && f.enrollmentId === '') return false;
   return !needs('destination') || (f.destination.trim() !== '' && f.reason.trim() !== '' && f.effectiveOn !== '');
 });
+/** DOC-21 à 24 : réservés à l'enseignement technique (capacité du profil, en plus du module). */
+const technicalOnly = (k: DocumentKindInfo): boolean => (k as DocumentKindInfo & { required_teaching_kind?: string | null }).required_teaching_kind === 'technical';
 const verifyLink = (token: string): string => `/verification/${encodeURIComponent(token)}`;
 
 watch(() => form.value.classId, async (classId) => {
@@ -158,6 +160,7 @@ onMounted(async () => {
         <li v-for="k in kinds" :key="k.kind">
           <strong>{{ k.doc }}</strong> · {{ label(k) }}
           <span v-if="k.qr" class="tag">{{ t('sec.docs.qr') }}</span>
+          <span v-if="technicalOnly(k)" class="tag">{{ t('sec.docs.notTechnical') }}</span>
           <span v-if="!k.available" class="tag tag--warning">{{ t('sec.docs.moduleOff') }}</span>
           <span v-else-if="k.source === 'socle'" class="muted"> · {{ t('sec.docs.bySocle') }}</span>
           <span v-else-if="!k.direct" class="muted"> · {{ t('sec.docs.byFlow') }}</span>
