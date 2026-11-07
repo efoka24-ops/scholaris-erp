@@ -8,7 +8,7 @@ export const S = {
   documentsRead: ['secondary.documents.issue', 'secondary.enrol.manage', 'secondary.enrol.read', 'secondary.billing.manage', 'secondary.settings.manage'],
   feesRead: ['secondary.fees.read', 'secondary.billing.manage', 'secondary.billing.cash', 'secondary.fees.catalog', 'secondary.finance.read'],
   carteScolaire: ['secondary.enrol.read', 'secondary.enrol.manage', 'secondary.billing.manage', 'secondary.fees.read', 'secondary.finance.read'],
-  examsRead: ['secondary.exams.read', 'secondary.exams.manage', 'secondary.exams.lists'],
+  examsRead: ['secondary.exams.read', 'secondary.exams.manage', 'secondary.exams.lists', 'secondary.exams.validate'],
   orientation: ['secondary.orientation.manage'],
   workshops: ['secondary.workshops.read', 'secondary.workshops.manage', 'secondary.workshops.session'],
   internships: ['secondary.internships.manage'],
