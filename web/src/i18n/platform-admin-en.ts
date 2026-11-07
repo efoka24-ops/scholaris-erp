@@ -338,6 +338,7 @@ export const platformAdminEn: Record<keyof typeof platformAdminFr, string> = {
   'ph.probe.message_queue': 'Pending messages',
   'ph.probe.message_failures': 'Failed messages',
   'ph.probe.document_batches': 'Pending document batches',
+  'ph.probe.document_failures': 'Failed document batches (24 h)',
   'ph.probe.sms_gateway': 'SMS gateway (remaining quota)',
   'ph.probe.smtp': 'E-mail sending (SMTP)',
   'ph.probe.disk': 'File storage disk (used)',

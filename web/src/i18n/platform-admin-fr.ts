@@ -337,6 +337,7 @@ export const platformAdminFr = {
   'ph.probe.message_queue': 'Messages en attente',
   'ph.probe.message_failures': 'Messages en échec',
   'ph.probe.document_batches': 'Lots de documents en attente',
+  'ph.probe.document_failures': 'Lots de documents en échec (24 h)',
   'ph.probe.sms_gateway': 'Passerelle SMS (quota restant)',
   'ph.probe.smtp': 'Envoi d’e-mails (SMTP)',
   'ph.probe.disk': 'Espace disque des fichiers (utilisé)',

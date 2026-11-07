@@ -26,6 +26,8 @@ use Scholaris\Modules\Socle\Integrations\Contracts\PdfRenderer;
 return [
     DocumentIssuer::class => get(DocumentService::class),
     DocumentPdfReader::class => get(DocumentService::class),
+    // Santé de la plateforme (C-112) : comptes de la file des lots, en lecture seule.
+    \Scholaris\Modules\Socle\Documents\Contracts\DocumentQueueMonitor::class => autowire(\Scholaris\Modules\Socle\Documents\Infrastructure\PdoDocumentQueueMonitor::class),
     // Émission avec options pour les applications (S12, S16, S17) ; gardes d'émission : clé de liste par application (S18).
     \Scholaris\Modules\Socle\Documents\Contracts\ExtendedDocumentIssuer::class => get(DocumentService::class),
     \Scholaris\Modules\Socle\Documents\Contracts\DocumentReissuer::class => get(DocumentService::class),

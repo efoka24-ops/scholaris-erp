@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Scholaris\Modules\Socle\Platform\Application;
 
+use Scholaris\Modules\Socle\Documents\Contracts\DocumentQueueMonitor;
 use Scholaris\Modules\Socle\Integrations\Contracts\GatewayStatus;
 use Scholaris\Modules\Socle\Messaging\Contracts\DeliveryMonitor;
 use Scholaris\Modules\Socle\Platform\Infrastructure\HealthPaths;
@@ -35,6 +36,7 @@ final class HealthService
         private readonly DeliveryMonitor $deliveries,
         private readonly GatewayStatus $gateways,
         private readonly HealthPaths $paths,
+        private readonly DocumentQueueMonitor $documents,
     ) {
     }
 
@@ -110,11 +112,20 @@ final class HealthService
             return [self::probe('message_queue', self::UNKNOWN, null, 'messages', null, 'File des messages illisible.')];
         }
 
-        return [
+        $probes = [
             $this->rated('message_queue', $queue['pending'], 'messages', 'queue', ''),
             $this->rated('message_failures', $queue['failed'], 'messages', 'failed', ''),
-            self::probe('document_batches', self::UNKNOWN, null, 'batches', null, 'Le module Documents n\'expose pas encore de contrat de lecture de sa file de lots.'),
         ];
+        // Lots de documents : tâches en attente (mêmes seuils que la file des messages) et échecs sur 24 h.
+        try {
+            $documents = $this->documents->queue(date(DATE_ATOM, $this->clock->timestamp() - 86400));
+        } catch (Throwable) {
+            return [...$probes, self::probe('document_batches', self::UNKNOWN, null, 'batches', null, 'File des lots de documents illisible.')];
+        }
+        $pending = $this->rated('document_batches', $documents['pending'], 'batches', 'queue', '');
+        $pending['detail'] = $documents['oldest_pending_at'] === null ? null : 'Plus ancienne tâche en attente : ' . $documents['oldest_pending_at'] . '.';
+
+        return [...$probes, $pending, $this->rated('document_failures', $documents['failed'], 'batches', 'failed', '')];
     }
 
     /** @return array<string, mixed> */

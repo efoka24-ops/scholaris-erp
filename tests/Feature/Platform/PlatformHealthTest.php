@@ -74,7 +74,9 @@ final class PlatformHealthTest extends PlatformTestCase
         self::assertSame(1, $probes['cron_failures']['value'], 'seulement les échecs des dernières 24 h');
         self::assertStringContainsString('backup:run', (string) $probes['cron_failures']['detail']);
         self::assertSame('ok', $probes['message_queue']['status']);
-        self::assertSame('unknown', $probes['document_batches']['status']);
+        self::assertSame('ok', $probes['document_batches']['status'], 'file des lots vide');
+        self::assertSame(0, $probes['document_batches']['value']);
+        self::assertSame('ok', $probes['document_failures']['status']);
         self::assertSame('warning', $probes['sms_gateway']['status'], 'pilote journal : aucun SMS ne part');
         self::assertSame('warning', $probes['smtp']['status']);
         self::assertSame('warning', $probes['backup']['status']);
