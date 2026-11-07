@@ -93,6 +93,23 @@ final class E2eSeeder extends RealStackTestCase
         return $result;
     }
 
+    /**
+     * Activation réelle ; si une invitation vient de partir (délai de 60 s entre deux codes), on patiente comme la personne.
+     */
+    protected function activate(string $phone, string $password): void
+    {
+        [$response] = $this->api('POST', '/auth/activation/request', null, ['identifier' => $phone]);
+        if ($response->getStatusCode() === 429) {
+            sleep(61);
+            [$response] = $this->api('POST', '/auth/activation/request', null, ['identifier' => $phone]);
+        }
+        self::assertSame(200, $response->getStatusCode(), (string) $response->getBody());
+        $code = $this->sms->lastCode($phone);
+        self::assertNotNull($code, 'Aucun code d\'activation reçu par ' . $phone);
+        $verified = $this->ok('POST', '/auth/activation/verify', null, ['identifier' => $phone, 'code' => $code]);
+        $this->ok('POST', '/auth/activation/password', null, ['ticket' => (string) $verified['ticket'], 'password' => $password]);
+    }
+
     protected function nextPhone(): string
     {
         return sprintf('+2376997%05d', ++$this->seq);
@@ -373,6 +390,70 @@ final class E2eSeeder extends RealStackTestCase
             ], 201)['data']['id'];
         }
         foreach (array_filter(explode(',', $roles)) as $role) {
+            $this->assignRole($ctx, $ctx['admin_person'], $role, 'establishment');
+        }
+
+        return $this->withSecrets($ctx);
+    }
+
+    /**
+     * Primaire public : école, année et trimestres, unité « Cycle III » (niveau du socle), directeur d'école et enseignant titulaire
+     * (comptes activés, fiche du personnel de l'enseignant). Classes et élèves sont créés à l'écran par le parcours.
+     *
+     * @return array<string, mixed>
+     */
+    public function publicPrimary(): array
+    {
+        $ctx = $this->client('public_primary', 'primary', 'École publique fictive de Recette', 'Awa', 'Fictive-Admin');
+        $y = self::startYear();
+        $ctx['year'] = (string) $this->as($ctx, 'admin', 'POST', '/academic-years', ['label' => $y . '-' . ($y + 1), 'starts_on' => $y . '-09-01', 'ends_on' => ($y + 1) . '-06-30'], 201)['data']['id'];
+        $ctx['periods'] = [];
+        foreach ([[1, $y . '-09-01', $y . '-12-18'], [2, ($y + 1) . '-01-04', ($y + 1) . '-03-26'], [3, ($y + 1) . '-04-06', ($y + 1) . '-06-30']] as [$ordinal, $from, $to]) {
+            $ctx['periods'][] = (string) $this->as($ctx, 'admin', 'POST', '/periods', [
+                'academic_year_id' => $ctx['year'], 'kind' => 'trimester', 'ordinal' => $ordinal, 'starts_on' => $from, 'ends_on' => $to,
+            ], 201)['data']['id'];
+        }
+        $ctx['unit'] = (string) $this->as($ctx, 'admin', 'POST', '/structures', ['kind' => 'level', 'name' => 'Cycle III'], 201)['data']['id'];
+        $this->actor($ctx, 'director', 'Moussa', 'Fictif-Directeur', [['pub_school_director', 'establishment']]);
+        $this->actor($ctx, 'teacher', 'Paul', 'Fictif-Instituteur', [['pub_class_teacher', 'establishment']]);
+        [$status, $staff] = $this->try($ctx, 'admin', 'POST', '/staff', ['person_id' => $ctx['people']['teacher'], 'kind' => 'permanent']);
+        $ctx['teacher_staff'] = $status < 300 ? (string) ($staff['data']['id'] ?? '') : null;
+
+        return $this->withSecrets($ctx);
+    }
+
+    /**
+     * Secondaire : lycée d'enseignement général (code de type « leg ») ouvert par le parcours réel de la plateforme (demande d'accès
+     * avec le type, acceptation par l'administrateur de plateforme avec 2FA), administrateur activé qui est aussi chef
+     * d'établissement et scolarité, année en cours. Le profil n'est PAS ouvert : l'assistant de profil le fait à l'écran.
+     *
+     * @return array<string, mixed>
+     */
+    public function secondaryLeg(): array
+    {
+        $phone = $this->nextPhone();
+        $name = 'Lycée général fictif de Recette ' . substr($phone, -3);
+        [$submitted, $json] = $this->publicCall('POST', '/public/access-requests', [
+            'institution_name' => $name, 'target_type' => 'secondary', 'city' => 'Garoua', 'region' => 'Nord',
+            'contact_first_name' => 'Hamadou', 'contact_last_name' => 'Fictif-Proviseur', 'contact_email' => 'proviseur' . substr($phone, -5) . '@lycee-recette.test',
+            'contact_phone' => $phone, 'app_key' => 'secondary', 'establishment_subtype' => 'leg',
+        ], '198.51.100.' . random_int(20, 250));
+        self::assertSame(202, $submitted->getStatusCode(), (string) $submitted->getBody());
+        $platform = $this->platform();
+        $pending = $this->ok('GET', '/platform/access-requests?filter[status]=pending', $platform)['data'];
+        $mine = array_values(array_filter($pending, static fn (array $r): bool => ($r['institution_name'] ?? null) === $name));
+        $accepted = $this->ok('POST', '/platform/access-requests/' . $mine[0]['id'] . '/accept', $platform, ['force_reason' => 'Établissement pilote de la recette.'])['data'];
+        $password = 'Recette-E2E-' . substr(md5($phone), 0, 8) . '!';
+        $this->activate($phone, $password);
+        $admin = $this->signIn($phone, $password);
+        $me = $this->ok('GET', '/me', $admin);
+        $ctx = [
+            'tenant' => (string) $accepted['tenant_id'], 'establishment' => (string) $accepted['establishment_id'], 'admin' => $admin, 'name' => $name,
+            'admin_person' => (string) ($me['data']['person_id'] ?? $me['person_id'] ?? ''), 'logins' => ['admin' => [$phone, $password]], 'tokens' => [], 'people' => [],
+        ];
+        $y = self::startYear();
+        $ctx['year'] = (string) $this->as($ctx, 'admin', 'POST', '/academic-years', ['label' => $y . '-' . ($y + 1), 'starts_on' => $y . '-09-01', 'ends_on' => ($y + 1) . '-06-30'], 201)['data']['id'];
+        foreach (['sec_chef_etablissement', 'sec_scolarite'] as $role) {
             $this->assignRole($ctx, $ctx['admin_person'], $role, 'establishment');
         }
 
