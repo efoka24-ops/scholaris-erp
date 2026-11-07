@@ -413,7 +413,7 @@ final class E2eSeeder extends RealStackTestCase
                 'academic_year_id' => $ctx['year'], 'kind' => 'trimester', 'ordinal' => $ordinal, 'starts_on' => $from, 'ends_on' => $to,
             ], 201)['data']['id'];
         }
-        $ctx['unit'] = (string) $this->as($ctx, 'admin', 'POST', '/structures', ['kind' => 'level', 'name' => 'Cycle III'], 201)['data']['id'];
+        $ctx['unit'] = (string) $this->as($ctx, 'admin', 'POST', '/org-units', ['type' => 'section', 'name' => 'Section francophone'], 201)['data']['id'];
         $this->actor($ctx, 'director', 'Moussa', 'Fictif-Directeur', [['pub_school_director', 'establishment']]);
         $this->actor($ctx, 'teacher', 'Paul', 'Fictif-Instituteur', [['pub_class_teacher', 'establishment']]);
         [$status, $staff] = $this->try($ctx, 'admin', 'POST', '/staff', ['person_id' => $ctx['people']['teacher'], 'kind' => 'permanent']);
@@ -424,8 +424,8 @@ final class E2eSeeder extends RealStackTestCase
 
     /**
      * Secondaire : lycée d'enseignement général (code de type « leg ») ouvert par le parcours réel de la plateforme (demande d'accès
-     * avec le type, acceptation par l'administrateur de plateforme avec 2FA), administrateur activé qui est aussi chef
-     * d'établissement et scolarité, année en cours. Le profil n'est PAS ouvert : l'assistant de profil le fait à l'écran.
+     * avec le type, acceptation par l'administrateur de plateforme avec 2FA), administrateur activé, comptes du chef
+     * d'établissement et de la scolarité, année en cours. Le profil n'est PAS ouvert : l'assistant de profil le fait à l'écran.
      *
      * @return array<string, mixed>
      */
@@ -453,9 +453,45 @@ final class E2eSeeder extends RealStackTestCase
         ];
         $y = self::startYear();
         $ctx['year'] = (string) $this->as($ctx, 'admin', 'POST', '/academic-years', ['label' => $y . '-' . ($y + 1), 'starts_on' => $y . '-09-01', 'ends_on' => ($y + 1) . '-06-30'], 201)['data']['id'];
-        foreach (['sec_chef_etablissement', 'sec_scolarite'] as $role) {
-            $this->assignRole($ctx, $ctx['admin_person'], $role, 'establishment');
-        }
+        $this->actor($ctx, 'chef', 'Hamadou', 'Fictif-Proviseur', [['sec_chef_etablissement', 'establishment']]);
+        $this->actor($ctx, 'scol', 'Ramatou', 'Fictive-Scolarite', [['sec_scolarite', 'establishment']]);
+
+        return $this->withSecrets($ctx);
+    }
+
+    /**
+     * Maternelle privée : école, année et trimestres, comptes de la directrice (nursery_directeur) et de la secrétaire
+     * (nursery_secretaire). Sections, enfants et le reste sont saisis à l'écran par le parcours.
+     *
+     * @return array<string, mixed>
+     */
+    public function nurseryStaff(): array
+    {
+        $ctx = $this->owner('nursery', 'nursery', '');
+        $this->actor($ctx, 'director', 'Hadja', 'Fictive-Directrice', [['nursery_directeur', 'establishment']]);
+        $this->actor($ctx, 'secretary', 'Salamatou', 'Fictive-Secretaire', [['nursery_secretaire', 'establishment']]);
+
+        return $this->withSecrets($ctx);
+    }
+
+    /**
+     * Primaire privé : école, année et trimestres, classe « CM2 A » autorisée, trois élèves fictifs avec un parent chacun, compte
+     * de direction (primary_directeur), enseignant titulaire et compte parent du premier élève.
+     *
+     * @return array<string, mixed>
+     */
+    public function primarySchool(): array
+    {
+        $ctx = $this->client('primary', 'primary', 'École primaire privée fictive de Recette', 'Awa', 'Fictive-Promotrice');
+        $class = $this->schoolYear($ctx, 'CM2 A', 'MINEDUB');
+        $this->actor($ctx, 'director', 'Moussa', 'Fictif-Directeur', [['primary_directeur', 'establishment']]);
+        $this->actor($ctx, 'teacher', 'Paul', 'Fictif-Maitre', [['enseignant', 'establishment']]);
+        $this->actor($ctx, 'parent', 'Pauline', 'Fictive-Parent', [['parent', 'establishment']]);
+        $ctx['pupils'] = [
+            $this->pupil($ctx, $class, 'Amina', 'Fictive-CM2', (self::startYear() - 10) . '-02-11', 'female', $ctx['people']['parent']),
+            $this->pupil($ctx, $class, 'Bello', 'Fictif-CM2', (self::startYear() - 10) . '-06-21', 'male'),
+            $this->pupil($ctx, $class, 'Chantal', 'Fictive-CM2', (self::startYear() - 11) . '-11-02', 'female'),
+        ];
 
         return $this->withSecrets($ctx);
     }
