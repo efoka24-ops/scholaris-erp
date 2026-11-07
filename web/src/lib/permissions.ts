@@ -40,7 +40,7 @@ const SECONDARY_ROLE_PERMISSIONS: Record<string, string[]> = {
   sec_censeur: sec(
     'settings.read', 'settings.write', 'enrol.read', 'timetable.read', 'timetable.manage', 'syllabus.read', 'syllabus.visa', 'attendance.read',
     'grades.read', 'grades.validate', 'grades.lock', 'reportcard.read', 'council.prepare', 'exams.read', 'exams.manage', 'workshops.read',
-    'dashboard.read', 'profile.read', 'catalogue.read', '@assessment.read', '@assessment.validate', '@assessment.council.manage',
+    'dashboard.read', 'profile.read', 'catalogue.read', '@assessment.read', '@assessment.validate', '@assessment.council.manage', '@vacations.validate',
   ),
   sec_surveillant_general: sec(
     'enrol.read', 'timetable.read', 'attendance.read', 'attendance.manage', 'discipline.manage', 'reportcard.read', 'conduct.enter', 'dashboard.read', 'profile.read',

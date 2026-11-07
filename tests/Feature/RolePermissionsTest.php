@@ -179,7 +179,7 @@ final class RolePermissionsTest extends TestCase
         'sec_promoteur' => ['dashboard.read', 'finance.read', 'fees.validate', 'profile.read', 'catalogue.read', '@billing.read'],
         'sec_reseau' => ['network.read'],
         'sec_chef_etablissement' => ['discipline.council.preside', 'document.sign', 'profile.read', 'catalogue.read', 'fees.validate', '@billing.read', '@assessment.read', '@assessment.council.manage'],
-        'sec_censeur' => ['grades.lock', 'profile.read', 'catalogue.read', '@assessment.read', '@assessment.validate', '@assessment.council.manage'],
+        'sec_censeur' => ['grades.lock', 'profile.read', 'catalogue.read', '@assessment.read', '@assessment.validate', '@assessment.council.manage', '@vacations.validate'],
         'sec_surveillant_general' => ['profile.read', '@attendance.read', '@attendance.justify'],
         'sec_chef_travaux' => ['workshops.manage', 'stock.manage', 'safety.manage', 'internships.manage'],
         'sec_animateur_pedagogique' => ['syllabus.manage', 'commontests.manage', 'catalogue.read'],

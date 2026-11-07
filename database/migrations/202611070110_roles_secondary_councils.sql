@@ -2,6 +2,8 @@
 -- Les routes du socle /class-councils (ouverture, décisions, recalcul, validation, génération des bulletins) exigent
 -- assessment.council.manage. Le censeur prépare le conseil (secondary.council.prepare) ; le chef d'établissement le préside
 -- (secondary.council.preside). Aucun autre droit n'est nécessaire : la lecture (assessment.read) leur est déjà accordée (E2).
+-- Demande E3-EF : le censeur valide les heures du personnel (POST /vacation-hours/{id}/validate du socle) : vacations.validate.
 
 INSERT INTO role_permissions (role, permission) VALUES ('sec_censeur', 'assessment.council.manage');
 INSERT INTO role_permissions (role, permission) VALUES ('sec_chef_etablissement', 'assessment.council.manage');
+INSERT INTO role_permissions (role, permission) VALUES ('sec_censeur', 'vacations.validate');
