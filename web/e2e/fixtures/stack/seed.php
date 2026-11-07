@@ -414,6 +414,13 @@ final class E2eSeeder extends RealStackTestCase
             ], 201)['data']['id'];
         }
         $ctx['unit'] = (string) $this->as($ctx, 'admin', 'POST', '/org-units', ['type' => 'section', 'name' => 'Section francophone'], 201)['data']['id'];
+        // Rattachement territorial (région du Nord) : sans lui, l'identifiant national de l'élève ne peut pas être attribué.
+        $region = (string) $this->as($ctx, 'admin', 'POST', '/territories', [
+            'type' => 'region', 'code' => 'NO', 'label_fr' => 'Nord', 'label_en' => 'North', 'parent_id' => null, 'valid_from' => ($y - 2) . '-01-01T00:00:00+01:00',
+        ], 201)['data']['id'];
+        // Le rattachement est réservé à l'administrateur fonctionnel des écoles publiques (rôle au niveau du client).
+        $this->assignRole($ctx, $ctx['admin_person'], 'pub_functional_admin', 'tenant', $ctx['tenant']);
+        $this->ok('POST', '/territories/' . $region . '/establishments', $ctx['admin'], ['establishment_ids' => [$ctx['establishment']], 'valid_from' => ($y - 1) . '-01-01T00:00:00+01:00'], null, ['X-HTTP-Method-Override' => 'PUT']);
         $this->actor($ctx, 'director', 'Moussa', 'Fictif-Directeur', [['pub_school_director', 'establishment']]);
         $this->actor($ctx, 'teacher', 'Paul', 'Fictif-Instituteur', [['pub_class_teacher', 'establishment']]);
         [$status, $staff] = $this->try($ctx, 'admin', 'POST', '/staff', ['person_id' => $ctx['people']['teacher'], 'kind' => 'permanent']);
@@ -461,7 +468,7 @@ final class E2eSeeder extends RealStackTestCase
 
     /**
      * Maternelle privée : école, année et trimestres, comptes de la directrice (nursery_directeur) et de la secrétaire
-     * (nursery_secretaire). Sections, enfants et le reste sont saisis à l'écran par le parcours.
+     * (nursery_secretaire) et de l'éducatrice (nursery_educator). Sections, enfants et le reste sont saisis à l'écran.
      *
      * @return array<string, mixed>
      */
@@ -470,6 +477,7 @@ final class E2eSeeder extends RealStackTestCase
         $ctx = $this->owner('nursery', 'nursery', '');
         $this->actor($ctx, 'director', 'Hadja', 'Fictive-Directrice', [['nursery_directeur', 'establishment']]);
         $this->actor($ctx, 'secretary', 'Salamatou', 'Fictive-Secretaire', [['nursery_secretaire', 'establishment']]);
+        $this->actor($ctx, 'educator', 'Kadiatou', 'Fictive-Educatrice', [['nursery_educator', 'establishment']]);
 
         return $this->withSecrets($ctx);
     }
