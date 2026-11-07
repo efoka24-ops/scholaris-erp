@@ -69,6 +69,8 @@ return [
     // D9 catalogue de programme ; S5-S6 moteur appelable par les applications.
     CurriculumCatalog::class => autowire(PdoCurriculumCatalog::class),
     RuleCalculator::class => autowire(Calculator::class),
+    // SS5-SS6 : lecture d'un conseil et des résultats enregistrés (computed_extras) pour les applications (bulletins, lignes du conseil).
+    \Scholaris\Modules\Socle\Assessment\Contracts\CouncilDirectory::class => autowire(\Scholaris\Modules\Socle\Assessment\Infrastructure\PdoCouncilDirectory::class),
 
     // Points d'extension enregistrables par les applications (listes de classes sous ces préfixes) :
     // assessment.rule_strategies.* (S6), assessment.rule_scopes.* (S5), assessment.deliberation_guards.* (S8).

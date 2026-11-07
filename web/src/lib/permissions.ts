@@ -35,12 +35,12 @@ const SECONDARY_ROLE_PERMISSIONS: Record<string, string[]> = {
     'settings.read', 'settings.manage', 'enrol.read', 'enrol.validate', 'timetable.read', 'timetable.validate', 'syllabus.read', 'attendance.read',
     'discipline.validate', 'grades.read', 'reportcard.read', 'reportcard.validate', 'council.preside', 'exams.read', 'exams.validate', 'fees.read',
     'workshops.read', 'dashboard.read', 'discipline.council.preside', 'document.sign', 'profile.read', 'catalogue.read', 'fees.validate', '@billing.read',
-    '@assessment.read',
+    '@assessment.read', '@assessment.council.manage',
   ),
   sec_censeur: sec(
     'settings.read', 'settings.write', 'enrol.read', 'timetable.read', 'timetable.manage', 'syllabus.read', 'syllabus.visa', 'attendance.read',
     'grades.read', 'grades.validate', 'grades.lock', 'reportcard.read', 'council.prepare', 'exams.read', 'exams.manage', 'workshops.read',
-    'dashboard.read', 'profile.read', 'catalogue.read', '@assessment.read', '@assessment.validate',
+    'dashboard.read', 'profile.read', 'catalogue.read', '@assessment.read', '@assessment.validate', '@assessment.council.manage',
   ),
   sec_surveillant_general: sec(
     'enrol.read', 'timetable.read', 'attendance.read', 'attendance.manage', 'discipline.manage', 'reportcard.read', 'conduct.enter', 'dashboard.read', 'profile.read',

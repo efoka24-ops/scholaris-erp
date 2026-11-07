@@ -22,6 +22,7 @@ return [
     EstablishmentDirectory::class => autowire(PdoEstablishmentDirectory::class),
     \Scholaris\Modules\Socle\Organisation\Contracts\TerritoryDirectory::class => autowire(\Scholaris\Modules\Socle\Organisation\Infrastructure\PdoTerritoryDirectory::class),
     \Scholaris\Modules\Socle\Organisation\Contracts\CurrentPeriod::class => autowire(\Scholaris\Modules\Socle\Organisation\Infrastructure\PdoCurrentPeriod::class),
+    \Scholaris\Modules\Socle\Organisation\Contracts\PeriodTree::class => autowire(\Scholaris\Modules\Socle\Organisation\Infrastructure\PdoPeriodTree::class),
     EnrolmentGate::class => autowire(PdoEnrolmentGate::class),
     ModuleAvailability::class => autowire(PdoModuleAvailability::class),
     // Logo des établissements : stockage privé hors racine web (réglage facultatif `organisation.storage_path`, à défaut storage/uploads) et lecture pour les documents.
