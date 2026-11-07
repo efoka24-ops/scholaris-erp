@@ -9,10 +9,12 @@ use Scholaris\Core\Database\ConnectionFactory;
 use Scholaris\Core\Http\HttpException;
 use Scholaris\Core\Support\Ulid;
 use Scholaris\Modules\Apps\PublicNursery\Pickup\Domain\HandoverDecision;
+use Scholaris\Modules\Apps\PublicNursery\Support\PublicNurseryClock;
 use Scholaris\Modules\Socle\Audit\Contracts\AuditLog;
 use Scholaris\Modules\Socle\Identity\Contracts\RoleDirectory;
 use Scholaris\Modules\Socle\Messaging\Contracts\SafetyMessenger;
 use Scholaris\Modules\Socle\Organisation\Contracts\EstablishmentDirectory;
+use Scholaris\Modules\Socle\Organisation\Contracts\SettingsReader;
 use Scholaris\Modules\Socle\People\Contracts\EnrollmentDirectory;
 use Scholaris\Modules\Socle\People\Contracts\PersonDirectory;
 
@@ -29,6 +31,8 @@ final class HandoverService
         private readonly SafetyMessenger $notifier,
         private readonly PickupCodeService $codes,
         private readonly AuditLog $audit,
+        private readonly SettingsReader $settings,
+        private readonly PublicNurseryClock $clock,
     ) {
     }
 
@@ -57,7 +61,7 @@ final class HandoverService
 
         $learner = $this->people->find($tenantId, $learnerId) ?? throw HttpException::notFound('Enfant introuvable.');
         $this->establishments->find($tenantId, $establishmentId) ?? throw HttpException::notFound('Établissement introuvable.');
-        $now = new DateTimeImmutable('now');
+        $now = $this->clock->at();
         $eventId = (string) new Ulid();
         $codeRow = null;
         if ($code !== null) {
@@ -82,8 +86,9 @@ final class HandoverService
         }
 
         $staleAuthorization = (int) ($pickup['status'] !== 'active' || ((string) $pickup['grant_type'] === 'day' && (string) $pickup['valid_on'] !== $schoolDay));
+        $genuineOffline = $this->isGenuineOffline($tenantId, $establishmentId, $origin, $clientUuid, $data['occurred_at'] ?? null, $schoolDay);
         if ($staleAuthorization === 1) {
-            if ($origin === 'offline') {
+            if ($genuineOffline) {
                 // Remise faite hors ligne avec le paquet du matin : l'enfant est déjà parti, elle est ENREGISTRÉE (jamais effacée), marquée
                 // « autorisation périmée », avec alerte des parents et de la direction ; le contrôle O7 la signale.
                 $event = $this->recordEvent($tenantId, $establishmentId, $learnerId, $actorId, $eventId, $schoolDay, 'handed_over', $origin, $clientUuid, $declaredName ?: (string) $pickup['pickup_name'], (string) $pickupId, null, 1, 'stale_authorization');
@@ -120,6 +125,30 @@ final class HandoverService
         return is_array($row) ? $row : null;
     }
 
+    private function isGenuineOffline(string $tenantId, string $establishmentId, string $origin, ?string $clientUuid, mixed $occurredAt, string $schoolDay): bool
+    {
+        if ($origin !== 'offline') {
+            return false;
+        }
+        if ($clientUuid === null || trim($clientUuid) === '') {
+            return false;
+        }
+        if (!is_string($occurredAt) || trim($occurredAt) === '') {
+            return false;
+        }
+        try {
+            $eventTime = new DateTimeImmutable($occurredAt);
+        } catch (\Exception) {
+            return false;
+        }
+        $now = $this->clock->at();
+        $minDelay = max(0, (int) $this->settings->value($tenantId, $establishmentId, 'public_nursery.pickup.offline_min_delay_seconds', 60));
+
+        return $eventTime < $now
+            && ($now->getTimestamp() - $eventTime->getTimestamp()) >= $minDelay
+            && $eventTime->format('Y-m-d') === $schoolDay;
+    }
+
     /** @return array<string, mixed>|null */
     private function matchingRestriction(string $tenantId, string $establishmentId, string $learnerId, string $schoolDay, string $pickupId, ?string $pickupPersonId): ?array
     {
@@ -138,7 +167,7 @@ final class HandoverService
     /** @return array<string, mixed> */
     private function recordEvent(string $tenantId, string $establishmentId, string $learnerId, string $actorId, string $eventId, string $schoolDay, string $eventType, string $origin, ?string $clientUuid, ?string $declaredName, ?string $pickupId, ?string $restrictionId, int $staleAuthorization, string $reason, ?string $codeId = null): array
     {
-        $now = (new DateTimeImmutable('now'))->format(DATE_ATOM);
+        $now = $this->clock->now();
         $event = [
             'id' => $eventId,
             'tenant_id' => $tenantId,

@@ -90,7 +90,10 @@ final class PickupSyncHandler implements BatchItemHandler
                     'pickup_id' => $type === 'handover' ? ($payload['pickup_id'] ?? null) : null,
                     'pickup_person_id' => $payload['pickup_person_id'] ?? null,
                     'declared_name' => $payload['declared_name'] ?? null,
-                    'school_day' => $day, 'origin' => 'offline', 'client_uuid' => $item->clientUuid,
+                    'school_day' => $day,
+                    'origin' => 'offline',
+                    'client_uuid' => $item->clientUuid,
+                    'occurred_at' => $occurredAt,
                 ];
                 if ($type === 'refusal' && ($data['declared_name'] === null || $data['declared_name'] === '')) {
                     $data['declared_name'] = '—';

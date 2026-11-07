@@ -143,11 +143,13 @@ final class PickupSecurityTest extends PublicNurseryCase
         $this->ok('POST', '/public-nursery/pickup/authorized-persons/' . $revoked . '/revoke', 'teacher');
         $this->safety->sent = [];
 
-        $arrival = new BatchItem('public_nursery.pickup', 'item-0001', ['type' => 'arrival', 'learner_id' => $this->child, 'school_day' => self::DAY, 'occurred_at' => '2026-10-08T07:40:00+01:00']);
+        $arrivalPayload = ['type' => 'arrival', 'learner_id' => $this->child, 'school_day' => self::DAY, 'occurred_at' => '2026-10-08T07:40:00+01:00'];
+        $arrival = new BatchItem('public_nursery.pickup', 'item-0001', $arrivalPayload);
         self::assertSame(ItemResult::APPLIED, $this->handler()->handle($arrival, $this->context())->status);
         self::assertSame(ItemResult::DUPLICATE, $this->handler()->handle($arrival, $this->context())->status);
 
-        $good = new BatchItem('public_nursery.pickup', 'item-0002', ['type' => 'handover', 'learner_id' => $this->child, 'pickup_id' => $this->pickup, 'school_day' => self::DAY]);
+        $goodPayload = ['type' => 'handover', 'learner_id' => $this->child, 'pickup_id' => $this->pickup, 'school_day' => self::DAY, 'occurred_at' => '2026-10-08T08:00:00+01:00', 'client_uuid' => 'client-good-0001'];
+        $good = new BatchItem('public_nursery.pickup', 'item-0002', $goodPayload);
         $first = $this->handler()->handle($good, $this->context());
         self::assertSame(ItemResult::APPLIED, $first->status);
         self::assertSame('handed_over', $first->data['status']);
@@ -155,7 +157,8 @@ final class PickupSecurityTest extends PublicNurseryCase
         self::assertSame(1, (int) $this->connections()->pdo()->query("SELECT COUNT(*) FROM pn_gate_events WHERE event_type = 'handed_over'")->fetchColumn());
         self::assertSame('offline', (string) $this->connections()->pdo()->query("SELECT origin FROM pn_gate_events WHERE event_type = 'handed_over'")->fetchColumn());
 
-        $stale = $this->handler()->handle(new BatchItem('public_nursery.pickup', 'item-0003', ['type' => 'handover', 'learner_id' => $this->child, 'pickup_id' => $revoked, 'school_day' => self::DAY]), $this->context());
+        $stalePayload = ['type' => 'handover', 'learner_id' => $this->child, 'pickup_id' => $revoked, 'school_day' => self::DAY, 'occurred_at' => '2026-10-08T08:00:00+01:00', 'client_uuid' => 'client-stale-0001'];
+        $stale = $this->handler()->handle(new BatchItem('public_nursery.pickup', 'item-0003', $stalePayload), $this->context());
         self::assertSame(ItemResult::APPLIED, $stale->status);
         self::assertTrue($stale->data['stale_authorization'], 'Remise faite avec le paquet du matin puis autorisation retirée.');
         self::assertSame('handed_over', $stale->data['status']);
@@ -163,10 +166,34 @@ final class PickupSecurityTest extends PublicNurseryCase
         $audit = $this->ok('GET', '/public-nursery/register/audit?date=' . self::DAY, 'director');
         self::assertFalse($audit['ok'], 'Le contrôle O7 signale la remise à autorisation périmée.');
 
-        $refusal = $this->handler()->handle(new BatchItem('public_nursery.pickup', 'item-0004', ['type' => 'refusal', 'learner_id' => $this->child, 'declared_name' => 'Inconnu', 'school_day' => self::DAY]), $this->context());
+        $refusalPayload = ['type' => 'refusal', 'learner_id' => $this->child, 'declared_name' => 'Inconnu', 'school_day' => self::DAY, 'client_uuid' => 'client-refuse-0001'];
+        $refusal = $this->handler()->handle(new BatchItem('public_nursery.pickup', 'item-0004', $refusalPayload), $this->context());
         self::assertSame('refused', $refusal->data['status']);
-        $hold = $this->handler()->handle(new BatchItem('public_nursery.pickup', 'item-0005', ['type' => 'hold', 'learner_id' => $this->child, 'remark' => 'Parent prévenu (fictif).', 'school_day' => self::DAY]), $this->context());
+
+        $holdPayload = ['type' => 'hold', 'learner_id' => $this->child, 'remark' => 'Parent prévenu (fictif).', 'school_day' => self::DAY];
+        $hold = $this->handler()->handle(new BatchItem('public_nursery.pickup', 'item-0005', $holdPayload), $this->context());
         self::assertSame(ItemResult::APPLIED, $hold->status);
+    }
+
+    public function testUnAppareilConnecteNePeutFalsifierUneRemiseHorsLigne(): void
+    {
+        $revoked = (string) $this->ok('POST', '/public-nursery/pickup/authorized-persons', 'teacher', [
+            'learner_id' => $this->child, 'name' => 'Oncle Marc', 'relationship' => 'oncle', 'grant_type' => 'permanent',
+        ])['id'];
+        $this->ok('POST', '/public-nursery/pickup/authorized-persons/' . $revoked . '/revoke', 'teacher');
+
+        [$response, $json] = $this->api('POST', '/public-nursery/pickup/handovers', 'teacher', self::T, self::E, [
+            'learner_id' => $this->child,
+            'pickup_id' => $revoked,
+            'school_day' => self::DAY,
+            'origin' => 'offline',
+            'client_uuid' => 'connected-offline-0001',
+            'occurred_at' => self::NOW,
+        ]);
+
+        self::assertSame(422, $response->getStatusCode());
+        self::assertSame('stale_authorization', $json['data']['reason']);
+        self::assertSame('refused', $json['data']['status']);
     }
 
     public function testLeLotRefuseUnCodeHorsLigneUnTypeInconnuEtLesDroits(): void
