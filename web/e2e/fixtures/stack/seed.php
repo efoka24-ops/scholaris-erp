@@ -421,8 +421,11 @@ final class E2eSeeder extends RealStackTestCase
         // Le rattachement est réservé à l'administrateur fonctionnel des écoles publiques (rôle au niveau du client).
         $this->assignRole($ctx, $ctx['admin_person'], 'pub_functional_admin', 'tenant', $ctx['tenant']);
         $this->ok('POST', '/territories/' . $region . '/establishments', $ctx['admin'], ['establishment_ids' => [$ctx['establishment']], 'valid_from' => ($y - 1) . '-01-01T00:00:00+01:00'], null, ['X-HTTP-Method-Override' => 'PUT']);
+        // Appel par demi-journée : réglage exigé par le serveur (attendance.mode = day_part), sans écran pour le poser (C110-PP3).
+        $this->ok('POST', '/settings', $ctx['admin'], ['scope' => 'establishment', 'key' => 'attendance.mode', 'value' => 'day_part'], $ctx['establishment'], ['X-HTTP-Method-Override' => 'PUT']);
         $this->actor($ctx, 'director', 'Moussa', 'Fictif-Directeur', [['pub_school_director', 'establishment']]);
         $this->actor($ctx, 'teacher', 'Paul', 'Fictif-Instituteur', [['pub_class_teacher', 'establishment']]);
+        $this->actor($ctx, 'apee', 'Zara', 'Fictive-Tresoriere', [['pub_apee_board', 'establishment']]);
         [$status, $staff] = $this->try($ctx, 'admin', 'POST', '/staff', ['person_id' => $ctx['people']['teacher'], 'kind' => 'permanent']);
         $ctx['teacher_staff'] = $status < 300 ? (string) ($staff['data']['id'] ?? '') : null;
 
