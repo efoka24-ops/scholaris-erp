@@ -4,6 +4,9 @@ import { createPinia, setActivePinia } from 'pinia';
 import { mockApi, freshEnvironment } from './helpers';
 import { useContextStore } from '@/stores/context';
 import OfficialExamsView from '@/views/secondary/exams/OfficialExamsView.vue';
+import { setLocale } from '@/i18n';
+import { secondaryExamsFr } from '@/i18n/secondary-exams-fr';
+import { secondaryExamsEn } from '@/i18n/secondary-exams-en';
 
 const session = {
   id: 'ses-1', exam_code: 'EXA-DEMO', exam_label: 'Examen fictif', academic_year_id: 'annee-2026', class_structure_id: 'cl-1', comparison_period_id: null,
@@ -18,6 +21,7 @@ const candidate = {
 describe('secondary official exams screen', () => {
   it('shows a candidate blocked for fees not seen (TST-08) without any exclusion action', async () => {
     freshEnvironment();
+    setLocale('fr');
     setActivePinia(createPinia());
     useContextStore().tiles = [{ kind: 'establishment', id: 'school-1', name: 'Établissement fictif', type: 'secondary', accent: '#F26B1D', logo: null, roles: [{ code: 'test', label: 'Test' }], permissions: ['secondary.exams.read'] }];
     useContextStore().activeId = 'school-1';
@@ -34,5 +38,32 @@ describe('secondary official exams screen', () => {
     expect(wrapper.text()).not.toContain('Créer la session');
     expect(wrapper.text().toLowerCase()).not.toContain('exclure');
     wrapper.unmount();
+  });
+});
+
+describe('secondary official exams texts', () => {
+  it('has the same keys in French and English', () => {
+    expect(Object.keys(secondaryExamsEn).sort()).toEqual(Object.keys(secondaryExamsFr).sort());
+  });
+
+  it('renders the screen in English', async () => {
+    freshEnvironment();
+    setActivePinia(createPinia());
+    setLocale('en');
+    useContextStore().tiles = [{ kind: 'establishment', id: 'school-1', name: 'Fictitious school', type: 'secondary', accent: '#F26B1D', logo: null, roles: [{ code: 'test', label: 'Test' }], permissions: ['secondary.exams.read'] }];
+    useContextStore().activeId = 'school-1';
+    mockApi({
+      'GET /academic-years': { data: [] },
+      'GET /secondary/official-exams': { data: [session], meta: { next_cursor: null, per_page: 50 } },
+      'GET /secondary/official-exams/ses-1/candidates': { data: [candidate], meta: { next_cursor: null, per_page: 50 } },
+      'GET /secondary/official-exams/ses-1/summary': { data: { session_id: 'ses-1', candidate_count: 1, results_count: 0, passed_count: 0, success_rate: null, result_counts: {}, passing_codes: ['PASS'], comparison: null } },
+    });
+    const wrapper = mount(OfficialExamsView);
+    await vi.waitFor(() => expect(wrapper.text()).toContain('Brice Ndi'));
+    expect(wrapper.text()).toContain('Official examinations');
+    expect(wrapper.text()).toContain('Blocked');
+    expect(wrapper.text()).toContain('Fees: not recorded');
+    wrapper.unmount();
+    setLocale('fr');
   });
 });

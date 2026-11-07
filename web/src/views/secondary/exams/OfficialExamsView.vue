@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import ErrorNotice from '@/components/ErrorNotice.vue';
+import { useI18n } from '@/i18n';
 import { saveBlob } from '@/api/exports';
 import { secondarySetup, type SchoolClass } from '@/api/secondarySetup';
 import { useAction, usePermissions } from '../useSec';
 import { secondaryOfficialExams, type ExamCandidate, type ExamSession, type ExamSummary } from './secondaryOfficialExams';
 
+const { t } = useI18n();
+const STATUS_KEYS = { blocked: 'secx.status.blocked', incomplete: 'secx.status.incomplete', eligible: 'secx.status.eligible' } as const;
 const { error, busy, run } = useAction();
 const { can } = usePermissions();
 const canManage = computed(() => can('secondary.exams.manage', 'secondary.exams.lists'));
@@ -68,7 +71,7 @@ async function createSession(): Promise<void> {
   };
   const created = await run(() => secondaryOfficialExams.createSession(body));
   if (created) {
-    notice.value = 'Session créée.';
+    notice.value = t('secx.created');
     sessionId.value = created.id;
     await load();
   }
@@ -78,7 +81,7 @@ async function updateSessionStatus(): Promise<void> {
   if (!selected.value || selected.value.status !== 'open') return;
   const updated = await run(() => secondaryOfficialExams.updateSession(selected.value!.id, { status: 'closed' }));
   if (updated) {
-    notice.value = 'Session clôturée.';
+    notice.value = t('secx.closedNotice');
     await load();
   }
 }
@@ -96,7 +99,7 @@ async function loadClassesForYear(): Promise<void> {
 async function generate(): Promise<void> {
   const result = await run(() => secondaryOfficialExams.generate(sessionId.value));
   if (result) {
-    notice.value = `${result.added} candidat(s) ajouté(s), ${result.already_listed} déjà présent(s).`;
+    notice.value = t('secx.generated', { added: result.added, listed: result.already_listed });
     await loadSession();
   }
 }
@@ -113,7 +116,7 @@ async function addCandidate(): Promise<void> {
 async function removeCandidate(candidate: ExamCandidate): Promise<void> {
   const result = await run(() => secondaryOfficialExams.removeCandidate(candidate.id));
   if (result?.removed) {
-    notice.value = `${candidate.full_name} retiré de la liste de travail.`;
+    notice.value = t('secx.removed', { name: candidate.full_name });
     await loadSession();
   }
 }
@@ -146,7 +149,7 @@ async function importResults(): Promise<void> {
   const result = await run(() => secondaryOfficialExams.importResults(sessionId.value, text));
   if (result) {
     summary.value = result.summary;
-    notice.value = `Résultats importés : ${result.imported}, lignes rejetées : ${result.rejected.length}.`;
+    notice.value = t('secx.imported', { imported: result.imported, rejected: result.rejected.length });
     await loadSession();
   }
 }
@@ -158,50 +161,50 @@ onBeforeUnmount(() => Object.values(photoSources.value).forEach(URL.revokeObject
 <template>
   <main class="exam-page">
     <header class="page-head">
-      <div><p class="eyebrow">SECONDAIRE · EXA</p><h1>Examens</h1><p class="subtitle">Sessions, listes de candidats et résultats — règles et formats configurés par l’établissement.</p></div>
-      <button v-if="selected && canRead" class="button secondary" :disabled="busy" @click="exportCsv">Exporter CSV</button>
+      <div><p class="eyebrow">{{ t('secx.eyebrow') }}</p><h1>{{ t('secx.title') }}</h1><p class="subtitle">{{ t('secx.subtitle') }}</p></div>
+      <button v-if="selected && canRead" class="button secondary" :disabled="busy" @click="exportCsv">{{ t('secx.export') }}</button>
     </header>
     <ErrorNotice v-if="error" :error="error" />
     <p v-if="notice" class="notice" role="status">{{ notice }}</p>
 
     <section v-if="canManage" class="panel create-panel">
-      <div class="section-title"><div><p class="eyebrow">NOUVELLE SESSION</p><h2>Configurer un examen</h2></div><span class="tag">Paramétrable</span></div>
+      <div class="section-title"><div><p class="eyebrow">{{ t('secx.newEyebrow') }}</p><h2>{{ t('secx.newTitle') }}</h2></div><span class="tag">{{ t('secx.configurable') }}</span></div>
       <form class="form-grid" @submit.prevent="createSession">
-        <label>Code interne<input v-model="newSession.exam_code" required maxlength="40" placeholder="Ex. EXA-2026" /></label>
-        <label>Libellé<input v-model="newSession.exam_label" required maxlength="160" placeholder="Libellé fourni par l’établissement" /></label>
-        <label>Année scolaire<select v-model="newSession.academic_year_id" required @change="loadClassesForYear"><option value="" disabled>Choisir une année</option><option v-for="year in years" :key="year.id" :value="year.id">{{ year.label ?? year.id }}</option></select></label>
-        <label>Classe d’examen<select v-model="newSession.class_structure_id" required><option value="" disabled>Choisir une classe</option><option v-for="schoolClass in classes" :key="schoolClass.structure_id" :value="schoolClass.structure_id">{{ schoolClass.label }}</option></select></label>
-        <label>Date limite d’inscription<input v-model="newSession.registration_deadline" type="date" /></label>
-        <label>Date prévue de l’examen<input v-model="newSession.exam_on" type="date" /></label>
-        <label>Pièces requises <small>séparées par des virgules</small><input v-model="newSession.required_pieces" placeholder="Pièces définies localement" /></label>
-        <label>Codes de réussite <small>séparés par des virgules</small><input v-model="newSession.passing_codes" placeholder="Valeurs fournies par le référentiel" /></label>
-        <button class="button primary" :disabled="busy">Créer la session</button>
+        <label>{{ t('secx.code') }}<input v-model="newSession.exam_code" required maxlength="40" :placeholder="t('secx.codePlaceholder')" /></label>
+        <label>{{ t('secx.label') }}<input v-model="newSession.exam_label" required maxlength="160" :placeholder="t('secx.labelPlaceholder')" /></label>
+        <label>{{ t('secx.year') }}<select v-model="newSession.academic_year_id" required @change="loadClassesForYear"><option value="" disabled>{{ t('secx.chooseYear') }}</option><option v-for="year in years" :key="year.id" :value="year.id">{{ year.label ?? year.id }}</option></select></label>
+        <label>{{ t('secx.class') }}<select v-model="newSession.class_structure_id" required><option value="" disabled>{{ t('secx.chooseClass') }}</option><option v-for="schoolClass in classes" :key="schoolClass.structure_id" :value="schoolClass.structure_id">{{ schoolClass.label }}</option></select></label>
+        <label>{{ t('secx.deadline') }}<input v-model="newSession.registration_deadline" type="date" /></label>
+        <label>{{ t('secx.examOn') }}<input v-model="newSession.exam_on" type="date" /></label>
+        <label>{{ t('secx.pieces') }} <small>{{ t('secx.commaSeparated') }}</small><input v-model="newSession.required_pieces" :placeholder="t('secx.piecesPlaceholder')" /></label>
+        <label>{{ t('secx.passingCodes') }} <small>{{ t('secx.commaSeparated') }}</small><input v-model="newSession.passing_codes" :placeholder="t('secx.passingPlaceholder')" /></label>
+        <button class="button primary" :disabled="busy">{{ t('secx.create') }}</button>
       </form>
     </section>
 
     <section class="panel session-panel">
-      <div class="section-title"><div><p class="eyebrow">ESPACE DE TRAVAIL</p><h2>Session & candidats</h2></div><span v-if="selected" class="tag" :class="selected.status">{{ selected.status === 'open' ? 'Ouverte' : 'Clôturée' }}</span></div>
-      <label class="session-select">Session<select v-model="sessionId" @change="loadSession"><option value="">Sélectionner une session</option><option v-for="session in sessions" :key="session.id" :value="session.id">{{ session.exam_label }} · {{ session.academic_year_id }}</option></select></label>
+      <div class="section-title"><div><p class="eyebrow">{{ t('secx.workEyebrow') }}</p><h2>{{ t('secx.workTitle') }}</h2></div><span v-if="selected" class="tag" :class="selected.status">{{ selected.status === 'open' ? t('secx.open') : t('secx.closed') }}</span></div>
+      <label class="session-select">{{ t('secx.session') }}<select v-model="sessionId" @change="loadSession"><option value="">{{ t('secx.chooseSession') }}</option><option v-for="session in sessions" :key="session.id" :value="session.id">{{ session.exam_label }} · {{ session.academic_year_id }}</option></select></label>
       <template v-if="selected">
-        <div v-if="canManage && selected.status === 'open'" class="session-actions"><button class="button secondary" :disabled="busy" @click="updateSessionStatus">Clôturer la session</button></div>
+        <div v-if="canManage && selected.status === 'open'" class="session-actions"><button class="button secondary" :disabled="busy" @click="updateSessionStatus">{{ t('secx.close') }}</button></div>
         <div class="summary-grid" v-if="summary">
-          <article><span>Candidats</span><strong>{{ summary.candidate_count }}</strong></article><article><span>Résultats reçus</span><strong>{{ summary.results_count }}</strong></article>
-          <article><span>Admis</span><strong>{{ summary.passed_count }}</strong></article><article><span>Taux de réussite</span><strong>{{ summary.success_rate === null ? '—' : `${summary.success_rate}%` }}</strong></article>
+          <article><span>{{ t('secx.candidates') }}</span><strong>{{ summary.candidate_count }}</strong></article><article><span>{{ t('secx.results') }}</span><strong>{{ summary.results_count }}</strong></article>
+          <article><span>{{ t('secx.passed') }}</span><strong>{{ summary.passed_count }}</strong></article><article><span>{{ t('secx.rate') }}</span><strong>{{ summary.success_rate === null ? '—' : `${summary.success_rate}%` }}</strong></article>
         </div>
-        <div v-if="summary?.comparison" class="comparison"><div><span>Examen</span><strong>{{ summary.comparison.exam_average ?? '—' }}</strong></div><span class="versus">VS</span><div><span>Moyenne scolaire</span><strong>{{ summary.comparison.school_average ?? '—' }}</strong></div><p>Écart : {{ summary.comparison.difference ?? '—' }}</p></div>
-        <div v-if="canManage" class="toolbar"><button class="button secondary" :disabled="busy || selected.status !== 'open'" @click="generate">Générer depuis les inscriptions actives</button><form class="inline-form" @submit.prevent="addCandidate"><input v-model="personId" aria-label="Identifiant interne de personne" placeholder="Identifiant interne de l’élève" /><button class="button secondary" :disabled="busy || selected.status !== 'open'">Ajouter</button></form></div>
-        <div v-if="canValidate" class="import-box"><label>Importer les résultats CSV <input type="file" accept=".csv,text/csv" @change="csvFile = ($event.target as HTMLInputElement).files?.[0] ?? null" /></label><p>Colonnes attendues : <code>key,result_code,result_mark</code>. Les codes et notes viennent de l’organisateur.</p><button class="button primary" :disabled="busy || !csvFile || selected.status !== 'open'" @click="importResults">Importer les résultats</button></div>
+        <div v-if="summary?.comparison" class="comparison"><div><span>{{ t('secx.exam') }}</span><strong>{{ summary.comparison.exam_average ?? '—' }}</strong></div><span class="versus">{{ t('secx.versus') }}</span><div><span>{{ t('secx.schoolAverage') }}</span><strong>{{ summary.comparison.school_average ?? '—' }}</strong></div><p>{{ t('secx.gap', { value: summary.comparison.difference ?? '—' }) }}</p></div>
+        <div v-if="canManage" class="toolbar"><button class="button secondary" :disabled="busy || selected.status !== 'open'" @click="generate">{{ t('secx.generate') }}</button><form class="inline-form" @submit.prevent="addCandidate"><input v-model="personId" :aria-label="t('secx.personId')" :placeholder="t('secx.personId')" /><button class="button secondary" :disabled="busy || selected.status !== 'open'">{{ t('secx.add') }}</button></form></div>
+        <div v-if="canValidate" class="import-box"><label>{{ t('secx.importLabel') }} <input type="file" accept=".csv,text/csv" @change="csvFile = ($event.target as HTMLInputElement).files?.[0] ?? null" /></label><p>{{ t('secx.importHelp') }}</p><button class="button primary" :disabled="busy || !csvFile || selected.status !== 'open'" @click="importResults">{{ t('secx.import') }}</button></div>
         <div class="candidate-list">
           <article v-for="candidate in candidates" :key="candidate.id" class="candidate-card">
-            <div class="candidate-main"><div class="avatar"><img v-if="photoSources[candidate.id]" :src="photoSources[candidate.id]" alt="Photo privée du candidat" /><span v-else>{{ candidate.full_name.slice(0, 1) }}</span></div><div class="identity"><strong>{{ candidate.full_name }}</strong><span>{{ candidate.class_label }} · Matricule : {{ candidate.national_id ?? 'en attente' }}</span><span class="checks">Frais : {{ candidate.fee_status === 'seen' ? 'constatés' : 'non constatés' }} · Pièces manquantes : {{ candidate.missing_pieces.length || 'aucune' }}</span></div><span class="status-pill" :class="candidate.status">{{ candidate.status === 'blocked' ? 'Bloqué' : candidate.status === 'incomplete' ? 'À compléter' : 'Prêt' }}</span></div>
+            <div class="candidate-main"><div class="avatar"><img v-if="photoSources[candidate.id]" :src="photoSources[candidate.id]" :alt="t('secx.photoAlt')" /><span v-else>{{ candidate.full_name.slice(0, 1) }}</span></div><div class="identity"><strong>{{ candidate.full_name }}</strong><span>{{ candidate.class_label }} · {{ t('secx.nationalId', { value: candidate.national_id ?? t('secx.pending') }) }}</span><span class="checks">{{ t('secx.fees', { value: candidate.fee_status === 'seen' ? t('secx.feesSeen') : t('secx.feesNotSeen') }) }} · {{ t('secx.missingPieces', { value: candidate.missing_pieces.length || t('secx.none') }) }}</span></div><span class="status-pill" :class="candidate.status">{{ t(STATUS_KEYS[candidate.status]) }}</span></div>
             <p v-if="candidate.status === 'blocked'" class="blocked-message">{{ candidate.status_message }}</p>
-            <div class="candidate-details" v-if="canManage && selected.status === 'open'"><label>Pièces reçues<input :value="candidate.pieces_received.join(', ')" @change="saveCandidate(candidate, 'pieces_received', ($event.target as HTMLInputElement).value)" placeholder="Pièces, séparées par des virgules" /></label><label>Matières optionnelles<input :value="candidate.selected_subjects.join(', ')" @change="saveCandidate(candidate, 'selected_subjects', ($event.target as HTMLInputElement).value)" placeholder="Matières configurées" /></label><label class="file-label">Photo candidat<input type="file" accept="image/jpeg,image/png" @change="uploadPhoto(candidate, $event)" /></label><button v-if="candidate.photo_url" class="button secondary" :disabled="busy" @click="removePhoto(candidate)">Retirer la photo</button><button class="button secondary" :disabled="busy" @click="removeCandidate(candidate)">Retirer le candidat</button></div>
-            <div class="result-line" v-if="candidate.result_code"><span>Résultat : {{ candidate.result_code }}</span><strong v-if="candidate.result_mark !== null">{{ candidate.result_mark }}</strong></div>
+            <div class="candidate-details" v-if="canManage && selected.status === 'open'"><label>{{ t('secx.piecesReceived') }}<input :value="candidate.pieces_received.join(', ')" @change="saveCandidate(candidate, 'pieces_received', ($event.target as HTMLInputElement).value)" :placeholder="t('secx.piecesReceivedPlaceholder')" /></label><label>{{ t('secx.optionalSubjects') }}<input :value="candidate.selected_subjects.join(', ')" @change="saveCandidate(candidate, 'selected_subjects', ($event.target as HTMLInputElement).value)" :placeholder="t('secx.optionalPlaceholder')" /></label><label class="file-label">{{ t('secx.photo') }}<input type="file" accept="image/jpeg,image/png" @change="uploadPhoto(candidate, $event)" /></label><button v-if="candidate.photo_url" class="button secondary" :disabled="busy" @click="removePhoto(candidate)">{{ t('secx.removePhoto') }}</button><button class="button secondary" :disabled="busy" @click="removeCandidate(candidate)">{{ t('secx.remove') }}</button></div>
+            <div class="result-line" v-if="candidate.result_code"><span>{{ t('secx.result', { value: candidate.result_code }) }}</span><strong v-if="candidate.result_mark !== null">{{ candidate.result_mark }}</strong></div>
           </article>
-          <p v-if="!candidates.length" class="empty">Aucun candidat dans cette session.</p>
+          <p v-if="!candidates.length" class="empty">{{ t('secx.empty') }}</p>
         </div>
       </template>
-      <p v-else class="empty">Sélectionnez ou créez une session pour gérer les candidats.</p>
+      <p v-else class="empty">{{ t('secx.noSession') }}</p>
     </section>
   </main>
 </template>
