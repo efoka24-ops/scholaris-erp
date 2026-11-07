@@ -205,6 +205,25 @@ final class OfficialExamsTest extends SecondaryTestCase
         self::assertNotSame('blocked', $rows['el-2']['status'], 'Le statut suit le relevé de la carte scolaire, rien n’est encaissé ici (RG-FIN-3).');
     }
 
+    /** DOC-19, DOC-20 et DOC-31 déclarés par OfficialExams ont leur type et leurs modèles FR et EN au socle Documents. */
+    public function testTypesDocumentairesDesExamensPresentsAuSocle(): void
+    {
+        $types = (new \Scholaris\Modules\Apps\Secondary\OfficialExams\Application\OfficialExamDocumentTypes())->types();
+        self::assertCount(3, $types);
+        foreach ($types as $type) {
+            $row = $this->pdo()->query("SELECT qr_enabled FROM document_types WHERE tenant_id = '*' AND code = '" . $type->socleCode . "'")->fetch(\PDO::FETCH_ASSOC);
+            self::assertIsArray($row, $type->doc);
+            self::assertSame($type->qr, (bool) $row['qr_enabled'], $type->doc . ' : QR selon le CDC.');
+            $templates = $this->pdo()->query("SELECT locale, html FROM document_templates WHERE tenant_id = '*' AND type_code = '" . $type->socleCode . "' ORDER BY locale")->fetchAll(\PDO::FETCH_ASSOC);
+            self::assertSame(['en', 'fr'], array_column($templates, 'locale'), $type->doc);
+            foreach ($templates as $template) {
+                self::assertStringNotContainsString(';', (string) $template['html'], $type->doc . ' : aucun point-virgule dans le HTML.');
+            }
+        }
+        $attestation = (string) $this->pdo()->query("SELECT html FROM document_templates WHERE type_code = 'sec_doc31_official_exam_attestation' AND locale = 'fr'")->fetchColumn();
+        self::assertStringContainsString('ni de diplôme ni de relevé officiel', $attestation, 'RG-EXA-2.');
+    }
+
     /** RG-FIN-1 (T949) : aucune route de l'application ne renvoie ni n'exclut un élève pour impayé. */
     public function testAucuneRouteDExclusionPourImpaye(): void
     {

@@ -287,3 +287,51 @@ paths:
         '404': {description: Placement not found}
         '409': {description: Module disabled}
         '422': {description: Invalid input}
+  /api/v1/secondary/workshops/sheets/{id}/documents:
+    post:
+      summary: DOC-23 practical sheet and assessment grid issued to a learner of the class {structure_id, person_id, locale?} (SecondaryDocuments, technical teaching required)
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '201': {description: 'Issued document id, number and type'}
+        '403': {description: Permission absent or class out of scope}
+        '404': {description: 'Application not open, sheet or class not found'}
+        '409': {description: 'module_not_enabled or profile_capability_not_offered'}
+        '422': {description: Learner not enrolled in the class or invalid input}
+  /api/v1/secondary/workshops/{workshop_id}/stock-report:
+    post:
+      summary: DOC-24 materials stock report drawn up by the head of workshops {person_id?, locale?}, with cost per learner
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: workshop_id, in: path, required: true, schema: {type: string}}
+      responses:
+        '201': {description: 'Issued document and cost_per_learner_xaf'}
+        '403': {description: Permission or establishment scope absent}
+        '404': {description: Application not open or workshop not found}
+        '409': {description: 'module_not_enabled or profile_capability_not_offered'}
+        '422': {description: No head of workshops given}
+  /api/v1/secondary/internships/{id}/agreement:
+    post:
+      summary: DOC-21 internship agreement issued for a prepared placement {locale?}; links agreement_document_id
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '201': {description: 'Issued document id, number and type'}
+        '403': {description: Permission absent or class out of scope}
+        '404': {description: Application not open or placement not found}
+        '409': {description: 'Placement completed or cancelled, module_not_enabled or profile_capability_not_offered'}
+        '422': {description: Invalid input}
+  /api/v1/secondary/internships/{id}/appraisal:
+    post:
+      summary: DOC-22 trainee appraisal form issued once the tutor appraisal is recorded {locale?}
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '201': {description: 'Issued document id, number and type'}
+        '403': {description: Permission absent or class out of scope}
+        '404': {description: Application not open or placement not found}
+        '409': {description: 'module_not_enabled or profile_capability_not_offered'}
+        '422': {description: Tutor appraisal missing}

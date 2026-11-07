@@ -13,6 +13,7 @@ use Scholaris\Modules\Apps\Secondary\Support\Controller;
 use Scholaris\Modules\Apps\Secondary\Support\Input;
 use Scholaris\Modules\Apps\Secondary\Support\Store;
 use Scholaris\Modules\Apps\Secondary\Workshops\Application\InternshipService;
+use Scholaris\Modules\Apps\Secondary\Workshops\Application\WorkshopDocuments;
 use Scholaris\Modules\Apps\Secondary\Workshops\Application\WorkshopService;
 
 /** Guarded atelier, sécurité, stock, évaluation pratique et stages (T908–T910). */
@@ -26,9 +27,71 @@ final class WorkshopsController extends Controller
     private const SAFETY = ['secondary.safety.manage', 'secondary.workshops.manage'];
     private const INTERNSHIPS = ['secondary.internships.manage'];
 
-    public function __construct(JsonResponder $responder, Access $access, Store $store, private readonly WorkshopService $workshops, private readonly InternshipService $internships)
-    {
+    public function __construct(
+        JsonResponder $responder,
+        Access $access,
+        Store $store,
+        private readonly WorkshopService $workshops,
+        private readonly InternshipService $internships,
+        private readonly WorkshopDocuments $documents,
+    ) {
         parent::__construct($responder, $access, $store);
+    }
+
+    /** DOC-21 : convention de stage, émise quand le stage est préparé. */
+    public function issueAgreement(ServerRequestInterface $request): ResponseInterface
+    {
+        [$principal, $establishment] = $this->context($request);
+        $perimeter = $this->access->require($principal, $establishment, self::INTERNSHIPS);
+        $locale = self::locale($request);
+
+        return $this->json($this->documents->agreement($principal, $establishment, $perimeter, self::id($request), $locale), 201);
+    }
+
+    /** DOC-22 : fiche d'appréciation du stagiaire, après l'appréciation du tuteur. */
+    public function issueAppraisal(ServerRequestInterface $request): ResponseInterface
+    {
+        [$principal, $establishment] = $this->context($request);
+        $perimeter = $this->access->require($principal, $establishment, self::INTERNSHIPS);
+        $locale = self::locale($request);
+
+        return $this->json($this->documents->appraisal($principal, $establishment, $perimeter, self::id($request), $locale), 201);
+    }
+
+    /** DOC-23 : fiche de travaux pratiques et grille remise à un élève de la classe. */
+    public function issueSheet(ServerRequestInterface $request): ResponseInterface
+    {
+        [$principal, $establishment] = $this->context($request);
+        $perimeter = $this->access->require($principal, $establishment, self::SESSION);
+        $input = Input::of($request);
+        $structureId = (string) $input->reference('structure_id');
+        $personId = (string) $input->reference('person_id');
+        $locale = $input->enum('locale', ['fr', 'en'], false);
+        $input->done();
+
+        return $this->json($this->documents->sheet($principal, $establishment, $perimeter, self::id($request), $structureId, $personId, $locale), 201);
+    }
+
+    /** DOC-24 : état du stock de matière d'œuvre, par le chef des travaux. */
+    public function issueStock(ServerRequestInterface $request): ResponseInterface
+    {
+        [$principal, $establishment] = $this->context($request);
+        $perimeter = $this->access->require($principal, $establishment, self::MANAGE);
+        $input = Input::of($request);
+        $personId = $input->reference('person_id', false, true);
+        $locale = $input->enum('locale', ['fr', 'en'], false);
+        $input->done();
+
+        return $this->json($this->documents->stock($principal, $establishment, $perimeter, self::id($request, 'workshop_id'), $personId, $locale), 201);
+    }
+
+    private static function locale(ServerRequestInterface $request): ?string
+    {
+        $input = Input::of($request);
+        $locale = $input->enum('locale', ['fr', 'en'], false);
+        $input->done();
+
+        return $locale;
     }
 
     public function workshops(ServerRequestInterface $request): ResponseInterface

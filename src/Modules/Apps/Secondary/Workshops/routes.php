@@ -25,6 +25,8 @@ return static function (SecondaryRoutes $routes): void {
     $workshops->get('/workshops/safety-events', [WorkshopsController::class, 'safetyEvents']);
     $workshops->post('/workshops/safety-events', [WorkshopsController::class, 'createSafetyEvent']);
     $workshops->post('/workshops/sessions/{session_id}/evaluations', [WorkshopsController::class, 'evaluate']);
+    $workshops->post('/workshops/sheets/{id}/documents', [WorkshopsController::class, 'issueSheet']);
+    $workshops->post('/workshops/{workshop_id}/stock-report', [WorkshopsController::class, 'issueStock']);
 
     $internships = $routes->module('internships');
     $internships->get('/internships/companies', [WorkshopsController::class, 'companies']);
@@ -35,4 +37,6 @@ return static function (SecondaryRoutes $routes): void {
     $internships->patch('/internships/{id}', [WorkshopsController::class, 'updateInternship']);
     $internships->get('/internships/visits', [WorkshopsController::class, 'visits']);
     $internships->post('/internships/{internship_id}/visits', [WorkshopsController::class, 'createVisit']);
+    $internships->post('/internships/{id}/agreement', [WorkshopsController::class, 'issueAgreement']);
+    $internships->post('/internships/{id}/appraisal', [WorkshopsController::class, 'issueAppraisal']);
 };

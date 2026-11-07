@@ -7,6 +7,8 @@ namespace Tests\Feature\Secondary\Workshops;
 use Scholaris\Modules\Apps\Secondary\Catalogue\Contracts\StreamDirectory;
 use Scholaris\Modules\Socle\People\Contracts\EnrollmentDirectory;
 use Scholaris\Modules\Socle\People\Contracts\EnrollmentInfo;
+use Scholaris\Modules\Socle\People\Contracts\PersonDirectory;
+use Tests\Support\Assessment\InMemoryPeople;
 use Tests\Support\Secondary\SecondaryTestCase;
 
 /**
@@ -23,11 +25,13 @@ abstract class WorkshopWorld extends SecondaryTestCase
     ];
 
     protected WorkshopEnrollments $enrollments;
+    protected InMemoryPeople $people;
 
     protected function setUp(): void
     {
         $this->enrollments = new WorkshopEnrollments();
-        $this->bootSecondary([EnrollmentDirectory::class => $this->enrollments]);
+        $this->people = new InMemoryPeople();
+        $this->bootSecondary([EnrollmentDirectory::class => $this->enrollments, PersonDirectory::class => $this->people]);
     }
 
     /** Établissement ouvert avec les droits d'atelier et de paramétrage pour l'administrateur. */
@@ -60,6 +64,7 @@ abstract class WorkshopWorld extends SecondaryTestCase
         $classId = (string) $this->ok('POST', '/secondary/setup/classes', $body, $userId, $tenantId, $school)['structure_id'];
         foreach ($learners as $personId) {
             $this->enrollments->add($tenantId, $personId, $school, $classId, self::YEAR);
+            $this->people->add($tenantId, $personId, 'Élève', ucfirst($personId));
         }
 
         return $classId;
