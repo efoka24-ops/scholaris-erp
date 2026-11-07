@@ -36,6 +36,7 @@ final class Schedule
         ['45 7 * * *', ['primary:alerts']],
         ['0 8 * * *', ['public:absence-alerts']],
         ['5 8 * * *', ['public:dropout-alerts']],
+        ['15 6 * * *', ['platform:daily-digest']],
         ['30 8 * * *', ['public-primary:exam-birth-acts']],
         ['*/15 12-18 * * *', ['nursery:pickup-watch']],
         ['*/15 12-18 * * *', ['public-nursery:pickup-watch']],
