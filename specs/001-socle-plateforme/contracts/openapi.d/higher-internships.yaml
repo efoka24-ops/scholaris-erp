@@ -1,0 +1,398 @@
+# Contrat OpenAPI 3.1 des stages et soutenances de l'application Supérieur (STG, EX-STG-01 à 06, RG-STG-1/2, API-18) :
+# entreprises d'accueil, conventions tripartites (DOC-20 ; statuts draft, pending_signatures, signed, completed, cancelled),
+# signatures (l'école par higher.document.sign_school), suivi et fiche d'évaluation (DOC-23), attestation de fin de stage, mémoire,
+# soutenances (statuts scheduled, convened, graded, closed, cancelled) avec jury, conflits de salle et de jury, convocation (DOC-21,
+# NOT-13), note du jury (président ou R16) et PV (DOC-22), « Mon stage » de l'étudiant.
+# Erreurs RFC 9457 ; WriteGate (423 suspendue) et périmètre école/département/filière/niveau/groupe comme toutes les routes Higher.
+# Permissions : higher.internship.read, higher.internship.manage (R06, R16), higher.defense.manage (R16), higher.document.sign_school (R04), self.read.
+paths:
+  /api/v1/higher/internship-companies:
+    get:
+      summary: "Entreprises d'accueil de l'établissement : filter[active|city|sector]"
+      responses:
+        '200': {description: "Liste paginée"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Application non ouverte au client"}
+    post:
+      summary: "Ajouter une entreprise d'accueil"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [name]
+              properties:
+                name: {type: string, maxLength: 160}
+                sector: {type: string}
+                city: {type: string}
+                address: {type: string}
+                phone: {type: string}
+                email: {type: string, format: email}
+                contact_name: {type: string}
+      responses:
+        '201': {description: "Entreprise créée"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Application non ouverte au client"}
+        '422': {description: "Données invalides"}
+  /api/v1/higher/internship-companies/{id}:
+    patch:
+      summary: "Modifier une entreprise (mêmes champs, active)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Entreprise modifiée"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Introuvable"}
+        '422': {description: "Données invalides"}
+  /api/v1/higher/internships:
+    get:
+      summary: "Conventions du périmètre : filter[status|program_id|level_id|academic_year_id|company_id|person_id|supervisor_person_id|school_id]"
+      responses:
+        '200': {description: "Liste paginée"}
+        '403': {description: "Permission absente"}
+        '404': {description: "École hors périmètre ou application non ouverte"}
+    post:
+      summary: "Créer une convention en brouillon sur une inscription validée"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [enrolment_id, company_id, subject, starts_on, ends_on, company_tutor_name, supervisor_person_id]
+              properties:
+                enrolment_id: {type: string}
+                company_id: {type: string}
+                subject: {type: string, maxLength: 255}
+                starts_on: {type: string, format: date}
+                ends_on: {type: string, format: date}
+                company_tutor_name: {type: string}
+                company_tutor_email: {type: string}
+                company_tutor_phone: {type: string}
+                supervisor_person_id: {type: string}
+      responses:
+        '201': {description: "Convention créée (draft)"}
+        '403': {description: "Permission absente ou hors périmètre (journalisé)"}
+        '404': {description: "Application non ouverte au client"}
+        '409': {description: "Inscription non validée ou convention déjà en cours"}
+        '422': {description: "Inscription ou entreprise introuvable, dates incohérentes"}
+  /api/v1/higher/internships/{id}:
+    get:
+      summary: "Convention, signatures et conditions de soutenance (readiness)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Convention"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Introuvable ou hors périmètre"}
+    patch:
+      summary: "Modifier une convention en brouillon (mêmes champs que la création, sans enrolment_id)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Convention modifiée"}
+        '403': {description: "Hors périmètre (journalisé)"}
+        '404': {description: "Introuvable"}
+        '409': {description: "Convention qui n'est plus en brouillon"}
+        '422': {description: "Données invalides"}
+  /api/v1/higher/internships/{id}/convention:
+    post:
+      summary: "Émettre la convention DOC-20 : draft → pending_signatures"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Convention émise"}
+        '403': {description: "Hors périmètre"}
+        '404': {description: "Introuvable"}
+        '409': {description: "Transition refusée"}
+        '422': {description: "Émission refusée par Documents (profil d'école absent…)"}
+  /api/v1/higher/internships/{id}/signatures:
+    post:
+      summary: "Signature d'une partie ; les trois font passer la convention à signed"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [party, signed_on]
+              properties:
+                party: {type: string, enum: [student, company, school]}
+                signed_on: {type: string, format: date}
+      responses:
+        '200': {description: "Signature enregistrée"}
+        '403': {description: "L'école signe par higher.document.sign_school ; hors périmètre"}
+        '404': {description: "Introuvable"}
+        '409': {description: "Convention non en attente de signature"}
+        '422': {description: "Données invalides"}
+  /api/v1/higher/internships/{id}/subject/validate:
+    post:
+      summary: "Valider le sujet de mémoire (EX-STG-04)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Sujet validé"}
+        '403': {description: "Hors périmètre"}
+        '404': {description: "Introuvable"}
+        '409': {description: "Convention annulée"}
+  /api/v1/higher/internships/{id}/completion:
+    post:
+      summary: "Attestation de fin de stage reçue : signed → completed"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [received_on]
+              properties:
+                received_on: {type: string, format: date}
+                reference: {type: string}
+      responses:
+        '200': {description: "Convention terminée"}
+        '403': {description: "Hors périmètre"}
+        '404': {description: "Introuvable"}
+        '409': {description: "Transition refusée"}
+        '422': {description: "Données invalides"}
+  /api/v1/higher/internships/{id}/thesis:
+    post:
+      summary: "Dépôt du mémoire par le service (convention signée)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [title, file_ref]
+              properties:
+                title: {type: string}
+                file_ref: {type: string, description: "Référence du fichier stocké (pièce People)"}
+      responses:
+        '200': {description: "Mémoire déposé"}
+        '403': {description: "Hors périmètre"}
+        '404': {description: "Introuvable"}
+        '409': {description: "Convention non signée"}
+        '422': {description: "Données invalides"}
+  /api/v1/higher/internships/{id}/cancel:
+    post:
+      summary: "Annuler une convention (motif obligatoire)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [reason]
+              properties:
+                reason: {type: string}
+      responses:
+        '200': {description: "Convention annulée"}
+        '403': {description: "Hors périmètre"}
+        '404': {description: "Introuvable"}
+        '409': {description: "Transition refusée"}
+        '422': {description: "Données invalides"}
+  /api/v1/higher/internships/{id}/readiness:
+    get:
+      summary: "RG-STG-1 : convention signée, attestation, mémoire, quitus (conditions, missing, ready)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "État des conditions"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Introuvable ou hors périmètre"}
+  /api/v1/higher/internships/{id}/followups:
+    get:
+      summary: "Suivi du stage : filter[kind]"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Liste paginée"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Introuvable ou hors périmètre"}
+    post:
+      summary: "Ajouter une visite, un rapport ou la fiche d'évaluation du tuteur (score /20, émet DOC-23)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [kind, occurred_on, summary]
+              properties:
+                kind: {type: string, enum: [visit, report, evaluation]}
+                occurred_on: {type: string, format: date}
+                summary: {type: string}
+                score: {type: number, minimum: 0, maximum: 20, multipleOf: 0.25}
+      responses:
+        '201': {description: "Suivi enregistré"}
+        '403': {description: "Hors périmètre"}
+        '404': {description: "Introuvable"}
+        '409': {description: "Convention non signée"}
+        '422': {description: "Données invalides (note exigée pour la fiche d'évaluation)"}
+  /api/v1/higher/defenses:
+    get:
+      summary: "Soutenances du périmètre : filter[status|held_on|program_id|level_id|internship_id|person_id|school_id|room] ; mine=1 pour un membre de jury"
+      responses:
+        '200': {description: "Liste paginée, jury compris"}
+        '403': {description: "Permission absente ou compte sans personne liée"}
+        '404': {description: "École hors périmètre ou application non ouverte"}
+    post:
+      summary: "API-18 : programmer une soutenance (R16)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [internship_id, held_on, start_time, end_time, room, jury]
+              properties:
+                internship_id: {type: string}
+                held_on: {type: string, format: date}
+                start_time: {type: string, pattern: '^\d{2}:\d{2}$'}
+                end_time: {type: string, pattern: '^\d{2}:\d{2}$'}
+                room: {type: string}
+                jury:
+                  type: array
+                  items:
+                    type: object
+                    required: [person_id, jury_role]
+                    properties:
+                      person_id: {type: string}
+                      jury_role: {type: string, enum: [president, supervisor, member]}
+                      display_name: {type: string}
+      responses:
+        '201': {description: "Soutenance programmée (scheduled)"}
+        '403': {description: "Permission absente ou hors périmètre"}
+        '404': {description: "Convention introuvable"}
+        '409': {description: "RG-STG-1 non rempli, soutenance déjà programmée, salle ou membre du jury déjà pris"}
+        '422': {description: "Jury non conforme (RG-STG-2 : au moins higher.defense.jury_min membres, encadreur présent et non président) ou créneau invalide"}
+  /api/v1/higher/defenses/{id}:
+    get:
+      summary: "Soutenance et jury (périmètre, ou membre du jury)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Soutenance"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Introuvable ou hors périmètre"}
+    patch:
+      summary: "Reprogrammer (held_on, start_time, end_time, room obligatoires ; jury facultatif) : repasse à scheduled"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Soutenance reprogrammée"}
+        '403': {description: "Hors périmètre"}
+        '404': {description: "Introuvable"}
+        '409': {description: "Conflit de salle ou de jury, ou soutenance déjà notée"}
+        '422': {description: "Données ou jury invalides"}
+  /api/v1/higher/defenses/{id}/convene:
+    post:
+      summary: "Convoquer : émet DOC-21 et envoie NOT-13 à l'étudiant (scheduled → convened)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Convocation émise"}
+        '403': {description: "Hors périmètre"}
+        '404': {description: "Introuvable"}
+        '409': {description: "Soutenance non programmée ou déjà convoquée"}
+        '422': {description: "Émission refusée par Documents"}
+  /api/v1/higher/defenses/{id}/grade:
+    post:
+      summary: "Note de soutenance (président du jury ou R16), à partir du jour de la soutenance"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [grade]
+              properties:
+                grade: {type: number, minimum: 0, maximum: 20, multipleOf: 0.25}
+                remarks: {type: string}
+      responses:
+        '200': {description: "Soutenance notée (graded)"}
+        '403': {description: "Membre du jury non président"}
+        '404': {description: "Introuvable ou hors périmètre"}
+        '409': {description: "Non convoquée, avant la date ou PV déjà établi"}
+        '422': {description: "Note invalide"}
+  /api/v1/higher/defenses/{id}/minutes:
+    post:
+      summary: "PV de soutenance DOC-22 : graded → closed"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "PV établi, soutenance clôturée"}
+        '403': {description: "Membre du jury non président"}
+        '404': {description: "Introuvable ou hors périmètre"}
+        '409': {description: "Soutenance non notée ou déjà clôturée"}
+        '422': {description: "Émission refusée par Documents"}
+  /api/v1/higher/defenses/{id}/cancel:
+    post:
+      summary: "Annuler une soutenance non notée (motif obligatoire)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [reason]
+              properties:
+                reason: {type: string}
+      responses:
+        '200': {description: "Soutenance annulée"}
+        '403': {description: "Hors périmètre"}
+        '404': {description: "Introuvable"}
+        '409': {description: "Soutenance déjà notée"}
+        '422': {description: "Données invalides"}
+  /api/v1/higher/students/me/internship:
+    get:
+      summary: "Mon stage : convention en cours, suivi, conditions de soutenance, soutenance (note seulement après le PV)"
+      responses:
+        '200': {description: "Mon stage"}
+        '403': {description: "Compte sans personne liée"}
+        '404': {description: "Aucun stage ou application non ouverte"}
+  /api/v1/higher/students/me/internship/thesis:
+    post:
+      summary: "Déposer mon mémoire (convention signée)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [title, file_ref]
+              properties:
+                title: {type: string}
+                file_ref: {type: string}
+      responses:
+        '200': {description: "Mémoire déposé"}
+        '403': {description: "Compte sans personne liée"}
+        '404': {description: "Aucun stage"}
+        '409': {description: "Convention non signée"}
+        '422': {description: "Données invalides"}

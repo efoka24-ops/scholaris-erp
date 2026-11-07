@@ -1,0 +1,180 @@
+# Contrat OpenAPI 3.1 de l'evaluation de l'application Primaire privee (Grades) : feuille de competences par classe et periode
+# (saisie par lot hors ligne, client_uuid, version, verrouillage, publication), corrections approuvees apres verrouillage avec
+# historique, conduite de la periode. Les notes chiffrees restent dans le socle (/grades). Voir primary-core.yaml pour WriteGate.
+# Perimetre classe (RG-PRI-3) : hors perimetre, 404 en lecture, 403 journalise en ecriture.
+# Permissions : lecture primary.competency.read ; saisie primary.competency.enter ; verrouillage et publication
+# primary.competency.validate ; approbation d'une correction assessment.correction.approve ; conduite primary.conduct.read / enter.
+paths:
+  /api/v1/primary/classes/{id}/competency-sheet:
+    get:
+      summary: "Feuille de competences d'une classe pour une periode : echelle, competences du niveau, eleves, evaluations (version)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+        - {name: period_id, in: query, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Feuille {class, status, published, scale, competencies, learners, marks}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Classe introuvable, autre client ou hors perimetre"}
+        '422': {description: "Periode manquante"}
+    put:
+      summary: "Enregistrer un lot d'evaluations : idempotent par client_uuid, contrôle de version (409 sans ecrasement, lot refuse en entier)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+        - {name: period_id, in: query, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [entries]
+              properties:
+                entries:
+                  type: array
+                  maxItems: 3000
+                  items:
+                    type: object
+                    required: [person_id, competency_id]
+                    properties:
+                      person_id: {type: string}
+                      competency_id: {type: string}
+                      scale_code: {type: [string, 'null']}
+                      absence_code: {type: [string, 'null']}
+                      remark: {type: [string, 'null'], maxLength: 255}
+                      client_uuid: {type: string, maxLength: 40}
+                      version: {type: integer, description: "Version vue par le client (absente pour une nouvelle evaluation)"}
+      responses:
+        '200': {description: "{saved, duplicates, unchanged, marks}"}
+        '403': {description: "Classe hors perimetre (journalise) ou permission absente"}
+        '404': {description: "Classe introuvable"}
+        '409': {description: "Feuille verrouillee ou version perimee"}
+        '422': {description: "Eleve, competence ou code de l'echelle invalide"}
+        '423': {description: "Abonnement suspendu"}
+  /api/v1/primary/classes/{id}/competency-sheet/lock:
+    post:
+      summary: "Verrouiller la feuille de la periode (primary.competency.validate)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+        - {name: period_id, in: query, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Feuille verrouillee"}
+        '403': {description: "Permission ou perimetre insuffisant"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Deja verrouillee"}
+        '423': {description: "Abonnement suspendu"}
+  /api/v1/primary/classes/{id}/competency-sheet/publish:
+    post:
+      summary: "Publier la feuille verrouillee aux familles (portail)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+        - {name: period_id, in: query, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Feuille publiee"}
+        '403': {description: "Permission ou perimetre insuffisant"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Feuille non verrouillee"}
+        '423': {description: "Abonnement suspendu"}
+  /api/v1/primary/competency-corrections:
+    get:
+      summary: "Corrections demandees (filtre status = pending, approved, rejected), limitees au perimetre"
+      parameters:
+        - {name: status, in: query, required: false, schema: {type: string}}
+      responses:
+        '200': {description: "{items}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+  /api/v1/primary/competency-marks/{id}/corrections:
+    post:
+      summary: "Demander la correction motivee d'une evaluation d'une feuille verrouillee"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [new_code, reason]
+              properties:
+                new_code: {type: string, maxLength: 20}
+                reason: {type: string, maxLength: 255}
+      responses:
+        '201': {description: "Correction en attente d'approbation"}
+        '403': {description: "Classe hors perimetre"}
+        '404': {description: "Evaluation introuvable"}
+        '409': {description: "Feuille non verrouillee"}
+        '422': {description: "Code ou motif invalide"}
+        '423': {description: "Abonnement suspendu"}
+  /api/v1/primary/competency-marks/{id}/history:
+    get:
+      summary: "Historique d'une evaluation (creation, corrections, auteur, motif)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "{items}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Introuvable ou hors perimetre"}
+  /api/v1/primary/competency-corrections/{id}/approve:
+    post:
+      summary: "Approuver une correction (assessment.correction.approve) : l'evaluation est modifiee, version incrementee, evenement journalise"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Correction approuvee"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Introuvable ou hors perimetre"}
+        '409': {description: "Deja traitee"}
+        '423': {description: "Abonnement suspendu"}
+  /api/v1/primary/competency-corrections/{id}/reject:
+    post:
+      summary: "Rejeter une correction"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Correction rejetee"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Introuvable ou hors perimetre"}
+        '409': {description: "Deja traitee"}
+        '423': {description: "Abonnement suspendu"}
+  /api/v1/primary/classes/{id}/conduct:
+    get:
+      summary: "Conduite des eleves d'une classe pour une periode (echelle primary.conduct_scale)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+        - {name: period_id, in: query, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "{class, scale, learners, marks}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Classe introuvable ou hors perimetre"}
+    put:
+      summary: "Enregistrer la conduite (un niveau de l'echelle par eleve), reportee au conseil"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+        - {name: period_id, in: query, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [entries]
+              properties:
+                entries:
+                  type: array
+                  maxItems: 3000
+                  items:
+                    type: object
+                    required: [person_id, scale_code]
+                    properties:
+                      person_id: {type: string}
+                      scale_code: {type: string}
+                      remark: {type: [string, 'null'], maxLength: 255}
+      responses:
+        '200': {description: "{saved}"}
+        '403': {description: "Classe hors perimetre ou permission absente"}
+        '404': {description: "Classe introuvable"}
+        '422': {description: "Eleve ou code de l'echelle invalide"}
+        '423': {description: "Abonnement suspendu"}

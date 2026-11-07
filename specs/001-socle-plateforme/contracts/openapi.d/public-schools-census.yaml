@@ -1,0 +1,292 @@
+# Contrat du questionnaire statistique des écoles publiques (contrat généré à partir des routes, réponses RFC 9457).
+paths:
+  /api/v1/public/census:
+    get:
+      summary: CensusController::index
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: per_page
+          in: query
+          required: false
+          schema: { type: integer }
+        - name: cursor
+          in: query
+          required: false
+          schema: { type: string }
+        - name: structure_id
+          in: query
+          required: false
+          schema: { type: string }
+        - name: purpose
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        '200': { description: "Succès" }
+        '201': { description: "Créé" }
+        '400': { description: "Requête invalide" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission ou périmètre insuffisant" }
+        '404': { description: "Introuvable dans le périmètre" }
+        '409': { description: "Conflit : déjà publié, figé ou rejeu différent" }
+        '422': { description: "Données invalides" }
+        '423': { description: "Application en lecture seule" }
+    post:
+      summary: CensusController::open
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: "Succès" }
+        '201': { description: "Créé" }
+        '400': { description: "Requête invalide" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission ou périmètre insuffisant" }
+        '404': { description: "Introuvable dans le périmètre" }
+        '409': { description: "Conflit : déjà publié, figé ou rejeu différent" }
+        '422': { description: "Données invalides" }
+        '423': { description: "Application en lecture seule" }
+  /api/v1/public/census/pending:
+    get:
+      summary: CensusController::pending
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: per_page
+          in: query
+          required: false
+          schema: { type: integer }
+        - name: cursor
+          in: query
+          required: false
+          schema: { type: string }
+        - name: structure_id
+          in: query
+          required: false
+          schema: { type: string }
+        - name: purpose
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        '200': { description: "Succès" }
+        '201': { description: "Créé" }
+        '400': { description: "Requête invalide" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission ou périmètre insuffisant" }
+        '404': { description: "Introuvable dans le périmètre" }
+        '409': { description: "Conflit : déjà publié, figé ou rejeu différent" }
+        '422': { description: "Données invalides" }
+        '423': { description: "Application en lecture seule" }
+  /api/v1/public/census/{id}:
+    get:
+      summary: CensusController::show
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: per_page
+          in: query
+          required: false
+          schema: { type: integer }
+        - name: cursor
+          in: query
+          required: false
+          schema: { type: string }
+        - name: structure_id
+          in: query
+          required: false
+          schema: { type: string }
+        - name: purpose
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        '200': { description: "Succès" }
+        '201': { description: "Créé" }
+        '400': { description: "Requête invalide" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission ou périmètre insuffisant" }
+        '404': { description: "Introuvable dans le périmètre" }
+        '409': { description: "Conflit : déjà publié, figé ou rejeu différent" }
+        '422': { description: "Données invalides" }
+        '423': { description: "Application en lecture seule" }
+    patch:
+      summary: CensusController::edit
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: "Succès" }
+        '201': { description: "Créé" }
+        '400': { description: "Requête invalide" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission ou périmètre insuffisant" }
+        '404': { description: "Introuvable dans le périmètre" }
+        '409': { description: "Conflit : déjà publié, figé ou rejeu différent" }
+        '422': { description: "Données invalides" }
+        '423': { description: "Application en lecture seule" }
+  /api/v1/public/census/{id}/corrections:
+    post:
+      summary: CensusController::correct
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: "Succès" }
+        '201': { description: "Créé" }
+        '400': { description: "Requête invalide" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission ou périmètre insuffisant" }
+        '404': { description: "Introuvable dans le périmètre" }
+        '409': { description: "Conflit : déjà publié, figé ou rejeu différent" }
+        '422': { description: "Données invalides" }
+        '423': { description: "Application en lecture seule" }
+  /api/v1/public/census/{id}/document:
+    post:
+      summary: CensusController::document
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: "Succès" }
+        '201': { description: "Créé" }
+        '400': { description: "Requête invalide" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission ou périmètre insuffisant" }
+        '404': { description: "Introuvable dans le périmètre" }
+        '409': { description: "Conflit : déjà publié, figé ou rejeu différent" }
+        '422': { description: "Données invalides" }
+        '423': { description: "Application en lecture seule" }
+  /api/v1/public/census/{id}/export:
+    get:
+      summary: CensusController::export
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: per_page
+          in: query
+          required: false
+          schema: { type: integer }
+        - name: cursor
+          in: query
+          required: false
+          schema: { type: string }
+        - name: structure_id
+          in: query
+          required: false
+          schema: { type: string }
+        - name: purpose
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        '200': { description: "Succès" }
+        '201': { description: "Créé" }
+        '400': { description: "Requête invalide" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission ou périmètre insuffisant" }
+        '404': { description: "Introuvable dans le périmètre" }
+        '409': { description: "Conflit : déjà publié, figé ou rejeu différent" }
+        '422': { description: "Données invalides" }
+        '423': { description: "Application en lecture seule" }
+  /api/v1/public/census/{id}/return:
+    post:
+      summary: CensusController::sendBack
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: "Succès" }
+        '201': { description: "Créé" }
+        '400': { description: "Requête invalide" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission ou périmètre insuffisant" }
+        '404': { description: "Introuvable dans le périmètre" }
+        '409': { description: "Conflit : déjà publié, figé ou rejeu différent" }
+        '422': { description: "Données invalides" }
+        '423': { description: "Application en lecture seule" }
+  /api/v1/public/census/{id}/submit:
+    post:
+      summary: CensusController::submit
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: "Succès" }
+        '201': { description: "Créé" }
+        '400': { description: "Requête invalide" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission ou périmètre insuffisant" }
+        '404': { description: "Introuvable dans le périmètre" }
+        '409': { description: "Conflit : déjà publié, figé ou rejeu différent" }
+        '422': { description: "Données invalides" }
+        '423': { description: "Application en lecture seule" }

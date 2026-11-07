@@ -1,0 +1,28 @@
+# Contrat OpenAPI 3.1 du service S12 Portails (fusionné avec openapi.yaml par le test de contrat).
+paths:
+  /api/v1/portal/family:
+    get:
+      summary: "Portail famille : tous les enfants de tous les établissements du client, solde famille, moyenne, absences, résultats publiés, documents. Authentification et lien personne seulement. Un apprenant majeur sans consentement parent_access est renvoyé en accès restreint. Chaque enfant porte sections.<clé> si une application déclare des sections (portals.sections.*)."
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: "Famille {guarantor_id, family_balance_xaf, next_due, children[]}"
+        '401':
+          description: "Authentification requise"
+        '403':
+          description: "Compte non rattaché à une personne"
+  /api/v1/portal/learner:
+    get:
+      summary: "Portail apprenant : inscriptions, solde, assiduité, résultats publiés, documents et emploi du temps du jour de la personne connectée ; sections.<clé> des applications (portals.sections.*) et, pour le supérieur, crédits, mention et détail par UE des résultats publiés"
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: "Fiche de l'apprenant et timetable_today"
+        '401':
+          description: "Authentification requise"
+        '403':
+          description: "Compte non rattaché à une personne"
+        '404':
+          description: "Fiche introuvable"

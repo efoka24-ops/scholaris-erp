@@ -1,0 +1,156 @@
+# Contrat OpenAPI 3.1 des congés et absences du personnel (T129), fusionné avec openapi.yaml par le test de contrat.
+paths:
+  /api/v1/leave-requests:
+    get:
+      summary: "Demandes de congé de l'établissement actif (filter[staff_id|status|leave_type], curseur). Sans staff.leave.approve ni staff.manage : ses propres demandes"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Page de demandes"
+    post:
+      summary: "Demande un congé pour soi-même (staff.leave.request) : leave_type annual|sick|maternity|paternity|family|unpaid|other, starts_on, ends_on, reason. Crée une demande d'approbation"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: "Demande créée (pending)"
+        '403':
+          description: "Droit staff.leave.request manquant"
+        '409':
+          description: "Chevauchement ou solde insuffisant"
+        '422':
+          description: "Champs invalides"
+  /api/v1/leave-requests/{id}:
+    get:
+      summary: "Demande de congé (le demandeur ou un valideur)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Demande"
+        '404':
+          description: "Demande introuvable"
+  /api/v1/leave-requests/{id}/approve:
+    post:
+      summary: "Approuve la demande (staff.leave.approve) ; le demandeur ne peut pas approuver la sienne"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '404':
+          description: "Demande de congé introuvable"
+        '200':
+          description: "Demande approuvée"
+        '403':
+          description: "Droit manquant ou auto-validation"
+        '409':
+          description: "Demande déjà décidée ou solde insuffisant"
+  /api/v1/leave-requests/{id}/reject:
+    post:
+      summary: "Refuse la demande (staff.leave.approve)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '404':
+          description: "Demande de congé introuvable"
+        '200':
+          description: "Demande refusée"
+        '403':
+          description: "Droit manquant ou auto-validation"
+        '409':
+          description: "Demande déjà décidée"
+  /api/v1/leave-requests/{id}/cancel:
+    post:
+      summary: "Annule sa propre demande (en attente, ou approuvée et pas encore commencée)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Demande annulée"
+        '404':
+          description: "Demande introuvable"
+        '409':
+          description: "Demande non annulable"
+  /api/v1/leave-calendar:
+    get:
+      summary: "Calendrier d'absence : demandes en attente ou approuvées touchant la période (from, to ; 30 jours par défaut)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Absences de la période"
+        '422':
+          description: "Période invalide"
+  /api/v1/leave-balances:
+    get:
+      summary: "Soldes de congé par type pour une année (staff_id, year) ; sans droit élargi, uniquement les siens"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Droits, jours pris, jours en attente et solde par type"
+        '404':
+          description: "Fiche introuvable"
+    put:
+      summary: "Fixe le droit annuel d'un type de congé (staff.manage) : staff_id, leave_type, leave_year, entitled_days"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: "Soldes de l'année"
+        '404':
+          description: "Fiche introuvable"
+        '422':
+          description: "Champs invalides"
+  /api/v1/leave-requests/export:
+    get:
+      summary: "Export CSV / Excel des congés : mêmes filtres et même visibilité que GET /leave-requests, plafonné à 5 000 lignes"
+      security:
+        - bearer: []
+      parameters:
+        - name: format
+          in: query
+          required: false
+          description: "Format du fichier : csv (défaut ; UTF-8 avec BOM, séparateur « ; ») ou xlsx (Excel)"
+          schema: {type: string, enum: [csv, xlsx], default: csv}
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Fichier CSV (UTF-8 avec BOM, séparateur « ; ») ou Excel selon le paramètre format"
+          content:
+            text/csv:
+              schema: {type: string}
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema: {type: string, format: binary}
+        '403':
+          description: "Accès refusé"
+        '422':
+          description: "Filtre hors liste blanche"

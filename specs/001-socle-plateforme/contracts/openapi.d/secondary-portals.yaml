@@ -1,0 +1,62 @@
+# Contrat OpenAPI 3.1 des portails eleve et parent du secondaire, lot E1 (spec 005, T834, E1-C). Chacun lit par son propre perimetre
+# (secondary.self.read, secondary.family.read), jamais par les droits de lecture du personnel ; le paiement (secondary.family.pay)
+# passe par le contrat d'encaissement du socle pour une facture d'un de ses enfants. Le matricule n'est jamais expose (booleen
+# national_id_registered seulement, D5). La section « secondary » de /portal/learner et /portal/family (socle) n'ajoute aucune route.
+# Routes /secondary/** : authentification, en-tete X-Establishment-Id ; GET -> 404 si l'application est fermee ; ecritures -> 423, 403.
+paths:
+  /api/v1/secondary/portal/student:
+    get:
+      summary: "Fiche de l'eleve connecte dans l'etablissement : inscription, classe, annee, matricule enregistre ou non, documents, solde"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "{data: {person, access, enrollment: {id, status, class, level, academic_year}, national_id_registered, balance_xaf, fees_mode, documents: {blocked, items}}}"}
+        '403': {description: "Droit secondary.self.read absent ou compte sans fiche personne"}
+        '404': {description: "Aucune inscription en cours dans l'etablissement"}
+  /api/v1/secondary/portal/family:
+    get:
+      summary: "Enfants du parent connecte inscrits dans l'etablissement (et seulement eux), avec factures payables si le droit de paiement est present"
+      description: "Eleve majeur sans consentement parent_access : acces restreint (identite, inscription, solde). Documents retenus si un blocage pour impaye s'applique ; l'inscription et le solde restent visibles."
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "{data: {guardian_id, can_pay, family_balance_xaf, children: [fiche + invoices: [{id, reference, net_xaf, paid_xaf, balance_xaf, installments}]]}}"}
+        '403': {description: "Droit secondary.family.read absent ou compte sans fiche personne"}
+        '404': {description: "Application fermee"}
+  /api/v1/secondary/portal/family/children/{id}/payments:
+    post:
+      summary: "Demander le paiement mobile money d'une facture d'un de ses enfants (idempotent par cle)"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [invoice_id, amount_xaf, channel, payer_phone, idempotency_key]
+              properties:
+                invoice_id: {type: string}
+                amount_xaf: {type: integer, minimum: 1}
+                channel: {type: string, enum: [orange_money, mtn_momo]}
+                payer_phone: {type: string}
+                idempotency_key: {type: string, maxLength: 64}
+      responses:
+        '201': {description: "{data: {id, status, amount_xaf, channel, invoice_id, receipt_number, child_id, replayed}}"}
+        '403': {description: "Droit secondary.family.pay absent"}
+        '404': {description: "Enfant d'une autre famille ou d'un autre etablissement, facture d'un autre eleve"}
+        '409': {description: "Caisse ou canal indisponible (socle)"}
+        '422': {description: "Montant au-dela du reste du, canal ou telephone invalide"}
+  /api/v1/secondary/portal/family/children/{id}/payments/{paymentId}:
+    get:
+      summary: "Etat d'un paiement demande pour un de ses enfants (en attente, confirme, echoue)"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: id, in: path, required: true, schema: {type: string}}
+        - {name: paymentId, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "{data: {id, status, amount_xaf, channel, invoice_id, receipt_number, child_id, replayed}}"}
+        '403': {description: "Droit secondary.family.pay absent"}
+        '404': {description: "Paiement inconnu ou d'une autre famille"}

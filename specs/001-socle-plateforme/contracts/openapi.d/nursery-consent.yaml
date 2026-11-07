@@ -1,0 +1,244 @@
+# Contrat OpenAPI 3.1 de la Maternelle privée : consentement photo (formulaire, portail, révocation, historique).
+# Erreurs au format RFC 9457. Toutes les routes exigent l'authentification (401) et X-Establishment-Id ; application suspendue : 423 en écriture.
+paths:
+  '/api/v1/nursery/children/{id}/photo-consent':
+    get:
+      summary: 'GET /nursery/children/{id}/photo-consent'
+      security:
+        -
+          bearer: {  }
+      parameters:
+        -
+          $ref: '#/components/parameters/EstablishmentId'
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: 'Succès : enveloppe JSON {data}'
+        400:
+          description: 'Requête invalide (en-tête X-Establishment-Id manquant, JSON illisible)'
+        401:
+          description: 'Authentification requise'
+        403:
+          description: 'Accès refusé (permission, application fermée)'
+        404:
+          description: 'Ressource introuvable ou hors périmètre'
+        422:
+          description: 'Données invalides ou refus métier (RFC 9457)'
+    post:
+      summary: 'POST /nursery/children/{id}/photo-consent'
+      security:
+        -
+          bearer: {  }
+      parameters:
+        -
+          $ref: '#/components/parameters/EstablishmentId'
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                evidence_ref:
+                  type: string
+                  maxLength: 120
+                signed_on:
+                  type: string
+                  format: date
+                signed_by_name:
+                  type: string
+                  maxLength: 160
+              required:
+                - evidence_ref
+                - signed_on
+                - signed_by_name
+      responses:
+        201:
+          description: 'Succès : enveloppe JSON {data}'
+        400:
+          description: 'Requête invalide (en-tête X-Establishment-Id manquant, JSON illisible)'
+        401:
+          description: 'Authentification requise'
+        403:
+          description: 'Accès refusé (permission, application fermée)'
+        404:
+          description: 'Ressource introuvable ou hors périmètre'
+        409:
+          description: 'Conflit (état incompatible, doublon)'
+        422:
+          description: 'Données invalides ou refus métier (RFC 9457)'
+        423:
+          description: 'Application suspendue : lecture et export seulement, écriture refusée'
+  '/api/v1/nursery/children/{id}/photo-consent/revoke':
+    post:
+      summary: 'POST /nursery/children/{id}/photo-consent/revoke'
+      security:
+        -
+          bearer: {  }
+      parameters:
+        -
+          $ref: '#/components/parameters/EstablishmentId'
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                reason:
+                  type: string
+                  maxLength: 255
+              required:
+                - reason
+      responses:
+        200:
+          description: 'Succès : enveloppe JSON {data}'
+        400:
+          description: 'Requête invalide (en-tête X-Establishment-Id manquant, JSON illisible)'
+        401:
+          description: 'Authentification requise'
+        403:
+          description: 'Accès refusé (permission, application fermée)'
+        404:
+          description: 'Ressource introuvable ou hors périmètre'
+        409:
+          description: 'Conflit (état incompatible, doublon)'
+        422:
+          description: 'Données invalides ou refus métier (RFC 9457)'
+        423:
+          description: 'Application suspendue : lecture et export seulement, écriture refusée'
+  /api/v1/nursery/portal/photo-consent:
+    get:
+      summary: 'GET /nursery/portal/photo-consent'
+      security:
+        -
+          bearer: {  }
+      parameters:
+        -
+          $ref: '#/components/parameters/EstablishmentId'
+        -
+          name: learner_id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: 'Succès : enveloppe JSON {data}'
+        400:
+          description: 'Requête invalide (en-tête X-Establishment-Id manquant, JSON illisible)'
+        401:
+          description: 'Authentification requise'
+        403:
+          description: 'Accès refusé (permission, application fermée)'
+        404:
+          description: 'Ressource introuvable ou hors périmètre'
+        422:
+          description: 'Données invalides ou refus métier (RFC 9457)'
+    post:
+      summary: 'POST /nursery/portal/photo-consent'
+      security:
+        -
+          bearer: {  }
+      parameters:
+        -
+          $ref: '#/components/parameters/EstablishmentId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                learner_id:
+                  type: string
+                  maxLength: 40
+                signed_by_name:
+                  type: string
+                  maxLength: 160
+                accept:
+                  type: boolean
+                  const: true
+              required:
+                - learner_id
+                - signed_by_name
+                - accept
+      responses:
+        201:
+          description: 'Succès : enveloppe JSON {data}'
+        400:
+          description: 'Requête invalide (en-tête X-Establishment-Id manquant, JSON illisible)'
+        401:
+          description: 'Authentification requise'
+        403:
+          description: 'Accès refusé (permission, application fermée)'
+        404:
+          description: 'Ressource introuvable ou hors périmètre'
+        409:
+          description: 'Conflit (état incompatible, doublon)'
+        422:
+          description: 'Données invalides ou refus métier (RFC 9457)'
+        423:
+          description: 'Application suspendue : lecture et export seulement, écriture refusée'
+  /api/v1/nursery/portal/photo-consent/revoke:
+    post:
+      summary: 'POST /nursery/portal/photo-consent/revoke'
+      security:
+        -
+          bearer: {  }
+      parameters:
+        -
+          $ref: '#/components/parameters/EstablishmentId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                learner_id:
+                  type: string
+                  maxLength: 40
+                reason:
+                  type: string
+                  maxLength: 255
+              required:
+                - learner_id
+      responses:
+        200:
+          description: 'Succès : enveloppe JSON {data}'
+        400:
+          description: 'Requête invalide (en-tête X-Establishment-Id manquant, JSON illisible)'
+        401:
+          description: 'Authentification requise'
+        403:
+          description: 'Accès refusé (permission, application fermée)'
+        404:
+          description: 'Ressource introuvable ou hors périmètre'
+        409:
+          description: 'Conflit (état incompatible, doublon)'
+        422:
+          description: 'Données invalides ou refus métier (RFC 9457)'
+        423:
+          description: 'Application suspendue : lecture et export seulement, écriture refusée'

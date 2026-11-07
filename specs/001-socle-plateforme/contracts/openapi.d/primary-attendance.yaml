@@ -1,0 +1,19 @@
+# Contrat OpenAPI 3.1 du demarrage de l'application Primaire privee (Attendance) : prereglage de l'appel par demi-journee
+# (attendance.mode = day_part, defaut a confirmer Q9) et compteurs du jour. L'appel lui-meme utilise les routes du socle
+# /attendance-sessions en mode day_part. Voir primary-core.yaml pour WriteGate (423/403).
+paths:
+  /api/v1/primary/setup:
+    get:
+      summary: "Etat des prereglages (valeur courante, recommandee) et absents du jour"
+      responses:
+        '200': {description: "{presets[{key, recommended, current, ok}], ready, day, absent_today}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Application fermee"}
+  /api/v1/primary/setup/apply:
+    post:
+      summary: "Poser les prereglages manquants (sans jamais ecraser une valeur existante) ; exige primary.settings.manage sur tout l'etablissement"
+      responses:
+        '200': {description: "Etat apres application, applied = cles posees"}
+        '403': {description: "Permission ou perimetre insuffisant"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '423': {description: "Abonnement suspendu"}

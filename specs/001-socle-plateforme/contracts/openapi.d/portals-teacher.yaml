@@ -1,0 +1,12 @@
+# Contrat OpenAPI 3.1 du portail enseignant (T132), fusionné avec openapi.yaml par le test de contrat.
+paths:
+  /api/v1/portal/teacher:
+    get:
+      summary: "Portail enseignant : mes classes (affectations actives), mon emploi du temps du jour, mes saisies de notes à faire (available=false si aucune source), mes heures du mois (déclarées, validées, rejetées)"
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: "Tableau de bord de l'enseignant"
+        '403':
+          description: "Compte sans personne ou sans fiche d'enseignant"

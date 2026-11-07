@@ -1,0 +1,437 @@
+# Contrat OpenAPI 3.1 de l'emploi du temps et du cahier de textes de l'application Enseignement secondaire (spec 005, lot E2-A :
+# T860 a T863). Emploi du temps : affectations (classe ou demi-groupe, matiere a volume horaire parametre par l'etablissement,
+# enseignant permanent ou vacataire, salle ; atelier seulement avec le module workshops : 409 module_not_enabled), plages
+# horaires et disponibilites parametrees, generation assistee sans conflit (simulation puis application tout ou rien), pose
+# manuelle (409 timetable-conflict : enseignant, salle ou atelier, classe), remplacements et permutations notifies (NOT-14),
+# DOC-07 imprimable. Cahier de textes : API-06 seance signee hors ligne (client_uuid idempotent, rejeu 200), classe ou matiere
+# non affectee 403 journalise, progressions, couverture (heures faites / heures prevues), visas, DOC-25, DOC-26, rappel NOT-12 ;
+# inspecteur (R21) en lecture seule journalisee. Routes /secondary/** : authentification, en-tete X-Establishment-Id ; GET -> 404
+# si l'application est fermee ; ecritures -> 423 si l'abonnement est suspendu, 403 si l'application n'est pas ouverte.
+paths:
+  /api/v1/secondary/timetable:
+    get:
+      summary: "Emploi du temps pose (filtres academic_year_id, class_id, teacher_person_id, room_id, on) ; l'enseignant voit le sien"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Succes {data}"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, classe hors perimetre (journalise), enseignant non affecte ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert, conflit d'emploi du temps, module non active, doublon, lecons deja traitees"}
+        '422': {description: "Validation (errors par champ)"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+  /api/v1/secondary/timetable/assignments:
+    get:
+      summary: "Affectations d'enseignement (filter[academic_year_id|class_id|teacher_person_id|status|group_code])"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: per_page, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 200}}
+        - {name: cursor, in: query, required: false, schema: {type: string}}
+        - {name: sort, in: query, required: false, schema: {type: string}}
+      responses:
+        '200': {description: "Succes {data}"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, classe hors perimetre (journalise), enseignant non affecte ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert, conflit d'emploi du temps, module non active, doublon, lecons deja traitees"}
+        '422': {description: "Validation (errors par champ)"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+    post:
+      summary: "Affecter {academic_year_id, class_id, subject_ref, teacher_person_id, teacher_kind, room_kind, group_code?, room_id?} ; atelier : module workshops"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '201': {description: "Succes {data}"}
+        '200': {description: "Rejeu hors ligne (seance deja enregistree) ou simulation"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, classe hors perimetre (journalise), enseignant non affecte ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert, conflit d'emploi du temps, module non active, doublon, lecons deja traitees"}
+        '422': {description: "Validation (errors par champ)"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+  /api/v1/secondary/timetable/assignments/{id}:
+    patch:
+      summary: "Modifier une affectation {teacher_kind?, room_kind?, room_id?, status: ended}"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Succes {data}"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, classe hors perimetre (journalise), enseignant non affecte ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert, conflit d'emploi du temps, module non active, doublon, lecons deja traitees"}
+        '422': {description: "Validation (errors par champ)"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+  /api/v1/secondary/timetable/bands:
+    get:
+      summary: "Plages horaires de l'annee (academic_year_id)"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Succes {data}"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, classe hors perimetre (journalise), enseignant non affecte ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert, conflit d'emploi du temps, module non active, doublon, lecons deja traitees"}
+        '422': {description: "Validation (errors par champ)"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+    put:
+      summary: "Remplacer les plages {academic_year_id, bands: [{weekday, start_time, end_time, label?}]}"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Succes {data}"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, classe hors perimetre (journalise), enseignant non affecte ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert, conflit d'emploi du temps, module non active, doublon, lecons deja traitees"}
+        '422': {description: "Validation (errors par champ)"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+  /api/v1/secondary/timetable/availabilities:
+    get:
+      summary: "Disponibilites d'un enseignant (academic_year_id, teacher_person_id)"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Succes {data}"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, classe hors perimetre (journalise), enseignant non affecte ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert, conflit d'emploi du temps, module non active, doublon, lecons deja traitees"}
+        '422': {description: "Validation (errors par champ)"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+    put:
+      summary: "Remplacer les disponibilites {academic_year_id, teacher_person_id, windows: [{weekday, start_time, end_time, availability_kind}]}"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Succes {data}"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, classe hors perimetre (journalise), enseignant non affecte ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert, conflit d'emploi du temps, module non active, doublon, lecons deja traitees"}
+        '422': {description: "Validation (errors par champ)"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+  /api/v1/secondary/timetable/class-rooms:
+    put:
+      summary: "Salle de la classe {academic_year_id, class_id, room_id}"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Succes {data}"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, classe hors perimetre (journalise), enseignant non affecte ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert, conflit d'emploi du temps, module non active, doublon, lecons deja traitees"}
+        '422': {description: "Validation (errors par champ)"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+  /api/v1/secondary/timetable/entries:
+    post:
+      summary: "Poser un creneau {assignment_id, weekday, start_time, end_time, valid_from, valid_to?, room_id?} ; conflit 409 timetable-conflict"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '201': {description: "Succes {data}"}
+        '200': {description: "Rejeu hors ligne (seance deja enregistree) ou simulation"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, classe hors perimetre (journalise), enseignant non affecte ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert, conflit d'emploi du temps, module non active, doublon, lecons deja traitees"}
+        '422': {description: "Validation (errors par champ)"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+  /api/v1/secondary/timetable/entries/check:
+    post:
+      summary: "Verifier a blanc une pose : {conflicts}"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Succes {data}"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, classe hors perimetre (journalise), enseignant non affecte ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert, conflit d'emploi du temps, module non active, doublon, lecons deja traitees"}
+        '422': {description: "Validation (errors par champ)"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+  /api/v1/secondary/timetable/entries/{id}:
+    delete:
+      summary: "Retirer un creneau (socle compris)"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Succes {data}"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, classe hors perimetre (journalise), enseignant non affecte ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert, conflit d'emploi du temps, module non active, doublon, lecons deja traitees"}
+        '422': {description: "Validation (errors par champ)"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+  /api/v1/secondary/timetable/conflicts:
+    get:
+      summary: "Conflits de l'emploi du temps pose (academic_year_id)"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Succes {data}"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, classe hors perimetre (journalise), enseignant non affecte ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert, conflit d'emploi du temps, module non active, doublon, lecons deja traitees"}
+        '422': {description: "Validation (errors par champ)"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+  /api/v1/secondary/timetable/generate:
+    post:
+      summary: "Generation assistee {academic_year_id, valid_from, valid_to?, class_ids?, apply?, reason?} : simulation 200, application 201"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '201': {description: "Succes {data}"}
+        '200': {description: "Rejeu hors ligne (seance deja enregistree) ou simulation"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, classe hors perimetre (journalise), enseignant non affecte ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert, conflit d'emploi du temps, module non active, doublon, lecons deja traitees"}
+        '422': {description: "Validation (errors par champ)"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+  /api/v1/secondary/timetable/runs:
+    get:
+      summary: "Generations (filter[academic_year_id|applied])"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: per_page, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 200}}
+        - {name: cursor, in: query, required: false, schema: {type: string}}
+        - {name: sort, in: query, required: false, schema: {type: string}}
+      responses:
+        '200': {description: "Succes {data}"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, classe hors perimetre (journalise), enseignant non affecte ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert, conflit d'emploi du temps, module non active, doublon, lecons deja traitees"}
+        '422': {description: "Validation (errors par champ)"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+  /api/v1/secondary/timetable/changes:
+    get:
+      summary: "Remplacements et permutations (filter[academic_year_id|class_id|change_kind])"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: per_page, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 200}}
+        - {name: cursor, in: query, required: false, schema: {type: string}}
+        - {name: sort, in: query, required: false, schema: {type: string}}
+      responses:
+        '200': {description: "Succes {data}"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, classe hors perimetre (journalise), enseignant non affecte ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert, conflit d'emploi du temps, module non active, doublon, lecons deja traitees"}
+        '422': {description: "Validation (errors par champ)"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+    post:
+      summary: "Remplacement ou permutation {change_kind, entry_id, from_date, to_date?, reason, replacement_person_id | other_entry_id} ; NOT-14"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '201': {description: "Succes {data}"}
+        '200': {description: "Rejeu hors ligne (seance deja enregistree) ou simulation"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, classe hors perimetre (journalise), enseignant non affecte ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert, conflit d'emploi du temps, module non active, doublon, lecons deja traitees"}
+        '422': {description: "Validation (errors par champ)"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+  /api/v1/secondary/timetable/document:
+    get:
+      summary: "DOC-07 emploi du temps imprimable (view=class|teacher|room, id, on)"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Succes {data}"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, classe hors perimetre (journalise), enseignant non affecte ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert, conflit d'emploi du temps, module non active, doublon, lecons deja traitees"}
+        '422': {description: "Validation (errors par champ)"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+  /api/v1/secondary/lesson-logs:
+    post:
+      summary: "API-06 seance du cahier de textes signee {client_uuid, class_id, subject_ref, session_date, hours, content, homework?, lesson_id?, entry_id?}"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '201': {description: "Succes {data}"}
+        '200': {description: "Rejeu hors ligne (seance deja enregistree) ou simulation"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, classe hors perimetre (journalise), enseignant non affecte ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert, conflit d'emploi du temps, module non active, doublon, lecons deja traitees"}
+        '422': {description: "Validation (errors par champ)"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+  /api/v1/secondary/syllabus/lesson-logs:
+    get:
+      summary: "Seances du cahier de textes (filter[academic_year_id|structure_id|se_subject_id|teacher_person_id|session_date])"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: per_page, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 200}}
+        - {name: cursor, in: query, required: false, schema: {type: string}}
+        - {name: sort, in: query, required: false, schema: {type: string}}
+      responses:
+        '200': {description: "Succes {data}"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, classe hors perimetre (journalise), enseignant non affecte ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert, conflit d'emploi du temps, module non active, doublon, lecons deja traitees"}
+        '422': {description: "Validation (errors par champ)"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+  /api/v1/secondary/syllabus/progressions:
+    get:
+      summary: "Progressions (filter[academic_year_id|se_subject_id|level_code|status])"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: per_page, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 200}}
+        - {name: cursor, in: query, required: false, schema: {type: string}}
+        - {name: sort, in: query, required: false, schema: {type: string}}
+      responses:
+        '200': {description: "Succes {data}"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, classe hors perimetre (journalise), enseignant non affecte ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert, conflit d'emploi du temps, module non active, doublon, lecons deja traitees"}
+        '422': {description: "Validation (errors par champ)"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+    post:
+      summary: "Creer une progression {academic_year_id, subject_ref, level_code, stream_id?, lessons: [{title, planned_hours, planned_week}]}"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '201': {description: "Succes {data}"}
+        '200': {description: "Rejeu hors ligne (seance deja enregistree) ou simulation"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, classe hors perimetre (journalise), enseignant non affecte ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert, conflit d'emploi du temps, module non active, doublon, lecons deja traitees"}
+        '422': {description: "Validation (errors par champ)"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+  /api/v1/secondary/syllabus/progressions/{id}:
+    get:
+      summary: "Progression et ses lecons"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Succes {data}"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, classe hors perimetre (journalise), enseignant non affecte ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert, conflit d'emploi du temps, module non active, doublon, lecons deja traitees"}
+        '422': {description: "Validation (errors par champ)"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+  /api/v1/secondary/syllabus/progressions/{id}/lessons:
+    put:
+      summary: "Remplacer les lecons {lessons} (409 si deja traitees)"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Succes {data}"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, classe hors perimetre (journalise), enseignant non affecte ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert, conflit d'emploi du temps, module non active, doublon, lecons deja traitees"}
+        '422': {description: "Validation (errors par champ)"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+  /api/v1/secondary/syllabus/progressions/{id}/approve:
+    post:
+      summary: "Approuver la progression (animateur)"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Succes {data}"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, classe hors perimetre (journalise), enseignant non affecte ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert, conflit d'emploi du temps, module non active, doublon, lecons deja traitees"}
+        '422': {description: "Validation (errors par champ)"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+  /api/v1/secondary/syllabus/coverage:
+    get:
+      summary: "Couverture d'une classe (academic_year_id, class_id, year_start?)"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Succes {data}"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, classe hors perimetre (journalise), enseignant non affecte ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert, conflit d'emploi du temps, module non active, doublon, lecons deja traitees"}
+        '422': {description: "Validation (errors par champ)"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+  /api/v1/secondary/syllabus/coverage/report:
+    get:
+      summary: "DOC-26 rapport de couverture (academic_year_id, year_start?)"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Succes {data}"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, classe hors perimetre (journalise), enseignant non affecte ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert, conflit d'emploi du temps, module non active, doublon, lecons deja traitees"}
+        '422': {description: "Validation (errors par champ)"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+  /api/v1/secondary/syllabus/logbook:
+    get:
+      summary: "DOC-25 cahier de textes de la classe (academic_year_id, class_id, subject_ref?)"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Succes {data}"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, classe hors perimetre (journalise), enseignant non affecte ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert, conflit d'emploi du temps, module non active, doublon, lecons deja traitees"}
+        '422': {description: "Validation (errors par champ)"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+  /api/v1/secondary/syllabus/visas:
+    get:
+      summary: "Visas (filter[academic_year_id|structure_id|se_subject_id|visa_role])"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: per_page, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 200}}
+        - {name: cursor, in: query, required: false, schema: {type: string}}
+        - {name: sort, in: query, required: false, schema: {type: string}}
+      responses:
+        '200': {description: "Succes {data}"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, classe hors perimetre (journalise), enseignant non affecte ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert, conflit d'emploi du temps, module non active, doublon, lecons deja traitees"}
+        '422': {description: "Validation (errors par champ)"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+    post:
+      summary: "Viser {academic_year_id, class_id, subject_ref, remark?} : censor ou head_of_dept"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '201': {description: "Succes {data}"}
+        '200': {description: "Rejeu hors ligne (seance deja enregistree) ou simulation"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, classe hors perimetre (journalise), enseignant non affecte ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert, conflit d'emploi du temps, module non active, doublon, lecons deja traitees"}
+        '422': {description: "Validation (errors par champ)"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+  /api/v1/secondary/syllabus/reminders:
+    post:
+      summary: "Rappels NOT-12 {academic_year_id} : cahier non rempli depuis N jours (parametre)"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Succes {data}"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, classe hors perimetre (journalise), enseignant non affecte ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert, conflit d'emploi du temps, module non active, doublon, lecons deja traitees"}
+        '422': {description: "Validation (errors par champ)"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}

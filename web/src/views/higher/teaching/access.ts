@@ -1,0 +1,27 @@
+// Permissions des écrans « Enseignement et présences » (miroir de TeachingPermissions et AttendancePermissions côté serveur).
+// Elles n'adaptent que menus et boutons : le serveur refuse de toute façon (403, 404).
+export const TP = {
+  teacherRead: ['staff.manage', 'staff.read', 'higher.assignment.manage', 'higher.timetable.read'],
+  teacherManage: ['staff.manage', 'higher.assignment.manage'],
+  timetableRead: ['higher.timetable.read', 'scheduling.manage'],
+  timetableManage: ['scheduling.manage'],
+  assignRead: ['higher.assignment.manage', 'higher.timetable.read', 'higher.session_log.read', 'higher.hours.validate'],
+  assign: ['higher.assignment.manage'],
+  overrunApprove: ['higher.vacation.validate_school'],
+  logRead: ['higher.session_log.read', 'higher.session_log.validate', 'higher.hours.validate'],
+  logAny: ['higher.session_log.write', 'higher.session_log.read', 'higher.session_log.validate', 'higher.hours.validate', 'higher.exam.manage'],
+  logWrite: ['higher.session_log.write'],
+  countersign: ['higher.session_log.validate', 'higher.exam.manage'],
+  hoursValidate: ['higher.hours.validate'],
+  examRead: ['higher.exam.manage', 'higher.timetable.read'],
+  examManage: ['higher.exam.manage'],
+  attendanceRead: ['higher.attendance.read', 'attendance.justify'],
+  attendanceManage: ['attendance.justify'],
+  lift: ['higher.enrolment.derogate'],
+  replacementRead: ['higher.attendance.read', 'attendance.justify', 'higher.exam.manage'],
+  replacementSchedule: ['higher.exam.manage'],
+  disciplineRead: ['attendance.discipline.manage', 'higher.council.manage'],
+  sanction: ['attendance.discipline.manage'],
+  council: ['higher.council.manage'],
+  attendanceTake: ['attendance.take'],
+} as const;

@@ -1,0 +1,722 @@
+# Contrat OpenAPI 3.1 du service S04 Frais, facturation et paiements (fusionné avec openapi.yaml par le test de contrat).
+paths:
+  /api/v1/fee-items:
+    get:
+      summary: "Catalogue de frais de l'établissement (filtres kind, active, code) ; le code stable n'apparaît que s'il est renseigné"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Page de frais"
+        '403':
+          description: "Accès refusé"
+        '422':
+          description: "Données invalides"
+    post:
+      summary: "Crée un frais (kind : registration, tuition, other ou type enregistré par une application sous billing.fee_kinds.*) ; code stable facultatif unique dans l'établissement ; montant entier en XAF ; soumis aux gardes billing.fee_item_guards.* (SS8), aucune garde = aucun contrôle supplémentaire"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '201':
+          description: "Frais créé"
+        '403':
+          description: "Accès refusé"
+        '409':
+          description: "Code de frais déjà utilisé"
+        '422':
+          description: "Données invalides, ou frais refusé par une garde (code fee_not_authorized, type errors/fee-not-authorized, motif dans detail)"
+  /api/v1/fee-items/{id}:
+    get:
+      summary: "Détail d'un frais"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Frais"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+    patch:
+      summary: "Modifie ou désactive un frais ; le code, une fois renseigné, ne change plus (409) ; l'état après modification est soumis aux gardes billing.fee_item_guards.* (SS8)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Frais modifié"
+        '403':
+          description: "Accès refusé"
+        '409':
+          description: "Code stable déjà fixé ou déjà utilisé"
+        '404':
+          description: "Introuvable ou autre client"
+        '422':
+          description: "Données invalides, ou frais refusé par une garde (code fee_not_authorized)"
+  /api/v1/fee-schedules:
+    get:
+      summary: "Grilles de frais (filtres academic_year_id, structure_id, level, track, fee_item_id)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Page de grilles"
+        '403':
+          description: "Accès refusé"
+        '422':
+          description: "Données invalides"
+    post:
+      summary: "Crée une ligne de grille par classe, niveau ou filière avec son échéancier en tranches"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '201':
+          description: "Grille créée"
+        '403':
+          description: "Accès refusé"
+        '422':
+          description: "Données invalides"
+  /api/v1/fee-schedules/{id}:
+    get:
+      summary: "Détail d'une grille"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Grille"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+  /api/v1/invoices:
+    get:
+      summary: "Factures de l'établissement (filtres learner_id, status, enrollment_id, academic_year_id)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Page de factures"
+        '403':
+          description: "Accès refusé"
+        '422':
+          description: "Données invalides"
+    post:
+      summary: "Génère la facture d'une inscription depuis les grilles, avec remises et bourses (plafond billing.discount_cap_percent) et payeur tiers facultatif payer {kind: person|organisation, name, reference}"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '201':
+          description: "Facture créée"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '409':
+          description: "Conflit"
+        '422':
+          description: "Données invalides"
+  /api/v1/invoices/{id}:
+    get:
+      summary: "Facture avec lignes, tranches et remises"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Facture"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+  /api/v1/invoices/{id}/discounts:
+    post:
+      summary: "Ajoute une remise ou bourse (appliquée à la pension, répartie sur les tranches restantes) ; l'exonération attend une seconde validation"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '201':
+          description: "Facture mise à jour"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '409':
+          description: "Conflit"
+        '422':
+          description: "Données invalides"
+  /api/v1/discounts/{id}/approve:
+    post:
+      summary: "Valide une exonération (par une autre personne que le demandeur)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Exonération appliquée"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '409':
+          description: "Conflit"
+  /api/v1/payments:
+    get:
+      summary: "Journal des paiements (filtres channel, status, day, cash_session_id, payer_reference_id)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Page de paiements avec statut d'affichage"
+        '403':
+          description: "Accès refusé"
+        '422':
+          description: "Données invalides"
+    post:
+      summary: "Enregistre un paiement (guichet, mobile money saisi) ou lance une demande mobile money ; idempotent ; affectation selon billing.allocation_rule : registration_overdue_upcoming (défaut), oldest_first ou kind_priority (SS7 : ordre des natures billing.allocation_kind_order, défaut [registration, apee, tuition, *], puis échéance, puis enfants billing.allocation_sibling_order enrolled_first ou eldest_first, tranche par tranche)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '201':
+          description: "Paiement confirmé et reçu émis (200 en rejeu, 202 si mobile money en attente)"
+        '400':
+          description: "Requête invalide ou Idempotency-Key absente"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '409':
+          description: "Conflit"
+        '422':
+          description: "Données invalides"
+  /api/v1/payments/{id}:
+    get:
+      summary: "Détail d'un paiement, reçu et affectations"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Paiement"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+  /api/v1/cash/receipts:
+    post:
+      summary: "Encaisse des espèces dans la caisse ouverte du caissier ; idempotent"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '201':
+          description: "Encaissement et reçu (200 en rejeu)"
+        '400':
+          description: "Requête invalide ou Idempotency-Key absente"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '409':
+          description: "Conflit"
+        '422':
+          description: "Données invalides"
+  /api/v1/receipts:
+    get:
+      summary: "Reçus numérotés (filtres payment_id, status, year)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Page de reçus"
+        '403':
+          description: "Accès refusé"
+        '422':
+          description: "Données invalides"
+  /api/v1/receipts/{id}:
+    get:
+      summary: "Détail d'un reçu"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Reçu"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+  /api/v1/receipts/{id}/pdf:
+    get:
+      summary: "Reçu en PDF"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Document PDF"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+  /api/v1/cash-sessions:
+    get:
+      summary: "Sessions de caisse (filtres status, cashier_id)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Page de sessions"
+        '403':
+          description: "Accès refusé"
+        '422':
+          description: "Données invalides"
+    post:
+      summary: "Ouvre une caisse avec son fonds"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '201':
+          description: "Caisse ouverte"
+        '403':
+          description: "Accès refusé"
+        '409':
+          description: "Conflit"
+        '422':
+          description: "Données invalides"
+  /api/v1/cash-sessions/{id}:
+    get:
+      summary: "Caisse avec espèces encaissées, reçus émis et versements"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Session de caisse"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+  /api/v1/cash-sessions/{id}/close:
+    post:
+      summary: "Arrête la caisse : écart nominatif entre le compté et l'attendu"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Caisse arrêtée"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '409':
+          description: "Conflit"
+        '422':
+          description: "Données invalides"
+  /api/v1/cash-sessions/{id}/deposits:
+    post:
+      summary: "Enregistre un versement des espèces encaissées"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '201':
+          description: "Versement enregistré"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '422':
+          description: "Données invalides"
+  /api/v1/reversals:
+    get:
+      summary: "Annulations de paiements (filtres status, payment_id)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Page d'annulations"
+        '403':
+          description: "Accès refusé"
+        '422':
+          description: "Données invalides"
+    post:
+      summary: "Demande l'annulation motivée d'un paiement (écriture inverse à valider par un second agent)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '202':
+          description: "Demande en attente de validation"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '409':
+          description: "Conflit"
+        '422':
+          description: "Données invalides"
+  /api/v1/reversals/{id}:
+    get:
+      summary: "Détail d'une annulation"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Annulation"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+  /api/v1/reversals/{id}/approve:
+    post:
+      summary: "Valide l'annulation (par une autre personne que le demandeur)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Paiement annulé"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '409':
+          description: "Conflit"
+  /api/v1/reversals/{id}/reject:
+    post:
+      summary: "Refuse l'annulation"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Annulation refusée"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '409':
+          description: "Conflit"
+  /api/v1/reconciliations:
+    get:
+      summary: "Rapprochements mobile money importés"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Page de rapprochements"
+        '403':
+          description: "Accès refusé"
+        '422':
+          description: "Données invalides"
+    post:
+      summary: "Importe le relevé CSV d'un opérateur (statuts matched, created, mismatch, unreferenced)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '201':
+          description: "Rapprochement"
+        '403':
+          description: "Accès refusé"
+        '422':
+          description: "Données invalides"
+  /api/v1/reconciliations/{id}:
+    get:
+      summary: "Rapprochement et ses lignes"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Rapprochement"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+  /api/v1/payment-references:
+    get:
+      summary: "Références de paiement famille (filtres guarantor_id, reference)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Page de références"
+        '403':
+          description: "Accès refusé"
+        '422':
+          description: "Données invalides"
+    post:
+      summary: "Émet (ou retrouve) la référence de paiement unique d'une famille et l'envoie au garant par SMS"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '201':
+          description: "Référence famille"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '422':
+          description: "Données invalides"
+  /api/v1/billing/families/{reference}/balance:
+    get:
+      summary: "Solde d'une famille, tous établissements, détail par enfant"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: reference
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Solde famille"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+  /api/v1/billing/exports/{kind}:
+    get:
+      summary: "Export comptable CSV (kind : journal, sales, discounts) sur la période from, to"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: kind
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Fichier CSV"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '422':
+          description: "Données invalides"
+  /api/v1/webhooks/payments/{provider}:
+    post:
+      summary: "Webhook de l'agrégateur de paiement (public) : signature HMAC dans X-Signature, rejeu ignoré par event_id"
+      security: []
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Événement traité (confirmed, failed, duplicate, already_recorded, unmatched, amount_mismatch, ignored)"
+        '401':
+          description: "Signature absente ou invalide"
+        '403':
+          description: "Adresse IP non autorisée"
+        '422':
+          description: "Corps de l'événement invalide"
+  /api/v1/invoices/export:
+    get:
+      summary: "Export CSV (UTF-8 avec BOM, séparateur « ; ») des factures de l’établissement actif : mêmes filtres et même permission de lecture que GET /invoices, plafonné à 5 000 lignes"
+      security:
+        - bearer: []
+      parameters:
+        - name: format
+          in: query
+          required: false
+          description: "Format du fichier : csv (défaut ; UTF-8 avec BOM, séparateur « ; ») ou xlsx (Excel)"
+          schema: {type: string, enum: [csv, xlsx], default: csv}
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Fichier CSV"
+          content:
+            text/csv:
+              schema: {type: string}
+        '403':
+          description: "Permission de lecture manquante"
+        '422':
+          description: "Filtre non autorisé"
+  /api/v1/payments/export:
+    get:
+      summary: "Export CSV (UTF-8 avec BOM, séparateur « ; ») du journal des paiements : mêmes filtres et même permission de lecture que GET /payments, plafonné à 5 000 lignes"
+      security:
+        - bearer: []
+      parameters:
+        - name: format
+          in: query
+          required: false
+          description: "Format du fichier : csv (défaut ; UTF-8 avec BOM, séparateur « ; ») ou xlsx (Excel)"
+          schema: {type: string, enum: [csv, xlsx], default: csv}
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Fichier CSV"
+          content:
+            text/csv:
+              schema: {type: string}
+        '403':
+          description: "Permission de lecture manquante"
+        '422':
+          description: "Filtre non autorisé"
+  /api/v1/receipts/export:
+    get:
+      summary: "Export CSV (UTF-8 avec BOM, séparateur « ; ») des reçus : mêmes filtres et même permission de lecture que GET /receipts, plafonné à 5 000 lignes"
+      security:
+        - bearer: []
+      parameters:
+        - name: format
+          in: query
+          required: false
+          description: "Format du fichier : csv (défaut ; UTF-8 avec BOM, séparateur « ; ») ou xlsx (Excel)"
+          schema: {type: string, enum: [csv, xlsx], default: csv}
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Fichier CSV"
+          content:
+            text/csv:
+              schema: {type: string}
+        '403':
+          description: "Permission de lecture manquante"
+        '422':
+          description: "Filtre non autorisé"

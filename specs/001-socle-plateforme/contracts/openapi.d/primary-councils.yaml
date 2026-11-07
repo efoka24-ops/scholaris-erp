@@ -1,0 +1,203 @@
+# Contrat OpenAPI 3.1 du conseil des maitres et des bulletins (application Primaire privee, EX-PRI-25 a 28, 39 ; T540-T542, T545).
+# Toutes les routes : authentification, en-tete X-Establishment-Id ; ecriture -> WriteGate (423 suspendue, 403 fermee) ; lecture -> 404
+# si l'application est fermee. Perimetre classe : lecture hors perimetre 404, ecriture 403 journalise. Aucune regle officielle codee :
+# moyennes et rang par le moteur du socle (regles du niveau), libelles des decisions primary.council.decision_labels, rang masque si
+# primary.report_card.show_rank=false, recapitulatif annuel si primary.report_card.annual, blocage pour impaye si
+# primary.report_card.block_on_debt (defauts a confirmer). Les decisions « admis » du conseil valide du dernier trimestre alimentent
+# People\YearPromotion par la source assessment.admission_sources.primary.
+paths:
+  /api/v1/primary/councils:
+    get:
+      summary: "Conseils des maitres du perimetre (permissions primary.council.read, primary.council.preside ou assessment.validate)"
+      parameters:
+        - {name: class_id, in: query, required: false, schema: {type: string}}
+        - {name: academic_year_id, in: query, required: false, schema: {type: string}}
+      responses:
+        '200': {description: "Reponse {data: {items[{id, class_structure_id, period_id, period_label, term_ordinal, is_final_term, status, numeric_enabled, summary, lines_count}]}}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Application fermee"}
+    post:
+      summary: "Ouvrir le conseil d'une classe pour un trimestre : une ligne par eleve prerempli (moyennes facultatives, rang, absences en demi-journees, conduite, competences, remediation, proposition de fin d'annee au dernier trimestre)"
+      description: "La periode est authentifiee par le socle (identifiant et date de debut). Sequences facultatives du trimestre (feuilles de competences par sequence)."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [class_id, period_id, starts_on]
+              properties:
+                class_id: {type: string}
+                period_id: {type: string}
+                starts_on: {type: string, format: date}
+                period_label: {type: string, maxLength: 80}
+                held_on: {type: [string, 'null'], format: date}
+                sequences: {type: array, maxItems: 12, items: {type: object, required: [id, starts_on], properties: {id: {type: string}, starts_on: {type: string, format: date}}}}
+      responses:
+        '201': {description: "Conseil ouvert avec ses lignes"}
+        '403': {description: "Permission absente ou classe hors perimetre"}
+        '404': {description: "Classe introuvable"}
+        '409': {description: "Conseil deja ouvert pour cette classe et ce trimestre"}
+        '422': {description: "Periode inconnue ou non trimestrielle, classe sans eleve"}
+  /api/v1/primary/councils/{id}:
+    get:
+      summary: "Conseil, lignes avec noms, echelles de conduite et de competences, libelles des decisions"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Conseil"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Conseil introuvable ou hors perimetre"}
+  /api/v1/primary/councils/{id}/lines/{line_id}:
+    patch:
+      summary: "Seance : appreciation, conduite, remediation, decision de fin d'annee (dernier trimestre ; motif obligatoire si elle differe de la proposition)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+        - {name: line_id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                appraisal: {type: [string, 'null'], maxLength: 500}
+                conduct_code: {type: [string, 'null'], maxLength: 20}
+                decision: {type: string, enum: [admitted, adjourned, cycle_end]}
+                reason: {type: [string, 'null'], maxLength: 255}
+                remediation_flag: {type: boolean}
+                remediation_note: {type: [string, 'null'], maxLength: 255}
+      responses:
+        '200': {description: "Conseil mis a jour"}
+        '403': {description: "Permission absente ou hors perimetre"}
+        '404': {description: "Conseil ou ligne introuvable"}
+        '409': {description: "Conseil valide"}
+        '422': {description: "Motif manquant, decision hors dernier trimestre, conduite inconnue"}
+  /api/v1/primary/councils/{id}/refresh:
+    post:
+      summary: "Recalcul des valeurs calculees sans ecraser la saisie du conseil"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Conseil recalcule"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Conseil introuvable"}
+        '409': {description: "Conseil valide"}
+  /api/v1/primary/councils/{id}/validate:
+    post:
+      summary: "Validation par la presidence (primary.council.preside) : feuilles de competences verrouillees, decision arretee pour chaque eleve au dernier trimestre, proces-verbal"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Conseil valide"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Conseil introuvable"}
+        '409': {description: "Deja valide ou feuille non verrouillee"}
+        '422': {description: "Decision manquante"}
+  /api/v1/primary/councils/{id}/reopen:
+    post:
+      summary: "Reouverture d'un conseil valide tant qu'aucun bulletin n'est emis"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [reason]
+              properties:
+                reason: {type: string, maxLength: 255}
+      responses:
+        '200': {description: "Conseil rouvert"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Conseil introuvable"}
+        '409': {description: "Non valide ou bulletins deja emis (rectificatif)"}
+        '422': {description: "Motif manquant"}
+  /api/v1/primary/councils/{id}/report-cards:
+    get:
+      summary: "Bulletins du conseil (etat, numero, revision)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Reponse {data: {items[{id, person_id, name, kind (term|annual), revision, status (issued|failed|published|superseded), number, verification_token, error_message}]}}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Conseil introuvable"}
+  /api/v1/primary/councils/{id}/report-cards/preview:
+    get:
+      summary: "Apercu du bulletin d'un eleve avant emission (contenu calcule et variables du modele, rien n'est enregistre)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+        - {name: person_id, in: query, required: true, schema: {type: string}}
+        - {name: kind, in: query, required: false, schema: {type: string, enum: [term, annual]}}
+      responses:
+        '200': {description: "Reponse {data: {snapshot, variables, council_status}}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Conseil ou eleve introuvable"}
+        '422': {description: "Eleve non indique, recapitulatif hors dernier trimestre"}
+  /api/v1/primary/councils/{id}/report-cards/issue:
+    post:
+      summary: "Emission en lot (primary.report_card.sign) apres validation : document du socle (numero, QR, contenu fige) et copie figee ; idempotente, un echec est repris"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Reponse {data: {issued, failed, skipped, items[]}}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Conseil introuvable"}
+        '409': {description: "Conseil non valide"}
+  /api/v1/primary/councils/{id}/report-cards/publish:
+    post:
+      summary: "Publication aux familles (portail) et SMS « bulletin disponible » (NOT-PRI-02, modele pri.not02.report_card_ready)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Reponse {data: {published, notified, items[]}}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Conseil introuvable"}
+        '409': {description: "Aucun bulletin emis a publier"}
+  /api/v1/primary/report-cards/{id}:
+    get:
+      summary: "Bulletin et sa copie figee"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Bulletin"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Bulletin introuvable ou hors perimetre"}
+  /api/v1/primary/report-cards/{id}/rectify:
+    post:
+      summary: "Rectificatif (DocumentReissuer du socle : meme numero, revision + 1, ancienne version remplacee) avec correction de la ligne du conseil"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [reason]
+              properties:
+                reason: {type: string, maxLength: 500}
+                appraisal: {type: [string, 'null'], maxLength: 500}
+                conduct_code: {type: [string, 'null'], maxLength: 20}
+                decision: {type: string, enum: [admitted, adjourned, cycle_end]}
+                remediation_note: {type: [string, 'null'], maxLength: 255}
+      responses:
+        '201': {description: "Nouvelle revision du bulletin"}
+        '403': {description: "Permission absente ou hors perimetre"}
+        '404': {description: "Bulletin introuvable"}
+        '409': {description: "Bulletin non emis ou deja remplace"}
+        '422': {description: "Motif manquant"}
+  /api/v1/primary/family/children/{id}/report-cards:
+    get:
+      summary: "Portail parent : bulletins publies (version en vigueur) d'un enfant du parent connecte (self.read)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Reponse {data: {items[{id, kind, number, verification_token, published_at, snapshot}]}}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Enfant introuvable (autre famille, autre etablissement)"}

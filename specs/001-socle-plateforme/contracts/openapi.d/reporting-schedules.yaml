@@ -1,0 +1,109 @@
+# Contrat OpenAPI 3.1 des rapports planifiés et des statistiques réglementaires (T134), fusionné avec openapi.yaml par le test de contrat.
+paths:
+  /api/v1/report-schedules:
+    get:
+      summary: "Rapports planifiés de l'établissement actif (reporting.manage), curseur"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Page de rapports planifiés"
+        '403':
+          description: "Droit reporting.manage manquant"
+    post:
+      summary: "Planifie un rapport (reporting.manage) : name, report_type direction|censeur|groupe|regulatory, frequency daily|weekly|monthly, run_day (1-7 hebdomadaire, 1-28 mensuel), recipient_ids (personnes, 20 au plus). Le type groupe exige reporting.group.read"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: "Rapport planifié"
+        '403':
+          description: "Droit manquant"
+        '422':
+          description: "Champs invalides ou destinataire inconnu"
+  /api/v1/report-schedules/{id}:
+    get:
+      summary: "Rapport planifié"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Rapport planifié"
+        '404':
+          description: "Rapport introuvable"
+    patch:
+      summary: "Modifie le nom, la périodicité, les destinataires ou le statut active|paused"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: "Rapport modifié"
+        '404':
+          description: "Rapport introuvable"
+        '422':
+          description: "Champs invalides"
+    delete:
+      summary: "Supprime le rapport planifié"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Rapport supprimé"
+        '404':
+          description: "Rapport introuvable"
+  /api/v1/report-schedules/{id}/run:
+    post:
+      summary: "Exécute le rapport maintenant (chaque appel envoie)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Résultat de l'exécution (statut, envoyés, échecs)"
+        '404':
+          description: "Rapport introuvable"
+  /api/v1/report-schedules/{id}/runs:
+    get:
+      summary: "Journal des 50 dernières exécutions"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Exécutions"
+        '404':
+          description: "Rapport introuvable"
+  /api/v1/regulatory-statistics:
+    get:
+      summary: "Statistiques réglementaires de l'établissement actif (reporting.read) : effectifs actifs par année, par classe et par sexe (genre déclaré, « unknown » si non renseigné) ; niveau indisponible avec son motif tant qu'aucun contrat ne l'expose"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Effectifs"
+        '403':
+          description: "Droit reporting.read manquant"
