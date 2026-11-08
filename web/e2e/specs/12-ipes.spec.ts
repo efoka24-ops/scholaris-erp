@@ -16,7 +16,7 @@ interface Ipes {
   jury: string;
   logins: Record<string, [string, string]>;
   people: Record<string, string>;
-  org: { g1: string };
+  org: { g1: string; school: string };
   curriculum: { id: string; elements: Record<string, string> };
   student: { person: string };
 }
@@ -119,10 +119,8 @@ test('IPES : notes CC et examen saisies à l\'écran, cycle de validation, simul
 });
 
 test('IPES : séance de délibération, PV signé, relevé DOC-09 émis (numéro et QR dans le PDF)', async () => {
-  // Défaut C110-I1 (rapport) : la séance du socle (/deliberations) ignore les notes de l'IPES — le PV porte « moyenne n/a,
-  // crédits 0/0, Ajourné » alors que la simulation donne 11,55 — et la publication répond 404 « Aucune épreuve pour cette
-  // classe et cette période » : aucun relevé DOC-09 ne peut être émis par le parcours réel. Échec attendu tant que le défaut existe.
-  test.fail(true, 'C110-I1 : séance du socle non reliée aux notes IPES, DOC-09 inémettable');
+  // C110-I1 corrigé (C-116) : la séance du socle calcule sur les notes IPES du jury ; le directeur d'école (président) conduit la
+  // séance, la scolarité publie, puis émet le relevé DOC-09.
   const ctx = await stack.seed<Ipes>('ipes');
   const as = async (who: string): Promise<string> => (await stack.login(...ctx.logins[who]!)).token;
   const opts = (token: string) => ({ token, establishment: ctx.establishment });
@@ -137,17 +135,33 @@ test('IPES : séance de délibération, PV signé, relevé DOC-09 émis (numéro
     await stack.api('POST', `/higher/grade-assessments/${id}/lock`, {}, opts(chef));
   }
   const admin = await as('admin');
+  const dir = await as('dir');
   const sitting = await stack.api('POST', '/deliberations', {
     structure_id: ctx.org.g1, period_id: 'S1', period_label: 'Semestre 1', exam_session: 'normal', president_id: ctx.people.dir, members_expected: 3,
-  }, opts(admin));
+  }, opts(dir));
   const sid = String(sitting.data.id);
-  await stack.api('POST', `/deliberations/${sid}/attendance`, { members_present: [ctx.people.dir, ctx.people.chef] }, opts(admin));
-  await stack.api('POST', `/deliberations/${sid}/start`, {}, opts(admin));
-  const closed = await stack.api('POST', `/deliberations/${sid}/close`, {}, opts(admin));
+  await stack.api('POST', `/deliberations/${sid}/attendance`, { members_present: [ctx.people.dir, ctx.people.chef] }, opts(dir));
+  await stack.api('POST', `/deliberations/${sid}/start`, {}, opts(dir));
+  const closed = await stack.api('POST', `/deliberations/${sid}/close`, {}, opts(dir));
   const line = (closed.data.lines as Array<{ person_id: string; average: number | null; decision: string }>).find((l) => l.person_id === ctx.student.person);
   expect(line?.average, 'moyenne de Marie au PV').toBeCloseTo(11.55, 2);
-  await stack.api('POST', `/deliberations/${sid}/sign`, {}, opts(await as('dir')));
-  await stack.api('POST', '/results/publish', { structure_id: ctx.org.g1, period_id: 'S1' }, opts(admin));
-  const issued = await stack.api('POST', '/higher/deliberation/transcripts', { person_id: ctx.student.person, period_id: 'S1' }, opts(await as('scol')));
+  await stack.api('POST', `/deliberations/${sid}/sign`, {}, opts(dir));
+  const scol = await as('scol');
+  await stack.api('POST', '/results/publish', { structure_id: ctx.org.g1, period_id: 'S1' }, opts(scol));
+  // Relevé DOC-09 : type et modèles installés depuis le catalogue IPES, profil documentaire de l'école.
+  const catalog = await stack.api('GET', '/higher/documents/catalog', undefined, opts(admin));
+  for (const type of catalog.data as Array<{ socle: { type: Record<string, unknown>; templates: Array<Record<string, unknown>> } | null }>) {
+    if (type.socle?.type.code !== 'hi_doc09') continue;
+    const body = Object.fromEntries(Object.entries(type.socle.type).filter(([, v]) => v !== null));
+    await stack.api('POST', '/document-types', body, opts(admin));
+    for (const template of type.socle.templates) {
+      const stored = await stack.api('POST', '/document-templates', { type_code: 'hi_doc09', ...template }, opts(admin));
+      await stack.api('POST', `/document-templates/${stored.data.id}/validate`, {}, opts(admin));
+    }
+  }
+  await stack.api('POST', `/higher/documents/schools/${ctx.org.school}/profile`, {
+    school_code: 'ESG', display_name: 'École supérieure de gestion (fictive)', header_text: 'République du Cameroun', default_locale: 'fr',
+  }, { ...opts(admin), headers: { 'X-HTTP-Method-Override': 'PUT' } });
+  const issued = await stack.api('POST', '/higher/deliberation/transcripts', { person_id: ctx.student.person, period_id: 'S1' }, opts(scol));
   expect(String(issued.data.number ?? '')).toMatch(/\S/);
 });
