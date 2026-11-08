@@ -54,6 +54,8 @@ export const SETTINGS_CATALOG: SettingDef[] = [
   { key: 'assessment.weighting', group: 'grading', kind: 'select', options: ['coefficient', 'credits'] },
   { key: 'assessment.quorum_percent', group: 'grading', kind: 'number', min: 1, max: 100, step: 1, fallback: '50' },
   { key: 'assessment.mentions', group: 'grading', kind: 'json' },
+  // Mode d'appel (socle Attendance, PP17) : préréglé à day_part par la maternelle et l'école publique, modifiable ici (C-115).
+  { key: 'attendance.mode', group: 'attendance', kind: 'select', options: ['slot', 'day_part'] },
   { key: 'attendance.max_unjustified_percent', group: 'attendance', kind: 'number', min: 0, max: 100, step: 1, fallback: '30' },
   { key: 'attendance.alert_unjustified_percent', group: 'attendance', kind: 'number', min: 0, max: 100, step: 1, fallback: '25' },
   { key: 'attendance.notify_parents', group: 'attendance', kind: 'boolean', fallback: 'true' },

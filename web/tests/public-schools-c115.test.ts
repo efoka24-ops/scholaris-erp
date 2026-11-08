@@ -2,6 +2,7 @@ import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { permissionsForRoles } from '@/lib/permissions';
 import ClassesView from '@/views/public-schools/ClassesView.vue';
+import AdminSettingsView from '@/views/admin/AdminSettingsView.vue';
 import { flushPromises, freshEnvironment, jsonResponse, mockApi, mountView, signIn, teacherMe, tile, type RecordedCall } from './helpers';
 
 // C-115 : défauts du primaire public trouvés par les tests de bout en bout (C-110).
@@ -51,5 +52,23 @@ describe('C110-PP1 : affectation du titulaire de classe', () => {
       'PUT /public/classes/C1/homeroom': jsonResponse({ type: 'x', title: 'Données invalides', status: 422, detail: 'Données invalides.', errors: { homeroom_staff_id: ['Enseignant inconnu ou inactif dans cette école.'] }, trace_id: 'T' }, 422),
     });
     expect(wrapper.get('[role="alert"]').text()).toContain('Enseignant inconnu ou inactif dans cette école.');
+  });
+});
+
+describe('C110-PP3 : mode d’appel modifiable dans les réglages de l’établissement', () => {
+  it('propose attendance.mode (créneau ou moment de la journée) et l’enregistre au niveau de l’établissement', async () => {
+    signIn({ ...teacherMe, context: { establishment_id: 'E1', role: 'directeur' } }, [tile({ roles: [{ code: 'directeur', label: 'Directeur' }] })], 'directeur');
+    const calls = mockApi({
+      'GET /settings/effective': { data: [{ key: 'attendance.mode', value: 'day_part', source: 'establishment', overridden: [] }] },
+      'PUT /settings': (c) => ({ data: { scope: 'establishment', key: c.body?.key, value: c.body?.value }, effective: { key: c.body?.key, value: c.body?.value, source: 'establishment', overridden: [] } }),
+    });
+    const { wrapper } = await mountView(AdminSettingsView, {}, '/administration/parametres');
+    const mode = wrapper.get('[id="set-attendance.mode"]');
+    expect((mode.element as HTMLSelectElement).value).toBe('day_part');
+    expect(mode.text()).toContain('Par moment de la journée');
+    await mode.setValue('slot');
+    await mode.element.closest('form')?.dispatchEvent(new Event('submit', { cancelable: true }));
+    await flushPromises();
+    expect(calls.find((c) => c.method === 'PUT')?.body).toEqual({ scope: 'establishment', key: 'attendance.mode', value: 'slot' });
   });
 });

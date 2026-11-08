@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature\PublicSchools\Pupils;
 
+use Scholaris\Modules\Socle\Organisation\Application\SettingsService;
+use Scholaris\Modules\Socle\Organisation\Contracts\SettingsWriter;
 use Scholaris\Modules\Socle\Organisation\Contracts\StructureWriter;
 use Scholaris\Modules\Socle\Staff\Contracts\StaffDirectory;
 
@@ -63,6 +65,21 @@ final class ClassTest extends PublicSchoolsTestCase
         self::assertSame('afternoon', $rows[$afternoon['structure_id']]['shift']);
         self::assertFalse($rows[$morning['structure_id']]['twinned']);
         self::assertSame(422, $this->code('POST', '/public/classes', 'dir1', 't1', 'e1', ['shift' => 'night', 'name' => 'X', 'academic_year_id' => 'y2026', 'org_unit_id' => $this->unit, 'level_codes' => ['SIL']]));
+    }
+
+    /** C-115 (C110-PP3) : la première classe pose attendance.mode = day_part, sans écraser le choix d'une autre école ni le sien. */
+    public function testLaPremiereClassePoseLAppelParDemiJourneeSansEcraser(): void
+    {
+        // SettingsReader est doublé dans ce banc : la lecture passe par le service réel du socle.
+        $settings = $this->kernel->container()->get(SettingsService::class);
+        $this->kernel->container()->get(SettingsWriter::class)->presetIfAbsent('t1', 'e3', 'attendance.mode', 'slot', 'seed');
+        $this->create();
+        self::assertSame('day_part', $settings->value('t1', 'e1', 'attendance.mode'));
+        self::assertNull($settings->value('t2', 'e9', 'attendance.mode'), 'Autre client non touché.');
+
+        [$response] = $this->api('POST', '/public/classes', 'dir3', 't1', 'e3', ['name' => 'CP SYN', 'academic_year_id' => 'y2026', 'org_unit_id' => $this->kernel->container()->get(StructureWriter::class)->createOrgUnit('t1', 'e3', 'school', 'École SYN e3', null, 'seed'), 'level_codes' => ['SIL'], 'shift' => 'full_day']);
+        self::assertSame(201, $response->getStatusCode());
+        self::assertSame('slot', $settings->value('t1', 'e3', 'attendance.mode'), 'Le choix de l\'école est conservé.');
     }
 
     public function testModificationDeLaClasse(): void

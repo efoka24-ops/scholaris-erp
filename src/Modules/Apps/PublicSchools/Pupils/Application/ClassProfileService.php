@@ -10,6 +10,8 @@ use PDO;
 use Scholaris\Core\Database\ConnectionFactory;
 use Scholaris\Core\Http\HttpException;
 use Scholaris\Core\Support\Ulid;
+use Scholaris\Modules\Socle\Attendance\Contracts\AttendanceCodes;
+use Scholaris\Modules\Socle\Organisation\Contracts\SettingsWriter;
 use Scholaris\Modules\Socle\Organisation\Contracts\StructureDraft;
 use Scholaris\Modules\Socle\Organisation\Contracts\StructureWriter;
 use Scholaris\Modules\Socle\Staff\Contracts\StaffDirectory;
@@ -26,6 +28,7 @@ final class ClassProfileService
         private readonly ConnectionFactory $connections,
         private readonly StructureWriter $structures,
         private readonly StaffDirectory $staff,
+        private readonly SettingsWriter $settings,
     ) {
     }
 
@@ -69,6 +72,9 @@ final class ClassProfileService
             }
             throw $exception;
         }
+        // C-115 (C110-PP3) : l'école publique fait l'appel par demi-journée (hors ligne, SC-06). Préréglage à la première classe, comme la
+        // maternelle : SettingsWriter ne pose la valeur que si l'établissement n'en a pas (un choix de l'école n'est jamais écrasé).
+        $this->settings->presetIfAbsent($tenantId, $establishmentId, 'attendance.mode', AttendanceCodes::MODE_DAY_PART, $actorId);
 
         return [
             'structure_id' => $structureId,
