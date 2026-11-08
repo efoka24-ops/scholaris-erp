@@ -454,7 +454,7 @@ final class WorkshopService
     {
         foreach ($this->enrollments->forPerson($tenantId, $personId) as $enrollment) {
             if ($enrollment->establishmentId === $establishmentId && $enrollment->structureId === $structureId
-                && $enrollment->academicYearId === $yearId && $enrollment->status === EnrollmentInfo::ACTIVE) {
+                && $enrollment->academicYearId === $yearId && in_array($enrollment->status, [EnrollmentInfo::ACTIVE, EnrollmentInfo::CONDITIONAL], true)) {
                 return true;
             }
         }
