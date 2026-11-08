@@ -6,7 +6,7 @@ import ErrorNotice from '@/components/ErrorNotice.vue';
 import { useI18n, type MessageKey } from '@/i18n';
 import { useAuthStore } from '@/stores/auth';
 import { useAction, usePermissions } from '../useSec';
-import { netOf, PAYABLE_STATUSES, secondaryStaff, type Deduction, type EmploymentStatus, type Payslip, type StaffProfile } from './staffApi';
+import { hoursOf, netOf, PAYABLE_STATUSES, secondaryStaff, type Deduction, type EmploymentStatus, type MonthlyHours, type Payslip, type StaffProfile } from './staffApi';
 
 const { t, locale } = useI18n();
 const auth = useAuthStore();
@@ -27,10 +27,40 @@ const eligibleProfiles = computed(() => profiles.value.filter((p) => p.id !== nu
 const nameOf = (slip: Payslip): string => profiles.value.find((p) => p.id === slip.staff_profile_id)?.full_name ?? slip.person_id;
 const ready = computed(() => form.profileId !== '' && /^\d{4}-(0[1-9]|1[0-2])$/.test(form.month) && !Number.isNaN(net.value) && net.value >= 0);
 
+const hoursMonth = ref(new Date().toISOString().slice(0, 7));
+const monthly = ref<MonthlyHours[]>([]);
+const hoursForm = reactive({ profileId: '', hours: '', note: '' });
+const nonTeaching = computed(() => profiles.value.filter((p) => p.id !== null && !p.teaches));
+const profileName = (id: string): string => profiles.value.find((p) => p.id === id)?.full_name ?? id;
+
+async function loadMonthly(): Promise<void> {
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(hoursMonth.value)) return;
+  monthly.value = (await run(() => secondaryStaff.monthlyHours(hoursMonth.value))) ?? [];
+}
 async function load(): Promise<void> {
   profiles.value = (await run(() => secondaryStaff.profiles())) ?? [];
   eligible.value = (await run(() => secondaryStaff.payrollRules()))?.eligible_statuses ?? [];
   slips.value = (await run(() => secondaryStaff.payslips())) ?? [];
+  await loadMonthly();
+}
+async function declareHours(): Promise<void> {
+  const value = Number(hoursForm.hours.replace(',', '.'));
+  if (hoursForm.profileId === '' || !Number.isFinite(value) || value < 0) return;
+  const saved = await run(() => secondaryStaff.declareMonthlyHours({ staff_profile_id: hoursForm.profileId, month_ref: hoursMonth.value, minutes: Math.round(value * 60), note: hoursForm.note.trim() || null }));
+  if (saved) { notice.value = t('secpay.hoursDeclared'); hoursForm.hours = ''; hoursForm.note = ''; await loadMonthly(); }
+}
+async function validateHours(row: MonthlyHours): Promise<void> {
+  if (await run(() => secondaryStaff.validateMonthlyHours(row.id))) { notice.value = t('secpay.hoursValidated'); await loadMonthly(); }
+}
+async function downloadPdf(slip: Payslip): Promise<void> {
+  const blob = await run(() => secondaryStaff.payslipPdf(slip.id));
+  if (!blob) return;
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `bulletin-${slip.month_ref}-${slip.document_number ?? slip.id}.pdf`;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 async function saveRules(): Promise<void> {
   const saved = await run(() => secondaryStaff.savePayrollRules(eligible.value));
@@ -86,6 +116,40 @@ onMounted(load);
       <button v-if="canValidate" type="button" class="btn" :disabled="busy || eligible.length === 0" @click="saveRules">{{ t('secpay.saveRules') }}</button>
     </section>
 
+    <section class="card" aria-labelledby="spy-hours">
+      <h2 id="spy-hours">{{ t('secpay.hours') }}</h2>
+      <p class="muted">{{ t('secpay.hoursHelp') }}</p>
+      <div class="field">
+        <label for="spy-hours-month">{{ t('secpay.month') }}</label>
+        <input id="spy-hours-month" v-model="hoursMonth" type="month" @change="loadMonthly" />
+      </div>
+      <form v-if="canPrepare" class="stack" @submit.prevent="declareHours">
+        <div class="field">
+          <label for="spy-hours-member">{{ t('secpay.hoursMember') }}</label>
+          <select id="spy-hours-member" v-model="hoursForm.profileId" required>
+            <option value="">{{ t('secpay.chooseMember') }}</option>
+            <option v-for="p in nonTeaching" :key="p.id ?? p.staff_id" :value="p.id ?? ''">{{ p.full_name }}<template v-if="p.function"> · {{ p.function }}</template></option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="spy-hours-value">{{ t('secpay.hoursValue') }}</label>
+          <input id="spy-hours-value" v-model="hoursForm.hours" type="text" inputmode="decimal" required />
+        </div>
+        <div class="field">
+          <label for="spy-hours-note">{{ t('secpay.note') }}</label>
+          <input id="spy-hours-note" v-model="hoursForm.note" type="text" maxlength="255" />
+        </div>
+        <div><button type="submit" class="btn" :disabled="busy || hoursForm.profileId === ''">{{ t('secpay.declareHours') }}</button></div>
+      </form>
+      <ul class="rows">
+        <li v-for="row in monthly" :key="row.id">
+          {{ profileName(row.staff_profile_id) }} · {{ hoursOf(row.minutes) }} h · {{ t(`secpay.hoursState.${row.status}` as MessageKey) }}
+          <button v-if="row.status === 'declared' && canValidate && row.declared_by !== auth.me?.id" type="button" class="btn" :disabled="busy" @click="validateHours(row)">{{ t('secpay.validate') }}</button>
+        </li>
+        <li v-if="monthly.length === 0" class="muted">{{ t('secpay.noHours') }}</li>
+      </ul>
+    </section>
+
     <section v-if="canPrepare" class="card" aria-labelledby="spy-new">
       <h2 id="spy-new">{{ t('secpay.new') }}</h2>
       <form class="stack" @submit.prevent="create">
@@ -138,6 +202,7 @@ onMounted(load);
                 </template>
                 <button v-if="slip.status === 'validated' && canPrepare" type="button" class="btn" :disabled="busy" @click="pay(slip)">{{ t('secpay.pay') }}</button>
                 <span v-if="slip.document_number">{{ t('secpay.document', { number: slip.document_number }) }}</span>
+                <button v-if="slip.document_id && (canPrepare || canValidate)" type="button" class="btn" :disabled="busy" @click="downloadPdf(slip)">{{ t('secpay.pdf') }}</button>
               </td>
             </tr>
             <tr v-if="slips.length === 0"><td colspan="7">{{ t('secpay.none') }}</td></tr>

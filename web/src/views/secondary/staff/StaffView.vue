@@ -5,7 +5,7 @@ import { computed, onMounted, reactive, ref } from 'vue';
 import ErrorNotice from '@/components/ErrorNotice.vue';
 import { useI18n, type MessageKey } from '@/i18n';
 import { useAction, usePermissions } from '../useSec';
-import { EMPLOYMENT_STATUSES, hoursOf, secondaryStaff, type EmploymentStatus, type StaffHours, type StaffProfile } from './staffApi';
+import { EMPLOYMENT_STATUSES, hoursOf, secondaryStaff, STAFF_CATEGORIES, type EmploymentStatus, type StaffCategory, type StaffHours, type StaffProfile } from './staffApi';
 
 const { t } = useI18n();
 const { error, busy, run } = useAction();
@@ -15,12 +15,16 @@ const profiles = ref<StaffProfile[]>([]);
 const hours = ref<StaffHours[]>([]);
 const month = ref(new Date().toISOString().slice(0, 7));
 const notice = ref('');
-const form = reactive({ personId: '', status: 'private_employee' as EmploymentStatus, grade: '', payrollRef: '' });
+const category = ref<'' | StaffCategory>('');
+const form = reactive({ personId: '', status: 'private_employee' as EmploymentStatus, staffCategory: '' as '' | StaffCategory, grade: '', payrollRef: '' });
+const shown = computed(() => (category.value === '' ? profiles.value : profiles.value.filter((p) => p.staff_category === category.value)));
+const categoryLabel = (c: StaffCategory | null): string => (c ? t(`secst.category.${c}` as MessageKey) : t('secst.notSet'));
 const statusLabel = (status: EmploymentStatus | null): string => (status ? t(`secst.status.${status}` as MessageKey) : t('secst.notSet'));
 
 function pick(personId: string): void {
   const profile = profiles.value.find((p) => p.person_id === personId);
   form.status = profile?.employment_status ?? 'private_employee';
+  form.staffCategory = profile?.staff_category ?? '';
   form.grade = profile?.grade_label ?? '';
   form.payrollRef = profile?.payroll_ref ?? '';
 }
@@ -37,6 +41,7 @@ async function save(): Promise<void> {
   const saved = await run(() => secondaryStaff.saveProfile({
     person_id: form.personId,
     employment_status: form.status,
+    staff_category: form.staffCategory === '' ? null : form.staffCategory,
     grade_label: form.grade.trim() || null,
     payroll_ref: form.payrollRef.trim() || null,
   }));
@@ -77,6 +82,13 @@ onMounted(load);
           </select>
         </div>
         <div class="field">
+          <label for="sst-category">{{ t('secst.category') }}</label>
+          <select id="sst-category" v-model="form.staffCategory">
+            <option value="">{{ t('secst.notSet') }}</option>
+            <option v-for="c in STAFF_CATEGORIES" :key="c" :value="c">{{ categoryLabel(c) }}</option>
+          </select>
+        </div>
+        <div class="field">
           <label for="sst-grade">{{ t('secst.grade') }}</label>
           <input id="sst-grade" v-model="form.grade" type="text" maxlength="80" />
         </div>
@@ -86,14 +98,21 @@ onMounted(load);
         </div>
         <div><button type="submit" class="btn btn--primary" :disabled="busy || form.personId === ''">{{ t('secst.save') }}</button></div>
       </form>
+      <div class="field">
+        <label for="sst-filter">{{ t('secst.category') }}</label>
+        <select id="sst-filter" v-model="category">
+          <option value="">{{ t('secst.allCategories') }}</option>
+          <option v-for="c in STAFF_CATEGORIES" :key="c" :value="c">{{ categoryLabel(c) }}</option>
+        </select>
+      </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>{{ t('secst.member') }}</th><th>{{ t('secst.status') }}</th><th>{{ t('secst.grade') }}</th><th>{{ t('secst.payrollRef') }}</th></tr></thead>
+          <thead><tr><th>{{ t('secst.member') }}</th><th>{{ t('secst.function') }}</th><th>{{ t('secst.category') }}</th><th>{{ t('secst.status') }}</th><th>{{ t('secst.grade') }}</th><th>{{ t('secst.payrollRef') }}</th></tr></thead>
           <tbody>
-            <tr v-for="p in profiles" :key="p.staff_id">
-              <td>{{ p.full_name }}</td><td>{{ statusLabel(p.employment_status) }}</td><td>{{ p.grade_label || '—' }}</td><td>{{ p.payroll_ref || '—' }}</td>
+            <tr v-for="p in shown" :key="p.staff_id">
+              <td>{{ p.full_name }}</td><td>{{ p.function || '—' }}</td><td>{{ categoryLabel(p.staff_category) }}</td><td>{{ statusLabel(p.employment_status) }}</td><td>{{ p.grade_label || '—' }}</td><td>{{ p.payroll_ref || '—' }}</td>
             </tr>
-            <tr v-if="profiles.length === 0"><td colspan="4">{{ t('secst.empty') }}</td></tr>
+            <tr v-if="shown.length === 0"><td colspan="6">{{ t('secst.empty') }}</td></tr>
           </tbody>
         </table>
       </div>

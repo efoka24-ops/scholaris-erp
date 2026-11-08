@@ -5,21 +5,21 @@ declare(strict_types=1);
 namespace Tests\Feature\Secondary\Staff;
 
 use Scholaris\Modules\Apps\Secondary\Documents\Contracts\SecondaryDocuments;
+use Scholaris\Modules\Socle\Documents\Contracts\DocumentPdfReader;
 use Scholaris\Modules\Socle\Documents\Contracts\IssuedDocument;
 use Scholaris\Modules\Socle\People\Contracts\PersonDirectory;
 use Scholaris\Modules\Socle\People\Contracts\PersonSummary;
-use Scholaris\Modules\Socle\Staff\Contracts\StaffDirectory;
-use Scholaris\Modules\Socle\Staff\Contracts\StaffInfo;
+use Scholaris\Modules\Socle\Staff\Contracts\EstablishmentStaffRoster;
+use Scholaris\Modules\Socle\Staff\Contracts\StaffMemberInfo;
 use Scholaris\Modules\Socle\Staff\Contracts\TeacherWorkload;
 
-/** Doubles de contrats socle avec des personnes et des fiches de personnel fictives. */
-final class StaffWorld implements StaffDirectory, TeacherWorkload, SecondaryDocuments
+/** Doubles des contrats du socle (personnel de l'établissement, heures, émission et PDF de DOC-30), personnes fictives. */
+final class StaffWorld implements EstablishmentStaffRoster, TeacherWorkload, SecondaryDocuments, DocumentPdfReader
 {
-    /** @var array<string, StaffInfo> */
-    private array $members = [];
+    public const DOCUMENT_ID = '01J00000000000000000000000';
 
-    /** @var array<string, list<string>> */
-    private array $establishments = [];
+    /** @var array<string, list<StaffMemberInfo>> */
+    private array $members = [];
 
     /** @var array<string, PersonSummary> */
     private array $people = [];
@@ -27,17 +27,19 @@ final class StaffWorld implements StaffDirectory, TeacherWorkload, SecondaryDocu
     /** @var list<array{kind: string, person: string, values: array<string, mixed>}> documents émis (DOC-30) */
     public array $issued = [];
 
-    public function add(string $tenantId, string $establishmentId, string $personId, string $staffId, string $name, string $kind = 'permanent', string $status = 'active'): void
+    /** @var array<string, string> document émis => établissement */
+    private array $documents = [];
+
+    public function add(string $tenantId, string $establishmentId, string $personId, string $staffId, string $name, string $kind = 'permanent', string $status = 'active', bool $teaches = true, ?string $grade = 'Professeur fictif', ?string $category = null): void
     {
         $parts = explode(' ', $name, 2);
         $this->people[$personId] = new PersonSummary($personId, $tenantId, $parts[0], $parts[1] ?? 'Test');
-        $this->members[$tenantId . ':' . $personId] = new StaffInfo($personId, $tenantId, $kind, 'Grade fictif', $status, $staffId);
-        $this->establishments[$tenantId . ':' . $establishmentId][] = $personId;
+        $this->members[$tenantId . ':' . $establishmentId][] = new StaffMemberInfo($staffId, $personId, $tenantId, $kind, $status, $grade, $category, $teaches);
     }
 
-    public function find(string $tenantId, string $personId): ?StaffInfo
+    public function membersOf(string $tenantId, string $establishmentId): array
     {
-        return $this->members[$tenantId . ':' . $personId] ?? null;
+        return array_values(array_filter($this->members[$tenantId . ':' . $establishmentId] ?? [], static fn (StaffMemberInfo $m): bool => $m->status === 'active'));
     }
 
     public function findPerson(string $tenantId, string $personId): ?PersonSummary
@@ -46,12 +48,6 @@ final class StaffWorld implements StaffDirectory, TeacherWorkload, SecondaryDocu
 
         return $person !== null && $person->tenantId === $tenantId ? $person : null;
     }
-
-    public function teacherIdsIn(string $tenantId, string $establishmentId): array
-    {
-        return array_values(array_unique($this->establishments[$tenantId . ':' . $establishmentId] ?? []));
-    }
-
 
     public function assignmentsOf(string $tenantId, string $personId): array
     {
@@ -66,16 +62,22 @@ final class StaffWorld implements StaffDirectory, TeacherWorkload, SecondaryDocu
     public function issue(string $tenantId, string $establishmentId, string $kind, string $personId, array $values, string $issuedBy, ?string $locale = null): IssuedDocument
     {
         $this->issued[] = ['kind' => $kind, 'person' => $personId, 'values' => $values];
+        $this->documents[$tenantId . ':' . self::DOCUMENT_ID] = $establishmentId;
 
-        return new IssuedDocument('01J00000000000000000000000', 'SCH-2026-W-000001', 'fictif000000000000000000000000', IssuedDocument::VALID, 'sec_doc30_payroll_payslip', $personId);
+        return new IssuedDocument(self::DOCUMENT_ID, 'SCH-2026-W-000001', 'fictif000000000000000000000000', IssuedDocument::VALID, 'sec_doc30_payroll_payslip', $personId);
     }
 
     public function revoke(string $tenantId, string $documentId, string $reason, string $revokedBy): void
     {
     }
+
+    public function pdfOf(string $tenantId, string $establishmentId, string $documentId): ?string
+    {
+        return ($this->documents[$tenantId . ':' . $documentId] ?? null) === $establishmentId ? '%PDF-1.4 bulletin fictif' : null;
+    }
 }
 
-/** PersonDirectory séparé : les deux contrats Socle ont des signatures find() incompatibles. */
+/** PersonDirectory séparé (signature de find() différente). */
 final class StaffPeople implements PersonDirectory
 {
     public function __construct(private readonly StaffWorld $world)

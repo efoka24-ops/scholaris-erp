@@ -8,9 +8,10 @@ use Scholaris\Modules\Apps\Secondary\Documents\Contracts\SecondaryDocuments;
 use Scholaris\Modules\Apps\Secondary\Setup\Contracts\EstablishmentProfiles;
 use Scholaris\Modules\Apps\Secondary\Staff\Application\SecondaryPayabilityCheck;
 use Scholaris\Modules\Apps\Secondary\Support\Store;
+use Scholaris\Modules\Socle\Documents\Contracts\DocumentPdfReader;
 use Scholaris\Modules\Socle\People\Contracts\PersonDirectory;
+use Scholaris\Modules\Socle\Staff\Contracts\EstablishmentStaffRoster;
 use Scholaris\Modules\Socle\Staff\Contracts\PayableHour;
-use Scholaris\Modules\Socle\Staff\Contracts\StaffDirectory;
 use Scholaris\Modules\Socle\Staff\Contracts\TeacherWorkload;
 use Scholaris\Modules\Socle\Staff\Contracts\VacationPayabilityCheck;
 use Tests\Support\Secondary\SecondaryTestCase;
@@ -34,7 +35,8 @@ final class StaffTest extends SecondaryTestCase
     {
         $this->world = new StaffWorld();
         $this->bootSecondary([
-            StaffDirectory::class => $this->world,
+            EstablishmentStaffRoster::class => $this->world,
+            DocumentPdfReader::class => $this->world,
             PersonDirectory::class => new StaffPeople($this->world),
             TeacherWorkload::class => $this->world,
             SecondaryDocuments::class => $this->world,
@@ -170,6 +172,69 @@ final class StaffTest extends SecondaryTestCase
             $slip = $this->ok('POST', '/secondary/staff/payroll/payslips', ['staff_profile_id' => $staff['id'], 'month_ref' => '2026-10', 'gross_amount' => 180000, 'deductions' => [['label' => 'Avance', 'amount' => 30000]]], self::INTENDANT, self::TA, $school);
             self::assertSame(150000, $slip['net_amount'], $type);
         }
+    }
+
+    public function testToutLePersonnelEstListeEtFiltreParCategorie(): void
+    {
+        $this->world->add(self::TA, $this->college, 'person-secretaire', 'staff-secretaire', 'Berthe Secretaire', 'permanent', 'active', false, 'Secrétaire', 'administratif');
+        $this->world->add(self::TA, $this->college, 'person-agent', 'staff-agent', 'Remy Agent', 'vacataire', 'active', false, 'Agent d’entretien', 'entretien');
+        $all = $this->ok('GET', '/secondary/staff/profiles', null, self::CENSEUR, self::TA, $this->college)['items'];
+        $byPerson = array_column($all, null, 'person_id');
+        self::assertArrayHasKey('person-secretaire', $byPerson, 'Le personnel non enseignant est listé.');
+        self::assertSame(['Secrétaire', false, null], [$byPerson['person-secretaire']['function'], $byPerson['person-secretaire']['teaches'], $byPerson['person-secretaire']['staff_category']]);
+        self::assertSame('teaching', $byPerson['person-salarie']['staff_category'], 'Catégorie de départ : enseignant si le socle connaît une affectation.');
+        $saved = $this->ok('PUT', '/secondary/staff/profiles', ['person_id' => 'person-agent', 'employment_status' => 'hourly', 'staff_category' => 'maintenance'], self::CHEF, self::TA, $this->college);
+        self::assertSame(['maintenance', 'hourly', 'Agent d’entretien'], [$saved['staff_category'], $saved['employment_status'], $saved['function']]);
+        self::assertSame(['person-agent'], array_column($this->ok('GET', '/secondary/staff/profiles?category=maintenance', null, self::CENSEUR, self::TA, $this->college)['items'], 'person_id'));
+        self::assertSame(422, $this->call('GET', '/secondary/staff/profiles?category=cuisine', null, self::CENSEUR, self::TA, $this->college)[0]);
+        self::assertNotContains('person-agent', array_column($this->ok('GET', '/secondary/staff/hours?month=2026-10', null, self::CENSEUR, self::TA, $this->college)['items'], 'person_id'), 'Heures de l\'appel : enseignants seulement.');
+        self::assertSame(404, $this->call('PUT', '/secondary/staff/profiles', ['person_id' => 'person-agent', 'employment_status' => 'hourly'], self::CHEF, self::TA, $this->leg)[0], 'Autre établissement.');
+    }
+
+    public function testPaieDuPersonnelNonEnseignantAvecHeuresMensuellesValideesParLeChef(): void
+    {
+        $this->world->add(self::TA, $this->college, 'person-agent', 'staff-agent', 'Remy Agent', 'vacataire', 'active', false, 'Agent d’entretien', 'entretien');
+        $this->world->add(self::TA, $this->college, 'person-civil-adm', 'staff-civil-adm', 'Ines Fonctionnaire', 'permanent', 'active', false, 'Surveillante générale', 'administratif');
+        $agent = $this->ok('PUT', '/secondary/staff/profiles', ['person_id' => 'person-agent', 'employment_status' => 'hourly', 'staff_category' => 'maintenance'], self::CHEF, self::TA, $this->college);
+        $teacher = $this->ok('PUT', '/secondary/staff/profiles', ['person_id' => 'person-vacataire', 'employment_status' => 'hourly'], self::CHEF, self::TA, $this->college);
+        $slip = ['staff_profile_id' => $agent['id'], 'month_ref' => '2026-10', 'gross_amount' => 40000, 'deductions' => []];
+        self::assertSame(409, $this->call('POST', '/secondary/staff/payroll/payslips', $slip, self::INTENDANT, self::TA, $this->college)[0], 'Vacataire non enseignant : heures du mois validées exigées.');
+        self::assertSame(409, $this->call('PUT', '/secondary/staff/payroll/hours', ['staff_profile_id' => $teacher['id'], 'month_ref' => '2026-10', 'minutes' => 600], self::INTENDANT, self::TA, $this->college)[0], 'Enseignant : heures de l\'appel, pas de saisie mensuelle.');
+        self::assertSame(403, $this->call('PUT', '/secondary/staff/payroll/hours', ['staff_profile_id' => $agent['id'], 'month_ref' => '2026-10', 'minutes' => 4800], self::CENSEUR, self::TA, $this->college)[0]);
+        $hours = $this->ok('PUT', '/secondary/staff/payroll/hours', ['staff_profile_id' => $agent['id'], 'month_ref' => '2026-10', 'minutes' => 4800, 'note' => 'Entretien fictif'], self::INTENDANT, self::TA, $this->college);
+        self::assertSame(['declared', 4800], [$hours['status'], $hours['minutes']]);
+        self::assertSame(403, $this->call('POST', '/secondary/staff/payroll/hours/' . $hours['id'] . '/validate', [], self::INTENDANT, self::TA, $this->college)[0], 'Le chef valide, pas l\'intendant.');
+        self::assertSame('validated', $this->ok('POST', '/secondary/staff/payroll/hours/' . $hours['id'] . '/validate', [], self::CHEF, self::TA, $this->college)['status']);
+        self::assertSame(409, $this->call('PUT', '/secondary/staff/payroll/hours', ['staff_profile_id' => $agent['id'], 'month_ref' => '2026-10', 'minutes' => 10], self::INTENDANT, self::TA, $this->college)[0], 'Heures validées : plus de ressaisie.');
+        self::assertSame([4800], array_column($this->ok('GET', '/secondary/staff/payroll/hours?month=2026-10', null, self::CHEF, self::TA, $this->college)['items'], 'minutes'));
+        self::assertSame(40000, $this->ok('POST', '/secondary/staff/payroll/payslips', $slip, self::INTENDANT, self::TA, $this->college)['net_amount']);
+        $civil = $this->ok('PUT', '/secondary/staff/profiles', ['person_id' => 'person-civil-adm', 'employment_status' => 'civil_servant', 'staff_category' => 'administrative'], self::CHEF, self::TA, $this->college);
+        self::assertSame(409, $this->call('POST', '/secondary/staff/payroll/payslips', ['staff_profile_id' => $civil['id'], 'month_ref' => '2026-10', 'gross_amount' => 1], self::INTENDANT, self::TA, $this->college)[0], 'Fonctionnaire non enseignant : jamais éligible.');
+    }
+
+    public function testPdfDuBulletinDePaieDroitsEtablissementEtRendu(): void
+    {
+        $profile = $this->ok('PUT', '/secondary/staff/profiles', ['person_id' => 'person-salarie', 'employment_status' => 'private_employee'], self::CHEF, self::TA, $this->college);
+        $slip = $this->ok('POST', '/secondary/staff/payroll/payslips', ['staff_profile_id' => $profile['id'], 'month_ref' => '2026-10', 'gross_amount' => 100000], self::INTENDANT, self::TA, $this->college);
+        self::assertSame(404, $this->call('GET', '/secondary/payroll/' . $slip['id'] . '/pdf', null, self::INTENDANT, self::TA, $this->college)[0], 'Pas encore payé : aucun DOC-30.');
+        $this->ok('POST', '/secondary/staff/payroll/payslips/' . $slip['id'] . '/validate', [], self::CHEF, self::TA, $this->college);
+        $this->ok('POST', '/secondary/staff/payroll/payslips/' . $slip['id'] . '/pay', [], self::INTENDANT, self::TA, $this->college);
+
+        foreach ([self::INTENDANT, self::CHEF] as $user) {
+            $response = $this->raw('GET', '/secondary/payroll/' . $slip['id'] . '/pdf', null, $user, self::TA, $this->college);
+            self::assertSame(200, $response->getStatusCode(), $user);
+            self::assertSame('application/pdf', $response->getHeaderLine('Content-Type'));
+            self::assertStringStartsWith('%PDF', (string) $response->getBody());
+        }
+        $this->grant(self::TA, 'lecteur-finances', $this->college, ['secondary.finance.read']);
+        self::assertSame(403, $this->call('GET', '/secondary/payroll/' . $slip['id'] . '/pdf', null, 'lecteur-finances', self::TA, $this->college)[0], 'Droit de la paie exigé.');
+        self::assertSame(403, $this->call('GET', '/secondary/payroll/' . $slip['id'] . '/pdf', null, self::CENSEUR, self::TA, $this->college)[0]);
+        $other = $this->factory->opened(self::TA, 'lycee_prive', 'private_secular', 'e-lycee-prive-pdf');
+        $this->grant(self::TA, self::INTENDANT, $other, ['secondary.billing.manage']);
+        self::assertSame(404, $this->call('GET', '/secondary/payroll/' . $slip['id'] . '/pdf', null, self::INTENDANT, self::TA, $other)[0], 'Bulletin d\'un autre établissement.');
+        $schoolB = $this->factory->opened(self::TB, 'college_prive', 'private_secular');
+        $this->grant(self::TB, 'intendant-b', $schoolB, ['secondary.billing.manage']);
+        self::assertSame(404, $this->call('GET', '/secondary/payroll/' . $slip['id'] . '/pdf', null, 'intendant-b', self::TB, $schoolB)[0], 'Autre client.');
     }
 
     private function lessonLog(string $id, string $school, string $teacher, string $slot, string $date, float $hours): void

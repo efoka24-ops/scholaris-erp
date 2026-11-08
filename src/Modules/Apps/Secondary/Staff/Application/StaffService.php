@@ -12,25 +12,28 @@ use Scholaris\Modules\Apps\Secondary\Support\Input;
 use Scholaris\Modules\Apps\Secondary\Support\SecondaryClock;
 use Scholaris\Modules\Apps\Secondary\Support\Store;
 use Scholaris\Modules\Socle\People\Contracts\PersonDirectory;
-use Scholaris\Modules\Socle\Staff\Contracts\StaffDirectory;
-use Scholaris\Modules\Socle\Staff\Contracts\StaffInfo;
+use Scholaris\Modules\Socle\Staff\Contracts\EstablishmentStaffRoster;
+use Scholaris\Modules\Socle\Staff\Contracts\StaffMemberInfo;
 use Scholaris\Modules\Socle\Staff\Contracts\TeacherWorkload;
 
 /**
- * Personnel du secondaire (T911, EX-RHP-01, EX-RHP-02) : statut d'emploi (fonctionnaire, contractuel de l'État, salarié du privé,
- * vacataire) des membres actifs du socle Staff affectés à l'établissement, et heures du mois : déclarées par l'appel, validées ou
- * rejetées au socle (TeacherWorkload), signées au cahier de textes (SignedLessons). Aucune identité n'est dupliquée.
+ * Personnel du secondaire (T911, EX-RHP-01, EX-RHP-02) : TOUT le personnel actif de l'établissement (enseignant, administratif,
+ * service, entretien), lu par le contrat EstablishmentStaffRoster du socle, avec sa fonction ; l'établissement fixe le statut d'emploi
+ * (fonctionnaire, contractuel de l'État, salarié du privé, vacataire) et la catégorie. Heures du mois des enseignants : déclarées par
+ * l'appel, validées ou rejetées au socle (TeacherWorkload), signées au cahier de textes (SignedLessons). Aucune identité dupliquée.
  */
 final class StaffService
 {
     public const PROFILES = 'se_staff_profiles';
     public const STATUSES = ['civil_servant', 'state_contract', 'private_employee', 'hourly'];
     public const CIVIL_SERVANT = 'civil_servant';
+    public const CATEGORIES = ['teaching', 'administrative', 'service', 'maintenance'];
+    public const TEACHING = 'teaching';
 
     public function __construct(
         private readonly Store $store,
         private readonly Access $access,
-        private readonly StaffDirectory $staff,
+        private readonly EstablishmentStaffRoster $roster,
         private readonly TeacherWorkload $workload,
         private readonly PersonDirectory $people,
         private readonly SignedLessons $lessons,
@@ -39,7 +42,7 @@ final class StaffService
     }
 
     /**
-     * @param array<string, mixed> $body person_id, employment_status, grade_label?, payroll_ref?
+     * @param array<string, mixed> $body person_id, employment_status, staff_category?, grade_label?, payroll_ref?
      * @return array<string, mixed>
      */
     public function upsert(Principal $principal, string $establishmentId, array $body): array
@@ -49,40 +52,48 @@ final class StaffService
         $input = new Input($body);
         $personId = (string) $input->reference('person_id');
         $status = (string) $input->enum('employment_status', self::STATUSES);
+        $category = $input->enum('staff_category', self::CATEGORIES, false);
         $grade = $input->string('grade_label', 80, false, true);
         $payrollRef = $input->string('payroll_ref', 40, false, true);
         $input->done();
         $member = $this->activeMember($principal->tenantId, $establishmentId, $personId);
-        $staffId = (string) $member->staffId;
         $now = $this->clock->now();
-        $existing = $this->store->select(self::PROFILES, $principal->tenantId, $establishmentId, ['staff_id' => $staffId], 'id', 1)[0] ?? null;
-        $values = ['person_id' => $member->personId, 'employment_status' => $status, 'grade_label' => $grade, 'payroll_ref' => $payrollRef, 'updated_at' => $now];
+        $existing = $this->store->select(self::PROFILES, $principal->tenantId, $establishmentId, ['staff_id' => $member->staffId], 'id', 1)[0] ?? null;
+        $values = [
+            'person_id' => $member->personId, 'employment_status' => $status, 'staff_category' => $category ?? ($existing['staff_category'] ?? null) ?? self::defaultCategory($member),
+            'grade_label' => $grade, 'payroll_ref' => $payrollRef, 'updated_at' => $now,
+        ];
         if ($existing === null) {
             $id = (string) new Ulid();
-            $this->store->insert(self::PROFILES, $principal->tenantId, $establishmentId, $values + ['id' => $id, 'staff_id' => $staffId, 'created_at' => $now]);
+            $this->store->insert(self::PROFILES, $principal->tenantId, $establishmentId, $values + ['id' => $id, 'staff_id' => $member->staffId, 'created_at' => $now]);
         } else {
             $id = (string) $existing['id'];
             $this->store->update(self::PROFILES, $principal->tenantId, $establishmentId, $values, ['id' => $id]);
         }
         $this->access->audit($principal, 'secondary.staff.profile_saved', self::PROFILES, $id, $existing === null ? null : self::resource($existing), $values);
 
-        return $this->profile($principal->tenantId, $establishmentId, $id);
+        return $this->roster($principal->tenantId, $establishmentId, $member->personId)[0] ?? [];
     }
 
     /**
-     * Membres actifs de l'établissement, avec leur profil (statut null tant qu'il n'est pas renseigné), par nom.
+     * Tout le personnel actif de l'établissement avec son profil (statut null tant qu'il n'est pas renseigné), par nom ; filtre
+     * facultatif par catégorie.
      *
      * @return list<array<string, mixed>>
      */
-    public function profiles(Principal $principal, string $establishmentId): array
+    public function profiles(Principal $principal, string $establishmentId, ?string $category = null): array
     {
         $this->access->require($principal, $establishmentId, StaffAccess::PROFILE_READ);
+        if ($category !== null && !in_array($category, self::CATEGORIES, true)) {
+            throw HttpException::validation(['category' => ['Catégorie attendue : ' . implode(', ', self::CATEGORIES) . '.']]);
+        }
+        $items = $this->roster($principal->tenantId, $establishmentId);
 
-        return $this->roster($principal->tenantId, $establishmentId);
+        return $category === null ? $items : array_values(array_filter($items, static fn (array $item): bool => $item['staff_category'] === $category));
     }
 
     /**
-     * Heures du mois par membre : déclarées par l'appel, validées et rejetées au socle ; minutes signées au cahier de textes.
+     * Heures du mois des enseignants : déclarées par l'appel, validées et rejetées au socle ; minutes signées au cahier de textes.
      *
      * @return list<array<string, mixed>>
      */
@@ -95,6 +106,9 @@ final class StaffService
         $logged = $this->lessons->minutesByTeacher($principal->tenantId, $establishmentId, $month);
         $hours = [];
         foreach ($this->roster($principal->tenantId, $establishmentId) as $profile) {
+            if ($profile['teaches'] !== true) {
+                continue;
+            }
             $personId = (string) $profile['person_id'];
             $summary = $this->workload->hoursOf($principal->tenantId, $establishmentId, $personId, $month);
             $hours[] = [
@@ -108,26 +122,17 @@ final class StaffService
         return $hours;
     }
 
-    /** @return array<string, mixed> */
-    public function profile(string $tenantId, string $establishmentId, string $id): array
-    {
-        $row = $this->store->findOrFail(self::PROFILES, $tenantId, $establishmentId, $id, 'Profil de personnel introuvable.');
-        $person = $this->people->find($tenantId, (string) $row['person_id']);
-
-        return self::resource($row) + ['full_name' => $person?->fullName() ?? ''];
-    }
-
     /**
-     * Profil d'un membre encore actif dans l'établissement.
+     * Profil d'un membre encore actif dans l'établissement, avec `teaches` (enseignant : heures issues de l'appel).
      *
      * @return array<string, mixed>
      */
     public function activeProfile(string $tenantId, string $establishmentId, string $profileId): array
     {
         $row = $this->store->findOrFail(self::PROFILES, $tenantId, $establishmentId, $profileId, 'Profil de personnel introuvable.');
-        $this->activeMember($tenantId, $establishmentId, (string) $row['person_id']);
+        $member = $this->activeMember($tenantId, $establishmentId, (string) $row['person_id']);
 
-        return $row;
+        return $row + ['teaches' => $member->teaches];
     }
 
     /**
@@ -138,46 +143,56 @@ final class StaffService
     {
         return [
             'id' => (string) $row['id'], 'staff_id' => (string) $row['staff_id'], 'person_id' => (string) $row['person_id'],
-            'employment_status' => (string) $row['employment_status'], 'grade_label' => $row['grade_label'] === null ? null : (string) $row['grade_label'],
+            'employment_status' => (string) $row['employment_status'],
+            'staff_category' => ($row['staff_category'] ?? null) === null ? null : (string) $row['staff_category'],
+            'grade_label' => $row['grade_label'] === null ? null : (string) $row['grade_label'],
             'payroll_ref' => $row['payroll_ref'] === null ? null : (string) $row['payroll_ref'],
             'updated_at' => (string) $row['updated_at'],
         ];
     }
 
     /** @return list<array<string, mixed>> */
-    private function roster(string $tenantId, string $establishmentId): array
+    private function roster(string $tenantId, string $establishmentId, ?string $onlyPerson = null): array
     {
         $byStaff = array_column($this->store->select(self::PROFILES, $tenantId, $establishmentId, [], 'id', 5000), null, 'staff_id');
-        $personIds = $this->staff->teacherIdsIn($tenantId, $establishmentId);
+        $members = array_values(array_filter($this->roster->membersOf($tenantId, $establishmentId), static fn (StaffMemberInfo $m): bool => $onlyPerson === null || $m->personId === $onlyPerson));
         $names = [];
-        foreach ($this->people->findMany($tenantId, $personIds) as $person) {
+        foreach ($this->people->findMany($tenantId, array_map(static fn (StaffMemberInfo $m): string => $m->personId, $members)) as $person) {
             $names[$person->id] = $person->fullName();
         }
         $items = [];
-        foreach ($personIds as $personId) {
-            $member = $this->staff->find($tenantId, $personId);
-            if ($member === null || $member->staffId === null || $member->status !== 'active') {
-                continue;
-            }
+        foreach ($members as $member) {
             $row = $byStaff[$member->staffId] ?? null;
-            $items[] = ($row === null ? [
-                'id' => null, 'staff_id' => $member->staffId, 'person_id' => $personId, 'employment_status' => null,
-                'grade_label' => $member->grade, 'payroll_ref' => null, 'updated_at' => null,
-            ] : self::resource($row)) + ['full_name' => $names[$personId] ?? ''];
+            $base = $row === null ? [
+                'id' => null, 'staff_id' => $member->staffId, 'person_id' => $member->personId, 'employment_status' => null,
+                'staff_category' => self::defaultCategory($member), 'grade_label' => $member->grade, 'payroll_ref' => null, 'updated_at' => null,
+            ] : self::resource($row);
+            $base['staff_category'] ??= self::defaultCategory($member);
+            $items[] = $base + [
+                'full_name' => $names[$member->personId] ?? '', 'function' => $member->grade, 'socle_kind' => $member->kind,
+                'socle_category' => $member->category, 'teaches' => $member->teaches,
+            ];
         }
         usort($items, static fn (array $a, array $b): int => strcmp((string) $a['full_name'], (string) $b['full_name']));
 
         return $items;
     }
 
-    /** Membre actif du socle Staff affecté à cet établissement (sinon 404, y compris pour un autre client ou établissement). */
-    private function activeMember(string $tenantId, string $establishmentId, string $personId): StaffInfo
+    /** Membre actif de l'établissement (enseignant ou non), sinon 404, y compris pour un autre client ou établissement. */
+    private function activeMember(string $tenantId, string $establishmentId, string $personId): StaffMemberInfo
     {
-        $member = in_array($personId, $this->staff->teacherIdsIn($tenantId, $establishmentId), true) ? $this->staff->find($tenantId, $personId) : null;
-        if ($member === null || $member->staffId === null || $member->status !== 'active') {
-            throw HttpException::notFound('Personnel actif introuvable dans cet établissement.');
+        foreach ($this->roster->membersOf($tenantId, $establishmentId) as $member) {
+            if ($member->personId === $personId && $member->status === 'active') {
+                return $member;
+            }
         }
 
-        return $member;
+        throw HttpException::notFound('Personnel actif introuvable dans cet établissement.');
+    }
+
+    /** Catégorie de départ : enseignant si le socle lui connaît une affectation d'enseignement, sinon à renseigner. */
+    private static function defaultCategory(StaffMemberInfo $member): ?string
+    {
+        return $member->teaches ? self::TEACHING : null;
     }
 }

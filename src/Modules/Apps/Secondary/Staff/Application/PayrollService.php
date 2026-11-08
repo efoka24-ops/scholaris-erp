@@ -12,6 +12,7 @@ use Scholaris\Modules\Apps\Secondary\Support\Access;
 use Scholaris\Modules\Apps\Secondary\Support\Input;
 use Scholaris\Modules\Apps\Secondary\Support\SecondaryClock;
 use Scholaris\Modules\Apps\Secondary\Support\Store;
+use Scholaris\Modules\Socle\Documents\Contracts\DocumentPdfReader;
 
 /**
  * Paie simplifiée du privé (T912, module `payroll_simple`, Q9) : brut et retenues saisis par l'intendant, net = brut - retenues, aucun
@@ -34,6 +35,8 @@ final class PayrollService
         private readonly Access $access,
         private readonly StaffService $staff,
         private readonly SecondaryDocuments $documents,
+        private readonly MonthlyHoursService $monthlyHours,
+        private readonly DocumentPdfReader $pdfs,
         private readonly SecondaryClock $clock,
     ) {
     }
@@ -125,6 +128,10 @@ final class PayrollService
         }, false) ?? [];
         $input->done();
         $profile = $this->eligibleProfile($principal->tenantId, $establishmentId, $profileId);
+        if ($profile['teaches'] !== true && $profile['employment_status'] === 'hourly'
+            && $this->monthlyHours->validatedMinutes($principal->tenantId, $establishmentId, $profileId, $month) === null) {
+            throw HttpException::conflict('Vacataire non enseignant : les heures du mois doivent être saisies puis validées par le chef d\'établissement.');
+        }
         $deducted = array_sum(array_column($deductions, 'amount'));
         if ($deducted > $gross) {
             throw HttpException::validation(['deductions' => ['Le total des retenues ne peut pas dépasser le brut.']]);
@@ -203,6 +210,22 @@ final class PayrollService
         $this->access->require($principal, $establishmentId, StaffAccess::PAYROLL_READ);
 
         return self::resource($this->store->findOrFail(self::TABLE, $principal->tenantId, $establishmentId, $id, 'Bulletin de paie introuvable.'));
+    }
+
+    /**
+     * PDF du DOC-30 d'un bulletin payé de cet établissement (seul le document du bulletin est lu ; 404 sinon, ou s'il est révoqué).
+     */
+    public function pdf(Principal $principal, string $establishmentId, string $id): string
+    {
+        $this->access->require($principal, $establishmentId, [...StaffAccess::PAYROLL_PREPARE, ...StaffAccess::PAYROLL_VALIDATE]);
+        $row = $this->store->findOrFail(self::TABLE, $principal->tenantId, $establishmentId, $id, 'Bulletin de paie introuvable.');
+        $documentId = $row['document_id'] === null ? null : (string) $row['document_id'];
+        $pdf = $documentId === null ? null : $this->pdfs->pdfOf($principal->tenantId, $establishmentId, $documentId);
+        if ($pdf === null) {
+            throw HttpException::notFound('Aucun DOC-30 émis pour ce bulletin.');
+        }
+
+        return $pdf;
     }
 
     /** @return list<string> */

@@ -20,4 +20,8 @@ return static function (SecondaryRoutes $routes): void {
     $payroll->get('/staff/payroll/payslips/{id}', [StaffController::class, 'showPayslip']);
     $payroll->post('/staff/payroll/payslips/{id}/validate', [StaffController::class, 'validatePayslip']);
     $payroll->post('/staff/payroll/payslips/{id}/pay', [StaffController::class, 'payPayslip']);
+    $payroll->get('/payroll/{id}/pdf', [StaffController::class, 'payslipPdf']);
+    $payroll->get('/staff/payroll/hours', [StaffController::class, 'monthlyHours']);
+    $payroll->put('/staff/payroll/hours', [StaffController::class, 'declareMonthlyHours']);
+    $payroll->post('/staff/payroll/hours/{id}/validate', [StaffController::class, 'validateMonthlyHours']);
 };

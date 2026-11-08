@@ -1,6 +1,6 @@
 // Lot E3-E (front) : personnel et paie simplifiée du secondaire (calculs d'affichage, menu, textes FR/EN complets).
 import { describe, expect, it } from 'vitest';
-import { hoursOf, netOf, PAYABLE_STATUSES } from '@/views/secondary/staff/staffApi';
+import { hoursOf, netOf, PAYABLE_STATUSES, STAFF_CATEGORIES } from '@/views/secondary/staff/staffApi';
 import { MENU, visibleEntries } from '@/views/secondary/menu';
 import type { SecondaryProfile } from '@/api/secondaryProfile';
 import { secondaryStaffFr } from '@/i18n/secondary-staff-fr';
@@ -30,6 +30,11 @@ describe('personnel et paie simplifiée du secondaire', () => {
     const privateProfile = { modules: [{ code: 'payroll_simple', state: 'active' }] } as unknown as SecondaryProfile;
     expect(names(['secondary.billing.manage'], privateProfile)).toContain('sec-payroll');
     expect(names(['secondary.settings.manage'], privateProfile)).toContain('sec-payroll');
+  });
+
+  it('nomme chaque catégorie du personnel, enseignant ou non', () => {
+    const keys = Object.keys(secondaryStaffFr);
+    for (const c of STAFF_CATEGORIES) expect(keys).toContain(`secst.category.${c}`);
   });
 
   it('a chaque texte en français et en anglais', () => {

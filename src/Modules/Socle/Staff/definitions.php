@@ -15,6 +15,8 @@ return [
     StaffDirectory::class => autowire(PdoStaffDirectory::class),
     TaughtHoursRecorder::class => get(HoursService::class),
     \Scholaris\Modules\Socle\Staff\Contracts\TeacherWorkload::class => autowire(\Scholaris\Modules\Socle\Staff\Infrastructure\PdoTeacherWorkload::class),
+    // Tout le personnel actif d'un établissement (enseignant ou non), en lecture (Secondaire E3-EF2).
+    \Scholaris\Modules\Socle\Staff\Contracts\EstablishmentStaffRoster::class => autowire(\Scholaris\Modules\Socle\Staff\Infrastructure\PdoEstablishmentStaffRoster::class),
     // Contrats IPES (D14, D15, D17) : calcul paramétrable des vacations et écriture des affectations. Les contrôles de payabilité
     // (D16) se déclarent sous les clés `staff.vacation.payability_checks.*` (voir VacationPayabilityCheck::REGISTRY_PREFIX).
     \Scholaris\Modules\Socle\Staff\Contracts\VacationCalculator::class => get(\Scholaris\Modules\Socle\Staff\Application\VacationCalculatorService::class),
