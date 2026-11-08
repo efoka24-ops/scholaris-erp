@@ -307,10 +307,18 @@ export function isoDate(d = new Date()): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Douala', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
 }
 
+const actors: BrowserContext[] = [];
+
+/** Ferme les contextes ouverts par actorPage (à appeler dans test.afterEach) : ils ne s'accumulent pas d'un test à l'autre. */
+export async function closeActors(): Promise<void> {
+  for (const c of actors.splice(0)) await c.close().catch(() => undefined);
+}
+
 /** Contexte de navigateur propre à un acteur (sa session, ses cookies), relié à la pile. */
 export async function actorPage(browser: Browser, stack: Stack, info: TestInfo): Promise<Page> {
   const viewport = info.project.use.viewport ?? { width: 1280, height: 800 };
   const context = await browser.newContext({ baseURL: String(info.project.use.baseURL), viewport, locale: 'fr-FR', timezoneId: 'Africa/Douala', serviceWorkers: 'block' });
+  actors.push(context);
   await stack.attach(context);
   return context.newPage();
 }

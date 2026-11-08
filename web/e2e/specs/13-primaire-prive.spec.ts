@@ -1,5 +1,5 @@
 import { test } from '@playwright/test';
-import { actorPage, expect, startStack, uiLogin, type Stack } from './stack';
+import { actorPage, closeActors, expect, startStack, uiLogin, type Stack } from './stack';
 
 /**
  * Parcours 3 — Primaire privé (C-110), sur la pile réelle. Semis par l'API (« primarySchool ») : école privée, année et
@@ -24,6 +24,9 @@ let stack: Stack;
 test.beforeAll(async () => {
   test.setTimeout(120_000);
   stack = await startStack();
+});
+test.afterEach(async () => {
+  await closeActors();
 });
 test.afterAll(async () => {
   await stack?.stop();

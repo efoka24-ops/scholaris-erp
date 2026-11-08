@@ -1,5 +1,5 @@
 import { test, type Page } from '@playwright/test';
-import { actorPage, expect, startStack, uiLogin, type Stack } from './stack';
+import { actorPage, closeActors, expect, startStack, uiLogin, type Stack } from './stack';
 
 /**
  * Parcours 7 — Secondaire (C-110), PARTIEL : le reste (séries, coefficients, frais, emploi du temps, appel, notes, conseil,
@@ -19,6 +19,9 @@ let stack: Stack;
 test.beforeAll(async () => {
   test.setTimeout(120_000);
   stack = await startStack();
+});
+test.afterEach(async () => {
+  await closeActors();
 });
 test.afterAll(async () => {
   await stack?.stop();

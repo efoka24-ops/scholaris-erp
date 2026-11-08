@@ -1,5 +1,5 @@
 import { test, type Page } from '@playwright/test';
-import { actorPage, expect, startStack, uiLogin, type Stack } from './stack';
+import { actorPage, closeActors, expect, startStack, uiLogin, type Stack } from './stack';
 
 /**
  * Parcours 2 — IPES (C-110), sur la pile réelle. Semis par l'API (recettes PHP réutilisées, fixtures/stack/seed.php « ipes ») :
@@ -26,6 +26,9 @@ let stack: Stack;
 test.beforeAll(async () => {
   test.setTimeout(120_000);
   stack = await startStack();
+});
+test.afterEach(async () => {
+  await closeActors();
 });
 test.afterAll(async () => {
   await stack?.stop();

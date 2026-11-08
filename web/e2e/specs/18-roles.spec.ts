@@ -1,5 +1,5 @@
 import { test } from '@playwright/test';
-import { actorPage, expect, startStack, uiLogin, type Stack } from './stack';
+import { actorPage, closeActors, expect, startStack, uiLogin, type Stack } from './stack';
 
 /**
  * Parcours 8 — Rôles (C-110), sur la pile réelle : pour chaque application, des comptes à rôle restreint (enseignant, caissier,
@@ -45,6 +45,9 @@ let stack: Stack;
 test.beforeAll(async () => {
   test.setTimeout(120_000);
   stack = await startStack();
+});
+test.afterEach(async () => {
+  await closeActors();
 });
 test.afterAll(async () => {
   await stack?.stop();

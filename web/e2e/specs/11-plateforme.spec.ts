@@ -1,5 +1,5 @@
 import { test } from '@playwright/test';
-import { actorPage, expect, freshTotp, startStack, typeCode, type Stack } from './stack';
+import { actorPage, closeActors, expect, freshTotp, startStack, typeCode, type Stack } from './stack';
 
 /**
  * Parcours 1 — Plateforme (C-110), sur la pile réelle : demande d'accès publique, acceptation par le super administrateur de
@@ -14,6 +14,9 @@ let stack: Stack;
 test.beforeAll(async () => {
   test.setTimeout(120_000);
   stack = await startStack();
+});
+test.afterEach(async () => {
+  await closeActors();
 });
 test.afterAll(async () => {
   await stack?.stop();
