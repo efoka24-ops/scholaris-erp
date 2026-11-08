@@ -210,3 +210,46 @@ paths:
         '404': {description: Recours ou série introuvable}
         '409': {description: Module inactif ou recours déjà examiné}
         '422': {description: Recours accepté sans série révisée}
+  /api/v1/secondary/councils/rule-draft:
+    get:
+      summary: Brouillon de version de règles du niveau (ou de la classe) avec les coefficients versionnés de Setup (T900), à publier par POST /calculation-rules
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: class_id, in: query, required: true, schema: {type: string, maxLength: 40}}
+        - {name: scope, in: query, required: false, schema: {type: string, enum: [level, class]}}
+      responses:
+        '200': {description: "{data: {class_id, academic_year_id, level_code, stream_id, scope, structure_id, label, from_example, example_notice, coefficients, definition}}"}
+        '403': {description: "Permission secondary.council.prepare, secondary.council.preside ou secondary.settings.manage requise, ou classe hors périmètre"}
+        '404': {description: Application non ouverte ou classe inconnue du secondaire}
+        '409': {description: Aucun coefficient en vigueur dans Setup ou niveau sans structure}
+        '422': {description: Paramètre class_id ou scope invalide}
+  /api/v1/secondary/councils/report-card-settings:
+    get:
+      summary: Paramètres des bulletins (types par nature de période, groupes de matières, en-tête)
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "{data: {report_card_types, expected_types, subject_groups, letterhead}}"}
+        '403': {description: Permission absente}
+        '404': {description: Application non ouverte au client}
+  /api/v1/secondary/councils/report-card-settings/preset:
+    post:
+      summary: Prérègle assessment.report_card_types (bulletins trimestriel et annuel du secondaire) sans écraser une valeur déjà fixée
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "{data: {applied, report_card_types, expected_types, subject_groups, letterhead}}"}
+        '403': {description: Permission secondary.settings.manage ou secondary.council.preside sur tout l'établissement requise}
+        '404': {description: Application non ouverte au client}
+  /api/v1/secondary/councils/{councilId}/report-cards/{personId}:
+    get:
+      summary: Aperçu des variables secondary_* du bulletin d'un élève et dernier instantané enregistré à l'émission (T904)
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: councilId, in: path, required: true, schema: {type: string}}
+        - {name: personId, in: path, required: true, schema: {type: string}}
+        - {name: locale, in: query, required: false, schema: {type: string, enum: [fr, en]}}
+      responses:
+        '200': {description: "{data: {council_id, person_id, status, variables, snapshot}}"}
+        '403': {description: "Permission secondary.reportcard.read, reportcard.validate, council.prepare ou council.preside requise, ou classe hors périmètre"}
+        '404': {description: "Conseil, élève ou classe du secondaire introuvable"}
