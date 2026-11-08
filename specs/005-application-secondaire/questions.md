@@ -72,3 +72,4 @@ Chaque réponse par défaut est un **paramètre** (plateforme, client ou établi
 
 ## F. Décisions du propriétaire
 - **2 novembre 2026, autorisation d'ouverture** : obligatoire pour **toute** inscription, établissements **publics compris** (aucune dispense). La garde du socle reste en place pour tous les types (rapport E1-A, décision 1).
+- **8 novembre 2026, tableaux de bord (E4-A)** : choix validés par le propriétaire. O7 compare au trimestre précédent de la même année ; la vue réseau est limitée aux établissements d'un même client ; rapports en CSV et Excel (pas de PDF) ; cibles des objectifs O1 à O7 paramétrables « à confirmer ». Les valeurs en attente des écoles et des ministères restent des paramètres, jamais figées dans le code.
