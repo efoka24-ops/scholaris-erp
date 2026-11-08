@@ -36,6 +36,7 @@ export const MENU: MenuEntry[] = [
   { name: 'sec-staff', title: 'secst.title', text: 'secst.menuText', perms: S.staff },
   { name: 'sec-payroll', title: 'sec.menu.payroll', text: 'sec.home.payrollText', perms: S.payroll, modules: ['payroll_simple'] },
   { name: 'sec-services', title: 'sec.menu.services', text: 'sec.home.servicesText', perms: S.services, modules: ['boarding', 'canteen_transport', 'library', 'infirmary'] },
+  { name: 'sec-dashboards', title: 'secdb.title', text: 'secdb.menuText', perms: S.dashboards },
   { name: 'sec-student', title: 'sec.portal.studentTitle', text: 'sec.home.studentText', perms: S.self },
   { name: 'sec-family', title: 'sec.portal.familyTitle', text: 'sec.home.familyText', perms: S.family },
 ];

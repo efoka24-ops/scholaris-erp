@@ -25,6 +25,7 @@ const screens: Screen[] = [
   ['paie', 'sec-payroll', () => import('./staff/PayrollView.vue'), S.payroll, 'secpay.title'],
   ['conseils-de-classe', 'sec-councils', () => import('./councils/ClassCouncilView.vue'), S.councils, 'secc.title'],
   ['bulletins', 'sec-report-cards', () => import('./councils/ReportCardView.vue'), S.reportCards, 'secb.title'],
+  ['tableaux-de-bord', 'sec-dashboards', () => import('./dashboards/DashboardsView.vue'), S.dashboards, 'secdb.title'],
   ['orientation', 'sec-orientation', () => import('./councils/OrientationView.vue'), S.orientation, 'seco.title'],
   ['mon-espace', 'sec-student', () => import('./portals/StudentPortalView.vue'), S.self, 'sec.portal.studentTitle'],
   ['famille', 'sec-family', () => import('./portals/FamilyPortalView.vue'), S.family, 'sec.portal.familyTitle'],

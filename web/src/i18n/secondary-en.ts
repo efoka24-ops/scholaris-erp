@@ -1,6 +1,7 @@
 // Labels (English) of the Secondary education application (home, profile, documents, portals). Other batches add their keys here.
 import type { secondaryFr } from './secondary-fr';
 import { secondaryCouncilsEn } from './secondary-councils-en';
+import { secondaryDashboardsEn } from './secondary-dashboards-en';
 import { secondaryDisciplineEn } from './secondary-discipline-en';
 import { secondaryExamsEn } from './secondary-exams-en';
 import { secondaryStaffEn } from './secondary-staff-en';
@@ -8,6 +9,7 @@ import { secondaryTimetableEn } from './secondary-timetable-en';
 
 export const secondaryEn: Record<keyof typeof secondaryFr, string> = {
   ...secondaryCouncilsEn,
+  ...secondaryDashboardsEn,
   ...secondaryDisciplineEn,
   ...secondaryExamsEn,
   ...secondaryTimetableEn,
