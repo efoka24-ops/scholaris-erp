@@ -14,7 +14,7 @@ const proposals = computed(() => Object.entries(props.sim.summary.by_proposal ??
 <template>
   <div class="hdl-sim">
     <p class="muted">{{ dt('hdl.prep.rules', { strategy: sim.rules.strategy, version: sim.rules.version }) }} · {{ dt('hdl.prep.summary', { students: sim.summary.students, borderline: sim.summary.borderline }) }}</p>
-    <p v-if="sim.unlocked" class="notice notice--warning">{{ dt('hdl.prep.unlocked') }}</p>
+    <p v-if="sim.unlocked?.length" class="notice notice--warning" data-test="sim-unlocked">{{ dt('hdl.prep.unlocked') }} {{ sim.unlocked.join(', ') }}</p>
     <div v-if="proposals.length" class="hdl-counts">
       <div v-for="[label, count] in proposals" :key="label" class="hdl-count"><span class="muted">{{ label }}</span><strong>{{ count }}</strong></div>
     </div>

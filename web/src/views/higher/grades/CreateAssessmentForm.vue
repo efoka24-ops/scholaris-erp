@@ -1,33 +1,67 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue';
 import ErrorNotice from '@/components/ErrorNotice.vue';
-import { curricula, type Curriculum, type CurriculumElement } from '@/api/higher';
+import { curricula, type Curriculum } from '@/api/higher';
+import { teaching, type Assignment } from '@/api/higher-teaching';
 import { ASSESSMENT_KINDS, DEFAULT_WEIGHTS, grades, type Assessment, type AssessmentKind } from '@/api/higher-grades';
 import { useHigherStore } from '../store';
 import { useHigherAction } from '../useHigherAction';
 import { gk, useGradesI18n } from './i18n';
 
-// Création d'une évaluation (enseignant affecté). Maquettes publiées lues si le rôle y a accès ; sinon identifiants saisis.
+// Création d'une évaluation (enseignant affecté). Maquettes publiées lues si le rôle y a accès ; à défaut (ou si la maquette ne
+// peut pas être lue), maquettes et EC tirés des affectations d'enseignement visibles (C110-I2) ; sinon identifiants saisis.
+interface ElementOption { id: string; code: string; title: string }
+interface CurriculumOption { id: string; label: string; level_id: string }
 const emit = defineEmits<{ (e: 'created', a: Assessment): void }>();
 const { tg } = useGradesI18n();
 const higher = useHigherStore();
 const act = useHigherAction();
 
 const list = ref<Curriculum[] | null>(null);
-const elements = ref<CurriculumElement[]>([]);
+const mine = ref<Assignment[]>([]);
+const elements = ref<ElementOption[]>([]);
 const touched = ref(false);
 const form = reactive({ curriculum_id: '', element_id: '', group_id: '', kind: 'cc' as AssessmentKind, label: '', held_on: '', entry_due_on: '', max_score: 20, weight_percent: DEFAULT_WEIGHTS.cc, anonymous: false });
 
-const curriculum = computed(() => list.value?.find((c) => c.id === form.curriculum_id) ?? null);
+const options = computed<CurriculumOption[] | null>(() => {
+  if (list.value && list.value.length) {
+    return list.value.map((c) => ({ id: c.id, label: `${c.title || higher.programName(c.program_id)} · ${higher.levelName(c.level_id)} · v${c.version}`, level_id: c.level_id }));
+  }
+  const seen = new Map<string, CurriculumOption>();
+  for (const a of mine.value) {
+    if (!seen.has(a.curriculum_id)) seen.set(a.curriculum_id, { id: a.curriculum_id, label: `${higher.programName(a.program_id)} · ${higher.levelName(a.level_id)}`, level_id: a.level_id });
+  }
+  return seen.size ? [...seen.values()] : list.value ? [] : null;
+});
+const curriculum = computed(() => options.value?.find((c) => c.id === form.curriculum_id) ?? null);
 const groups = computed(() => higher.groups.filter((g) => !curriculum.value || g.level_id === curriculum.value.level_id));
 const rangeBad = computed(() => touched.value && (!(form.max_score >= 1 && form.max_score <= 100) || !(form.weight_percent >= 0 && form.weight_percent <= 100)));
 
 async function pickCurriculum(): Promise<void> {
   form.element_id = '';
   elements.value = [];
-  if (!form.curriculum_id || !list.value) return;
-  const tree = await act.run(() => curricula.show(form.curriculum_id));
-  if (tree) elements.value = tree.semesters.flatMap((s) => s.units.flatMap((u) => u.elements));
+  const id = form.curriculum_id;
+  if (!id || !options.value) return;
+  let found: ElementOption[] = [];
+  if (list.value?.some((c) => c.id === id)) {
+    try {
+      const tree = await curricula.show(id);
+      found = tree.semesters.flatMap((s) => s.units.flatMap((u) => u.elements.map((e) => ({ id: e.id, code: e.code, title: e.title }))));
+    } catch {
+      found = [];
+    }
+  }
+  if (!found.length) found = assignedElements(id);
+  if (form.curriculum_id === id) elements.value = found;
+}
+
+/** EC des affectations visibles pour une maquette (sans doublon). */
+function assignedElements(curriculumId: string): ElementOption[] {
+  const seen = new Map<string, ElementOption>();
+  for (const a of mine.value) {
+    if (a.curriculum_id === curriculumId && !seen.has(a.element_id)) seen.set(a.element_id, { id: a.element_id, code: a.element_code, title: a.element_title });
+  }
+  return [...seen.values()];
 }
 
 function pickKind(): void {
@@ -59,11 +93,21 @@ async function submit(): Promise<void> {
 }
 
 onMounted(async () => {
-  await higher.loadRefs('groups');
-  try {
-    list.value = (await curricula.list(higher.scope())).filter((c) => c.status === 'published');
-  } catch {
-    list.value = null;
+  await Promise.all([
+    higher.loadRefs('groups', 'programs', 'levels'),
+    curricula.list(higher.scope()).then(
+      (all) => (list.value = all.filter((c) => c.status === 'published')),
+      () => (list.value = null),
+    ),
+    teaching.assignments().then(
+      (all) => (mine.value = all.filter((a) => a.status === 'active')),
+      () => (mine.value = []),
+    ),
+  ]);
+  // Une seule maquette proposée : choisie d'office, ses EC sont chargés.
+  if (options.value?.length === 1 && !form.curriculum_id) {
+    form.curriculum_id = options.value[0]!.id;
+    await pickCurriculum();
   }
 });
 </script>
@@ -74,16 +118,16 @@ onMounted(async () => {
     <p class="muted hi-small hi-wide">{{ tg('hg.new.hint') }}</p>
     <div class="field">
       <label for="na-cur">{{ tg('hg.new.curriculum') }}</label>
-      <select v-if="list" id="na-cur" v-model="form.curriculum_id" :aria-invalid="touched && !form.curriculum_id" @change="pickCurriculum">
+      <select v-if="options" id="na-cur" v-model="form.curriculum_id" :aria-invalid="touched && !form.curriculum_id" @change="pickCurriculum">
         <option value="" disabled>—</option>
-        <option v-for="c in list" :key="c.id" :value="c.id">{{ c.title || higher.programName(c.program_id) }} · {{ higher.levelName(c.level_id) }} · v{{ c.version }}</option>
+        <option v-for="c in options" :key="c.id" :value="c.id">{{ c.label }}</option>
       </select>
       <input v-else id="na-cur" v-model="form.curriculum_id" type="text" :aria-invalid="touched && !form.curriculum_id" />
       <span v-if="touched && !form.curriculum_id" class="error">{{ tg('hg.required') }}</span>
     </div>
     <div class="field">
       <label for="na-el">{{ tg('hg.new.element') }}</label>
-      <select v-if="list && elements.length" id="na-el" v-model="form.element_id" :aria-invalid="touched && !form.element_id">
+      <select v-if="options && elements.length" id="na-el" v-model="form.element_id" :aria-invalid="touched && !form.element_id">
         <option value="" disabled>—</option>
         <option v-for="e in elements" :key="e.id" :value="e.id">{{ e.code }} · {{ e.title }}</option>
       </select>

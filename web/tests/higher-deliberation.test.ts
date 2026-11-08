@@ -26,7 +26,7 @@ const marie = {
   proposal: 'Admis', borderline: [], rank: 1,
 };
 const paul = { person_id: 'P-PAUL', name: 'Paul E.', matricule: 'IPES-25-0002', average: 9.6, gpa: 1.8, credits_earned: 24, credits_total: 30, mention: null, proposal: 'Rattrapage', borderline: [{ kind: 'semester', unit: null, value: 9.6, threshold: 10, gap: 0.4 }], rank: 2 };
-const simulation = { data: { jury_id: 'J1', rules: { strategy: 'lmd', version: 2, options: {} }, students: [marie, paul], summary: { students: 2, by_proposal: { Admis: 1, Rattrapage: 1 }, borderline: 1 }, unlocked: false, margin: 0.5 } };
+const simulation = { data: { jury_id: 'J1', rules: { strategy: 'lmd', version: 2, options: {} }, students: [marie, paul], summary: { students: 2, by_proposal: { Admis: 1, Rattrapage: 1 }, borderline: 1 }, unlocked: [] as string[], margin: 0.5 } };
 const problem = (status: number, slug: string, detail: string) => jsonResponse({ type: `https://api.scholaris.cm/errors/${slug}`, title: 'Refus', status, detail, trace_id: 'TR-DEL' }, status);
 
 async function mountAt(component: Component, path: string, props: Record<string, unknown>) {
@@ -59,6 +59,17 @@ describe('Délibérations IPES', () => {
     expect(wrapper.get('[data-test="sim-P-PAUL"]').text()).toContain('0,40');
     const post = calls.find((c) => c.method === 'POST' && c.path.endsWith('/simulate'));
     expect(post?.body).toEqual({ overrides: { unit_pass_mark: 10.5 }, margin: 0.5 });
+    // C110-I3 : toutes les notes verrouillées (unlocked = []) : aucun avertissement.
+    expect(wrapper.find('[data-test="sim-unlocked"]').exists()).toBe(false);
+  });
+
+  it('avertit quand des épreuves ne sont pas verrouillées et les nomme (C110-I3)', async () => {
+    const pending = { data: { ...simulation.data, unlocked: ['BUR Examen'] } };
+    mockApi({ 'GET /higher/me': higherMe, 'GET /higher/deliberation/juries/J1': jury(), 'POST /higher/deliberation/juries/J1/simulate': pending });
+    const { wrapper } = await mountAt(PreparationView, '/superieur/deliberation/jurys/J1/preparation', { id: 'J1' });
+    await wrapper.get('form').trigger('submit');
+    await flushPromises();
+    expect(wrapper.get('[data-test="sim-unlocked"]').text()).toContain('BUR Examen');
   });
 
   it('explique le refus 409 RG-DEL-3 de la liste des résultats avant signature du PV', async () => {

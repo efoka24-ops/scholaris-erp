@@ -85,6 +85,31 @@ describe('IPES · notes', () => {
     expect(last?.query['filter[status]']).toBe('submitted');
   });
 
+  it('propose les EC de la maquette, choisie d\'office quand elle est seule (C110-I2)', async () => {
+    const cur = { id: 'C1', school_id: 'S1', department_id: 'D1', program_id: 'PR1', level_id: 'L1', academic_year_id: 'Y1', regime: 'lmd', version: 1, status: 'published', title: 'CF L1' };
+    const tree = { ...cur, semesters: [{ id: 'SM1', ordinal: 1, label: 'S1', units: [{ id: 'U1', code: 'UE5', title: 'UE5', elements: [{ id: 'EC9', unit_id: 'U1', code: 'BUR', title: 'Bureautique' }] }] }], check: { errors: [], warnings: [] } };
+    mockApi({ ...base, 'GET /higher/curricula': { data: [cur] }, 'GET /higher/curricula/C1': { data: tree }, 'GET /higher/grade-assessments': { data: [], meta: { count: 0 } } });
+    const { wrapper } = await mountAt(AssessmentsView, '/superieur/notes');
+    await flushPromises();
+    const el = wrapper.get('#na-el');
+    expect(el.element.tagName).toBe('SELECT');
+    expect(el.text()).toContain('BUR · Bureautique');
+  });
+
+  it('se rabat sur les affectations de l\'enseignant quand la maquette ne se lit pas (C110-I2)', async () => {
+    const assignment = {
+      id: 'AS1', school_id: 'S1', department_id: 'D1', program_id: 'PR1', level_id: 'L1', group_id: 'G1', academic_year_id: 'Y1', curriculum_id: 'C1',
+      element_id: 'EC9', element_code: 'BUR', element_title: 'Bureautique', person_id: 'P9', staff_id: null, session_kind: 'cm', planned_minutes: 3600, status: 'active',
+    };
+    mockApi({ ...base, 'GET /higher/curricula': problem(403, 'forbidden', 'Refus'), 'GET /higher/teaching/assignments': { data: [assignment] }, 'GET /higher/grade-assessments': { data: [], meta: { count: 0 } } });
+    const { wrapper } = await mountAt(AssessmentsView, '/superieur/notes');
+    await flushPromises();
+    expect(wrapper.get('#na-cur').element.tagName).toBe('SELECT');
+    const el = wrapper.get('#na-el');
+    expect(el.element.tagName).toBe('SELECT');
+    expect(el.text()).toContain('BUR · Bureautique');
+  });
+
   it('enregistre un lot avec la version lue', async () => {
     const calls = mockApi({ ...base, 'GET /higher/grade-assessments/A1/marks': { data: grid() }, 'PUT /higher/grade-assessments/A1/marks': { data: { written: 1, unchanged: 0, discipline_referrals: 0 } } });
     const { wrapper } = await mountAt(AssessmentGridView, '/superieur/notes/evaluations/A1', { id: 'A1' });

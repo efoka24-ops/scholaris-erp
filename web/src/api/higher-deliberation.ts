@@ -33,7 +33,7 @@ export interface SimStudent {
 }
 export interface Simulation {
   jury_id: string; rules: { strategy: string; version: number; options: Record<string, unknown> }; students: SimStudent[];
-  summary: { students: number; by_proposal: Record<string, number>; borderline: number }; unlocked: boolean; margin: number;
+  summary: { students: number; by_proposal: Record<string, number>; borderline: number }; unlocked: string[]; margin: number;
 }
 export interface PointsResult { person_id: string; points_requested: number; points_granted: number; cap: number; capped: boolean }
 export interface ResitElement { element_code: string; unit_code: string; students: Array<{ person_id: string; name: string | null; note: number | null; notified_at: string | null }> }
