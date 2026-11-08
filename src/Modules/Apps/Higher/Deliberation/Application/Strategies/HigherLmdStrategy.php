@@ -15,6 +15,8 @@ use Scholaris\Modules\Socle\Assessment\Contracts\RuleStrategy;
 final class HigherLmdStrategy implements RuleStrategy
 {
     public const KEY = 'higher_lmd';
+    /** Option propre à un étudiant (ResultInputs::learnerOptions) : points de jury accordés, ajoutés à sa moyenne de semestre. */
+    public const JURY_POINTS_OPTION = 'jury_points_granted';
 
     public function __construct(private readonly LmdCalculator $calculator = new LmdCalculator())
     {
@@ -32,7 +34,7 @@ final class HigherLmdStrategy implements RuleStrategy
 
     public function computeLearner(CalculationRules $rules, array $units, string $session): array
     {
-        return $this->calculator->semester($rules, $units, $session);
+        return $this->calculator->semester($rules, $units, $session, $rules->number(self::JURY_POINTS_OPTION, 0.0));
     }
 
     public function decideYear(CalculationRules $rules, array $periods, array $context): array

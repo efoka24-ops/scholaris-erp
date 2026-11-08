@@ -5,6 +5,7 @@ declare(strict_types=1);
 use function DI\autowire;
 
 use Scholaris\Modules\Apps\Higher\Deliberation\Application\HigherDeliberationGuard;
+use Scholaris\Modules\Apps\Higher\Deliberation\Application\JuryResultInputs;
 use Scholaris\Modules\Apps\Higher\Deliberation\Application\SignedMinutesIssuanceGuard;
 use Scholaris\Modules\Apps\Higher\Deliberation\Application\Strategies\HigherBtsHndStrategy;
 use Scholaris\Modules\Apps\Higher\Deliberation\Application\Strategies\HigherLmdStrategy;
@@ -28,6 +29,7 @@ return [
     'assessment.rule_strategies.higher_deliberation' => [HigherLmdStrategy::class, HigherBtsHndStrategy::class],
     'assessment.rule_scopes.higher_deliberation' => [HigherRuleScopes::class],
     'assessment.deliberation_guards.higher_deliberation' => [HigherDeliberationGuard::class],
+    'assessment.result_input_sources.higher_deliberation' => [JuryResultInputs::class],
     'documents.issuance_guards.higher_deliberation' => [SignedMinutesIssuanceGuard::class],
     'higher.document_types.deliberation' => [DeliberationDocumentTypes::class, SuccessCertificateType::class],
 ];

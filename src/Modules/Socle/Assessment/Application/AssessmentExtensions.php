@@ -23,6 +23,8 @@ final class AssessmentExtensions
     public const REPORT_CARD_VARIABLES = 'assessment.report_card_variables.';
     /** Sources d'admissions de fin d'année tenues par une application (Contracts\AdmissionDirectory), réunies à celles des résultats. */
     public const ADMISSION_SOURCES = 'assessment.admission_sources.';
+    /** Notes d'une classe tenues par une application (Contracts\ResultInputSource), à la place des épreuves du socle. */
+    public const RESULT_INPUTS = 'assessment.result_input_sources.';
 
     /**
      * @template T of object

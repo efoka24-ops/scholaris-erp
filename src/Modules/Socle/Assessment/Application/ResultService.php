@@ -8,8 +8,11 @@ use Psr\Container\ContainerInterface;
 use Scholaris\Core\Http\HttpException;
 use Scholaris\Core\Security\Principal;
 use Scholaris\Core\Support\Ulid;
+use Scholaris\Modules\Socle\Assessment\Contracts\CalculationRules;
 use Scholaris\Modules\Socle\Assessment\Contracts\DeliberationGuard;
 use Scholaris\Modules\Socle\Assessment\Contracts\PeriodAggregatingStrategy;
+use Scholaris\Modules\Socle\Assessment\Contracts\ResultInputs;
+use Scholaris\Modules\Socle\Assessment\Contracts\ResultInputSource;
 use Scholaris\Modules\Socle\Assessment\Contracts\RuleStrategy;
 use Scholaris\Modules\Socle\Assessment\Domain\RuleEngine;
 use Scholaris\Modules\Socle\Assessment\Domain\RuleSet;
@@ -61,12 +64,17 @@ final class ResultService
      *   assessments: list<array<string, mixed>>,
      *   subjects: array<string, array<string, mixed>>,
      *   inputs: array<string, list<Unit>>,
-     *   year: string|null
+     *   year: string|null,
+     *   source?: ResultInputs
      * }
      */
     public function inputs(string $tenantId, string $establishmentId, string $structureId, string $periodId, ?string $subjectId = null, string $session = AssessmentService::NORMAL): array
     {
         $students = $this->roster->students($tenantId, $establishmentId, $structureId);
+        $source = $subjectId === null ? $this->sourced($tenantId, $establishmentId, $structureId, $periodId, $session) : null;
+        if ($source !== null) {
+            return self::fromSource($students, $source);
+        }
         $assessments = array_values(array_filter(
             $this->catalog->forSheet($tenantId, $establishmentId, $structureId, $periodId, $subjectId),
             static fn (array $a): bool => $a['grading_mode'] === 'numeric'
@@ -134,6 +142,10 @@ final class ResultService
     /** Règles en vigueur pour une classe et une période (année lue sur ses épreuves). */
     public function rulesFor(string $tenantId, string $establishmentId, string $structureId, string $periodId): RuleSet
     {
+        $source = $this->sourced($tenantId, $establishmentId, $structureId, $periodId, AssessmentService::NORMAL);
+        if ($source !== null) {
+            return $this->sourceRules($tenantId, $establishmentId, $structureId, $source);
+        }
         $year = null;
         foreach ($this->catalog->forSheet($tenantId, $establishmentId, $structureId, $periodId) as $assessment) {
             $year ??= $assessment['academic_year_id'] === null ? null : (string) $assessment['academic_year_id'];
@@ -166,7 +178,10 @@ final class ResultService
             return $aggregated;
         }
         $data = $this->inputs($tenantId, $establishmentId, $structureId, $periodId, null, $session);
-        $rules = $this->rules->activeRules($tenantId, $establishmentId, $data['year'], $structureId);
+        $source = $data['source'] ?? null;
+        $rules = $source === null
+            ? $this->rules->activeRules($tenantId, $establishmentId, $data['year'], $structureId)
+            : $this->sourceRules($tenantId, $establishmentId, $structureId, $source);
 
         $deliberation = $this->results->deliberationOf($tenantId, $establishmentId, $structureId, $periodId, $session);
         if ($deliberation !== null && $deliberation['status'] === 'closed' && $this->settings->deliberationFreezesResults($tenantId, $establishmentId)) {
@@ -176,7 +191,8 @@ final class ResultService
         $computed = [];
         $averages = [];
         foreach ($data['students'] as $student) {
-            $computed[$student['person_id']] = $this->calculation->compute($rules, $data['inputs'][$student['person_id']], $session);
+            $learnerRules = self::withLearnerOptions($rules, $source?->learnerOptions[$student['person_id']] ?? []);
+            $computed[$student['person_id']] = $this->calculation->compute($learnerRules, $data['inputs'][$student['person_id']] ?? [], $session);
             $averages[$student['person_id']] = $computed[$student['person_id']]['average'];
         }
         $ranks = $this->engine->ranks($averages);
@@ -444,9 +460,13 @@ final class ResultService
 
         $lifecycle = $this->settings->lifecycle($tenantId, $establishmentId);
         $sheetSession = $this->hasResitAssessments($tenantId, $establishmentId, $structureId, $periodId) ? $session : null;
+        // Notes tenues par une application (ResultInputSource) : aucune épreuve du socle à faire transiter.
+        $sourced = $this->sourced($tenantId, $establishmentId, $structureId, $periodId, $session) !== null;
 
-        $out = $this->db->transaction(function () use ($principal, $establishmentId, $structureId, $periodId, $periodLabel, $lifecycle, $tenantId, $session, $sheetSession): array {
-            $this->assessments->transitionSheet($principal, $establishmentId, $structureId, $periodId, null, $lifecycle->published, $sheetSession);
+        $out = $this->db->transaction(function () use ($principal, $establishmentId, $structureId, $periodId, $periodLabel, $lifecycle, $tenantId, $session, $sheetSession, $sourced): array {
+            if (!$sourced) {
+                $this->assessments->transitionSheet($principal, $establishmentId, $structureId, $periodId, null, $lifecycle->published, $sheetSession);
+            }
             $this->compute($tenantId, $establishmentId, $structureId, $periodId, $periodLabel, $session);
             $now = $this->clock->now();
             $out = [];
@@ -473,6 +493,75 @@ final class ResultService
                 $this->compute($tenantId, $establishmentId, $structureId, $periodId, null, $session);
             }
         }
+    }
+
+    /** Première source d'application qui tient les notes de cette classe (C-116), sinon null (épreuves du socle). */
+    private function sourced(string $tenantId, string $establishmentId, string $structureId, string $periodId, string $session): ?ResultInputs
+    {
+        foreach (AssessmentExtensions::collect($this->container, AssessmentExtensions::RESULT_INPUTS, ResultInputSource::class) as $source) {
+            $inputs = $source->inputs($tenantId, $establishmentId, $structureId, $periodId, $session);
+            if ($inputs !== null) {
+                return $inputs;
+            }
+        }
+
+        return null;
+    }
+
+    private function sourceRules(string $tenantId, string $establishmentId, string $structureId, ResultInputs $source): RuleSet
+    {
+        return $source->rules === null
+            ? $this->rules->activeRules($tenantId, $establishmentId, $source->academicYearId, $structureId)
+            : RuleSet::fromCalculationRules($source->rules);
+    }
+
+    /** @param array<string, mixed> $options options propres à un apprenant (points de jury...) */
+    private static function withLearnerOptions(RuleSet $rules, array $options): RuleSet
+    {
+        if ($options === []) {
+            return $rules;
+        }
+        $base = $rules->toCalculationRules();
+
+        return RuleSet::fromCalculationRules(new CalculationRules(
+            $base->version,
+            $base->strategy,
+            $base->scale,
+            $base->passMark,
+            $base->rounding,
+            $base->mentions,
+            $base->compensationFrom,
+            $base->capitalizeFrom,
+            $base->resitFrom,
+            $options + $base->options,
+            $base->decisionLabels,
+            $base->passingDecisions,
+            $base->absenceEffects,
+        ));
+    }
+
+    /**
+     * Données du moteur depuis une source d'application : matières lues sur les unités, aucune épreuve du socle.
+     *
+     * @param list<array{person_id: string, name: string, last_name: string, matricule: string|null}> $students
+     * @return array{students: list<array{person_id: string, name: string, last_name: string, matricule: string|null}>, assessments: list<array<string, mixed>>, subjects: array<string, array<string, mixed>>, inputs: array<string, list<Unit>>, year: string|null, source: ResultInputs}
+     */
+    private static function fromSource(array $students, ResultInputs $source): array
+    {
+        $subjects = [];
+        $inputs = [];
+        foreach ($students as $student) {
+            $units = $source->units[$student['person_id']] ?? [];
+            $inputs[$student['person_id']] = $units;
+            foreach ($units as $unit) {
+                $subjects[$unit['subject_id']] ??= [
+                    'id' => $unit['subject_id'], 'code' => (string) $unit['code'], 'name' => (string) $unit['name'], 'kind' => $unit['kind'],
+                    'coefficient' => $unit['coefficient'], 'credits' => $unit['credits'],
+                ];
+            }
+        }
+
+        return ['students' => $students, 'assessments' => [], 'subjects' => $subjects, 'inputs' => $inputs, 'year' => $source->academicYearId, 'source' => $source];
     }
 
     private function hasResitAssessments(string $tenantId, string $establishmentId, string $structureId, string $periodId): bool
