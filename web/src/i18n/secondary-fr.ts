@@ -1,10 +1,12 @@
 // Textes de l'application « Enseignement secondaire » (accueil, profil, documents, portails). Les autres lots ajoutent leurs clés ici.
+import { secondaryCouncilsFr } from './secondary-councils-fr';
 import { secondaryDisciplineFr } from './secondary-discipline-fr';
 import { secondaryExamsFr } from './secondary-exams-fr';
 import { secondaryStaffFr } from './secondary-staff-fr';
 import { secondaryTimetableFr } from './secondary-timetable-fr';
 
 export const secondaryFr = {
+  ...secondaryCouncilsFr,
   ...secondaryDisciplineFr,
   ...secondaryExamsFr,
   ...secondaryTimetableFr,

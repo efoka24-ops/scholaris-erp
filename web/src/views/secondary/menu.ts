@@ -26,6 +26,8 @@ export const MENU: MenuEntry[] = [
   { name: 'sec-discipline', title: 'sec.menu.discipline', text: 'sec.home.disciplineText', perms: S.discipline },
   { name: 'sec-discipline-councils', title: 'sec.menu.disciplineCouncils', text: 'sec.home.disciplineCouncilsText', perms: S.disciplineCouncils },
   { name: 'sec-timetable', title: 'sectt.title', text: 'sectt.menuText', perms: S.timetable },
+  { name: 'sec-councils', title: 'sec.menu.councils', text: 'sec.home.councilsText', perms: S.councils },
+  { name: 'sec-report-cards', title: 'sec.menu.reportCards', text: 'sec.home.reportCardsText', perms: S.reportCards },
   { name: 'sec-syllabus', title: 'secsy.title', text: 'secsy.menuText', perms: S.syllabus },
   { name: 'sec-exams', title: 'sec.menu.exams', text: 'sec.home.examsText', perms: S.examsRead, modules: ['official_exams'] },
   { name: 'sec-orientation', title: 'sec.menu.orientation', text: 'sec.home.orientationText', perms: S.orientation, modules: ['orientation'] },
