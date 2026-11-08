@@ -13,6 +13,7 @@ const sections: Array<{ name: string; label: MessageKey; perms: string[]; needsE
   { name: 'admin-establishments', label: 'admin.nav.establishments', perms: ['organisation.manage'], needsEstablishment: false },
   { name: 'admin-years', label: 'admin.nav.years', perms: ['organisation.manage'], needsEstablishment: true },
   { name: 'admin-structures', label: 'admin.nav.structures', perms: ['organisation.manage'], needsEstablishment: true },
+  { name: 'admin-authorizations', label: 'admin.nav.authorizations', perms: ['organisation.manage'], needsEstablishment: true },
   { name: 'admin-users', label: 'admin.nav.users', perms: ['identity.manage', 'identity.roles.assign'], needsEstablishment: true },
   { name: 'admin-import', label: 'imports.nav', perms: ['imports.people.manage'], needsEstablishment: true },
   { name: 'admin-workflows', label: 'wf.nav', perms: ['workflows.manage'], needsEstablishment: true },

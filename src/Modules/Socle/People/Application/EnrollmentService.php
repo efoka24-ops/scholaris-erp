@@ -271,7 +271,8 @@ final class EnrollmentService
         }
         $today = new DateTimeImmutable('@' . $this->clock->timestamp());
         if (!$this->gate->canEnrol($tenantId, $establishmentId, $structureId, $today)) {
-            throw HttpException::validation(['structure_id' => ['Inscription impossible : cette filière n\'a pas d\'autorisation valide à ce jour.']]);
+            $reason = 'Inscription impossible : cette filière n\'a pas d\'autorisation valide à ce jour. Déclarez son autorisation d\'ouverture dans Administration, Autorisations.';
+            throw HttpException::validation(['structure_id' => [$reason]], $reason);
         }
     }
 

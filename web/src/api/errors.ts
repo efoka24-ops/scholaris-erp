@@ -11,6 +11,13 @@ export interface DescribedError {
   fields: Record<string, string[]>;
 }
 
+const GENERIC_VALIDATION = /^(données invalides|invalid data)\.?$/i;
+
+/** Motifs par champ à afficher sous le message principal (sans répéter ce dernier). */
+export function otherFieldMessages(described: DescribedError): string[] {
+  return Object.values(described.fields).flat().filter((m) => m !== described.message);
+}
+
 /** Transforme une erreur d'appel en message soutenu qui dit quoi faire. Le texte du serveur prime lorsqu'il existe. */
 export function describeError(error: unknown, lang: Locale = locale.value): DescribedError {
   const t = (k: Parameters<typeof translate>[0], p?: Record<string, string | number>): string => translate(k, p, lang);
@@ -37,8 +44,10 @@ export function describeError(error: unknown, lang: Locale = locale.value): Desc
     case 409:
       return { message: detail ?? t('error.conflict'), hint: t('error.hint.conflict'), traceId, fields };
     case 422: {
+      // Un détail générique (« Données invalides. ») ne dit pas quoi corriger : le motif du premier champ refusé le remplace (C-115).
       const first = Object.values(fields).flat()[0];
-      return { message: detail ?? first ?? t('error.validation'), hint: t('error.hint.validation'), traceId, fields };
+      const generic = detail === null || GENERIC_VALIDATION.test(detail);
+      return { message: (generic ? first : detail) ?? detail ?? t('error.validation'), hint: t('error.hint.validation'), traceId, fields };
     }
     case 423:
       return { message: detail ?? t('error.locked'), hint: t('error.hint.locked'), traceId, fields };

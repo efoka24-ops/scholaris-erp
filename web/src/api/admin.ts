@@ -86,6 +86,17 @@ export interface Structure {
   capacity: number | null;
 }
 
+/** Autorisation administrative d'ouverture d'une structure (socle Organisation, /authorizations) : exigée pour toute inscription. */
+export interface StructureAuthorization {
+  id: string;
+  structure_id: string;
+  reference: string;
+  authority: string | null;
+  valid_from: string;
+  valid_to: string;
+  covered_levels: string[] | null;
+}
+
 export interface OrgUnit {
   id: string;
   parent_id: string | null;
@@ -195,6 +206,11 @@ export const createStructure = async (input: { kind: string; name: string; org_u
   (await http.post<{ data: Structure }>('/structures', input)).data;
 export const updateStructure = async (id: string, changes: Partial<{ name: string; org_unit_id: string | null; capacity: number | null }>): Promise<Structure> =>
   (await http.patch<{ data: Structure }>(`/structures/${id}`, changes)).data;
+export const listAuthorizations = (): Promise<StructureAuthorization[]> => http.all<StructureAuthorization>('/authorizations', { sort: 'valid_to' });
+export const createAuthorization = async (input: { structure_id: string; reference: string; authority: string | null; valid_from: string; valid_to: string }): Promise<StructureAuthorization> =>
+  (await http.post<{ data: StructureAuthorization }>('/authorizations', input)).data;
+export const updateAuthorization = async (id: string, changes: Partial<{ reference: string; authority: string | null; valid_from: string; valid_to: string }>): Promise<StructureAuthorization> =>
+  (await http.patch<{ data: StructureAuthorization }>(`/authorizations/${id}`, changes)).data;
 export const listOrgUnits = (): Promise<OrgUnit[]> => http.all<OrgUnit>('/org-units', { sort: 'name' });
 export const createOrgUnit = async (input: { type: string; name: string; parent_id?: string | null }): Promise<OrgUnit> =>
   (await http.post<{ data: OrgUnit }>('/org-units', input)).data;

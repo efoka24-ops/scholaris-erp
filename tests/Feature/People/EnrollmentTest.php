@@ -63,6 +63,9 @@ final class EnrollmentTest extends PeopleTestCase
         [$response, $body] = $this->api('POST', '/enrollments', body: ['person_id' => $this->learner['id'], 'structure_id' => 'fermee']);
         self::assertSame(422, $response->getStatusCode());
         self::assertArrayHasKey('structure_id', $body['errors']);
+        // C-115 (C110-AU1) : le détail porte le vrai motif et dit où déclarer l'autorisation, pas « Données invalides. ».
+        self::assertStringContainsString("pas d'autorisation valide", $body['detail']);
+        self::assertStringContainsString('Autorisations', $body['detail']);
 
         $this->guarantor();
         $draft = $this->draft();
