@@ -452,6 +452,37 @@ describe('écrans d\'authentification', () => {
     expect(wrapper.text()).toContain('Votre mot de passe est enregistré.');
   });
 
+  it('activation avec le code déjà reçu à l\'acceptation : saisi sans nouvelle demande (C110-P1)', async () => {
+    const calls = mockApi({ 'POST /auth/activation/verify': { ticket: 'TICKET', expires_in: 600 } });
+    const { wrapper } = await mountView(ActivationView, { mode: 'activation' }, '/activation');
+    await wrapper.get('#act-id').setValue('+237600000001');
+    await wrapper.get('[data-test="have-code"]').trigger('click');
+    await flushPromises();
+    await wrapper.findComponent(CodeInput).setValue('123456');
+    await wrapper.get('form').trigger('submit');
+    await flushPromises();
+    expect(calls.map((c) => c.path)).toEqual(['/auth/activation/verify']);
+    expect(calls[0]?.body).toEqual({ identifier: '+237600000001', code: '123456' });
+    expect(wrapper.find('#act-pw').exists()).toBe(true);
+  });
+
+  it('« Recevoir le code » refusé (429) dans la minute : le code envoyé reste saisissable (C110-P1)', async () => {
+    mockApi({
+      'POST /auth/activation/request': jsonResponse({ type: 't', title: 'Trop de tentatives', status: 429, detail: 'Patientez 60 s.', trace_id: 'x' }, 429),
+      'POST /auth/activation/verify': { ticket: 'TICKET', expires_in: 600 },
+    });
+    const { wrapper } = await mountView(ActivationView, { mode: 'activation' }, '/activation');
+    await wrapper.get('#act-id').setValue('+237600000001');
+    await wrapper.get('form').trigger('submit');
+    await flushPromises();
+    expect(wrapper.get('[data-test="code-notice"]').text()).toContain('moins d\'une minute');
+    expect(wrapper.findComponent(CodeInput).exists()).toBe(true);
+    await wrapper.findComponent(CodeInput).setValue('123456');
+    await wrapper.get('form').trigger('submit');
+    await flushPromises();
+    expect(wrapper.find('#act-pw').exists()).toBe(true);
+  });
+
   it('réinitialisation : appelle /auth/password/forgot', async () => {
     const calls = mockApi({ 'POST /auth/password/forgot': { channel: 'email', masked_to: 'j***@x.cm', expires_in: 300, resend_in: 60 } });
     const { wrapper } = await mountView(ActivationView, { mode: 'reset' }, '/mot-de-passe-oublie');

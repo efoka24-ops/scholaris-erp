@@ -24,6 +24,8 @@ const resendIn = ref(0);
 const attemptsLeft = ref<number | null>(null);
 const loading = ref(false);
 const error = ref<unknown>(null);
+// Code déjà reçu (envoi automatique à l'acceptation d'une demande d'accès, ou envoi récent) : saisi sans nouvelle demande (C110-P1).
+const notice = ref('');
 let timer: ReturnType<typeof setInterval> | null = null;
 
 const title = computed(() => (props.mode === 'reset' ? t('activation.resetTitle') : t('activation.title')));
@@ -61,14 +63,36 @@ async function request(next?: 'sms' | 'email'): Promise<void> {
     resendIn.value = res.resend_in;
     attemptsLeft.value = null;
     code.value = '';
+    notice.value = '';
     step.value = 'code';
     startTimers();
   } catch (e) {
-    error.value = e;
-    if (e instanceof ApiError && e.status === 429 && e.retryAfter) resendIn.value = e.retryAfter;
+    if (e instanceof ApiError && e.status === 429) {
+      // Un code vient d'être envoyé (souvent à l'acceptation de la demande) : il reste valable, on le fait saisir.
+      resendIn.value = e.retryAfter ?? 60;
+      enterCode(t('activation.alreadySent'));
+      startTimers();
+    } else {
+      error.value = e;
+    }
   } finally {
     loading.value = false;
   }
+}
+
+/** Passe à la saisie du code sans en demander un nouveau. */
+function enterCode(message = ''): void {
+  error.value = null;
+  if (identifier.value.trim() === '') {
+    error.value = new ApiError(422, { type: 'about:blank', title: '', status: 422, detail: t('login.identifierRequired') });
+    return;
+  }
+  challenge.value = null;
+  expiresIn.value = 0;
+  attemptsLeft.value = null;
+  code.value = '';
+  notice.value = message;
+  step.value = 'code';
 }
 
 async function verify(): Promise<void> {
@@ -122,14 +146,17 @@ async function setPassword(): Promise<void> {
         </div>
         <ErrorNotice :error="error" />
         <button type="submit" class="btn btn--primary btn--block" :disabled="loading">{{ t('activation.sendCode') }}</button>
+        <button type="button" class="btn btn--quiet btn--block" data-test="have-code" :disabled="loading" @click="enterCode()">{{ t('activation.haveCode') }}</button>
       </form>
 
       <form v-else-if="step === 'code'" novalidate @submit.prevent="verify">
-        <p>{{ t('activation.codeSent', { to: challenge?.masked_to ?? '' }) }}</p>
+        <p v-if="challenge">{{ t('activation.codeSent', { to: challenge.masked_to ?? '' }) }}</p>
+        <p v-else>{{ t('activation.codeReceived') }}</p>
+        <p v-if="notice" class="notice" role="status" data-test="code-notice">{{ notice }}</p>
         <div class="field">
           <span class="label" id="act-code-label">{{ t('activation.codeLabel') }}</span>
           <CodeInput id="act-code" v-model="code" />
-          <span class="hint" role="timer">{{ expiresIn > 0 ? t('activation.expiresIn', { time: mmss(expiresIn) }) : t('activation.expired') }}</span>
+          <span v-if="challenge" class="hint" role="timer">{{ expiresIn > 0 ? t('activation.expiresIn', { time: mmss(expiresIn) }) : t('activation.expired') }}</span>
           <span v-if="attemptsLeft !== null" class="hint">{{ t('activation.attemptsLeft', { count: attemptsLeft }) }}</span>
         </div>
         <ErrorNotice :error="error" />
