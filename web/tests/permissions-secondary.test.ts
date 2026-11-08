@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { permissionsForRoles, ROLE_PERMISSIONS } from '@/lib/permissions';
 
 // Parité du miroir front avec les migrations des rôles du secondaire (T808, droits Billing, puis droits E2). Vitest s'exécute depuis web/.
-const MIGRATIONS = ['202610281601_roles_secondary.sql', '202610291001_roles_secondary_billing.sql', '202611052030_roles_secondary_e2.sql', '202611070110_roles_secondary_councils.sql'].map((name) =>
+const MIGRATIONS = ['202610281601_roles_secondary.sql', '202610291001_roles_secondary_billing.sql', '202611052030_roles_secondary_e2.sql', '202611070110_roles_secondary_councils.sql', '202611080101_roles_organisation_read.sql'].map((name) =>
   resolve(process.cwd(), '../database/migrations', name),
 );
 
@@ -12,6 +12,7 @@ function seeded(): Record<string, string[]> {
   const grants: Record<string, string[]> = {};
   for (const file of MIGRATIONS) {
     for (const m of readFileSync(file, 'utf8').matchAll(/INSERT INTO role_permissions \(role, permission\) VALUES \('([^']+)', '([^']+)'\);/g)) {
+      if (file.endsWith('organisation_read.sql') && !(m[1] as string).startsWith('sec_')) continue; // migration commune (C-115)
       (grants[m[1] as string] ??= []).push(m[2] as string);
     }
   }

@@ -86,14 +86,14 @@ final class RolePermissionsTest extends TestCase
         return [
             // P-002 (migration 202610231411) : conseil, bulletins, remédiation, examen, tutelle, services, sortie sécurisée (lecture).
             'primary_promoteur' => ['primary_promoteur', false, ['primary.dashboard.read', 'reporting.read', 'primary.referential.read', 'primary.learner.read', 'primary.competency.read', 'primary.conduct.read', 'primary.journal.read',
-                'primary.council.read', 'primary.report_card.read', 'primary.remediation.read', 'primary.exam.read', 'primary.tutelage.export', 'primary.services.read']],
+                'primary.council.read', 'primary.report_card.read', 'primary.remediation.read', 'primary.exam.read', 'primary.tutelage.export', 'primary.services.read', 'organisation.read']],
             'primary_directeur' => ['primary_directeur', true, ['primary.settings.manage', 'primary.council.preside', 'primary.report_card.sign', 'assessment.correction.approve', 'primary.promotion.decide', 'primary.dashboard.read', 'primary.referential.read', 'primary.learner.read', 'primary.competency.read', 'primary.competency.validate', 'primary.conduct.read', 'primary.journal.read',
-                'primary.council.read', 'primary.report_card.read', 'primary.remediation.read', 'primary.remediation.write', 'primary.exam.read', 'primary.exam.manage', 'primary.tutelage.export', 'primary.services.read', 'primary.pickup.read', 'primary.pickup.handover']],
+                'primary.council.read', 'primary.report_card.read', 'primary.remediation.read', 'primary.remediation.write', 'primary.exam.read', 'primary.exam.manage', 'primary.tutelage.export', 'primary.services.read', 'primary.pickup.read', 'primary.pickup.handover', 'organisation.read']],
             'primary_adjoint' => ['primary_adjoint', false, ['primary.referential.manage', 'assessment.validate', 'scheduling.manage', 'primary.referential.read', 'primary.learner.read', 'primary.competency.read', 'primary.competency.validate', 'primary.conduct.read', 'primary.journal.read',
-                'primary.council.read', 'primary.report_card.read', 'primary.remediation.read', 'primary.remediation.write', 'primary.exam.read']],
+                'primary.council.read', 'primary.report_card.read', 'primary.remediation.read', 'primary.remediation.write', 'primary.exam.read', 'organisation.read']],
             'primary_secretaire' => ['primary_secretaire', false, ['people.manage', 'primary.enrol', 'documents.issue', 'primary.exam.manage', 'primary.referential.read', 'primary.learner.read',
-                'primary.report_card.read', 'primary.exam.read', 'primary.tutelage.export', 'primary.services.read']],
-            'primary_surveillant' => ['primary_surveillant', false, ['attendance.sanction.manage', 'primary.pickup.handover', 'primary.pickup.read']],
+                'primary.report_card.read', 'primary.exam.read', 'primary.tutelage.export', 'primary.services.read', 'organisation.read']],
+            'primary_surveillant' => ['primary_surveillant', false, ['attendance.sanction.manage', 'primary.pickup.handover', 'primary.pickup.read', 'organisation.read']],
         ];
     }
 
@@ -178,17 +178,17 @@ final class RolePermissionsTest extends TestCase
     private const SECONDARY_ROLE_EXTRAS = [
         'sec_promoteur' => ['dashboard.read', 'finance.read', 'fees.validate', 'profile.read', 'catalogue.read', '@billing.read'],
         'sec_reseau' => ['network.read'],
-        'sec_chef_etablissement' => ['discipline.council.preside', 'document.sign', 'profile.read', 'catalogue.read', 'fees.validate', '@billing.read', '@assessment.read', '@assessment.council.manage'],
-        'sec_censeur' => ['grades.lock', 'profile.read', 'catalogue.read', '@assessment.read', '@assessment.validate', '@assessment.council.manage', '@vacations.validate'],
-        'sec_surveillant_general' => ['profile.read', '@attendance.read', '@attendance.justify'],
+        'sec_chef_etablissement' => ['discipline.council.preside', 'document.sign', 'profile.read', 'catalogue.read', 'fees.validate', '@billing.read', '@assessment.read', '@assessment.council.manage', '@organisation.read'],
+        'sec_censeur' => ['grades.lock', 'profile.read', 'catalogue.read', '@assessment.read', '@assessment.validate', '@assessment.council.manage', '@vacations.validate', '@organisation.read'],
+        'sec_surveillant_general' => ['profile.read', '@attendance.read', '@attendance.justify', '@organisation.read'],
         'sec_chef_travaux' => ['workshops.manage', 'stock.manage', 'safety.manage', 'internships.manage'],
-        'sec_animateur_pedagogique' => ['syllabus.manage', 'commontests.manage', 'catalogue.read'],
-        'sec_professeur_principal' => ['class.synthesis', '@assessment.read'],
+        'sec_animateur_pedagogique' => ['syllabus.manage', 'commontests.manage', 'catalogue.read', '@organisation.read'],
+        'sec_professeur_principal' => ['class.synthesis', '@assessment.read', '@organisation.read'],
         'enseignant' => [],
-        'sec_conseiller_orientation' => ['orientation.manage', 'catalogue.read'],
-        'sec_intendant' => ['fees.catalog', 'profile.read', 'catalogue.read', '@billing.read', '@billing.manage', '@billing.reversal.approve'],
+        'sec_conseiller_orientation' => ['orientation.manage', 'catalogue.read', '@organisation.read'],
+        'sec_intendant' => ['fees.catalog', 'profile.read', 'catalogue.read', '@billing.read', '@billing.manage', '@billing.reversal.approve', '@organisation.read'],
         'sec_caissier' => ['billing.cash', '@billing.read', '@billing.cash', '@billing.reversal.request'],
-        'sec_scolarite' => ['enrol.manage', 'documents.issue', 'exams.lists', 'profile.read', 'catalogue.read'],
+        'sec_scolarite' => ['enrol.manage', 'documents.issue', 'exams.lists', 'profile.read', 'catalogue.read', '@organisation.read'],
         'sec_infirmier' => ['infirmary.manage'],
         'sec_responsable_services' => ['services.manage'],
         'sec_bibliothecaire' => ['library.manage'],
@@ -199,7 +199,7 @@ final class RolePermissionsTest extends TestCase
         'sec_inspecteur' => ['inspection.read'],
         'sec_delegation' => ['territory.read'],
         'sec_brigade_controle' => ['control.read'],
-        'sec_admin_fonctionnel' => ['settings.manage', 'profile.manage', 'documents.template.manage', 'profile.read', 'catalogue.read', '@identity.manage', '@identity.roles.assign'],
+        'sec_admin_fonctionnel' => ['settings.manage', 'profile.manage', 'documents.template.manage', 'profile.read', 'catalogue.read', '@identity.manage', '@identity.roles.assign', '@organisation.read'],
     ];
 
     /** @return list<string> permissions attendues d'un rôle du secondaire (matrice du CDC + droits hors matrice) */
@@ -316,6 +316,25 @@ final class RolePermissionsTest extends TestCase
             foreach (RoleMatrix::permissionsOf($row['code']) as $permission) {
                 self::assertContains($permission, $this->grants[$role] ?? [], $number . ' ' . $role);
             }
+        }
+    }
+
+    /** C-115 (C110-PR1) : les écrans des applications lisent /structures et /academic-years ; lecture seule, jamais la gestion. */
+    public function testLesRolesDesApplicationsLisentLOrganisationSansLaGerer(): void
+    {
+        $readers = ['primary_promoteur', 'primary_directeur', 'primary_adjoint', 'primary_secretaire', 'primary_surveillant', 'nursery_directeur', 'nursery_secretaire',
+            'sec_chef_etablissement', 'sec_censeur', 'sec_surveillant_general', 'sec_animateur_pedagogique', 'sec_professeur_principal', 'sec_conseiller_orientation',
+            'sec_intendant', 'sec_scolarite', 'sec_admin_fonctionnel', 'enseignant'];
+        foreach ($readers as $role) {
+            self::assertContains('organisation.read', $this->grants[$role] ?? [], $role);
+        }
+        foreach (array_keys($this->grants) as $role) {
+            if (preg_match('/^(primary|nursery|sec)_/', $role) === 1) {
+                self::assertNotContains('organisation.manage', $this->grants[$role], $role);
+            }
+        }
+        foreach (['sec_eleve', 'sec_parent', 'sec_caissier', 'sec_inspecteur', 'nursery_cantine'] as $role) {
+            self::assertNotContains('organisation.read', $this->grants[$role] ?? [], $role);
         }
     }
 

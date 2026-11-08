@@ -282,6 +282,9 @@ final class SecondaryConventionsTest extends TestCase
         foreach ($files as $file) {
             $grants = array_merge_recursive($grants, self::migrationGrants((string) file_get_contents($file)));
         }
+        // Migration commune à plusieurs applications (C-115) : seules ses lignes sec_* concernent cette matrice.
+        $shared = self::migrationGrants((string) file_get_contents(self::root() . '/database/migrations/202611080101_roles_organisation_read.sql'));
+        $grants = array_merge_recursive($grants, array_filter($shared, static fn (string $role): bool => str_starts_with($role, 'sec_'), ARRAY_FILTER_USE_KEY));
         self::assertNotSame([], $grants);
         $codes = [];
         foreach (RoleMatrix::ROLES as $number => $row) {

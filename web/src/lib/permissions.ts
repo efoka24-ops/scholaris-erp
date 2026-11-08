@@ -35,30 +35,30 @@ const SECONDARY_ROLE_PERMISSIONS: Record<string, string[]> = {
     'settings.read', 'settings.manage', 'enrol.read', 'enrol.validate', 'timetable.read', 'timetable.validate', 'syllabus.read', 'attendance.read',
     'discipline.validate', 'grades.read', 'reportcard.read', 'reportcard.validate', 'council.preside', 'exams.read', 'exams.validate', 'fees.read',
     'workshops.read', 'dashboard.read', 'discipline.council.preside', 'document.sign', 'profile.read', 'catalogue.read', 'fees.validate', '@billing.read',
-    '@assessment.read', '@assessment.council.manage',
+    '@assessment.read', '@assessment.council.manage', '@organisation.read',
   ),
   sec_censeur: sec(
     'settings.read', 'settings.write', 'enrol.read', 'timetable.read', 'timetable.manage', 'syllabus.read', 'syllabus.visa', 'attendance.read',
     'grades.read', 'grades.validate', 'grades.lock', 'reportcard.read', 'council.prepare', 'exams.read', 'exams.manage', 'workshops.read',
-    'dashboard.read', 'profile.read', 'catalogue.read', '@assessment.read', '@assessment.validate', '@assessment.council.manage', '@vacations.validate',
+    'dashboard.read', 'profile.read', 'catalogue.read', '@assessment.read', '@assessment.validate', '@assessment.council.manage', '@vacations.validate', '@organisation.read',
   ),
   sec_surveillant_general: sec(
     'enrol.read', 'timetable.read', 'attendance.read', 'attendance.manage', 'discipline.manage', 'reportcard.read', 'conduct.enter', 'dashboard.read', 'profile.read',
-    '@attendance.read', '@attendance.justify',
+    '@attendance.read', '@attendance.justify', '@organisation.read',
   ),
   sec_chef_travaux: sec('workshops.manage', 'stock.manage', 'safety.manage', 'internships.manage'),
-  sec_animateur_pedagogique: sec('syllabus.manage', 'commontests.manage', 'catalogue.read'),
+  sec_animateur_pedagogique: sec('syllabus.manage', 'commontests.manage', 'catalogue.read', '@organisation.read'),
   sec_professeur_principal: sec(
     'enrol.read', 'timetable.read', 'syllabus.read', 'attendance.read', 'grades.read', 'reportcard.read', 'appraisal.general', 'class.synthesis',
-    'exams.read', 'dashboard.read', '@assessment.read',
+    'exams.read', 'dashboard.read', '@assessment.read', '@organisation.read',
   ),
-  sec_conseiller_orientation: sec('orientation.manage', 'catalogue.read'),
+  sec_conseiller_orientation: sec('orientation.manage', 'catalogue.read', '@organisation.read'),
   sec_intendant: sec(
     'settings.read', 'enrol.read', 'exams.read', 'fees.read', 'billing.manage', 'fees.catalog', 'workshops.costs.read', 'finance.read', 'profile.read', 'catalogue.read',
-    '@billing.read', '@billing.manage', '@billing.reversal.approve',
+    '@billing.read', '@billing.manage', '@billing.reversal.approve', '@organisation.read',
   ),
   sec_caissier: sec('billing.cash', '@billing.read', '@billing.cash', '@billing.reversal.request'),
-  sec_scolarite: sec('enrol.manage', 'documents.issue', 'exams.lists', 'profile.read', 'catalogue.read'),
+  sec_scolarite: sec('enrol.manage', 'documents.issue', 'exams.lists', 'profile.read', 'catalogue.read', '@organisation.read'),
   sec_infirmier: sec('infirmary.manage'),
   sec_responsable_services: sec('services.manage'),
   sec_bibliothecaire: sec('library.manage'),
@@ -70,7 +70,7 @@ const SECONDARY_ROLE_PERMISSIONS: Record<string, string[]> = {
   sec_delegation: sec('territory.read'),
   sec_brigade_controle: sec('control.read'),
   sec_admin_fonctionnel: sec(
-    'settings.manage', 'profile.manage', 'documents.template.manage', 'profile.read', 'catalogue.read', '@identity.manage', '@identity.roles.assign',
+    'settings.manage', 'profile.manage', 'documents.template.manage', 'profile.read', 'catalogue.read', '@identity.manage', '@identity.roles.assign', '@organisation.read',
   ),
 };
 
@@ -165,25 +165,27 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
   primary_promoteur: [
     'primary.dashboard.read', 'reporting.read', 'primary.referential.read', 'primary.learner.read', 'primary.competency.read', 'primary.conduct.read', 'primary.journal.read',
     'primary.council.read', 'primary.report_card.read', 'primary.remediation.read', 'primary.exam.read', 'primary.tutelage.export', 'primary.services.read',
+    'organisation.read',
   ],
   primary_directeur: [
     'primary.settings.manage', 'primary.council.preside', 'primary.report_card.sign', 'assessment.correction.approve', 'primary.promotion.decide', 'primary.dashboard.read',
     'primary.referential.read', 'primary.learner.read', 'primary.competency.read', 'primary.competency.validate', 'primary.conduct.read', 'primary.journal.read',
     'primary.council.read', 'primary.report_card.read', 'primary.remediation.read', 'primary.remediation.write', 'primary.exam.read', 'primary.exam.manage',
-    'primary.tutelage.export', 'primary.services.read', 'primary.pickup.read', 'primary.pickup.handover',
+    'primary.tutelage.export', 'primary.services.read', 'primary.pickup.read', 'primary.pickup.handover', 'organisation.read',
   ],
   primary_adjoint: [
     'primary.referential.manage', 'assessment.validate', 'scheduling.manage', 'primary.referential.read', 'primary.learner.read', 'primary.competency.read',
     'primary.competency.validate', 'primary.conduct.read', 'primary.journal.read',
-    'primary.council.read', 'primary.report_card.read', 'primary.remediation.read', 'primary.remediation.write', 'primary.exam.read',
+    'primary.council.read', 'primary.report_card.read', 'primary.remediation.read', 'primary.remediation.write', 'primary.exam.read', 'organisation.read',
   ],
   primary_secretaire: [
     'people.manage', 'primary.enrol', 'documents.issue', 'primary.exam.manage', 'primary.referential.read', 'primary.learner.read',
-    'primary.report_card.read', 'primary.exam.read', 'primary.tutelage.export', 'primary.services.read',
+    'primary.report_card.read', 'primary.exam.read', 'primary.tutelage.export', 'primary.services.read', 'organisation.read',
   ],
-  primary_surveillant: ['attendance.sanction.manage', 'primary.pickup.handover', 'primary.pickup.read'],
+  primary_surveillant: ['attendance.sanction.manage', 'primary.pickup.handover', 'primary.pickup.read', 'organisation.read'],
   ...SECONDARY_ROLE_PERMISSIONS,
 };
+// organisation.read des rôles primary_*, nursery_* et sec_* : migration 202611080101_roles_organisation_read.sql (C-115, défaut C110-PR1).
 
 // Messagerie interne et support SCHOLARIS (migrations 202610090901 et 202611060201, C-113).
 const MESSAGING_EXTRA: Record<string, string[]> = {

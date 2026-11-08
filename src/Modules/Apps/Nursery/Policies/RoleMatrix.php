@@ -8,6 +8,7 @@ namespace Scholaris\Modules\Apps\Nursery\Policies;
  * Rôles de la Maternelle privée (spec 007 §2) et leurs permissions. `ROLES` : rôles créés par la migration
  * `roles_nursery` (nouveaux codes `nursery_*`) ; `SHARED` : lignes de la spec qui s'appuient sur un rôle du socle ou sur un lien
  * de garde (le parent n'a pas de permission `nursery.*` en base : ses routes de portail vérifient qu'il est garant de l'enfant).
+ * `organisation.read` (directrice, secrétaire) : migration 202611080101 (C-115), lecture des structures et années du socle.
  */
 final class RoleMatrix
 {
@@ -26,6 +27,7 @@ final class RoleMatrix
                 'nursery.pickup.manage', 'nursery.pickup.handover', 'nursery.register.read', 'nursery.dev.read', 'nursery.dev.validate',
                 'nursery.frame.manage', 'nursery.lifebook.read', 'nursery.need.read', 'nursery.allergy.read', 'nursery.message.send',
                 'nursery.transition.decide', 'nursery.dashboard.read', 'nursery.service.manage', 'nursery.service.attend', 'nursery.consent.manage',
+                'organisation.read',
             ],
         ],
         'N03' => [
@@ -45,7 +47,7 @@ final class RoleMatrix
         'N05' => [
             'code' => 'nursery_secretaire', 'level' => 'establishment', 'sensitive' => false,
             'label_fr' => 'Secrétaire de maternelle', 'label_en' => 'Nursery secretary',
-            'permissions' => ['people.manage', 'nursery.enrol', 'nursery.child.read', 'documents.issue', 'nursery.pickup.manage', 'nursery.pickup.read', 'nursery.register.read', 'nursery.allergy.read', 'nursery.service.manage', 'nursery.consent.manage'],
+            'permissions' => ['people.manage', 'nursery.enrol', 'nursery.child.read', 'documents.issue', 'nursery.pickup.manage', 'nursery.pickup.read', 'nursery.register.read', 'nursery.allergy.read', 'nursery.service.manage', 'nursery.consent.manage', 'organisation.read'],
         ],
         'N10' => [
             'code' => 'nursery_cantine', 'level' => 'establishment', 'sensitive' => false,

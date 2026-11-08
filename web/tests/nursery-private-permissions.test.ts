@@ -5,12 +5,13 @@ import { permissionsForRoles, ROLE_PERMISSIONS } from '@/lib/permissions';
 import { nurseryPrivateRoutes } from '@/views/nursery-private/routes';
 
 const ROOT = resolve(process.cwd(), '..');
-const MIGRATIONS = ['database/migrations/202610220801_roles_nursery.sql', 'database/migrations/202610231303_roles_nursery_services_consents.sql'].map((m) => resolve(ROOT, m));
+const MIGRATIONS = ['database/migrations/202610220801_roles_nursery.sql', 'database/migrations/202610231303_roles_nursery_services_consents.sql', 'database/migrations/202611080101_roles_organisation_read.sql'].map((m) => resolve(ROOT, m));
 const FOLDER = resolve(process.cwd(), 'src/views/nursery-private');
 
 function seeded(): Record<string, string[]> {
   const grants: Record<string, string[]> = {};
   for (const m of MIGRATIONS.map((f) => readFileSync(f, 'utf8')).join('\n').matchAll(/INSERT INTO role_permissions \(role, permission\) VALUES \('([^']+)', '([^']+)'\);/g)) {
+    if (!(m[1] as string).startsWith('nursery_')) continue; // la migration commune 202611080101 vise aussi d'autres applications
     (grants[m[1] as string] ??= []).push(m[2] as string);
   }
   return grants;

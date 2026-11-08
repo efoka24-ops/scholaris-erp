@@ -46,6 +46,20 @@ final class RoleMatrix
         'comptable' => ['primary.services.read', 'primary.services.manage'],
     ];
 
+    /**
+     * Lecture de l'organisation (classes, niveaux, années, périodes du socle) ajoutée par la migration 202611080101 (C-115, défaut
+     * C110-PR1) : les écrans du primaire lisent GET /structures et /academic-years. Lecture seulement.
+     *
+     * @var array<string, list<string>>
+     */
+    public const EXTRA_ORGANISATION = [
+        'primary_promoteur' => ['organisation.read'],
+        'primary_directeur' => ['organisation.read'],
+        'primary_adjoint' => ['organisation.read'],
+        'primary_secretaire' => ['organisation.read'],
+        'primary_surveillant' => ['organisation.read'],
+    ];
+
     /** @var array<string, array<string, array{0: string, 1: string}>> */
     public const MATRIX = [
         'parametrage' => ['P02' => ['V', 'primary.settings.manage'], 'P03' => ['E', 'primary.referential.manage']],
