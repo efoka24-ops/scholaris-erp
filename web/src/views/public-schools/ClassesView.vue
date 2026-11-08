@@ -35,7 +35,8 @@ const form = reactive({ name: '', orgUnitId: '', levels: '', shift: 'full_day' a
 const canWrite = computed(() => can(...P.pupilsWrite));
 const canRegister = computed(() => can(...P.attendanceRead));
 
-const staffName = (id: string | null): string => (id ? (staff.value.find((s) => s.staff_id === id)?.name ?? id) : t('ps.classes.noHomeroom'));
+// Le titulaire est désigné par l'identifiant de personne de /public/staff (`id`), celui qu'attend le serveur (C110-PP1) ; `staff_id` (fiche) reste reconnu à l'affichage.
+const staffName = (id: string | null): string => (id ? (staff.value.find((s) => s.id === id || s.staff_id === id)?.name ?? id) : t('ps.classes.noHomeroom'));
 
 async function load(): Promise<void> {
   await run(async () => {
@@ -153,7 +154,7 @@ onMounted(() => void load());
                   <label :for="`hr-staff-${c.structure_id}`">{{ t('ps.classes.teacher') }}</label>
                   <select :id="`hr-staff-${c.structure_id}`" v-model="homeroom.staffId">
                     <option value="">{{ t('ps.classes.noHomeroom') }}</option>
-                    <option v-for="s in staff" :key="s.staff_id" :value="s.staff_id">{{ s.name }}</option>
+                    <option v-for="s in staff" :key="s.id" :value="s.id">{{ s.name }}</option>
                   </select>
                 </div>
                 <div class="field">
