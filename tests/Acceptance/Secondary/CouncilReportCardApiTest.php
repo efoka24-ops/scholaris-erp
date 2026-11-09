@@ -225,8 +225,18 @@ final class CouncilReportCardApiTest extends SecondaryTestCase
             $this->ok('POST', '/assessments/' . $open . '/transition', ['to' => $state], self::CENSOR, self::TA, $this->school);
         }
 
+        // C-117 : professeur principal de la classe (Setup) et redoublement de l'élève (Enrolment), lus par leurs contrats.
+        $this->people->add(self::TA, 'prof-principal', 'Paul', 'Fictif-Principal');
+        $profile = array_values(array_filter($this->ok('GET', '/secondary/setup/classes', null, self::ADMIN, self::TA, $this->school), fn (array $c): bool => $c['structure_id'] === $this->class))[0];
+        $this->ok('PATCH', '/secondary/setup/classes/' . $profile['id'], ['head_teacher_person_id' => 'prof-principal'], self::ADMIN, self::TA, $this->school);
+        $this->pdo()->prepare('INSERT INTO se_student_profiles (id, tenant_id, establishment_id, person_id, repeater, created_at, updated_at) VALUES (?, ?, ?, ?, 1, ?, ?)')
+            ->execute(['01J0000000000000000000REP1', self::TA, $this->school, 'eleve-d', '2026-09-01T08:00:00+01:00', '2026-09-01T08:00:00+01:00']);
+
         $issued = $this->issue((string) $council['id']);
         self::assertSame('secondary_report_trimester', $issued['aicha']['type'], 'Type préréglé par nature de période.');
+        self::assertSame('Paul FICTIF-PRINCIPAL', $issued['aicha']['data']['secondary_head_teacher']);
+        self::assertSame('Non', $issued['aicha']['data']['secondary_repeater']);
+        self::assertSame('Oui', $issued['eleve-d']['data']['secondary_repeater']);
         $data = $issued['aicha']['data'];
         self::assertSame('4e A (fictive)', $data['secondary_class_name']);
         self::assertSame('MBALLA', $data['secondary_last_name']);

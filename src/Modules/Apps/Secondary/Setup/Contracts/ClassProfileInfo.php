@@ -23,6 +23,8 @@ final class ClassProfileInfo
         public readonly ?string $streamId,
         public readonly ?string $examCode,
         public readonly ?int $capacity,
+        /** Professeur principal de la classe (personne), s'il est désigné (C-117 : variable du bulletin). */
+        public readonly ?string $headTeacherPersonId = null,
     ) {
     }
 }

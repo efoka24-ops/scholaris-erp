@@ -7,6 +7,7 @@ namespace Scholaris\Modules\Apps\Secondary\Councils\Application;
 use Scholaris\Modules\Apps\Secondary\Councils\Domain\Defaults;
 use Scholaris\Modules\Apps\Secondary\Councils\Domain\WorkProposals;
 use Scholaris\Modules\Apps\Secondary\Discipline\Contracts\ConductRecord;
+use Scholaris\Modules\Apps\Secondary\Enrolment\Contracts\RepeaterRoster;
 use Scholaris\Modules\Apps\Secondary\Setup\Contracts\ClassProfileInfo;
 use Scholaris\Modules\Apps\Secondary\Setup\Contracts\ClassProfiles;
 use Scholaris\Modules\Apps\Secondary\Setup\Contracts\CoefficientBook;
@@ -34,7 +35,8 @@ use Scholaris\Modules\Socle\People\Contracts\PersonDirectory;
  *    APPLIQUÉES (Discipline) ; travail : distinctions et sanctions du barème `work_proposals` des règles, cochées selon la ligne du
  *    conseil (distinction refusée pour conduite comprise) ; décision du conseil (bulletin annuel) et observations.
  *  - en-tête : paramètre `secondary.report_card.letterhead` (délégations FR/EN, contacts, mention de bas de page, lieu).
- * Une donnée absente (enseignant principal, redoublement, notes pratiques d'atelier) reste vide.
+ * Professeur principal (Setup, ClassProfileInfo) et redoublement (Enrolment, RepeaterRoster) lus par leurs contrats (C-117) ;
+ * une donnée absente (professeur principal non désigné, notes pratiques d'atelier) reste vide.
  */
 final class ReportCardBuilder
 {
@@ -55,6 +57,7 @@ final class ReportCardBuilder
         private readonly AttendanceTotals $attendance,
         private readonly ConductRecord $conduct,
         private readonly TeachingAssignments $assignments,
+        private readonly RepeaterRoster $repeaters,
     ) {
     }
 
@@ -117,8 +120,8 @@ final class ReportCardBuilder
             'secondary_birth_line' => $birth === null ? '' : implode('/', array_reverse(explode('-', $birth))),
             'secondary_matricule' => $this->matricule($tenantId, $personId, $class),
             'secondary_parent_address' => $this->guardianContact($tenantId, $personId),
-            'secondary_repeater' => '',
-            'secondary_head_teacher' => '',
+            'secondary_repeater' => $this->repeaters->repeatersAmong($tenantId, $establishmentId, [$personId]) === [] ? ($en ? 'No' : 'Non') : ($en ? 'Yes' : 'Oui'),
+            'secondary_head_teacher' => $this->headTeacher($tenantId, $class),
             'secondary_subjects_table' => self::json($this->subjectsTable($rules, $columns, $groups, $results, $period, $yearPeriod, $personId, $en)),
             'secondary_summary_table' => self::json($this->summaryTable($columns, $subjects, $results, $personId, $en)),
             'secondary_class_profile_table' => self::json($this->profileTable($columns, $results, $yearPeriod, $rules, $en)),
@@ -127,6 +130,14 @@ final class ReportCardBuilder
             'secondary_council_decision' => $annual ? (string) ($line['decision'] ?? '') : '',
             'secondary_observations' => (string) ($line['reason'] ?? ''),
         ];
+    }
+
+    /** Professeur principal désigné sur la classe (Setup), « Prénom NOM », vide s'il n'est pas désigné. */
+    private function headTeacher(string $tenantId, ClassProfileInfo $class): string
+    {
+        $head = $class->headTeacherPersonId === null ? null : $this->people->find($tenantId, $class->headTeacherPersonId);
+
+        return $head === null ? '' : trim($head->firstName . ' ' . mb_strtoupper($head->lastName));
     }
 
     /**

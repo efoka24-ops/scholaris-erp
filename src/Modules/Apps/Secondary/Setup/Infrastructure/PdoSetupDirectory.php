@@ -107,6 +107,7 @@ final class PdoSetupDirectory implements ClassProfiles, CoefficientBook, SchoolR
             is_string($row['stream_id']) ? $row['stream_id'] : null,
             is_string($row['exam_code']) ? $row['exam_code'] : null,
             $row['capacity'] === null ? null : (int) $row['capacity'],
+            is_string($row['head_teacher_person_id'] ?? null) && $row['head_teacher_person_id'] !== '' ? $row['head_teacher_person_id'] : null,
         );
     }
 }
