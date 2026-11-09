@@ -8,6 +8,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Scholaris\Core\Http\JsonResponder;
 use Scholaris\Modules\Apps\Secondary\Portals\Application\PortalService;
+use Scholaris\Modules\Apps\Secondary\Portals\Application\SchoolLife;
 use Scholaris\Modules\Apps\Secondary\Support\Access;
 use Scholaris\Modules\Apps\Secondary\Support\Controller;
 use Scholaris\Modules\Apps\Secondary\Support\Input;
@@ -19,9 +20,30 @@ final class PortalController extends Controller
     /** Bornes techniques de saisie (pas une règle de gestion) : montant XAF entier positif. */
     private const MAX_AMOUNT = 100000000;
 
-    public function __construct(JsonResponder $responder, Access $access, Store $store, private readonly PortalService $portals)
+    public function __construct(JsonResponder $responder, Access $access, Store $store, private readonly PortalService $portals, private readonly SchoolLife $life)
     {
         parent::__construct($responder, $access, $store);
+    }
+
+    public function studentLife(ServerRequestInterface $request): ResponseInterface
+    {
+        [$principal, $establishmentId] = $this->context($request);
+
+        return $this->json($this->portals->studentLife($principal, $establishmentId));
+    }
+
+    public function childLife(ServerRequestInterface $request): ResponseInterface
+    {
+        [$principal, $establishmentId] = $this->context($request);
+
+        return $this->json($this->portals->childLife($principal, $establishmentId, self::id($request)));
+    }
+
+    public function teacher(ServerRequestInterface $request): ResponseInterface
+    {
+        [$principal, $establishmentId] = $this->context($request);
+
+        return $this->json($this->life->forTeacher($principal, $establishmentId));
     }
 
     public function student(ServerRequestInterface $request): ResponseInterface

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Scholaris\Modules\Apps\Secondary\Fees\Http\FeeCatalogController;
 use Scholaris\Modules\Apps\Secondary\Fees\Http\FeesController;
+use Scholaris\Modules\Apps\Secondary\Fees\Http\FeesReportsController;
 use Scholaris\Modules\Apps\Secondary\Fees\Http\PaymentPlanController;
 use Scholaris\Modules\Apps\Secondary\Setup\Contracts\Modules;
 use Scholaris\Modules\Apps\Secondary\Support\SecondaryRoutes;
@@ -14,6 +15,8 @@ use Scholaris\Modules\Apps\Secondary\Support\SecondaryRoutes;
  */
 return static function (SecondaryRoutes $routes): void {
     $routes->get('/fees/overview', [FeesController::class, 'overview']);
+    $routes->get('/fees/situation', [FeesReportsController::class, 'situation']);
+    $routes->get('/carte-scolaire/year-end-export', [FeesReportsController::class, 'yearEndExport']);
 
     $private = $routes->module(Modules::FEES_PRIVATE);
     $private->post('/fees/private/setup', [FeesController::class, 'setupPrivate']);

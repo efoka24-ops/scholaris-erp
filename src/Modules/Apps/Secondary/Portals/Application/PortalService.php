@@ -42,7 +42,39 @@ final class PortalService
         private readonly InvoiceIssuer $invoices,
         private readonly PaymentRequester $payments,
         private readonly Access $access,
+        private readonly SchoolLife $life,
     ) {
+    }
+
+    /**
+     * T974 : vie scolaire de l'élève connecté (résultats publiés, bulletins, absences, devoirs, services).
+     *
+     * @return array<string, mixed>
+     */
+    public function studentLife(Principal $principal, string $establishmentId): array
+    {
+        $this->access->require($principal, $establishmentId, self::SELF);
+        $t = $principal->tenantId;
+        $person = $this->people->find($t, $this->personOf($principal)) ?? throw HttpException::notFound('Fiche introuvable.');
+        $enrollment = $this->cards->liveEnrollment($t, $establishmentId, $person->id)
+            ?? throw HttpException::notFound('Aucune inscription en cours dans cet établissement.');
+
+        return $this->life->forStudent($t, $establishmentId, $person, $enrollment, true);
+    }
+
+    /**
+     * T974 : vie scolaire d'un de SES enfants (404 sinon) ; accès restreint pour un élève majeur sans consentement.
+     *
+     * @return array<string, mixed>
+     */
+    public function childLife(Principal $principal, string $establishmentId, string $childId): array
+    {
+        $this->access->require($principal, $establishmentId, self::FAMILY);
+        $t = $principal->tenantId;
+        $child = $this->ownChild($principal, $establishmentId, $childId);
+        $enrollment = $this->cards->liveEnrollment($t, $establishmentId, $child->id) ?? throw HttpException::notFound('Élève introuvable.');
+
+        return $this->life->forStudent($t, $establishmentId, $child, $enrollment, $this->fullAccess($t, $child));
     }
 
     /** @return array<string, mixed> */

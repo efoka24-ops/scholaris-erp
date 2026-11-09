@@ -2,9 +2,12 @@
 
 declare(strict_types=1);
 
+use function DI\autowire;
+
 use Scholaris\Modules\Apps\Secondary\Fees\Application\DocumentHoldGuard;
 use Scholaris\Modules\Apps\Secondary\Fees\Application\FeesFamilyInvoices;
 use Scholaris\Modules\Apps\Secondary\Fees\Application\SecondaryFeeGuard;
+use Scholaris\Modules\Apps\Secondary\Fees\Console\FeeNoticesCommand;
 use Scholaris\Modules\Apps\Secondary\Fees\Domain\FeesDefaults;
 
 /**
@@ -18,4 +21,5 @@ return [
     'billing.fee_item_guards.secondary' => [SecondaryFeeGuard::class],
     'documents.issuance_guards.secondary_fees' => [DocumentHoldGuard::class],
     'secondary.family_invoices.fees' => [FeesFamilyInvoices::class],
+    'console.command.' . FeeNoticesCommand::NAME => autowire(FeeNoticesCommand::class),
 ];

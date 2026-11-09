@@ -1,0 +1,250 @@
+# Contrat OpenAPI 3.1 des services annexes de l'application Enseignement secondaire (spec 005, lot E4 : T972, T973, EX-SEC-63, 64, 66).
+#  - [canteen_transport] cantine (formules) et transport (lignes et arrets) ; [boarding] internat (chambres, dortoirs) : offres et
+#    abonnements, facture libre du socle Billing a la demande (reference sec-svc:<abonnement>) ;
+#  - [infirmary] passages et dossier de sante reserves a l'infirmier (secondary.infirmary.manage, 403 pour tout autre role), donnees
+#    chiffrees au repos, chaque lecture journalisee (journal sans donnee de sante) ; dispenses d'EPS du jour sans motif.
+# Chaque route declare son module : module jamais active = 409 `module_not_enabled` ; module coupe apres usage = lectures permises,
+# ecritures 409 (rien n'est supprime). Ecritures : 423 si l'abonnement est suspendu, 403 si l'application n'est pas ouverte.
+paths:
+  /api/v1/secondary/services/canteen-transport/offers:
+    get:
+      summary: "[canteen_transport] Offres de cantine et lignes de transport (filtres service_kind, active ; curseur)"
+      description: "Permission secondary.services.manage, secondary.billing.manage, secondary.settings.manage ou secondary.finance.read."
+      parameters: &listParams
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: 'filter[service_kind]', in: query, required: false, schema: {type: string}}
+        - {name: 'filter[active]', in: query, required: false, schema: {type: string}}
+        - {name: sort, in: query, required: false, schema: {type: string}}
+        - {name: per_page, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 200}}
+        - {name: cursor, in: query, required: false, schema: {type: string}}
+      responses: &listResponses
+        '200': {description: "Liste paginee {data, meta.next_cursor, meta.per_page}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Application fermee ou etablissement introuvable"}
+        '409': {description: "Module non active"}
+        '422': {description: "Filtre, tri ou pagination invalide"}
+    post:
+      summary: "[canteen_transport] Creer une offre : formule de cantine ou ligne de transport avec ses arrets"
+      description: "Permission secondary.services.manage ou secondary.settings.manage sur tout l'etablissement."
+      parameters: &headerOnly
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      requestBody: &offerBody
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [service_kind, label, amount_xaf]
+              properties:
+                service_kind: {type: string, description: "canteen ou transport (boarding sur la route de l'internat)"}
+                label: {type: string, maxLength: 160}
+                stops: {type: array, maxItems: 40, items: {type: string, maxLength: 120}}
+                capacity: {type: [integer, 'null'], minimum: 1}
+                fee_code: {type: [string, 'null'], maxLength: 40}
+                amount_xaf: {type: integer, minimum: 0}
+      responses: &writeCreated
+        '201': {description: "{data: ressource creee}"}
+        '400': {description: "Corps illisible"}
+        '403': {description: "Permission absente ou application non ouverte"}
+        '404': {description: "Etablissement ou ressource introuvable"}
+        '409': {description: "Module non active ou coupe, capacite atteinte, abonnement deja en cours"}
+        '422': {description: "Donnees invalides"}
+        '423': {description: "Abonnement suspendu"}
+  /api/v1/secondary/services/canteen-transport/offers/{id}:
+    patch:
+      summary: "[canteen_transport] Modifier une offre (libelle, arrets, capacite, frais, montant, ouverte ou fermee)"
+      parameters: &idParams
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody: &offerPatch
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                label: {type: string, maxLength: 160}
+                stops: {type: array, items: {type: string}}
+                capacity: {type: [integer, 'null'], minimum: 1}
+                fee_code: {type: [string, 'null'], maxLength: 40}
+                amount_xaf: {type: integer, minimum: 0}
+                active: {type: boolean}
+      responses: &writeOk
+        '200': {description: "{data: ressource a jour}"}
+        '400': {description: "Corps illisible"}
+        '403': {description: "Permission absente ou application non ouverte"}
+        '404': {description: "Ressource introuvable (autre client, autre etablissement ou autre nature de service)"}
+        '409': {description: "Module non active ou coupe, etat incompatible"}
+        '422': {description: "Donnees invalides"}
+        '423': {description: "Abonnement suspendu"}
+  /api/v1/secondary/services/canteen-transport/subscriptions:
+    get:
+      summary: "[canteen_transport] Abonnements (filtres service_kind, status, person_id, offer_id, class_id ; curseur)"
+      parameters: *listParams
+      responses: *listResponses
+    post:
+      summary: "[canteen_transport] Abonner un eleve inscrit a une offre ouverte ; facture libre du socle si invoice = true"
+      description: "Permission secondary.services.manage sur tout l'etablissement. Un seul abonnement en cours par nature de service."
+      parameters: *headerOnly
+      requestBody: &subscriptionBody
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [offer_id, person_id, starts_on]
+              properties:
+                offer_id: {type: string}
+                person_id: {type: string}
+                starts_on: {type: string, format: date}
+                ends_on: {type: [string, 'null'], format: date}
+                stop_label: {type: [string, 'null'], maxLength: 120}
+                invoice: {type: boolean}
+      responses: *writeCreated
+  /api/v1/secondary/services/canteen-transport/subscriptions/{id}/end:
+    post:
+      summary: "[canteen_transport] Terminer un abonnement a une date, avec motif (rien n'est supprime)"
+      parameters: *idParams
+      requestBody: &endBody
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [ends_on, reason]
+              properties:
+                ends_on: {type: string, format: date}
+                reason: {type: string, maxLength: 255}
+      responses: *writeOk
+  /api/v1/secondary/services/boarding/offers:
+    get:
+      summary: "[boarding] Chambres et dortoirs de l'internat (curseur)"
+      parameters: *listParams
+      responses: *listResponses
+    post:
+      summary: "[boarding] Creer une chambre ou un dortoir (service_kind boarding)"
+      parameters: *headerOnly
+      requestBody: *offerBody
+      responses: *writeCreated
+  /api/v1/secondary/services/boarding/offers/{id}:
+    patch:
+      summary: "[boarding] Modifier une chambre ou un dortoir"
+      parameters: *idParams
+      requestBody: *offerPatch
+      responses: *writeOk
+  /api/v1/secondary/services/boarding/subscriptions:
+    get:
+      summary: "[boarding] Internes (curseur)"
+      parameters: *listParams
+      responses: *listResponses
+    post:
+      summary: "[boarding] Inscrire un eleve a l'internat"
+      parameters: *headerOnly
+      requestBody: *subscriptionBody
+      responses: *writeCreated
+  /api/v1/secondary/services/boarding/subscriptions/{id}/end:
+    post:
+      summary: "[boarding] Fin de l'internat d'un eleve"
+      parameters: *idParams
+      requestBody: *endBody
+      responses: *writeOk
+  /api/v1/secondary/services/infirmary/visits:
+    get:
+      summary: "[infirmary] Passages a l'infirmerie (filtres person_id, class_id, reason_code ; curseur), sans les notes"
+      description: "Infirmier seulement (secondary.infirmary.manage). Chaque consultation est journalisee."
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: 'filter[person_id]', in: query, required: false, schema: {type: string}}
+        - {name: 'filter[class_id]', in: query, required: false, schema: {type: string}}
+        - {name: 'filter[reason_code]', in: query, required: false, schema: {type: string}}
+        - {name: sort, in: query, required: false, schema: {type: string}}
+        - {name: per_page, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 200}}
+        - {name: cursor, in: query, required: false, schema: {type: string}}
+      responses: *listResponses
+    post:
+      summary: "[infirmary] Enregistrer un passage (motif, suite, appel des parents, notes chiffrees, dispense d'EPS)"
+      description: "Infirmier seulement. L'eleve doit avoir une inscription en cours."
+      parameters: *headerOnly
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [person_id, reason_code, outcome, parent_called]
+              properties:
+                person_id: {type: string}
+                visited_at: {type: string, format: date-time}
+                reason_code: {type: string, enum: [illness, injury, checkup, medication, other]}
+                outcome: {type: string, enum: [back_to_class, rest, sent_home, referred]}
+                parent_called: {type: boolean}
+                notes: {type: [string, 'null'], maxLength: 2000}
+                pe_exempt_until: {type: [string, 'null'], format: date}
+      responses: *writeCreated
+  /api/v1/secondary/services/infirmary/visits/{id}:
+    get:
+      summary: "[infirmary] Un passage avec ses notes (dechiffrees), lecture journalisee"
+      parameters: *idParams
+      responses:
+        '200': {description: "{data: {id, person_id, student_name, class_id, visited_at, reason_code, outcome, parent_called, pe_exempt_from, pe_exempt_until, notes}}"}
+        '403': {description: "Pas infirmier"}
+        '404': {description: "Passage introuvable ou application fermee"}
+        '409': {description: "Module infirmary non active"}
+  /api/v1/secondary/services/infirmary/records/{personId}:
+    get:
+      summary: "[infirmary] Dossier de sante d'un eleve (allergies, affections, traitements, consignes d'urgence), lecture journalisee"
+      parameters: &personParams
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: personId, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "{data: {person_id, exists, allergies, conditions, treatments, emergency_instructions, updated_by, updated_at}}"}
+        '403': {description: "Pas infirmier"}
+        '404': {description: "Eleve inconnu dans l'etablissement ou application fermee"}
+        '409': {description: "Module infirmary non active"}
+    put:
+      summary: "[infirmary] Enregistrer le dossier de sante (chiffre au repos)"
+      parameters: *personParams
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                allergies: {type: [string, 'null'], maxLength: 2000}
+                conditions: {type: [string, 'null'], maxLength: 2000}
+                treatments: {type: [string, 'null'], maxLength: 2000}
+                emergency_instructions: {type: [string, 'null'], maxLength: 2000}
+      responses: *writeOk
+  /api/v1/secondary/services/infirmary/access-log:
+    get:
+      summary: "[infirmary] Journal des consultations des donnees de sante (qui, quand, quel eleve ; aucune donnee de sante)"
+      description: "Infirmier ou chef d'etablissement (secondary.infirmary.manage ou secondary.settings.manage)."
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: 'filter[person_id]', in: query, required: false, schema: {type: string}}
+        - {name: 'filter[user_id]', in: query, required: false, schema: {type: string}}
+        - {name: 'filter[access_kind]', in: query, required: false, schema: {type: string}}
+        - {name: sort, in: query, required: false, schema: {type: string}}
+        - {name: per_page, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 200}}
+        - {name: cursor, in: query, required: false, schema: {type: string}}
+      responses: *listResponses
+  /api/v1/secondary/services/infirmary/pe-exemptions:
+    get:
+      summary: "[infirmary] Eleves dispenses d'EPS un jour donne (sans motif medical)"
+      description: "Infirmier, enseignant, censeur, surveillant general ou scolarite."
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: date, in: query, required: false, schema: {type: string, format: date}}
+      responses:
+        '200': {description: "{data: {date, exemptions: [{person_id, class_id, exempt_until}]}}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Application fermee"}
+        '409': {description: "Module infirmary non active"}
+        '422': {description: "Date invalide"}

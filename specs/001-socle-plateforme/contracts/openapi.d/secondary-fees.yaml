@@ -20,6 +20,34 @@ paths:
         '403': {description: "Permission absente"}
         '404': {description: "Application fermee ou etablissement introuvable"}
         '422': {description: "Type d'etablissement invalide"}
+  /api/v1/secondary/fees/situation:
+    get:
+      summary: "Situation financiere par classe, par niveau et pour l'etablissement, avec previsions d'encaissement par mois (EX-FIN-07), agregats seulement"
+      description: "Permission secondary.fees.read, secondary.finance.read, secondary.billing.manage, secondary.fees.catalog ou secondary.fees.validate sur tout l'etablissement."
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: academic_year_id, in: query, required: false, schema: {type: string}}
+      responses:
+        '200': {description: "{data: {academic_year_id, as_of, classes: [{class_id, label, level_code, learners, debtors, invoiced_xaf, paid_xaf, balance_xaf, overdue_xaf, recovery_rate}], levels, establishment, forecast: [{month, expected_xaf}]}}"}
+        '403': {description: "Permission absente ou perimetre partiel"}
+        '404': {description: "Application fermee ou etablissement introuvable"}
+        '422': {description: "Annee scolaire absente sans periode en cours, ou identifiant invalide"}
+  /api/v1/secondary/carte-scolaire/year-end-export:
+    get:
+      summary: "Fichier des conseils de fin d'annee pour cartescolaire.cm (DOC-33, API-04) : CSV UTF-8 separateur ;, colonnes parametrees"
+      description: "Permission secondary.enrol.manage ou secondary.settings.manage sur tout l'etablissement ; export journalise. En-tetes X-Rows, X-Missing-National-Ids, X-Missing-Results."
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: academic_year_id, in: query, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: "Fichier CSV (matricule, nom, prenoms, date_naissance, classe, moyenne_annuelle, rang, decision par defaut)"
+          content:
+            text/csv: {schema: {type: string}}
+        '403': {description: "Permission absente ou perimetre partiel"}
+        '404': {description: "Application fermee ou etablissement introuvable"}
+        '409': {description: "Aucune periode annee pour cette annee scolaire"}
+        '422': {description: "Annee scolaire absente ou invalide"}
   /api/v1/secondary/fees/private/setup:
     post:
       summary: "[fees_private] Poser les preglages de Billing de l'etablissement (sans jamais ecraser une valeur deja posee) ; rejouable"

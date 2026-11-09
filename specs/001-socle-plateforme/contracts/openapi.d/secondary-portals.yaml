@@ -23,6 +23,36 @@ paths:
         '200': {description: "{data: {guardian_id, can_pay, family_balance_xaf, children: [fiche + invoices: [{id, reference, net_xaf, paid_xaf, balance_xaf, installments}]]}}"}
         '403': {description: "Droit secondary.family.read absent ou compte sans fiche personne"}
         '404': {description: "Application fermee"}
+  /api/v1/secondary/portal/student/school-life:
+    get:
+      summary: "Vie scolaire de l'eleve connecte (T974) : resultats publies, bulletins emis, absences de l'annee, devoirs recents, services"
+      description: "Jamais une note non publiee ni une donnee de sante. Bulletins retenus si un blocage de remise pour impaye s'applique ; les resultats restent visibles."
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "{data: {person_id, access, results: [{period_id, period_label, average, rank, class_size, mention, decision}], report_cards: {blocked, items: [{id, number, type, verification_token}]}, attendance: {from, to, sessions, absences, unjustified_absences, lates}, homework: [{session_date, subject_label, homework}], services}}"}
+        '403': {description: "Droit secondary.self.read absent ou compte sans fiche personne"}
+        '404': {description: "Aucune inscription en cours ou application fermee"}
+  /api/v1/secondary/portal/family/children/{id}/school-life:
+    get:
+      summary: "Vie scolaire d'un de ses enfants (T974), memes rubriques que l'eleve ; acces restreint pour un eleve majeur sans consentement"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "{data: {person_id, access, results, report_cards, attendance, homework, services}} ou {data: {person_id, access: restricted}}"}
+        '403': {description: "Droit secondary.family.read absent ou compte sans fiche personne"}
+        '404': {description: "Enfant d'une autre famille ou d'un autre etablissement, application fermee"}
+  /api/v1/secondary/portal/teacher:
+    get:
+      summary: "Portail enseignant du secondaire (T974) : affectations de l'annee avec couverture du programme, devoirs donnes recemment"
+      description: "Permission secondary.lesson.log, secondary.grades.enter ou secondary.attendance.take ; les saisies de notes a faire sont celles du portail enseignant du socle."
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "{data: {teacher_person_id, academic_year_id, assignments: [{assignment_id, class_id, class_name, group_code, subject_label, academic_year_id, coverage}], homework_given}}"}
+        '403': {description: "Permission absente ou compte sans fiche personne"}
+        '404': {description: "Application fermee"}
   /api/v1/secondary/portal/family/children/{id}/payments:
     post:
       summary: "Demander le paiement mobile money d'une facture d'un de ses enfants (idempotent par cle)"

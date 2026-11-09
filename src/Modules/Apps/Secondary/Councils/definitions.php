@@ -8,8 +8,11 @@ use Scholaris\Modules\Apps\Secondary\Councils\Application\ConductRulesService;
 use Scholaris\Modules\Apps\Secondary\Councils\Application\SecondaryCouncilLines;
 use Scholaris\Modules\Apps\Secondary\Councils\Application\SecondaryReportCardVariables;
 use Scholaris\Modules\Apps\Secondary\Councils\Contracts\ConductRules;
+use Scholaris\Modules\Apps\Secondary\Councils\Contracts\PromotionPlans;
 use Scholaris\Modules\Apps\Secondary\Councils\Domain\SecondaryStrategy;
 use Scholaris\Modules\Apps\Secondary\Councils\Infrastructure\SecondaryRuleScopes;
+use Scholaris\Modules\Apps\Secondary\Councils\Orientation\Application\OrientationDocumentTypes;
+use Scholaris\Modules\Apps\Secondary\Councils\Orientation\Application\SecondaryPromotionPlanner;
 
 /**
  * Points d'extension d'Assessment pour le secondaire : stratégie de calcul `secondary` (T812, S6), portées de règles classe puis
@@ -23,4 +26,7 @@ return [
     'assessment.council_line_providers.secondary' => [SecondaryCouncilLines::class],
     'assessment.report_card_variables.secondary' => [SecondaryReportCardVariables::class],
     ConductRules::class => get(ConductRulesService::class),
+    'secondary.document_types.orientation' => [OrientationDocumentTypes::class],
+    SecondaryPromotionPlanner::CONTAINER_KEY => [SecondaryPromotionPlanner::class],
+    PromotionPlans::class => get(SecondaryPromotionPlanner::class),
 ];

@@ -210,6 +210,32 @@ paths:
         '404': {description: Recours ou série introuvable}
         '409': {description: Module inactif ou recours déjà examiné}
         '422': {description: Recours accepté sans série révisée}
+  /api/v1/secondary/orientation/students/{personId}/sheet:
+    post:
+      summary: "Émettre la fiche d'orientation DOC-16 de l'élève (vœux, avis, entretien, décision et motif), par le conseiller d'orientation"
+      description: "Permission secondary.orientation.manage dans le périmètre de la classe ; module orientation ; émission journalisée."
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: personId, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [academic_year_id]
+              properties:
+                academic_year_id: {type: string, maxLength: 40}
+                locale: {type: string, enum: [fr, en]}
+      responses:
+        '201': {description: "{data: {person_id, document_id, number, type}}"}
+        '400': {description: Corps illisible}
+        '403': {description: "Permission absente, classe hors périmètre ou application non ouverte"}
+        '404': {description: Élève introuvable dans l'établissement et l'année}
+        '409': {description: Module orientation inactif}
+        '422': {description: Données invalides}
+        '423': {description: Abonnement suspendu}
   /api/v1/secondary/councils/rule-draft:
     get:
       summary: Brouillon de version de règles du niveau (ou de la classe) avec les coefficients versionnés de Setup (T900), à publier par POST /calculation-rules

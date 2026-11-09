@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Scholaris\Modules\Apps\Secondary\Councils\Orientation\Http\OrientationController;
+use Scholaris\Modules\Apps\Secondary\Councils\Orientation\Http\OrientationSheetController;
 use Scholaris\Modules\Apps\Secondary\Support\SecondaryRoutes;
 
 /** Toutes les routes de ce sous-module passent par la garde explicite `orientation`. */
@@ -20,4 +21,5 @@ return static function (SecondaryRoutes $routes): void {
     $orientation->get('/orientation/me/appeals', [OrientationController::class, 'ownAppeals']);
     $orientation->post('/orientation/students/{personId}/appeals', [OrientationController::class, 'appeal']);
     $orientation->post('/orientation/appeals/{id}/decide', [OrientationController::class, 'decideAppeal']);
+    $orientation->post('/orientation/students/{personId}/sheet', [OrientationSheetController::class, 'issue']);
 };
