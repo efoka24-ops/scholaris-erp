@@ -102,9 +102,8 @@ test('IPES : notes CC et examen saisies à l\'écran, cycle de validation, simul
   await expect(row).toContainText(/11[,.]55/);
   await expect(row).toContainText(/2[,.]4/);
   await expect(row).toContainText('30');
-  // Observation C110-I3 (rapport) : l'avertissement « notes pas encore verrouillées » reste affiché alors que les 18 évaluations
-  // du semestre sont verrouillées ; il n'est donc pas vérifié ici.
-  if (await chefPage.getByText('Des notes ne sont pas encore verrouillées').count()) info.annotations.push({ type: 'observation', description: 'C110-I3' });
+  // C110-I3 corrigé (C-116) : toutes les évaluations sont verrouillées (liste unlocked vide), aucun avertissement.
+  await expect(chefPage.getByText('Des notes ne sont pas encore verrouillées')).toHaveCount(0);
 
   // 4. Portail de l'étudiante.
   const [studentLogin, studentPassword] = ctx.logins.student!;
