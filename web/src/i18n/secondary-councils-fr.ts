@@ -51,7 +51,7 @@ export const secondaryCouncilsFr = {
   'secc.alerts': '{count} matière(s) sous le seuil',
   'secc.practicalAlerts': 'Pratique sous le seuil',
   'secc.notEvaluated': '{count} matière(s) non évaluée(s)',
-  'secc.workshopNone': 'Notes d’atelier non disponibles (aucun contrat Workshops).',
+  'secc.workshopMarks': 'Atelier : {points} / {outOf} ({count} évaluation(s))',
   'secc.reportCards': 'Bulletins émis',
   'secc.preview': 'Aperçu',
   'secc.cardStatus.queued': 'En attente',

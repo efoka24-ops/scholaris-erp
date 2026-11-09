@@ -12,6 +12,7 @@ use Scholaris\Modules\Apps\Secondary\Setup\Contracts\ClassProfileInfo;
 use Scholaris\Modules\Apps\Secondary\Setup\Contracts\ClassProfiles;
 use Scholaris\Modules\Apps\Secondary\Setup\Contracts\CoefficientBook;
 use Scholaris\Modules\Apps\Secondary\Timetable\Contracts\TeachingAssignments;
+use Scholaris\Modules\Apps\Secondary\Workshops\Contracts\PracticalMarks;
 use Scholaris\Modules\Socle\Assessment\Contracts\CalculationRules;
 use Scholaris\Modules\Socle\Assessment\Contracts\CouncilDirectory;
 use Scholaris\Modules\Socle\Assessment\Contracts\RuleCalculator;
@@ -58,6 +59,7 @@ final class ReportCardBuilder
         private readonly ConductRecord $conduct,
         private readonly TeachingAssignments $assignments,
         private readonly RepeaterRoster $repeaters,
+        private readonly PracticalMarks $practical,
     ) {
     }
 
@@ -123,7 +125,7 @@ final class ReportCardBuilder
             'secondary_repeater' => $this->repeaters->repeatersAmong($tenantId, $establishmentId, [$personId]) === [] ? ($en ? 'No' : 'Non') : ($en ? 'Yes' : 'Oui'),
             'secondary_head_teacher' => $this->headTeacher($tenantId, $class),
             'secondary_subjects_table' => self::json($this->subjectsTable($rules, $columns, $groups, $results, $period, $yearPeriod, $personId, $en)),
-            'secondary_summary_table' => self::json($this->summaryTable($columns, $subjects, $results, $personId, $en)),
+            'secondary_summary_table' => self::json($this->summaryTable($columns, $subjects, $results, $personId, $en, $period->id, $this->practical->forClass($tenantId, $establishmentId, $class->structureId, $from, $to)[$personId] ?? null)),
             'secondary_class_profile_table' => self::json($this->profileTable($columns, $results, $yearPeriod, $rules, $en)),
             'secondary_discipline_table' => self::json($this->disciplineTable($tenantId, $establishmentId, $personId, $from, $to, $en)),
             'secondary_work_table' => self::json($this->workTable($rules, $line, $current[$personId]['average'] ?? null, $en)),
@@ -313,9 +315,10 @@ final class ReportCardBuilder
      * @param list<array{id: string, label: string, kind: string, included: bool}> $columns
      * @param list<array{subject_id: string, code: string, label: string, factor: float, counts: bool, teacher: string}> $subjects
      * @param array<string, array<string, array<string, mixed>>> $results
+     * @param array{evaluations: int, points: float, out_of: float}|null $practical notes d'atelier de la période (Workshops, C-117)
      * @return array<string, mixed>
      */
-    private function summaryTable(array $columns, array $subjects, array $results, string $personId, bool $en): array
+    private function summaryTable(array $columns, array $subjects, array $results, string $personId, bool $en, string $periodId = '', ?array $practical = null): array
     {
         $points = [$en ? 'Total' : 'Total'];
         $averages = [$en ? 'Average' : 'Moy / Aver'];
@@ -337,7 +340,10 @@ final class ReportCardBuilder
         return [
             'class' => 'compact',
             'columns' => [['label' => '', 'align' => 'left'], ...array_map(static fn (array $c): array => ['label' => $c['label'], 'align' => 'center'], $columns)],
-            'rows' => [$points, $averages, $ranks],
+            'rows' => $practical === null ? [$points, $averages, $ranks] : [$points, $averages, $ranks, [
+                $en ? 'Workshop practice' : 'Pratique d\'atelier / Workshop',
+                ...array_map(static fn (array $c): string => $c['id'] === $periodId ? self::number($practical['points'], $en) . ' / ' . self::number($practical['out_of'], $en) : '', $columns),
+            ]],
         ];
     }
 

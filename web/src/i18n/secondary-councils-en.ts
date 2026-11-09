@@ -53,7 +53,7 @@ export const secondaryCouncilsEn: Record<keyof typeof secondaryCouncilsFr, strin
   'secc.alerts': '{count} subject(s) below the threshold',
   'secc.practicalAlerts': 'Practical work below the threshold',
   'secc.notEvaluated': '{count} subject(s) not assessed',
-  'secc.workshopNone': 'Workshop marks unavailable (no Workshops contract).',
+  'secc.workshopMarks': 'Workshop: {points} / {outOf} ({count} assessment(s))',
   'secc.reportCards': 'Issued report cards',
   'secc.preview': 'Preview',
   'secc.cardStatus.queued': 'Queued',

@@ -134,6 +134,18 @@ final class CouncilReportCardApiTest extends SecondaryTestCase
         return (string) $assessment['id'];
     }
 
+    private function practicalEvaluation(string $person, string $date, float $score, float $base): void
+    {
+        $now = '2026-10-05T10:00:00+01:00';
+        $pdo = $this->pdo();
+        $pdo->prepare('INSERT INTO se_practical_sheets (id, tenant_id, establishment_id, workshop_id, title, objective, materials, tools, safety_rules, criteria, base_score, safety_cap, version_no, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 1, ?, ?, ?)')
+            ->execute(['01J00000000000000000SHEET1', self::TA, $this->school, '01J00000000000000000ATEL01', 'Fiche fictive', 'Objectif', '[]', '[]', '[]', '[]', $base, self::ADMIN, $now, $now]);
+        $pdo->prepare('INSERT INTO se_workshop_sessions (id, tenant_id, establishment_id, workshop_id, structure_id, sheet_id, session_date, teacher_person_id, attendance, client_uuid, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+            ->execute(['01J00000000000000000SESS01', self::TA, $this->school, '01J00000000000000000ATEL01', $this->class, '01J00000000000000000SHEET1', $date, 'prof-atelier', '[]', 'uuid-atelier-1', self::ADMIN, $now]);
+        $pdo->prepare('INSERT INTO se_practical_evaluations (id, tenant_id, establishment_id, workshop_id, session_id, sheet_id, person_id, criteria_scores, raw_total, serious_safety_breach, final_score, assessment_id, evaluated_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, NULL, ?, ?)')
+            ->execute(['01J00000000000000000EVAL01', self::TA, $this->school, '01J00000000000000000ATEL01', '01J00000000000000000SESS01', '01J00000000000000000SHEET1', $person, '{}', $score, $score, self::ADMIN, $now]);
+    }
+
     /** @return array<string, mixed> conseil ouvert */
     private function council(string $period, string $label): array
     {
@@ -206,6 +218,9 @@ final class CouncilReportCardApiTest extends SecondaryTestCase
             $open = $last ? $id : $open;
         }
 
+        // C-117 : une évaluation pratique d'atelier (Workshops) d'Aïcha pendant le trimestre, lue par le contrat PracticalMarks.
+        $this->practicalEvaluation('aicha', '2026-10-05', 15.5, 20.0);
+
         $council = $this->council('T1', '1er trimestre');
         $lines = self::lines($council);
         self::assertEquals(11.30, $lines['aicha']['average'], 'TST-01 : moyenne 11,30.');
@@ -216,7 +231,8 @@ final class CouncilReportCardApiTest extends SecondaryTestCase
         self::assertFalse($extras['distinction_refused']);
         self::assertEquals(['total' => 0, 'justified' => 0, 'unjustified' => 0, 'lates' => 0], $extras['absence_hours']);
         self::assertSame([], $extras['conduct_sanctions']);
-        self::assertNull($extras['workshop_practical'], 'Aucun contrat Workshops : colonne pratique vide.');
+        self::assertEquals(['evaluations' => 1, 'points' => 15.5, 'out_of' => 20.0], $extras['workshop_practical'], 'Notes d\'atelier lues par le contrat Workshops.');
+        self::assertNull($lines['eleve-b']['line_extras']['workshop_practical'], 'Sans évaluation pratique : vide.');
         self::assertSame('Tableau d\'honneur', $lines['eleve-b']['line_extras']['work_proposal']['label'], '12 de moyenne : tranche d\'exemple « 12 à moins de 14 ».');
 
         [$status] = $this->call('POST', '/class-councils/' . $council['id'] . '/validate', [], self::CENSOR, self::TA, $this->school);
@@ -260,6 +276,8 @@ final class CouncilReportCardApiTest extends SecondaryTestCase
         self::assertSame('11,30', $total['cells'][4]);
 
         $summary = self::table($data, 'secondary_summary_table');
+        self::assertSame(['Pratique d\'atelier / Workshop', '', '', '15,50 / 20,00'], array_slice($summary['rows'][3], 0, 4), 'Colonne pratique du bulletin (période du bulletin).');
+        self::assertCount(3, self::table($issued['eleve-b']['data'], 'secondary_summary_table')['rows'], 'Sans note d\'atelier : pas de ligne pratique.');
         self::assertSame(['Total', '248,50'], [$summary['rows'][0][0], $summary['rows'][0][3]], 'TST-01 : total 248,50 au trimestre.');
         self::assertSame('11,30', $summary['rows'][1][3]);
         self::assertSame('3e', $summary['rows'][2][3]);

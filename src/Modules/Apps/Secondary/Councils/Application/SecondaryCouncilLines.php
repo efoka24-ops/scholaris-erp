@@ -9,6 +9,7 @@ use Scholaris\Modules\Apps\Secondary\Councils\Domain\SecondaryStrategy;
 use Scholaris\Modules\Apps\Secondary\Councils\Domain\WorkProposals;
 use Scholaris\Modules\Apps\Secondary\Discipline\Contracts\ConductRecord;
 use Scholaris\Modules\Apps\Secondary\Setup\Contracts\ClassProfiles;
+use Scholaris\Modules\Apps\Secondary\Workshops\Contracts\PracticalMarks;
 use Scholaris\Modules\Socle\Assessment\Contracts\CouncilDirectory;
 use Scholaris\Modules\Socle\Assessment\Contracts\CouncilLineProvider;
 use Scholaris\Modules\Socle\Assessment\Contracts\RuleCalculator;
@@ -23,8 +24,8 @@ use Scholaris\Modules\Socle\Organisation\Contracts\PeriodTree;
  *  - reprise des propositions calculées par la stratégie (`computed_extras` des résultats enregistrés) : proposition du travail,
  *    passage, matières en alerte, pratique sous le seuil, matières non évaluées ;
  *  - distinction refusée si `distinction_blocked_by_conduct` et une sanction de conduite appliquée sur la période.
- * Ce ne sont que des propositions : le socle ne remplace jamais une valeur saisie en séance. Notes pratiques d'atelier : aucun contrat
- * Workshops ne les expose, la pratique vient des matières de rôle `practical` notées dans Assessment (`workshop_practical` reste nul).
+ * Ce ne sont que des propositions : le socle ne remplace jamais une valeur saisie en séance. Notes pratiques d'atelier (C-117) : lues
+ * par le contrat Workshops\Contracts\PracticalMarks (séances de la classe sur la période, « points / base »), nul sans évaluation.
  * Hors d'une classe du secondaire (ou d'une version de règles d'une autre stratégie), le fournisseur ne répond rien.
  */
 final class SecondaryCouncilLines implements CouncilLineProvider
@@ -36,6 +37,7 @@ final class SecondaryCouncilLines implements CouncilLineProvider
         private readonly CouncilDirectory $councils,
         private readonly AttendanceTotals $attendance,
         private readonly ConductRecord $conduct,
+        private readonly PracticalMarks $practical,
     ) {
     }
 
@@ -56,6 +58,7 @@ final class SecondaryCouncilLines implements CouncilLineProvider
         $to = substr($period->endsOn, 0, 10);
         $stored = $this->councils->storedResults($tenantId, $establishmentId, $structureId, $periodId);
         $totals = $this->attendance->byLearner($tenantId, $establishmentId, $from, $to);
+        $practical = $this->practical->forClass($tenantId, $establishmentId, $structureId, $from, $to);
         $out = [];
         foreach ($personIds as $personId) {
             $extras = $stored[$personId]['extras'] ?? [];
@@ -85,7 +88,7 @@ final class SecondaryCouncilLines implements CouncilLineProvider
                     'subject_alerts' => self::ids($extras['subject_alerts'] ?? null),
                     'practical_alerts' => self::ids($extras['practical_alerts'] ?? null),
                     'not_evaluated' => self::ids($extras['not_evaluated'] ?? null),
-                    'workshop_practical' => null,
+                    'workshop_practical' => $practical[$personId] ?? null,
                 ],
             ];
             if ($sanctions !== []) {

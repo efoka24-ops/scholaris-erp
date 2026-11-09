@@ -34,7 +34,8 @@ export interface SecondaryLineExtras {
   subject_alerts?: string[];
   practical_alerts?: string[];
   not_evaluated?: string[];
-  workshop_practical?: null;
+  /** Notes d'atelier de la période (contrat Workshops PracticalMarks, C-117) : points sur la somme des bases des fiches. */
+  workshop_practical?: { evaluations: number; points: number; out_of: number } | null;
 }
 export interface SecondaryCouncilLine extends CouncilLine {
   line_extras: SecondaryLineExtras | null;

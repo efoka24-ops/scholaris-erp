@@ -122,6 +122,7 @@ function chips(line: SecondaryCouncilLine): string[] {
   if (x.subject_alerts?.length) out.push(t('secc.alerts', { count: String(x.subject_alerts.length) }));
   if (x.practical_alerts?.length) out.push(t('secc.practicalAlerts'));
   if (x.not_evaluated?.length) out.push(t('secc.notEvaluated', { count: String(x.not_evaluated.length) }));
+  if (x.workshop_practical) out.push(t('secc.workshopMarks', { points: String(x.workshop_practical.points), outOf: String(x.workshop_practical.out_of), count: String(x.workshop_practical.evaluations) }));
   return out;
 }
 function cardStatus(status: string): string {
@@ -202,7 +203,6 @@ onMounted(load);
           <button v-if="!isOpen && canPrepare" class="btn btn--primary" type="button" :disabled="busy" @click="generate">{{ t('secc.generate') }}</button>
         </div>
         <p v-if="isOpen" class="muted small">{{ t('secc.validateHint') }}</p>
-        <p class="muted small">{{ t('secc.workshopNone') }}</p>
         <ul class="lines">
           <li v-for="line in council.lines" :key="line.id" class="line">
             <div class="who">
