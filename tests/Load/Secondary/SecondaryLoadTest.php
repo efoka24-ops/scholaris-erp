@@ -9,6 +9,7 @@ use Nyholm\Psr7\Stream;
 use Nyholm\Psr7\UploadedFile;
 use Scholaris\Core\Database\ConnectionFactory;
 use Scholaris\Modules\Socle\Assessment\Contracts\ActorDirectory;
+use Scholaris\Modules\Socle\Documents\Application\DocumentService;
 use Scholaris\Modules\Socle\Documents\Domain\QrCodeGenerator;
 use Scholaris\Modules\Socle\Documents\Infrastructure\DompdfRenderer;
 use Scholaris\Modules\Socle\Documents\Infrastructure\LibraryQrCodeGenerator;
@@ -224,6 +225,49 @@ final class SecondaryLoadTest extends SecondaryTestCase
         return $elapsed;
     }
 
+    /**
+     * Rendu en profil léger par $workers processus PHP en parallèle (render-worker.php), sur les contenus HTML des bulletins émis.
+     *
+     * @param list<string> $documents
+     * @return array{processus: int, bulletins: int, duree_s: float, bulletins_par_seconde: float, ms_par_bulletin_et_processus: float}
+     */
+    private function parallelRender(array $documents, int $workers): array
+    {
+        $dir = dirname(__DIR__) . '/.work/parallel-render';
+        @mkdir($dir, 0o777, true);
+        $service = $this->service(DocumentService::class);
+        $lists = array_fill(0, $workers, []);
+        foreach ($documents as $i => $document) {
+            $file = $dir . '/bulletin-' . $i . '.html';
+            file_put_contents($file, $service->content(self::TA, $this->school, $document));
+            $lists[$i % $workers][] = $file;
+        }
+        $procs = [];
+        foreach ($lists as $w => $files) {
+            file_put_contents($dir . '/liste-' . $w . '.txt', implode("\n", $files));
+            $command = [PHP_BINARY, '-d', 'memory_limit=512M', __DIR__ . '/render-worker.php', $dir . '/liste-' . $w . '.txt', $dir . '/dompdf-' . $w];
+            $procs[$w] = proc_open($command, [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
+            self::assertIsResource($procs[$w]);
+            $procs[$w] = [$procs[$w], $pipes];
+        }
+        $slowest = 0.0;
+        foreach ($procs as [$proc, $pipes]) {
+            $out = (string) stream_get_contents($pipes[1]);
+            $err = (string) stream_get_contents($pipes[2]);
+            proc_close($proc);
+            $lines = array_values(array_filter(explode("\n", trim($out))));
+            $result = json_decode((string) end($lines), true);
+            self::assertIsArray($result, 'Processus de rendu : ' . $out . $err);
+            $slowest = max($slowest, (float) $result['seconds']);
+        }
+        $rate = count($documents) / max(0.001, $slowest);
+
+        return [
+            'processus' => $workers, 'bulletins' => count($documents), 'duree_s' => round($slowest, 2), 'bulletins_par_seconde' => round($rate, 2),
+            'ms_par_bulletin_et_processus' => round(1000 * $slowest * $workers / max(1, count($documents)), 1),
+        ];
+    }
+
     /** @param list<float> $values */
     private static function percentile(array $values, float $p): float
     {
@@ -312,8 +356,12 @@ final class SecondaryLoadTest extends SecondaryTestCase
         }
         $lightSteady = count($light) > 1 ? array_slice($light, 1) : $light;
         $render = array_sum($lightSteady) / count($lightSteady);
+        // Rendu PARALLÈLE réel (C-117) : W processus PHP indépendants (render-worker.php) rendent en profil léger un lot de bulletins
+        // émis, découpé en parts égales (comme plusieurs processus PHP-FPM ou plusieurs tâches documents:process-jobs). Débit mesuré
+        // = bulletins / durée du processus le plus lent ; la projection s'applique à tous les bulletins de l'établissement.
         $workers = max(1, (int) (getenv('SECONDARY_LOAD_PDF_WORKERS') ?: 4));
-        $projected = $issue + $render * count($documents) / $workers;
+        $parallel = $this->parallelRender(array_slice($documents, 0, max($workers, (int) (getenv('SECONDARY_LOAD_PDF_PARALLEL_SAMPLE') ?: 20 * $workers))), $workers);
+        $projected = $issue + count($documents) / $parallel['bulletins_par_seconde'];
         self::$results['NF-S2_bulletins'] = [
             'bulletins_emis' => count($documents), 'emission_s' => round($issue, 1), 'emission_ms_par_bulletin' => round(1000 * $issue / count($documents), 1),
             'pdf_echantillon' => count($sample), 'pdf_premier_ms' => round(1000 * $times[0], 1),
@@ -321,12 +369,12 @@ final class SecondaryLoadTest extends SecondaryTestCase
             'pdf_standard_kio_moyen' => (int) round($bytes / 1024 / count($sample)), 'projection_standard_un_processus_min' => round(($issue + $standard * count($documents)) / 60, 1),
             'pdf_leger_ms_par_bulletin' => round(1000 * $render, 1), 'pdf_leger_p95_ms' => round(1000 * self::percentile($lightSteady, 0.95), 1),
             'pdf_leger_kio_moyen' => (int) round($lightBytes / 1024 / count($sample)), 'projection_leger_un_processus_min' => round(($issue + $render * count($documents)) / 60, 1),
-            'workers_paralleles' => $workers, 'projection_totale_min' => round($projected / 60, 1), 'seuil_min' => 15, 'ok' => $projected < 900,
+            'rendu_parallele' => $parallel, 'projection_totale_min' => round($projected / 60, 1), 'seuil_min' => 15, 'ok' => $projected < 900,
             'processus_paralleles_requis_leger' => (int) ceil($render * count($documents) / max(1.0, 900 - $issue)), 'memoire_pointe_mio' => round(memory_get_peak_usage(true) / 1048576),
         ];
         // Mesure rapportée ; bloquante seulement avec SECONDARY_LOAD_STRICT=1 (le rendu Dompdf du poste de mesure n'est pas celui du serveur).
         if (getenv('SECONDARY_LOAD_STRICT') === '1') {
-            self::assertLessThan(900.0, $projected, 'NF-S2 : ' . count($documents) . ' bulletins PDF en moins de 15 minutes (projection, un processus).');
+            self::assertLessThan(900.0, $projected, 'NF-S2 : ' . count($documents) . ' bulletins PDF en moins de 15 minutes (profil léger, ' . $workers . ' processus).');
         }
 
         $this->offline(array_values($this->classes)[0]);
