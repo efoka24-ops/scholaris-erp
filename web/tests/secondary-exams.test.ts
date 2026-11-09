@@ -67,3 +67,24 @@ describe('secondary official exams texts', () => {
     setLocale('fr');
   });
 });
+
+describe('secondary official exams photo upload', () => {
+  it('reports an unreadable photo in the current language (C-117)', async () => {
+    const { secondaryOfficialExams } = await import('@/views/secondary/exams/secondaryOfficialExams');
+    class BrokenReader {
+      onerror: (() => void) | null = null;
+      onload: (() => void) | null = null;
+      result: string | null = null;
+      readAsDataURL(): void {
+        this.onerror?.();
+      }
+    }
+    vi.stubGlobal('FileReader', BrokenReader);
+    const file = new File(['x'], 'photo.jpg', { type: 'image/jpeg' });
+    setLocale('en');
+    await expect(secondaryOfficialExams.uploadPhoto('c-1', file)).rejects.toThrow('The photo could not be read.');
+    setLocale('fr');
+    await expect(secondaryOfficialExams.uploadPhoto('c-1', file)).rejects.toThrow('Lecture de la photo impossible.');
+    vi.unstubAllGlobals();
+  });
+});

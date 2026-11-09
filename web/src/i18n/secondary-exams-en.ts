@@ -66,6 +66,7 @@ export const secondaryExamsEn: Record<keyof typeof secondaryExamsFr, string> = {
   'secx.optionalSubjects': 'Optional subjects',
   'secx.optionalPlaceholder': 'Configured subjects',
   'secx.photo': 'Candidate photo',
+  'secx.photoUnreadable': 'The photo could not be read.',
   'secx.removePhoto': 'Remove photo',
   'secx.remove': 'Remove candidate',
   'secx.removed': '{name} removed from the working list.',

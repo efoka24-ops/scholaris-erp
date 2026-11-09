@@ -64,6 +64,7 @@ export const secondaryExamsFr = {
   'secx.optionalSubjects': 'Matières optionnelles',
   'secx.optionalPlaceholder': 'Matières configurées',
   'secx.photo': 'Photo du candidat',
+  'secx.photoUnreadable': 'Lecture de la photo impossible.',
   'secx.removePhoto': 'Retirer la photo',
   'secx.remove': 'Retirer le candidat',
   'secx.removed': '{name} retiré de la liste de travail.',

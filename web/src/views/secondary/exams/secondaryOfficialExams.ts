@@ -1,5 +1,6 @@
 // API des examens officiels du secondaire. Les formats et codes de résultat sont configurés par établissement.
 import { http, type QueryValue } from '@/api/http';
+import { translate } from '@/i18n';
 
 const ROOT = '/secondary/official-exams';
 const get = async <T>(path: string, query?: Record<string, QueryValue>): Promise<T> => (await http.get<{ data: T }>(`${ROOT}${path}`, query ?? {})).data;
@@ -72,7 +73,7 @@ export const secondaryOfficialExams = {
   removePhoto: (id: string): Promise<ExamCandidate> => http.delete(`${ROOT}/candidates/${encodeURIComponent(id)}/photo`),
   uploadPhoto: (id: string, file: File): Promise<ExamCandidate> => new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onerror = () => reject(new Error('Lecture de la photo impossible.'));
+    reader.onerror = () => reject(new Error(translate('secx.photoUnreadable')));
     reader.onload = async () => {
       try {
         const data = String(reader.result ?? '').split(',')[1] ?? '';
