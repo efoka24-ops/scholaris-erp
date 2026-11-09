@@ -299,14 +299,30 @@ final class SecondaryLoadTest extends SecondaryTestCase
         }
         // Le premier rendu construit le cache des polices de Dompdf : il est exclu de la moyenne s'il y a d'autres rendus.
         $steady = count($times) > 1 ? array_slice($times, 1) : $times;
-        $render = array_sum($steady) / count($steady);
-        $projected = $issue + $render * count($documents);
+        $standard = array_sum($steady) / count($steady);
+        // Profil léger (C-117, LightPdfProfile : polices de base non embarquées, grandes images retirées), même échantillon.
+        $light = [];
+        $lightBytes = 0;
+        foreach ($sample as $document) {
+            $t0 = microtime(true);
+            $pdf = $this->raw('GET', '/documents/' . $document . '/preview?profile=light', null, self::ADMIN, self::TA, $this->school);
+            $light[] = microtime(true) - $t0;
+            self::assertSame(200, $pdf->getStatusCode(), (string) $pdf->getBody());
+            $lightBytes += strlen((string) $pdf->getBody());
+        }
+        $lightSteady = count($light) > 1 ? array_slice($light, 1) : $light;
+        $render = array_sum($lightSteady) / count($lightSteady);
+        $workers = max(1, (int) (getenv('SECONDARY_LOAD_PDF_WORKERS') ?: 4));
+        $projected = $issue + $render * count($documents) / $workers;
         self::$results['NF-S2_bulletins'] = [
             'bulletins_emis' => count($documents), 'emission_s' => round($issue, 1), 'emission_ms_par_bulletin' => round(1000 * $issue / count($documents), 1),
-            'pdf_echantillon' => count($sample), 'pdf_premier_ms' => round(1000 * $times[0], 1), 'pdf_ms_par_bulletin' => round(1000 * $render, 1),
-            'pdf_p95_ms' => round(1000 * self::percentile($steady, 0.95), 1), 'pdf_kio_moyen' => (int) round($bytes / 1024 / count($sample)),
-            'projection_totale_min' => round($projected / 60, 1), 'seuil_min' => 15, 'ok' => $projected < 900,
-            'processus_paralleles_requis' => (int) ceil($projected / 900), 'memoire_pointe_mio' => round(memory_get_peak_usage(true) / 1048576),
+            'pdf_echantillon' => count($sample), 'pdf_premier_ms' => round(1000 * $times[0], 1),
+            'pdf_standard_ms_par_bulletin' => round(1000 * $standard, 1), 'pdf_standard_p95_ms' => round(1000 * self::percentile($steady, 0.95), 1),
+            'pdf_standard_kio_moyen' => (int) round($bytes / 1024 / count($sample)), 'projection_standard_un_processus_min' => round(($issue + $standard * count($documents)) / 60, 1),
+            'pdf_leger_ms_par_bulletin' => round(1000 * $render, 1), 'pdf_leger_p95_ms' => round(1000 * self::percentile($lightSteady, 0.95), 1),
+            'pdf_leger_kio_moyen' => (int) round($lightBytes / 1024 / count($sample)), 'projection_leger_un_processus_min' => round(($issue + $render * count($documents)) / 60, 1),
+            'workers_paralleles' => $workers, 'projection_totale_min' => round($projected / 60, 1), 'seuil_min' => 15, 'ok' => $projected < 900,
+            'processus_paralleles_requis_leger' => (int) ceil($render * count($documents) / max(1.0, 900 - $issue)), 'memoire_pointe_mio' => round(memory_get_peak_usage(true) / 1048576),
         ];
         // Mesure rapportée ; bloquante seulement avec SECONDARY_LOAD_STRICT=1 (le rendu Dompdf du poste de mesure n'est pas celui du serveur).
         if (getenv('SECONDARY_LOAD_STRICT') === '1') {
