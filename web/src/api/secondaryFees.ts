@@ -88,7 +88,25 @@ export interface RequestInput {
 type One<T> = { data: T };
 type Many<T> = { data: T[] };
 
+/** Frais facturé du socle (/fee-items) ; la garde du secondaire refuse au public un frais absent du catalogue (RG-FIN-2). */
+export interface FeeItem {
+  id: string;
+  kind: string;
+  code?: string;
+  name: string;
+  amount_xaf: number;
+  active: boolean | number;
+}
+export interface FeeItemInput {
+  kind: string;
+  name: string;
+  amount_xaf: number;
+  code?: string;
+}
+
 export const secondaryFees = {
+  feeItems: async (): Promise<FeeItem[]> => http.all<FeeItem>('/fee-items'),
+  addFeeItem: async (input: FeeItemInput): Promise<FeeItem> => (await http.post<One<FeeItem>>('/fee-items', input)).data,
   overview: async (): Promise<FeesOverview> => (await http.get<One<FeesOverview>>(`${ROOT}/overview`)).data,
   setupPrivate: async (): Promise<Record<string, { value: unknown; applied: boolean }>> =>
     (await http.post<One<{ presets: Record<string, { value: unknown; applied: boolean }> }>>(`${ROOT}/private/setup`, {})).data.presets,

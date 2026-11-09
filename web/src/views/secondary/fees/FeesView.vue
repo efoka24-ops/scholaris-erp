@@ -5,7 +5,7 @@ import { computed, onMounted, ref } from 'vue';
 import ErrorNotice from '@/components/ErrorNotice.vue';
 import {
   planTotal, secondaryFees, validInstallments,
-  type CatalogEntry, type FeeRequest, type FeesOverview, type Installment, type PaymentPlan,
+  type CatalogEntry, type FeeItem, type FeeRequest, type FeesOverview, type Installment, type PaymentPlan,
 } from '@/api/secondaryFees';
 import { useI18n } from '@/i18n';
 import { useAction, usePermissions } from '../useSec';
@@ -19,6 +19,8 @@ const plans = ref<PaymentPlan[]>([]);
 const catalog = ref<CatalogEntry[]>([]);
 const requests = ref<FeeRequest[]>([]);
 const notice = ref('');
+const items = ref<FeeItem[]>([]);
+const item = ref({ kind: '', name: '', amount: '' as number | '', code: '' });
 
 const canManage = computed(() => can('secondary.billing.manage'));
 const canValidate = computed(() => can('secondary.fees.validate'));
@@ -35,6 +37,8 @@ async function load(): Promise<void> {
   const o = await run(() => secondaryFees.overview());
   if (!o) return;
   overview.value = o;
+  if (canManage.value) items.value = (await run(() => secondaryFees.feeItems())) ?? [];
+  if (item.value.kind === '') item.value.kind = o.kinds[0] ?? '';
   if (o.mode === 'private') plans.value = (await run(() => secondaryFees.plans())) ?? [];
   if (o.mode === 'public_catalog') {
     catalog.value = (await run(() => secondaryFees.catalog())) ?? [];
@@ -98,6 +102,24 @@ async function decideRequest(r: FeeRequest, accept: boolean): Promise<void> {
   if (accept && basis === '') return;
   if (await run(() => secondaryFees.decide(r.id, accept ? 'accepted' : 'refused', reason, basis || undefined))) await load();
 }
+// Frais facturés de l'établissement (socle Billing) : au public, la garde du secondaire refuse un frais hors catalogue et crée la
+// demande d'ajout ; le motif du serveur est affiché tel quel (C-117).
+async function addItem(): Promise<void> {
+  const i = item.value;
+  if (i.kind === '' || i.name.trim() === '' || i.amount === '' || !Number.isInteger(Number(i.amount))) return;
+  const created = await run(() => secondaryFees.addFeeItem({
+    kind: i.kind, name: i.name.trim(), amount_xaf: Number(i.amount), ...(i.code.trim() !== '' ? { code: i.code.trim() } : {}),
+  }));
+  if (created) {
+    item.value = { kind: i.kind, name: '', amount: '', code: '' };
+    notice.value = t('secf.itemAdded');
+    await load();
+    return;
+  }
+  // Refus de la garde : la demande d'ajout créée par le serveur apparaît sans effacer le motif affiché.
+  if (overview.value?.mode === 'public_catalog') requests.value = await secondaryFees.requests().catch(() => requests.value);
+}
+
 async function addEntry(): Promise<void> {
   const e = entry.value;
   if (e.label.trim() === '' || e.legalBasis.trim() === '') return;
@@ -131,6 +153,26 @@ onMounted(load);
         <p class="muted">{{ t('secf.toConfirm') }}</p>
         <p>{{ t('secf.refusedKinds', { kinds: overview.refused_kinds.join(', ') || '—' }) }}</p>
         <p class="muted">{{ t('secf.noExclusion') }}</p>
+      </section>
+
+      <section v-if="canManage" class="card" aria-labelledby="sf-items">
+        <h2 id="sf-items">{{ t('secf.items') }}</h2>
+        <p class="muted">{{ t('secf.itemsHelp') }}</p>
+        <p v-if="items.length === 0" class="muted">{{ t('secf.noItems') }}</p>
+        <ul v-else class="rows">
+          <li v-for="i in items" :key="i.id"><strong>{{ i.name }}</strong> · {{ i.kind }}<template v-if="i.code"> · {{ i.code }}</template> · {{ money(i.amount_xaf) }}</li>
+        </ul>
+        <form class="stack" aria-labelledby="sf-items-new" @submit.prevent="addItem">
+          <h3 id="sf-items-new">{{ t('secf.itemNew') }}</h3>
+          <div class="field">
+            <label for="sf-i-kind">{{ t('secf.kind') }}</label>
+            <select id="sf-i-kind" v-model="item.kind"><option v-for="k in overview.kinds" :key="k" :value="k">{{ k }}</option></select>
+          </div>
+          <div class="field"><label for="sf-i-name">{{ t('secf.label') }}</label><input id="sf-i-name" v-model="item.name" type="text" maxlength="160" /></div>
+          <div class="field"><label for="sf-i-code">{{ t('secf.itemCode') }}</label><input id="sf-i-code" v-model="item.code" type="text" maxlength="40" autocomplete="off" /></div>
+          <div class="field"><label for="sf-i-amount">{{ t('secf.amount') }}</label><input id="sf-i-amount" v-model.number="item.amount" type="number" min="0" step="1" inputmode="numeric" /></div>
+          <div><button type="submit" class="btn btn--primary" :disabled="busy">{{ t('secf.itemAdd') }}</button></div>
+        </form>
       </section>
 
       <template v-if="overview.mode === 'private'">

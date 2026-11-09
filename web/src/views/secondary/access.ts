@@ -6,7 +6,7 @@ export const S = {
   settingsRead: ['secondary.settings.read', 'secondary.settings.write', 'secondary.settings.manage'],
   enrolRead: ['secondary.enrol.read', 'secondary.enrol.manage', 'secondary.enrol.validate'],
   documentsRead: ['secondary.documents.issue', 'secondary.enrol.manage', 'secondary.enrol.read', 'secondary.billing.manage', 'secondary.settings.manage'],
-  feesRead: ['secondary.fees.read', 'secondary.billing.manage', 'secondary.billing.cash', 'secondary.fees.catalog', 'secondary.finance.read'],
+  feesRead: ['secondary.fees.read', 'secondary.billing.manage', 'secondary.billing.cash', 'secondary.fees.catalog', 'secondary.finance.read', 'secondary.profile.manage'],
   carteScolaire: ['secondary.enrol.read', 'secondary.enrol.manage', 'secondary.billing.manage', 'secondary.fees.read', 'secondary.finance.read'],
   examsRead: ['secondary.exams.read', 'secondary.exams.manage', 'secondary.exams.lists', 'secondary.exams.validate'],
   orientation: ['secondary.orientation.manage', 'secondary.council.preside', 'secondary.self.read', 'secondary.family.read'],

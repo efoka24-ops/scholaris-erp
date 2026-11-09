@@ -22,6 +22,8 @@ use Scholaris\Modules\Apps\Secondary\Support\Store;
 final class FeesController extends Controller
 {
     public const READ = ['secondary.fees.read', 'secondary.finance.read', 'secondary.billing.manage', 'secondary.fees.catalog', 'secondary.fees.validate'];
+    /** Aperçu du mode des frais : aussi la tenue du catalogue (secondary.profile.manage), qui travaille sur l'écran Frais (C-117). */
+    public const OVERVIEW = [...self::READ, 'secondary.profile.manage'];
     public const MANAGE = ['secondary.billing.manage'];
     private const SOCLE_KINDS = ['registration', 'tuition', 'other'];
 
@@ -40,7 +42,7 @@ final class FeesController extends Controller
     public function overview(ServerRequestInterface $request): ResponseInterface
     {
         [$principal, $establishmentId] = $this->context($request);
-        $this->access->require($principal, $establishmentId, self::READ);
+        $this->access->require($principal, $establishmentId, self::OVERVIEW);
         $tenantId = $principal->tenantId;
 
         return $this->json([

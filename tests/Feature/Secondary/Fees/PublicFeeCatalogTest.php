@@ -104,6 +104,15 @@ final class PublicFeeCatalogTest extends SecondaryTestCase
         self::assertSame(403, $own, 'Séparation des tâches.');
     }
 
+    /** C-117 : la personne qui tient le catalogue (secondary.profile.manage seul) ouvre l'écran Frais : aperçu, catalogue, demandes. */
+    public function testLaTenueDuCatalogueOuvreLApercuDesFrais(): void
+    {
+        $overview = $this->ok('GET', '/secondary/fees/overview', null, self::CLIENT_ADMIN, self::TA, $this->leg);
+        self::assertSame('public_catalog', $overview['mode']);
+        $this->ok('GET', '/secondary/fees/catalog', null, self::CLIENT_ADMIN, self::TA, $this->leg);
+        $this->ok('GET', '/secondary/fees/requests', null, self::CLIENT_ADMIN, self::TA, $this->leg);
+    }
+
     public function testLeCatalogueDuClientValePourTousSesEtablissementsPublics(): void
     {
         $ces = $this->factory->opened(self::TA, 'ces');
