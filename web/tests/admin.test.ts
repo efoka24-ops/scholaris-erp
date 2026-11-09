@@ -259,6 +259,32 @@ describe('écran Années académiques, périodes et clôture', () => {
     expect(wrapper.text()).toContain('Trimestre');
   });
 
+  it('rattache une séquence à son trimestre (parent obligatoire côté serveur, C-117)', async () => {
+    signIn(directorMe, [directorTile], 'directeur');
+    const t1 = { id: 'T1', academic_year_id: 'Y1', kind: 'trimester', ordinal: 1, starts_on: '2026-09-01', ends_on: '2026-12-15', parent_id: null };
+    const calls = mockApi({
+      'GET /academic-years': () => page([year]),
+      'GET /periods': page([t1]),
+      'POST /periods': (c) => jsonResponse({ data: { id: 'S1', ...c.body } }, 201),
+      'GET /academic-years/Y1/closure-check': { data: { academic_year_id: 'Y1', ready: true, blocking_count: 0, not_evaluable_count: 1, checks, closure: null } },
+    });
+    const { wrapper } = await mountView(AdminYearsView, {}, '/administration/annees');
+    await flushPromises();
+    const open = wrapper.findAll('button').find((b) => /Périodes|Gérer|Détail|2026-2027/.test(b.text()));
+    if (!wrapper.find('#p-kind').exists() && open) {
+      await open.trigger('click');
+      await flushPromises();
+    }
+    await wrapper.get('#p-kind').setValue('sequence');
+    expect(wrapper.findAll('#p-parent option').map((o) => o.text())).toContain('Trimestre 1');
+    await wrapper.get('#p-parent').setValue('T1');
+    await wrapper.get('#p-start').setValue('2026-09-01');
+    await wrapper.get('#p-end').setValue('2026-10-15');
+    await wrapper.get('form[aria-labelledby="p-new"]').trigger('submit');
+    await flushPromises();
+    expect(calls.find((c) => c.method === 'POST' && c.path === '/periods')?.body).toEqual({ academic_year_id: 'Y1', kind: 'sequence', ordinal: 2, starts_on: '2026-09-01', ends_on: '2026-10-15', parent_id: 'T1' });
+  });
+
   it('refuse une fin de période avant le début sans appeler le serveur', async () => {
     signIn(directorMe, [directorTile], 'directeur');
     const calls = mockApi({

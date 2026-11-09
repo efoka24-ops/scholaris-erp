@@ -130,6 +130,8 @@ export const adminEn: Record<AdminKey, string> = {
   'admin.periods.create': 'Add the period',
   'admin.periods.kind': 'Kind',
   'admin.periods.ordinal': 'Number',
+  'admin.periods.parent': 'Belongs to',
+  'admin.periods.parentHint': 'A sequence belongs to a term of the year.',
   'admin.periods.endAfter': 'The end date cannot be before the start date.',
   'admin.period.trimester': 'Term',
   'admin.period.sequence': 'Sequence',

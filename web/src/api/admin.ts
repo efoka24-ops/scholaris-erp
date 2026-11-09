@@ -43,6 +43,7 @@ export interface Period {
   ordinal: number;
   starts_on: string;
   ends_on: string;
+  parent_id?: string | null;
 }
 
 export interface ClosureCheck {
@@ -205,7 +206,7 @@ export const listYears = (): Promise<AcademicYear[]> => http.all<AcademicYear>('
 export const createYear = async (input: { label: string; starts_on: string; ends_on: string }): Promise<AcademicYear> =>
   (await http.post<{ data: AcademicYear }>('/academic-years', input)).data;
 export const listPeriods = (yearId: string): Promise<Period[]> => http.all<Period>('/periods', { 'filter[academic_year_id]': yearId, sort: 'starts_on' });
-export const createPeriod = async (input: { academic_year_id: string; kind: string; ordinal: number; starts_on: string; ends_on: string }): Promise<Period> =>
+export const createPeriod = async (input: { academic_year_id: string; kind: string; ordinal: number; starts_on: string; ends_on: string; parent_id?: string }): Promise<Period> =>
   (await http.post<{ data: Period }>('/periods', input)).data;
 export const closureCheck = async (yearId: string): Promise<ClosureReport> => (await http.get<{ data: ClosureReport }>(`/academic-years/${yearId}/closure-check`)).data;
 export const requestClosure = async (yearId: string, nextYearId: string | null): Promise<Closure> =>

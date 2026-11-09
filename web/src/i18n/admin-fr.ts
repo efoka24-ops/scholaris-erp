@@ -128,6 +128,8 @@ export const adminFr = {
   'admin.periods.create': 'Ajouter la période',
   'admin.periods.kind': 'Nature',
   'admin.periods.ordinal': 'Numéro',
+  'admin.periods.parent': 'Rattachée à',
+  'admin.periods.parentHint': 'Une séquence appartient à un trimestre de l’année.',
   'admin.periods.endAfter': 'La date de fin ne peut pas précéder la date de début.',
   'admin.period.trimester': 'Trimestre',
   'admin.period.sequence': 'Séquence',

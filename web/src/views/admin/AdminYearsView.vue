@@ -57,7 +57,7 @@ const detailAction = useAction();
 
 const yearForm = reactive({ label: '', starts_on: '', ends_on: '' });
 const yearTouched = ref(false);
-const periodForm = reactive({ kind: '', ordinal: 1, starts_on: '', ends_on: '' });
+const periodForm = reactive({ kind: '', ordinal: 1, starts_on: '', ends_on: '', parent_id: '' });
 const periodTouched = ref(false);
 
 const canManage = computed(() => ctx.can('organisation.manage'));
@@ -72,6 +72,9 @@ const yearErrors = computed(() => ({
   starts_on: yearTouched.value && yearForm.starts_on === '',
   ends_on: yearTouched.value && (yearForm.ends_on === '' || (yearForm.starts_on !== '' && yearForm.ends_on <= yearForm.starts_on)),
 }));
+// Rattachement (C-117) : une séquence appartient à un trimestre (obligatoire côté serveur), un trimestre peut l'être à l'année.
+const PARENT_KIND: Record<string, string> = { sequence: 'trimester' };
+const parentChoices = computed(() => periods.value.filter((p) => p.kind === PARENT_KIND[periodForm.kind]));
 const periodEndBad = computed(() => periodTouched.value && (periodForm.ends_on === '' || (periodForm.starts_on !== '' && periodForm.ends_on < periodForm.starts_on)));
 
 const statusKey = (s: string | null | undefined): AdminKey => `admin.closure.status.${s ?? 'none'}` as AdminKey;
@@ -122,7 +125,17 @@ async function submitPeriod(): Promise<void> {
   periodTouched.value = true;
   if (!selectedId.value || periodForm.starts_on === '' || periodEndBad.value) return;
   const id = selectedId.value;
-  const res = await periodAction.run(() => createPeriod({ academic_year_id: id, kind: periodForm.kind, ordinal: Number(periodForm.ordinal), starts_on: periodForm.starts_on, ends_on: periodForm.ends_on }));
+  const parentId = parentChoices.value.some((p) => p.id === periodForm.parent_id) ? periodForm.parent_id : '';
+  const res = await periodAction.run(() =>
+    createPeriod({
+      academic_year_id: id,
+      kind: periodForm.kind,
+      ordinal: Number(periodForm.ordinal),
+      starts_on: periodForm.starts_on,
+      ends_on: periodForm.ends_on,
+      ...(parentId !== '' ? { parent_id: parentId } : {}),
+    }),
+  );
   if (!res) return;
   periods.value = [...periods.value, res].sort((a, b) => a.starts_on.localeCompare(b.starts_on));
   Object.assign(periodForm, { ordinal: Math.min(12, periods.value.length + 1), starts_on: '', ends_on: '' });
@@ -252,6 +265,14 @@ onMounted(loadYears);
               <select id="p-kind" v-model="periodForm.kind">
                 <option v-for="k in kinds" :key="k" :value="k">{{ kindLabel(k) }}</option>
               </select>
+            </div>
+            <div v-if="PARENT_KIND[periodForm.kind]" class="field">
+              <label for="p-parent">{{ t('admin.periods.parent') }}</label>
+              <select id="p-parent" v-model="periodForm.parent_id">
+                <option value="">—</option>
+                <option v-for="p in parentChoices" :key="p.id" :value="p.id">{{ kindLabel(p.kind) }} {{ p.ordinal }}</option>
+              </select>
+              <span class="hint">{{ t('admin.periods.parentHint') }}</span>
             </div>
             <div class="field">
               <label for="p-ord">{{ t('admin.periods.ordinal') }}</label>
