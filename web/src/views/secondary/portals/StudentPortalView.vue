@@ -5,6 +5,7 @@ import ErrorNotice from '@/components/ErrorNotice.vue';
 import { secondaryPortals, type StudentCard } from '@/api/secondaryPortals';
 import { useI18n } from '@/i18n';
 import { useAction } from '../useSec';
+import SchoolLifePanel from './SchoolLifePanel.vue';
 import StudentCardView from './StudentCardView.vue';
 
 const { t } = useI18n();
@@ -25,5 +26,6 @@ onMounted(async () => {
     </header>
     <ErrorNotice :error="error" />
     <StudentCardView v-if="card" :card="card" />
+    <SchoolLifePanel v-if="card" />
   </div>
 </template>

@@ -16,7 +16,9 @@ export const S = {
   internships: ['secondary.internships.manage'],
   staff: ['secondary.settings.read', 'secondary.settings.manage', 'secondary.syllabus.visa', 'secondary.timetable.manage', 'secondary.billing.manage', 'secondary.finance.read'],
   payroll: ['secondary.finance.read', 'secondary.billing.manage', 'secondary.settings.manage'],
-  services: ['secondary.services.manage', 'secondary.library.manage', 'secondary.infirmary.manage'],
+  services: ['secondary.services.manage', 'secondary.library.manage', 'secondary.infirmary.manage', 'secondary.billing.manage', 'secondary.settings.manage', 'secondary.finance.read'],
+  financeReports: ['secondary.fees.read', 'secondary.finance.read', 'secondary.billing.manage', 'secondary.fees.catalog', 'secondary.fees.validate', 'secondary.enrol.manage', 'secondary.settings.manage'],
+  teacher: ['secondary.lesson.log', 'secondary.grades.enter', 'secondary.attendance.take'],
   dashboards: ['secondary.dashboard.read', 'secondary.finance.read', 'secondary.fees.read', 'secondary.billing.manage', 'secondary.network.read', 'secondary.grades.validate'],
   dashboardHead: ['secondary.dashboard.read'],
   /** Rôles affectés à tout l'établissement (chef, censeur, surveillant général, promoteur) : vue du chef proposée ; le serveur juge. */

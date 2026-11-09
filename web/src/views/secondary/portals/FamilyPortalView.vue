@@ -9,6 +9,7 @@ import { formatXaf } from '@/lib/format';
 import { ulid } from '@/lib/ulid';
 import { useI18n } from '@/i18n';
 import { useAction } from '../useSec';
+import SchoolLifePanel from './SchoolLifePanel.vue';
 import StudentCardView from './StudentCardView.vue';
 
 const { t, locale } = useI18n();
@@ -65,7 +66,8 @@ onMounted(() => void load());
     <template v-if="portal">
       <p v-if="portal.children.length === 0" class="muted">{{ t('sec.portal.noChild') }}</p>
       <p v-else>{{ t('sec.portal.familyBalance') }} : <strong>{{ formatXaf(portal.family_balance_xaf, locale) }}</strong></p>
-      <StudentCardView v-for="child in portal.children" :key="child.person.id" :card="child">
+      <template v-for="child in portal.children" :key="child.person.id">
+      <StudentCardView :card="child">
         <template v-if="portal.can_pay && child.invoices && child.invoices.length > 0">
           <h3>{{ t('sec.portal.invoices') }}</h3>
           <ul class="rows">
@@ -77,6 +79,8 @@ onMounted(() => void load());
         </template>
         <p v-else-if="portal.can_pay && child.balance_xaf > 0" class="muted">{{ t('sec.portal.payAtDesk') }}</p>
       </StudentCardView>
+      <SchoolLifePanel :child-id="child.person.id" />
+      </template>
 
       <form v-if="paying" class="card stack" aria-labelledby="sf-pay" @submit.prevent="pay">
         <h2 id="sf-pay">{{ t('sec.portal.payTitle') }}</h2>

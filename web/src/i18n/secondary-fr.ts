@@ -3,6 +3,7 @@ import { secondaryCouncilsFr } from './secondary-councils-fr';
 import { secondaryDashboardsFr } from './secondary-dashboards-fr';
 import { secondaryDisciplineFr } from './secondary-discipline-fr';
 import { secondaryExamsFr } from './secondary-exams-fr';
+import { secondaryServicesFr } from './secondary-services-fr';
 import { secondaryStaffFr } from './secondary-staff-fr';
 import { secondaryTimetableFr } from './secondary-timetable-fr';
 
@@ -15,6 +16,7 @@ export const secondaryFr = {
   ...secondaryStaffFr,
   'nav.secondary': 'Secondaire',
 
+  ...secondaryServicesFr,
   'sec.home.eyebrow': 'Enseignement secondaire',
   'sec.home.title': 'Espace secondaire',
   'sec.home.intro': 'Les écrans affichés suivent les modules activés pour votre établissement et votre rôle.',

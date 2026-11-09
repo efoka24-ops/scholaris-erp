@@ -4,6 +4,7 @@ import { secondaryCouncilsEn } from './secondary-councils-en';
 import { secondaryDashboardsEn } from './secondary-dashboards-en';
 import { secondaryDisciplineEn } from './secondary-discipline-en';
 import { secondaryExamsEn } from './secondary-exams-en';
+import { secondaryServicesEn } from './secondary-services-en';
 import { secondaryStaffEn } from './secondary-staff-en';
 import { secondaryTimetableEn } from './secondary-timetable-en';
 
@@ -16,6 +17,7 @@ export const secondaryEn: Record<keyof typeof secondaryFr, string> = {
   ...secondaryStaffEn,
   'nav.secondary': 'Secondary',
 
+  ...secondaryServicesEn,
   'sec.home.eyebrow': 'Secondary education',
   'sec.home.title': 'Secondary space',
   'sec.home.intro': 'The screens shown follow the modules enabled for your school and your role.',
