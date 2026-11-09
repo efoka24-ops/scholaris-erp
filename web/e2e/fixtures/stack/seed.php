@@ -422,8 +422,7 @@ final class E2eSeeder extends RealStackTestCase
         ], 201);
         // Le rattachement est réservé à l'administrateur fonctionnel des écoles publiques (rôle au niveau du client).
         $this->assignRole($ctx, $ctx['admin_person'], 'pub_functional_admin', 'tenant', $ctx['tenant']);
-        // Appel par demi-journée : réglage exigé par le serveur (attendance.mode = day_part), sans écran pour le poser (C110-PP3).
-        $this->ok('POST', '/settings', $ctx['admin'], ['scope' => 'establishment', 'key' => 'attendance.mode', 'value' => 'day_part'], $ctx['establishment'], ['X-HTTP-Method-Override' => 'PUT']);
+        // Appel par demi-journée : préréglé par l'école publique à sa première classe (C110-PP3 corrigé, C-115), plus par le semis.
         $this->actor($ctx, 'director', 'Moussa', 'Fictif-Directeur', [['pub_school_director', 'establishment']]);
         $this->actor($ctx, 'teacher', 'Paul', 'Fictif-Instituteur', [['pub_class_teacher', 'establishment']]);
         $this->actor($ctx, 'apee', 'Zara', 'Fictive-Tresoriere', [['pub_apee_board', 'establishment']]);
@@ -436,7 +435,7 @@ final class E2eSeeder extends RealStackTestCase
     /**
      * Secondaire : lycée d'enseignement général (code de type « leg ») ouvert par le parcours réel de la plateforme (demande d'accès
      * avec le type, acceptation par l'administrateur de plateforme avec 2FA), administrateur activé, comptes du chef
-     * d'établissement et de la scolarité, année en cours. Le profil n'est PAS ouvert : l'assistant de profil le fait à l'écran.
+     * d'établissement, de la scolarité, du censeur, d'un enseignant, de l'intendant, d'un parent et de l'administrateur fonctionnel, année en cours. Le profil n'est PAS ouvert : l'assistant de profil le fait à l'écran.
      *
      * @return array<string, mixed>
      */
@@ -466,6 +465,11 @@ final class E2eSeeder extends RealStackTestCase
         $ctx['year'] = (string) $this->as($ctx, 'admin', 'POST', '/academic-years', ['label' => $y . '-' . ($y + 1), 'starts_on' => $y . '-09-01', 'ends_on' => ($y + 1) . '-06-30'], 201)['data']['id'];
         $this->actor($ctx, 'chef', 'Hamadou', 'Fictif-Proviseur', [['sec_chef_etablissement', 'establishment']]);
         $this->actor($ctx, 'scol', 'Ramatou', 'Fictive-Scolarite', [['sec_scolarite', 'establishment']]);
+        $this->actor($ctx, 'censeur', 'Bello', 'Fictif-Censeur', [['sec_censeur', 'establishment']]);
+        $this->actor($ctx, 'teacher', 'Paul', 'Fictif-Professeur', [['enseignant', 'establishment']]);
+        $this->actor($ctx, 'intendant', 'Adama', 'Fictif-Intendant', [['sec_intendant', 'establishment']]);
+        $this->actor($ctx, 'parent', 'Aissatou', 'Fictive-Parent', [['sec_parent', 'establishment']]);
+        $this->actor($ctx, 'fonctionnel', 'Moussa', 'Fictif-AdminFonctionnel', [['sec_admin_fonctionnel', 'tenant', $ctx['tenant']]]);
 
         return $this->withSecrets($ctx);
     }

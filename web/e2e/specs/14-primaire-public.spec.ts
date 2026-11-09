@@ -86,36 +86,26 @@ test('primaire public : classe et élèves, appel hors ligne synchronisé, APEE 
   await create.getByRole('button', { name: 'Créer la classe' }).click();
   const classes = director.getByRole('region', { name: "Classes de l'année" });
   await expect(classes.getByText('CM2 A')).toBeVisible();
-  // Défaut C110-AU1 (rapport) : une classe créée ici n'a pas d'autorisation administrative et toute inscription y est refusée
-  // (422 « cette filière n'a pas d'autorisation valide », affiché « Données invalides ») ; aucun écran ne permet de la déclarer.
-  // L'administrateur la déclare par l'API du socle.
-  info.annotations.push({ type: 'défaut', description: 'C110-AU1' });
+  // C110-AU1 corrigé (C-115) : l'administrateur déclare l'autorisation d'ouverture de la classe à l'écran (/administration/autorisations).
   {
-    const admin = await stack.login(...ctx.logins.admin!);
-    const o = { token: admin.token, establishment: ctx.establishment };
-    const dir = await stack.login(...ctx.logins.director!);
-    const list = await stack.api('GET', `/public/classes?academic_year_id=${ctx.year}`, undefined, { token: dir.token, establishment: ctx.establishment });
-    const cm2 = (list.data as Array<{ structure_id: string }>)[0]!;
+    const admin = await actorPage(browser, stack, info);
+    await uiLogin(admin, ...ctx.logins.admin!);
+    await admin.goto('/administration/autorisations');
+    await selectContaining(admin.getByLabel('Classe, section ou filière'), 'CM2 A');
+    await admin.getByLabel('Autorité').fill('MINEDUB');
+    await admin.getByLabel('Référence de l’acte').fill('ARR-EP-CM2-E2E');
     const y = new Date().getFullYear();
-    await stack.api('POST', '/authorizations', { structure_id: cm2.structure_id, reference: 'ARR-EP-CM2-E2E', authority: 'MINEDUB', valid_from: `${y - 1}-01-01`, valid_to: `${y + 3}-12-31` }, { ...o, expect: 201 });
+    await admin.getByLabel('Valide du').fill(`${y - 1}-01-01`);
+    await admin.getByLabel('Valide jusqu’au').fill(`${y + 3}-12-31`);
+    await admin.getByRole('button', { name: 'Déclarer', exact: true }).click();
+    await expect(admin.getByText('Autorisation enregistrée.')).toBeVisible();
+    await admin.context().close();
   }
   await classes.getByRole('button', { name: 'Détails' }).first().click();
   await selectContaining(director.getByLabel('Enseignant titulaire'), 'Paul');
   await director.getByRole('button', { name: 'Affecter' }).click();
-  const refused = director.getByRole('alert').filter({ hasText: 'Données invalides' });
-  await expect(refused.or(classes.getByText(/CM2 — Paul/))).toBeVisible();
-  if (await refused.count()) {
-    // Défaut C110-PP1 (rapport) : l'écran envoie l'identifiant de fiche du personnel (staff_id) alors que le serveur attend
-    // l'identifiant de la liste /public/staff (id) : 422 « Enseignant inconnu ou inactif », message non affiché sous le champ.
-    // Le titulaire est donc désigné par l'API, avec l'identifiant attendu, pour poursuivre le parcours.
-    info.annotations.push({ type: 'défaut', description: 'C110-PP1' });
-    const { token } = await stack.login(...ctx.logins.director!);
-    const o = { token, establishment: ctx.establishment };
-    const staff = await stack.api('GET', '/public/staff', undefined, o);
-    const list = await stack.api('GET', `/public/classes?academic_year_id=${ctx.year}`, undefined, o);
-    const cls = (list.data as Array<{ structure_id: string; name?: string; label?: string }>)[0]!;
-    await stack.api('POST', `/public/classes/${cls.structure_id}/homeroom`, { staff_id: staff.data[0].id, starts_on: isoDate() }, { ...o, headers: { 'X-HTTP-Method-Override': 'PUT' } });
-  }
+  // C110-PP1 corrigé (C-115) : l'écran envoie l'identifiant attendu par le serveur ; le titulaire est affecté à l'écran.
+  await expect(classes.getByText(/CM2 — Paul/)).toBeVisible();
   await enrolPupil(director, 'Fictive-Amina', 'Amina', 'Fille');
   await enrolPupil(director, 'Fictif-Bello', 'Bello', 'Garçon');
 
@@ -140,9 +130,8 @@ test('primaire public : classe et élèves, appel hors ligne synchronisé, APEE 
   const before = stack.calls.filter((c) => c.path.includes('/attendance/') && c.override === 'PUT' && c.status < 300).length;
   expect(before, "rien n'est parti pendant la coupure").toBe(0);
 
-  // Défaut C110-PP3 (rapport) : sans le réglage attendance.mode = day_part (posé par le semis, faute d'écran), l'appel synchronisé
-  // est refusé (« L'appel par moment de la journée n'est pas activé pour cet établissement »).
-  info.annotations.push({ type: 'défaut', description: 'C110-PP3' });
+  // C110-PP3 corrigé (C-115) : attendance.mode = day_part est préréglé à la création de la première classe de l'école publique
+  // (le semis ne le pose plus) ; l'appel synchronisé est accepté.
   await teacher.context().setOffline(false);
   await teacher.getByRole('button', { name: 'Envoyer maintenant' }).click().catch(() => undefined);
   await expect.poll(() => stack.calls.filter((c) => c.path.includes('/attendance/') && c.override === 'PUT' && c.status < 300).length, { timeout: 60_000 }).toBeGreaterThan(before);
