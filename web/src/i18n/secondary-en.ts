@@ -15,9 +15,9 @@ export const secondaryEn: Record<keyof typeof secondaryFr, string> = {
   ...secondaryExamsEn,
   ...secondaryTimetableEn,
   ...secondaryStaffEn,
+  ...secondaryServicesEn,
   'nav.secondary': 'Secondary',
 
-  ...secondaryServicesEn,
   'sec.home.eyebrow': 'Secondary education',
   'sec.home.title': 'Secondary space',
   'sec.home.intro': 'The screens shown follow the modules enabled for your school and your role.',

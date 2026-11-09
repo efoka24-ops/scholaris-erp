@@ -27,10 +27,10 @@ const screens: Screen[] = [
   ['bulletins', 'sec-report-cards', () => import('./councils/ReportCardView.vue'), S.reportCards, 'secb.title'],
   ['tableaux-de-bord', 'sec-dashboards', () => import('./dashboards/DashboardsView.vue'), S.dashboards, 'secdb.title'],
   ['orientation', 'sec-orientation', () => import('./councils/OrientationView.vue'), S.orientation, 'seco.title'],
-  ['mon-espace', 'sec-student', () => import('./portals/StudentPortalView.vue'), S.self, 'sec.portal.studentTitle'],
   ['services', 'sec-services', () => import('./services/ServicesView.vue'), S.services, 'secsv.title'],
   ['situation-financiere', 'sec-finance-reports', () => import('./fees/FinanceReportsView.vue'), S.financeReports, 'secfr.title'],
   ['espace-enseignant', 'sec-teacher', () => import('./portals/TeacherPortalView.vue'), S.teacher, 'sect.title'],
+  ['mon-espace', 'sec-student', () => import('./portals/StudentPortalView.vue'), S.self, 'sec.portal.studentTitle'],
   ['famille', 'sec-family', () => import('./portals/FamilyPortalView.vue'), S.family, 'sec.portal.familyTitle'],
 ];
 

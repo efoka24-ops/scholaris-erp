@@ -14,9 +14,9 @@ export const secondaryFr = {
   ...secondaryExamsFr,
   ...secondaryTimetableFr,
   ...secondaryStaffFr,
+  ...secondaryServicesFr,
   'nav.secondary': 'Secondaire',
 
-  ...secondaryServicesFr,
   'sec.home.eyebrow': 'Enseignement secondaire',
   'sec.home.title': 'Espace secondaire',
   'sec.home.intro': 'Les écrans affichés suivent les modules activés pour votre établissement et votre rôle.',
