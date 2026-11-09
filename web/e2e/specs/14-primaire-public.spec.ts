@@ -13,6 +13,7 @@ test.use({ actionTimeout: 45_000 });
 interface PublicPrimary {
   establishment: string;
   year: string;
+  region_starts_on: string;
   logins: Record<string, [string, string]>;
 }
 
@@ -47,6 +48,21 @@ async function enrolPupil(page: Page, last: string, first: string, gender: 'Fill
 
 test('primaire public : classe et élèves, appel hors ligne synchronisé, APEE avec reçu', async ({ browser }, info) => {
   const ctx = await stack.seed<PublicPrimary>('publicPrimary');
+
+  // 0. L'administrateur fonctionnel (rôle du client) rattache l'école à la région du Nord à l'écran, le jour même du début
+  // de la région : borne incluse (C-115, défaut C110-PP2 corrigé ; le semis le faisait par l'API).
+  const functional = await actorPage(browser, stack, info);
+  await uiLogin(functional, ...ctx.logins.admin!);
+  // Le compte porte aussi « Super administrateur » : le rattachement exige le rôle d'administrateur fonctionnel (droit client).
+  await functional.getByRole('combobox', { name: 'Rôle' }).selectOption({ label: 'Administrateur fonctionnel' });
+  await expect(functional.getByRole('combobox', { name: 'Rôle' })).toHaveValue('pub_functional_admin');
+  await functional.goto('/administration/territoire');
+  await expect(functional.getByRole('heading', { name: 'Rattachement territorial', level: 1 })).toBeVisible();
+  await functional.getByLabel('Territoire', { exact: true }).selectOption({ label: 'Région · Nord (NO)' });
+  await functional.getByLabel(/^Date d.effet$/).fill(ctx.region_starts_on);
+  await functional.getByRole('button', { name: 'Rattacher', exact: true }).click();
+  await expect(functional.getByText(/Établissement rattaché à Nord à compter du/)).toBeVisible();
+  await functional.close();
 
   // 1. Le directeur crée la classe de CM2, désigne le titulaire et inscrit deux élèves.
   const director = await actorPage(browser, stack, info);

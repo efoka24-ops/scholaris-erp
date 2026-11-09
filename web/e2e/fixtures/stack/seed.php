@@ -414,13 +414,14 @@ final class E2eSeeder extends RealStackTestCase
             ], 201)['data']['id'];
         }
         $ctx['unit'] = (string) $this->as($ctx, 'admin', 'POST', '/org-units', ['type' => 'section', 'name' => 'Section francophone'], 201)['data']['id'];
-        // Rattachement territorial (région du Nord) : sans lui, l'identifiant national de l'élève ne peut pas être attribué.
-        $region = (string) $this->as($ctx, 'admin', 'POST', '/territories', [
-            'type' => 'region', 'code' => 'NO', 'label_fr' => 'Nord', 'label_en' => 'North', 'parent_id' => null, 'valid_from' => ($y - 2) . '-01-01T00:00:00+01:00',
-        ], 201)['data']['id'];
+        // Région du Nord. L'administrateur fonctionnel y rattache l'école à l'écran (/administration/territoire, C-115, C110-PP2),
+        // le jour même du début de la région (borne incluse) ; sans ce rattachement, l'identifiant national de l'élève manque.
+        $ctx['region_starts_on'] = ($y - 1) . '-01-01';
+        $this->as($ctx, 'admin', 'POST', '/territories', [
+            'type' => 'region', 'code' => 'NO', 'label_fr' => 'Nord', 'label_en' => 'North', 'parent_id' => null, 'valid_from' => $ctx['region_starts_on'] . 'T00:00:00+01:00',
+        ], 201);
         // Le rattachement est réservé à l'administrateur fonctionnel des écoles publiques (rôle au niveau du client).
         $this->assignRole($ctx, $ctx['admin_person'], 'pub_functional_admin', 'tenant', $ctx['tenant']);
-        $this->ok('POST', '/territories/' . $region . '/establishments', $ctx['admin'], ['establishment_ids' => [$ctx['establishment']], 'valid_from' => ($y - 1) . '-01-01T00:00:00+01:00'], null, ['X-HTTP-Method-Override' => 'PUT']);
         // Appel par demi-journée : réglage exigé par le serveur (attendance.mode = day_part), sans écran pour le poser (C110-PP3).
         $this->ok('POST', '/settings', $ctx['admin'], ['scope' => 'establishment', 'key' => 'attendance.mode', 'value' => 'day_part'], $ctx['establishment'], ['X-HTTP-Method-Override' => 'PUT']);
         $this->actor($ctx, 'director', 'Moussa', 'Fictif-Directeur', [['pub_school_director', 'establishment']]);

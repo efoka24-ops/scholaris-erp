@@ -9,7 +9,7 @@ const SCREENS = join(dirname(fileURLToPath(import.meta.url)), '..', 'screenshots
 export async function signIn(page: Page, role: keyof typeof ACCOUNTS, opts: MockOptions = {}): Promise<MockState> {
   const state = await installApi(page, opts);
   await page.goto('/connexion');
-  await page.getByLabel('Numéro de téléphone ou e-mail').fill(ACCOUNTS[role].identifier);
+  await page.getByLabel('E-mail ou téléphone').fill(ACCOUNTS[role].identifier);
   await page.getByLabel('Mot de passe', { exact: true }).fill(ACCOUNTS[role].password);
   await page.getByRole('button', { name: 'Se connecter' }).click();
   await expect(page).not.toHaveURL(/\/connexion/);

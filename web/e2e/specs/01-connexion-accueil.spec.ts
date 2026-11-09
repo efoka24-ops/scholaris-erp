@@ -8,7 +8,7 @@ test.describe('Connexion et accueil', () => {
     await page.goto('/connexion');
     await shot(page, info, '01-connexion');
     await checkA11y(page, info, 'connexion');
-    await page.getByLabel('Numéro de téléphone ou e-mail').fill('+237699000001');
+    await page.getByLabel('E-mail ou téléphone').fill('+237699000001');
     await page.getByLabel('Mot de passe', { exact: true }).fill('mauvais-mot-de-passe');
     await page.getByRole('button', { name: 'Se connecter' }).click();
     await expect(page.getByText(/Il vous reste 4 essais/)).toBeVisible();
@@ -20,7 +20,7 @@ test.describe('Connexion et accueil', () => {
     const state = await installApi(page);
     await page.goto('/connexion');
     await page.getByRole('button', { name: 'Se connecter' }).click();
-    await expect(page.getByText('Saisissez votre numéro de téléphone ou votre adresse e-mail.')).toBeVisible();
+    await expect(page.getByText('Saisissez votre adresse e-mail ou votre numéro de téléphone.')).toBeVisible();
     expect(state.calls.filter((c) => c.startsWith('POST /auth/login'))).toEqual([]);
   });
 

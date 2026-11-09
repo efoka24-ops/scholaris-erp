@@ -66,6 +66,9 @@ test('demande d\'accès → acceptation → activation → catalogue → impayé
   await expect(platform.getByRole('heading', { name: institution, level: 1 })).toBeVisible();
   await platform.getByRole('button', { name: 'Accepter', exact: true }).click();
   await expect(platform.getByLabel('Client')).toHaveValue('');
+  // Envoi automatique de l'accès (coché d'office) : par SMS, le téléphone de la demande servant d'identifiant d'activation.
+  await expect(platform.locator('[data-test="auto-send"]')).toBeChecked();
+  await platform.getByLabel(/^Canal d.envoi$/).selectOption('sms');
   await platform.getByRole('button', { name: "Confirmer l'acceptation" }).click();
   await expect(platform.getByText('Demande acceptée.')).toBeVisible();
   await expect(platform.getByText(/Premier administrateur invité/)).toBeVisible();
@@ -78,14 +81,9 @@ test('demande d\'accès → acceptation → activation → catalogue → impayé
   await admin.getByRole('button', { name: 'Activer mon compte par SMS' }).or(admin.getByRole('link', { name: 'Activer mon compte par SMS' })).click();
   await expect(admin.getByRole('heading', { name: 'Activation du compte' })).toBeVisible();
   await admin.getByLabel(/^(E-mail ou téléphone|Numéro de téléphone ou e-mail)$/).fill(contactPhone);
-  // Défaut C110-P1 (rapport) : le code envoyé à l'acceptation ne peut pas être saisi ici ; « Recevoir le code » est refusé
-  // (429) pendant 60 s. La personne relance après le délai, comme le message l'y invite.
-  const codeStep = admin.getByText(/Entrez le code reçu par message/);
-  await expect(async () => {
-    if (await codeStep.isVisible()) return;
-    await admin.getByRole('button', { name: 'Recevoir le code' }).click({ timeout: 5_000 });
-    await expect(codeStep).toBeVisible({ timeout: 20_000 });
-  }).toPass({ timeout: 120_000, intervals: [10_000] });
+  // C110-P1 corrigé (C-116) : le code envoyé à l'acceptation se saisit directement, sans en redemander un.
+  await admin.getByRole('button', { name: 'J\'ai déjà reçu un code' }).click();
+  await expect(admin.getByText(/Entrez le code reçu par SMS ou par e-mail/)).toBeVisible();
   const code = stack.lastCode(contactPhone);
   expect(code, 'code d\'activation reçu par SMS').toMatch(/^\d{6}$/);
   await typeCode(admin, code!);

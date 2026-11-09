@@ -40,7 +40,7 @@ async function installPublicApi(page: Page): Promise<PublicState> {
 test('demande d\'accès sans compte : contrôles de saisie, erreur serveur 422, numéro de suivi puis suivi', async ({ page }, info) => {
   test.setTimeout(120_000);
   const state = await installPublicApi(page);
-  // Parcours réel d'un visiteur : écran de connexion puis lien « Demander l'accès » (voir le défaut F1 pour l'accès direct).
+  // Parcours réel d'un visiteur : écran de connexion puis lien « Demander l'accès » (l'accès direct est vérifié plus bas).
   await page.goto('/connexion');
   await page.getByRole('link', { name: "Demander l'accès" }).click();
   await expect(page.getByRole('heading', { name: "Demander l'accès", level: 1 })).toBeVisible();
@@ -61,12 +61,13 @@ test('demande d\'accès sans compte : contrôles de saisie, erreur serveur 422, 
   await page.getByLabel('Prénom *').fill('Awa');
   await page.getByLabel('Nom *', { exact: true }).fill('Ngo Bassa');
   await page.getByLabel('Téléphone').fill('+237 6 90 11 22 33');
-  await expect(page.getByLabel('Application *')).toHaveValue('higher');
+  // Application choisie par bouton radio (choix unique pour ce type : coché d'office).
+  await expect(page.getByRole('radio', { checked: true })).toHaveValue('higher');
 
   // Le serveur refuse l'adresse : le message du champ vient de la réponse 422 réelle.
   await page.getByLabel('Adresse e-mail *').fill('adresse@refusee.test');
   await page.getByRole('button', { name: 'Envoyer la demande' }).click();
-  await expect(page.getByText('Adresse e-mail invalide.')).toBeVisible();
+  await expect(page.locator('#ar-contact_email-err')).toHaveText('Adresse e-mail invalide.');
   expect(state.submitted).toHaveLength(1);
 
   await page.getByLabel('Adresse e-mail *').fill('direction@isr-recette.test');
@@ -98,9 +99,7 @@ test('suivi avec un numéro inconnu : message clair', async ({ page }) => {
 
 for (const path of ['/demande-acces', '/demande-acces/' + 'a'.repeat(48), '/verification/' + 'b'.repeat(48), '/decouvrir', '/activation']) {
   test(`accès direct sans session à ${path.slice(0, 32)} : la page publique reste affichée`, async ({ page }) => {
-    // Défaut F1 (test-report.md) : sans session, GET /me répond 401 et le gestionnaire global renvoie vers /connexion avant
-    // la résolution de la première route (la route courante est encore « / », non publique). Attendu en échec tant que F1 existe.
-    test.fail(true, 'Défaut F1 : page publique ouverte directement sans session redirigée vers /connexion');
+    // Défaut F1 (test-report.md) corrigé : sans session (GET /me en 401), la page publique ouverte directement reste affichée.
     const state = await installPublicApi(page);
     await page.route('**/api/v1/public/verify/**', (route) => route.fulfill({ status: 404, contentType: 'application/problem+json', body: JSON.stringify({ type: 'https://api.scholaris.cm/errors/not-found', title: 'Introuvable', status: 404, detail: 'Document inconnu.', trace_id: '01RECETTE0000000000000001' }) }));
     await page.goto(path);

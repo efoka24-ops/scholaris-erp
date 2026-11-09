@@ -138,6 +138,9 @@ export async function installApi(page: Page, opts: MockOptions = {}): Promise<Mo
     }
     if (key === 'POST /me/context') return json(200, body(`${who}.context`));
     if (key === 'GET /me/todo') return json(200, body(`${who}.todo`));
+    // Bandeau d'abonnement (régularisation) et compteur de la messagerie, lus par l'en-tête de toutes les pages : client à jour, aucun message.
+    if (key === 'GET /me/regularisation') return json(200, { data: { mode: 'ok', locked: false, can_pay: false, items: [], contact: { name: 'Plateforme SCHOLARIS', email: null, phone: null } } });
+    if (key === 'GET /conversation-unread') return json(200, { data: { unread: 0 } });
     if (key === 'GET /vocabulary') return json(200, body('admin.vocabulary'));
 
     // Administration.
