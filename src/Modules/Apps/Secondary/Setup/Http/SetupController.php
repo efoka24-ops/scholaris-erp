@@ -50,11 +50,12 @@ final class SetupController extends Controller
      * @param list<string> $sorts
      * @param \Closure(array<string, mixed>): array<string, mixed> $map
      * @param array<string, scalar|null> $fixed
+     * @param list<string> $rights droits de lecture admis (paramétrage par défaut)
      */
-    private function listPage(ServerRequestInterface $request, string $table, array $filters, array $sorts, string $defaultSort, \Closure $map, array $fixed = []): ResponseInterface
+    private function listPage(ServerRequestInterface $request, string $table, array $filters, array $sorts, string $defaultSort, \Closure $map, array $fixed = [], array $rights = StructureService::READ): ResponseInterface
     {
         [$principal, $establishmentId] = $this->context($request);
-        $this->access->require($principal, $establishmentId, StructureService::READ);
+        $this->access->require($principal, $establishmentId, $rights);
 
         return $this->page($this->listing->page($request, $table, $principal->tenantId, $establishmentId, $filters, $sorts, $defaultSort, $map, $fixed));
     }
@@ -106,7 +107,7 @@ final class SetupController extends Controller
         $map = static fn (array $row): array => StructureService::schoolClass($row);
         $year = self::query($request, 'academic_year_id');
 
-        return $this->listPage($request, 'se_class_profiles', ['level_code', 'cycle_code', 'section_code', 'stream_id', 'level_id'], ['label', 'level_code'], 'academic_year_id, level_code, label', $map, $year === null ? [] : ['academic_year_id' => $year]);
+        return $this->listPage($request, 'se_class_profiles', ['level_code', 'cycle_code', 'section_code', 'stream_id', 'level_id'], ['label', 'level_code'], 'academic_year_id, level_code, label', $map, $year === null ? [] : ['academic_year_id' => $year], StructureService::CLASS_READ);
     }
 
     public function createClass(ServerRequestInterface $request): ResponseInterface

@@ -29,6 +29,14 @@ use Scholaris\Modules\Socle\Organisation\Contracts\StructureWriter;
 final class StructureService
 {
     public const READ = ['secondary.settings.read', 'secondary.settings.write', 'secondary.settings.manage', 'secondary.profile.read', 'secondary.profile.manage', 'secondary.enrol.read', 'secondary.enrol.manage'];
+    /**
+     * Liste des classes (lecture seule) : aussi les écrans pédagogiques (notes, appel, emploi du temps, conseils, bulletins) qui
+     * choisissent une classe sans lire le reste du paramétrage (C-117 : l'enseignant ouvrait sa feuille de notes sans classe).
+     */
+    public const CLASS_READ = [
+        ...self::READ, 'secondary.grades.enter', 'secondary.grades.read', 'secondary.grades.validate', 'secondary.attendance.take', 'secondary.attendance.read',
+        'secondary.timetable.read', 'secondary.timetable.manage', 'secondary.council.prepare', 'secondary.reportcard.read', 'secondary.lesson.log',
+    ];
     public const WRITE = ['secondary.settings.write', 'secondary.settings.manage'];
     public const CLASS_WRITE = ['secondary.settings.write', 'secondary.settings.manage', 'secondary.enrol.manage'];
 

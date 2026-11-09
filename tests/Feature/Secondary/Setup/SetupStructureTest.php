@@ -108,6 +108,21 @@ final class SetupStructureTest extends SecondaryTestCase
         self::assertSame(403, $this->call('POST', '/secondary/setup/levels/examples', [], 'scolarite', self::TA, $leg)[0]);
     }
 
+    /** C-117 (parcours e2e 17) : l'enseignant liste les classes pour ouvrir sa feuille de notes, sans lire le reste du paramétrage. */
+    public function testLEnseignantListeLesClassesSansLireLeParametrage(): void
+    {
+        $leg = $this->open('leg');
+        $levels = array_column($this->ok('POST', '/secondary/setup/levels/examples', [], self::ADMIN, self::TA, $leg), null, 'code');
+        $this->ok('POST', '/secondary/setup/classes', ['label' => '6e A', 'level_id' => $levels['6E']['id'], 'academic_year_id' => self::YEAR], self::ADMIN, self::TA, $leg);
+        $this->grant(self::TA, 'professeur', $leg, ['secondary.grades.enter', 'secondary.attendance.take']);
+        self::assertSame(['6e A'], array_column($this->ok('GET', '/secondary/setup/classes?academic_year_id=' . self::YEAR, null, 'professeur', self::TA, $leg), 'label'));
+        self::assertSame(403, $this->call('GET', '/secondary/setup/levels', null, 'professeur', self::TA, $leg)[0]);
+        self::assertSame(403, $this->call('POST', '/secondary/setup/classes', ['label' => '6e B', 'level_id' => $levels['6E']['id'], 'academic_year_id' => self::YEAR], 'professeur', self::TA, $leg)[0]);
+        $other = $this->factory->opened(self::TB, 'leg', null, 'e-leg-b');
+        $this->grant(self::TB, 'professeur-b', $other, ['secondary.grades.enter']);
+        self::assertSame([], $this->ok('GET', '/secondary/setup/classes', null, 'professeur-b', self::TB, $other));
+    }
+
     public function testCoefficientsVersionnesVerrouillesGelesEtCopies(): void
     {
         $leg = $this->open('leg');
