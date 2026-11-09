@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\E2E\Support;
 
 use Nyholm\Psr7\ServerRequest;
+use Scholaris\Core\Http\HttpException;
 use Scholaris\Modules\Socle\Identity\Contracts\PlatformAdministrators;
 
 /**
@@ -68,7 +69,7 @@ trait BuildsIpes
     protected function platform(): string
     {
         if ($this->root === null) {
-            $created = $this->kernel->container()->get(PlatformAdministrators::class)->create('+237699000999', 'Recette', 'Plateforme');
+            $created = $this->createPlatformAdministrator();
             $this->root = ['login' => $created['login'], 'password' => $created['password']];
             $this->clock->advance(max(0, time() - $this->clock->now()) + 1);
             $this->platformToken = $this->signIn($this->root['login'], $this->root['password']);
@@ -78,6 +79,26 @@ trait BuildsIpes
         }
 
         return (string) $this->platformToken;
+    }
+
+    /**
+     * Administrateur de plateforme du semis. Idempotent d'un processus à l'autre (C-117) : si le numéro de recette est déjà pris
+     * dans cette base (semis précédent, mot de passe inconnu), un autre numéro fictif de la même plage est utilisé.
+     *
+     * @return array{person_id: string, user_id: string, login: string, password: string}
+     */
+    private function createPlatformAdministrator(): array
+    {
+        $administrators = $this->kernel->container()->get(PlatformAdministrators::class);
+        for ($suffix = 999; ; $suffix--) {
+            try {
+                return $administrators->create(sprintf('+237699000%03d', $suffix), 'Recette', 'Plateforme');
+            } catch (HttpException $e) {
+                if ($e->status !== 409 || $suffix <= 900) {
+                    throw $e;
+                }
+            }
+        }
     }
 
     /**
