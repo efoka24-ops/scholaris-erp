@@ -3,6 +3,7 @@ import { secondaryCouncilsFr } from './secondary-councils-fr';
 import { secondaryDashboardsFr } from './secondary-dashboards-fr';
 import { secondaryDisciplineFr } from './secondary-discipline-fr';
 import { secondaryExamsFr } from './secondary-exams-fr';
+import { secondaryMigrationFr } from './secondary-migration-fr';
 import { secondaryServicesFr } from './secondary-services-fr';
 import { secondaryStaffFr } from './secondary-staff-fr';
 import { secondaryTimetableFr } from './secondary-timetable-fr';
@@ -12,6 +13,7 @@ export const secondaryFr = {
   ...secondaryDashboardsFr,
   ...secondaryDisciplineFr,
   ...secondaryExamsFr,
+  ...secondaryMigrationFr,
   ...secondaryTimetableFr,
   ...secondaryStaffFr,
   ...secondaryServicesFr,
