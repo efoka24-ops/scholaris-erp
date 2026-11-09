@@ -130,6 +130,24 @@ final class EstablishmentTerritoryTest extends OrganisationTestCase
         self::assertSame(404, $unknown->getStatusCode());
     }
 
+    /** C-115 (C110-PP2) : un rattachement daté du jour même du début du territoire est accepté (borne incluse), quel que soit le fuseau. */
+    public function testRattachementLeJourMemeDuDebutDuTerritoire(): void
+    {
+        [$created, $json] = $this->api('POST', '/territories', 'inspector', self::T, self::EST_1, [
+            'type' => 'region', 'code' => 'SYN-R-NO', 'label_fr' => 'Nord SYN', 'label_en' => 'North SYN', 'parent_id' => null,
+            'valid_from' => '2025-01-01T00:00:00+01:00',
+        ]);
+        self::assertSame(201, $created->getStatusCode());
+        $region = (string) $json['data']['id'];
+
+        [$response] = $this->assign($region, [self::EST_1], '2025-01-01T00:00:00+01:00');
+        self::assertSame(200, $response->getStatusCode(), 'Même instant que le début du territoire.');
+        [$before] = $this->assign($region, [self::EST_2], '2024-12-31T23:59:59+01:00');
+        self::assertSame(404, $before->getStatusCode(), 'Avant le début : territoire introuvable.');
+        self::assertSame($region, $this->directory()->find(self::T, $region, '2024-12-31T23:00:00+00:00')?->id, 'Même instant en UTC.');
+        self::assertNull($this->directory()->find(self::T, $region, '2024-12-31T22:59:59+00:00'));
+    }
+
     /**
      * @param list<string> $establishmentIds
      * @return array{0: \Psr\Http\Message\ResponseInterface, 1: array<string, mixed>}

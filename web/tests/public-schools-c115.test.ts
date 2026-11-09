@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { permissionsForRoles } from '@/lib/permissions';
 import ClassesView from '@/views/public-schools/ClassesView.vue';
 import AdminSettingsView from '@/views/admin/AdminSettingsView.vue';
+import AdminTerritoryView from '@/views/admin/AdminTerritoryView.vue';
+import { routes } from '@/router/routes';
 import { flushPromises, freshEnvironment, jsonResponse, mockApi, mountView, signIn, teacherMe, tile, type RecordedCall } from './helpers';
 
 // C-115 : défauts du primaire public trouvés par les tests de bout en bout (C-110).
@@ -70,5 +72,33 @@ describe('C110-PP3 : mode d’appel modifiable dans les réglages de l’établi
     await mode.element.closest('form')?.dispatchEvent(new Event('submit', { cancelable: true }));
     await flushPromises();
     expect(calls.find((c) => c.method === 'PUT')?.body).toEqual({ scope: 'establishment', key: 'attendance.mode', value: 'slot' });
+  });
+});
+
+describe('C110-PP2 : écran de rattachement territorial pour l’administrateur fonctionnel', () => {
+  const region = { id: 'R1', type: 'region', code: 'NO', label_fr: 'Nord', label_en: 'North', parent_id: null, valid_from: '2025-01-01T00:00:00+01:00', valid_to: null };
+
+  it('route réservée à organisation.territories.manage, que détient pub_functional_admin', () => {
+    const route = routes.find((r) => r.name === 'admin-territory');
+    expect(route?.meta?.perms).toEqual(['organisation.territories.manage']);
+    expect(permissionsForRoles(['pub_functional_admin']).has('organisation.territories.manage')).toBe(true);
+    expect(permissionsForRoles(['pub_school_director']).has('organisation.territories.manage')).toBe(false);
+  });
+
+  it('rattache l’établissement actif à la région, le jour même du début du territoire, sans en-tête d’établissement', async () => {
+    signIn(teacherMe, [tile({ type: 'primary', permissions: [...permissionsForRoles(['pub_functional_admin'])], roles: [{ code: 'pub_functional_admin', label: 'Admin' }] })], 'pub_functional_admin');
+    const calls = mockApi({
+      'GET /territories': page([region]),
+      'PUT /territories/R1/establishments': (c) => ({ data: { territory_id: 'R1', valid_from: '2024-12-31T23:00:00+00:00', establishment_ids: (c.body as { establishment_ids: string[] }).establishment_ids } }),
+    });
+    const { wrapper } = await mountView(AdminTerritoryView);
+    await wrapper.get('#t-territory').setValue('R1');
+    await wrapper.get('#t-from').setValue('2025-01-01');
+    await wrapper.get('#t-territory').element.closest('form')!.dispatchEvent(new Event('submit'));
+    await flushPromises();
+    const put = calls.find((c) => c.method === 'PUT');
+    expect(put?.body).toEqual({ establishment_ids: ['E1'], valid_from: '2025-01-01T00:00:00+01:00' });
+    expect(put?.headers['X-Establishment-Id']).toBeUndefined();
+    expect(wrapper.text()).toContain('Établissement rattaché à Nord');
   });
 });

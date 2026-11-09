@@ -45,13 +45,13 @@ final class TerritoryController
         $at = $this->at($request);
         $query = ListQuery::fromRequest($request);
         $after = ListQuery::decodeCursor($query->cursor) ?? '';
-        // Pagination par curseur sur l'identifiant stable du territoire (convention des listes du socle).
+        // Pagination par curseur sur l'identifiant stable du territoire (convention des listes du socle). La version active à $at est
+        // choisie par TerritoryDirectory, qui compare des instants et non des textes de dates aux fuseaux différents (C-115).
         $statement = $this->connections->pdo()->prepare(
-            'SELECT DISTINCT territory_id FROM organisation_territory_versions '
-            . 'WHERE tenant_id = ? AND valid_from <= ? AND (valid_to IS NULL OR valid_to > ?) AND territory_id > ? '
+            'SELECT DISTINCT territory_id FROM organisation_territory_versions WHERE tenant_id = ? AND territory_id > ? '
             . 'ORDER BY territory_id LIMIT ' . ($query->perPage + 1),
         );
-        $statement->execute([$this->tenant->tenantId(), $at, $at, $after]);
+        $statement->execute([$this->tenant->tenantId(), $after]);
         $ids = array_map('strval', $statement->fetchAll(PDO::FETCH_COLUMN));
         $next = null;
         if (count($ids) > $query->perPage) {

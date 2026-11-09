@@ -51,13 +51,14 @@ final class PdoTerritoryDirectory implements TerritoryDirectory
             return [];
         }
         $statement = $this->connections->pdo()->prepare(
-            'SELECT v.* FROM organisation_territory_versions v '
-            . 'WHERE v.tenant_id = ? AND v.valid_from <= ? AND (v.valid_to IS NULL OR v.valid_to > ?) '
-            . 'ORDER BY v.territory_id, v.version DESC',
+            'SELECT v.* FROM organisation_territory_versions v WHERE v.tenant_id = ? ORDER BY v.territory_id, v.version DESC',
         );
-        $statement->execute([$tenantId, $at, $at]);
+        $statement->execute([$tenantId]);
         $active = [];
         foreach ($statement->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            if (!self::activeAt($row, $at)) {
+                continue;
+            }
             $key = (string) $row['territory_id'];
             if (!isset($active[$key]) || (int) $row['version'] > (int) $active[$key]['version']) {
                 $active[$key] = $row;
@@ -136,14 +137,47 @@ final class PdoTerritoryDirectory implements TerritoryDirectory
     private function activeRow(string $tenantId, string $territoryId, string $at): ?array
     {
         $statement = $this->connections->pdo()->prepare(
-            'SELECT * FROM organisation_territory_versions '
-            . 'WHERE tenant_id = ? AND territory_id = ? AND valid_from <= ? AND (valid_to IS NULL OR valid_to > ?) '
-            . 'ORDER BY version DESC LIMIT 1',
+            'SELECT * FROM organisation_territory_versions WHERE tenant_id = ? AND territory_id = ? ORDER BY version DESC',
         );
-        $statement->execute([$tenantId, $territoryId, $at, $at]);
-        $row = $statement->fetch(PDO::FETCH_ASSOC);
+        $statement->execute([$tenantId, $territoryId]);
+        foreach ($statement->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            if (self::activeAt($row, $at)) {
+                return $row;
+            }
+        }
 
-        return is_array($row) ? $row : null;
+        return null;
+    }
+
+    /**
+     * Version active à l'instant demandé, bornes [valid_from, valid_to[ : début INCLUS (C-115, C110-PP2). Les dates des versions
+     * sont gardées telles que saisies (décalage horaire compris) : la comparaison se fait en instants, jamais en texte, sinon un
+     * rattachement daté du jour même du début du territoire, normalisé en UTC, paraissait antérieur à ce début.
+     *
+     * @param array<string, mixed> $row
+     */
+    private static function activeAt(array $row, string $at): bool
+    {
+        $instant = self::timestamp($at);
+        $from = self::timestamp((string) $row['valid_from']);
+        if ($instant === null || $from === null || $from > $instant) {
+            return false;
+        }
+        if ($row['valid_to'] === null) {
+            return true;
+        }
+        $to = self::timestamp((string) $row['valid_to']);
+
+        return $to !== null && $to > $instant;
+    }
+
+    private static function timestamp(string $value): ?int
+    {
+        try {
+            return (new \DateTimeImmutable($value))->getTimestamp();
+        } catch (\Exception) {
+            return null;
+        }
     }
 
     /** @param array<string, mixed> $row */

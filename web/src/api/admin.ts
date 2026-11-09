@@ -97,6 +97,19 @@ export interface StructureAuthorization {
   covered_levels: string[] | null;
 }
 
+/** Territoire administratif versionné (socle Organisation, /territories) : région, département, arrondissement. */
+export type TerritoryType = 'region' | 'departement' | 'arrondissement';
+export interface Territory {
+  id: string;
+  type: TerritoryType;
+  code: string;
+  label_fr: string;
+  label_en: string;
+  parent_id: string | null;
+  valid_from: string;
+  valid_to: string | null;
+}
+
 export interface OrgUnit {
   id: string;
   parent_id: string | null;
@@ -211,6 +224,12 @@ export const createAuthorization = async (input: { structure_id: string; referen
   (await http.post<{ data: StructureAuthorization }>('/authorizations', input)).data;
 export const updateAuthorization = async (id: string, changes: Partial<{ reference: string; authority: string | null; valid_from: string; valid_to: string }>): Promise<StructureAuthorization> =>
   (await http.patch<{ data: StructureAuthorization }>(`/authorizations/${id}`, changes)).data;
+export const listTerritories = (): Promise<Territory[]> => http.all<Territory>('/territories');
+export const createTerritory = async (input: { type: TerritoryType; code: string; label_fr: string; label_en: string; parent_id: string | null; valid_from: string }): Promise<Territory> =>
+  (await http.post<{ data: Territory }>('/territories', input)).data;
+/** Rattachement daté (PUT /territories/{id}/establishments, droit organisation.territories.manage au niveau du client, sans en-tête d'établissement). */
+export const assignTerritory = async (territoryId: string, establishmentIds: string[], validFrom: string): Promise<{ territory_id: string; valid_from: string; establishment_ids: string[] }> =>
+  (await http.put<{ data: { territory_id: string; valid_from: string; establishment_ids: string[] } }>(`/territories/${territoryId}/establishments`, { establishment_ids: establishmentIds, valid_from: validFrom }, NO_HEADER)).data;
 export const listOrgUnits = (): Promise<OrgUnit[]> => http.all<OrgUnit>('/org-units', { sort: 'name' });
 export const createOrgUnit = async (input: { type: string; name: string; parent_id?: string | null }): Promise<OrgUnit> =>
   (await http.post<{ data: OrgUnit }>('/org-units', input)).data;

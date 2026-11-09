@@ -293,6 +293,12 @@ export const routes: RouteRecordRaw[] = [
     meta: { perms: ['organisation.manage'], needsEstablishment: true, titleKey: 'admin.nav.authorizations' },
   },
   {
+    path: '/administration/territoire',
+    name: 'admin-territory',
+    component: () => import('@/views/admin/AdminTerritoryView.vue'),
+    meta: { perms: ['organisation.territories.manage'], needsEstablishment: true, titleKey: 'admin.nav.territory' },
+  },
+  {
     path: '/administration/utilisateurs',
     name: 'admin-users',
     component: () => import('@/views/admin/AdminUsersView.vue'),

@@ -16,6 +16,7 @@ const cards: Array<{ name: string; title: AdminKey; text: AdminKey; perms: strin
   { name: 'admin-establishments', title: 'admin.nav.establishments', text: 'admin.home.establishmentsText', perms: ['organisation.manage'], needsEstablishment: false },
   { name: 'admin-years', title: 'admin.nav.years', text: 'admin.home.yearsText', perms: ['organisation.manage'], needsEstablishment: true },
   { name: 'admin-structures', title: 'admin.nav.structures', text: 'admin.home.structuresText', perms: ['organisation.manage'], needsEstablishment: true },
+  { name: 'admin-territory', title: 'admin.nav.territory', text: 'admin.home.territoryText', perms: ['organisation.territories.manage'], needsEstablishment: true },
   { name: 'admin-authorizations', title: 'admin.nav.authorizations', text: 'admin.home.authorizationsText', perms: ['organisation.manage'], needsEstablishment: true },
   { name: 'admin-users', title: 'admin.nav.users', text: 'admin.home.usersText', perms: ['identity.manage', 'identity.roles.assign'], needsEstablishment: true },
   { name: 'admin-settings', title: 'admin.nav.settings', text: 'admin.home.settingsText', perms: ['settings.manage'], needsEstablishment: true },
