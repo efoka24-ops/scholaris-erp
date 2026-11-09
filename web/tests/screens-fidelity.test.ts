@@ -143,6 +143,28 @@ describe('notes : historique d\'une note et import CSV', () => {
   });
 });
 
+describe('import de la feuille de compétences du primaire (C110-PR2, C-117)', () => {
+  it('réutilise le panneau d’import : fichier joint vers la route du primaire avec la période, sans choix d’épreuve', async () => {
+    const calls = mockApi({ 'POST /primary/classes/C1/competency-sheet/import': { data: { created: 2, updated: 0, unchanged: 0 } } });
+    const wrapper = mount(GradeImportPanel, {
+      props: { importPath: '/primary/classes/C1/competency-sheet/import', templatePath: '/primary/classes/C1/competency-sheet/import-template', query: { period_id: 'T1' } },
+    });
+    expect(wrapper.find('#imp-assessment').exists()).toBe(false);
+    const input = wrapper.get('input[type="file"]');
+    const text = 'identifiant;nom;C1\nP1;Awa;acquired\n';
+    const file = new File([text], 'feuille.csv', { type: 'text/csv' });
+    Object.defineProperty(file, 'text', { value: async () => text });
+    Object.defineProperty(input.element, 'files', { value: [file] });
+    await input.trigger('change');
+    await flushPromises();
+    await wrapper.findAll('button').find((b) => b.text() === 'Importer')?.trigger('click');
+    await flushPromises();
+    const call = calls.find((c) => c.path === '/primary/classes/C1/competency-sheet/import');
+    expect(call?.query.period_id).toBe('T1');
+    expect(wrapper.text()).toContain('2 créée(s), 0 modifiée(s), 0 inchangée(s)');
+  });
+});
+
 describe('inscription en 5 étapes', () => {
   it('parcourt identité, parents, filière, pièces et validation ; propose la reprise d\'un doublon', async () => {
     signIn(directorMe, [directorTile], 'directeur');

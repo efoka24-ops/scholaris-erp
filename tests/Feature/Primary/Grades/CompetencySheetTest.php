@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Primary\Grades;
 
+use Nyholm\Psr7\ServerRequest;
+use Nyholm\Psr7\Stream;
+use Nyholm\Psr7\UploadedFile;
 use Scholaris\Modules\Apps\Primary\Grades\Infrastructure\PrimaryCouncilLines;
 use Scholaris\Modules\Apps\Primary\Grades\Infrastructure\PrimaryRuleScopes;
 use Scholaris\Modules\Socle\Identity\Contracts\Scope;
@@ -126,6 +129,63 @@ final class CompetencySheetTest extends PrimaryTestCase
         self::assertTrue($this->ok('POST', "/primary/classes/$class/competency-sheet/publish?period_id=" . self::PERIOD)['published']);
         $pending = $this->ok('GET', '/primary/competency-corrections?status=pending')['items'];
         self::assertSame([], $pending);
+    }
+
+    /**
+     * C110-PR2 (C-117) : import de la feuille par fichier CSV joint (multipart, champ « file ») : modèle téléchargé (une ligne par
+     * élève, une colonne par compétence), refus de tout le fichier si une ligne est fausse, puis enregistrement versionné.
+     */
+    public function testImportDeLaFeuilleParFichierCsvJoint(): void
+    {
+        $class = $this->level['classes'][0];
+        $template = $this->raw('GET', "/primary/classes/$class/competency-sheet/import-template?period_id=" . self::PERIOD);
+        self::assertSame(200, $template->getStatusCode(), (string) $template->getBody());
+        self::assertStringStartsWith('text/csv', $template->getHeaderLine('Content-Type'));
+        $lines = preg_split('/\r\n/', trim(substr((string) $template->getBody(), 3)));
+        self::assertIsArray($lines);
+        $header = explode(';', $lines[0]);
+        self::assertSame(['identifiant', 'nom'], array_slice($header, 0, 2));
+        $codes = array_slice($header, 2);
+        self::assertCount(3, $codes, 'Une colonne par compétence du niveau.');
+        self::assertCount(41, $lines, 'Une ligne par élève.');
+
+        // Ligne fausse : code hors échelle et élève inconnu ; rien n'est enregistré.
+        $bad = "identifiant;nom;{$codes[0]}\r\ne1;Nom01;excellent\r\ninconnu;X;acquired\r\n";
+        [$status, $problem] = $this->upload($class, $bad);
+        self::assertSame(422, $status);
+        self::assertCount(2, $problem['errors']['entries'] ?? [], (string) json_encode($problem));
+        self::assertStringContainsString('Ligne 2', $problem['errors']['entries'][0]);
+        self::assertCount(0, $this->ok('GET', "/primary/classes/$class/competency-sheet?period_id=" . self::PERIOD)['marks']);
+
+        // Fichier juste (Windows-1252, séparateur « , », casse libre, cellule vide ignorée).
+        $good = mb_convert_encoding("identifiant,nom,{$codes[0]},{$codes[1]}\r\ne1,Élève 1,ACQUIRED,in_progress\r\ne2,Élève 2,,not_acquired\r\n", 'Windows-1252', 'UTF-8');
+        [$status, $done] = $this->upload($class, $good);
+        self::assertSame(200, $status, (string) json_encode($done));
+        self::assertSame(['created' => 3, 'updated' => 0, 'unchanged' => 0], $done['data']);
+        // Réimport modifié : mise à jour versionnée, sans conflit, valeurs identiques inchangées.
+        [, $again] = $this->upload($class, "identifiant;nom;{$codes[0]};{$codes[1]}\r\ne1;;acquired;acquired\r\ne2;;;not_acquired\r\n");
+        self::assertSame(['created' => 0, 'updated' => 1, 'unchanged' => 2], $again['data']);
+        $sheet = $this->ok('GET', "/primary/classes/$class/competency-sheet?period_id=" . self::PERIOD);
+        self::assertCount(3, $sheet['marks']);
+
+        // Autre client : classe introuvable ; feuille verrouillée : 409.
+        $this->grantAll(self::TB, 'directeur-b', self::EB);
+        self::assertSame(404, $this->upload($class, $good, 'directeur-b', self::TB, self::EB)[0]);
+        $this->ok('POST', "/primary/classes/$class/competency-sheet/lock?period_id=" . self::PERIOD);
+        self::assertSame(409, $this->upload($class, $good)[0]);
+    }
+
+    /** @return array{0: int, 1: array<string, mixed>} */
+    private function upload(string $class, string $csv, string $userId = self::DIRECTOR, string $tenantId = self::TA, string $establishmentId = self::EA): array
+    {
+        $request = (new ServerRequest('POST', "/api/v1/primary/classes/$class/competency-sheet/import?period_id=" . self::PERIOD, [
+            'Authorization' => 'Bearer ' . $userId . ':' . $tenantId, 'X-Establishment-Id' => $establishmentId, 'Content-Type' => 'multipart/form-data; boundary=x',
+        ]))->withQueryParams(['period_id' => self::PERIOD])
+            ->withUploadedFiles(['file' => new UploadedFile(Stream::create($csv), strlen($csv), UPLOAD_ERR_OK, 'feuille.csv', 'text/csv')]);
+        $response = $this->kernel->handle($request);
+        $decoded = json_decode((string) $response->getBody(), true);
+
+        return [$response->getStatusCode(), is_array($decoded) ? $decoded : []];
     }
 
     public function testMaitreDUneAutreClasseEtAutreClient(): void

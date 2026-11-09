@@ -195,6 +195,101 @@ final class CompetencySheetService
         return ['saved' => $saved, 'duplicates' => $duplicates, 'unchanged' => $unchanged, 'marks' => $marks];
     }
 
+    /** Modèle CSV de la feuille (C110-PR2) : une ligne par élève inscrit, une colonne par compétence du niveau, cellules vides. */
+    public function importTemplate(Principal $principal, string $establishmentId, string $classId, string $periodId): string
+    {
+        $this->access->require($principal, $establishmentId, self::ENTER);
+        $sheet = $this->sheet($principal, $establishmentId, $classId, $periodId);
+
+        return CompetencySheetCsv::template(array_column($sheet['competencies'], 'code'), $sheet['learners']);
+    }
+
+    /**
+     * Import de la feuille par fichier CSV joint (C110-PR2) : tout le fichier est contrôlé avant d'écrire ; une seule ligne fausse
+     * et rien n'est enregistré (422, une erreur par cellule). Sinon le lot passe par save() avec la version connue de chaque
+     * évaluation : même contrôle de verrouillage, de périmètre et de version que la saisie à l'écran.
+     *
+     * @return array{created: int, updated: int, unchanged: int}
+     */
+    public function import(Principal $principal, string $establishmentId, string $classId, string $periodId, string $content): array
+    {
+        $this->access->require($principal, $establishmentId, self::ENTER);
+        $sheet = $this->sheet($principal, $establishmentId, $classId, $periodId);
+        if ($sheet['status'] !== 'open') {
+            throw HttpException::conflict('La feuille est verrouillée : une modification passe par une correction approuvée par la direction.');
+        }
+        $t = $principal->tenantId;
+        $parsed = CompetencySheetCsv::parse($content);
+        $competencies = [];
+        foreach ($sheet['competencies'] as $c) {
+            $competencies[mb_strtolower((string) $c['code'])] = (string) $c['id'];
+        }
+        $learners = [];
+        foreach ($sheet['learners'] as $l) {
+            $learners[mb_strtolower((string) $l['person_id'])] = (string) $l['person_id'];
+        }
+        $scale = [];
+        foreach ($this->scales->codes($t, $establishmentId) as $code) {
+            $scale[mb_strtolower((string) $code)] = (string) $code;
+        }
+        $absences = [];
+        foreach ($this->scales->absenceCodes($t, $establishmentId) as $code) {
+            $absences[mb_strtolower((string) $code)] = (string) $code;
+        }
+        $existing = [];
+        foreach ($sheet['marks'] as $mark) {
+            $existing[$mark['person_id'] . '|' . $mark['competency_id']] = (int) $mark['version'];
+        }
+
+        $errors = [];
+        $columns = [];
+        foreach ($parsed['columns'] as $index => $header) {
+            $id = $competencies[mb_strtolower($header)] ?? null;
+            if ($id === null) {
+                $errors[] = sprintf('En-tête · « %s » n\'est pas une compétence du niveau de la classe. Téléchargez le modèle.', $header);
+                continue;
+            }
+            $columns[$index] = $id;
+        }
+        $entries = [];
+        $created = 0;
+        foreach ($parsed['rows'] as $row) {
+            $person = $learners[mb_strtolower($row['key'])] ?? null;
+            if ($person === null) {
+                $errors[] = sprintf('Ligne %d · élève inconnu « %s » dans cette classe. Vérifiez l\'identifiant.', $row['line'], $row['key']);
+                continue;
+            }
+            foreach ($columns as $index => $competencyId) {
+                $raw = $row['cells'][$index] ?? '';
+                if ($raw === '') {
+                    continue;
+                }
+                $value = mb_strtolower($raw);
+                $entry = ['person_id' => $person, 'competency_id' => $competencyId, 'scale_code' => $scale[$value] ?? null, 'absence_code' => isset($scale[$value]) ? null : ($absences[$value] ?? null)];
+                if ($entry['scale_code'] === null && $entry['absence_code'] === null) {
+                    $errors[] = sprintf('Ligne %d · %s : « %s » n\'est pas un niveau de l\'échelle (%s).', $row['line'], $parsed['columns'][$index], $raw, implode(', ', [...array_values($scale), ...array_values($absences)]));
+                    continue;
+                }
+                $version = $existing[$person . '|' . $competencyId] ?? null;
+                if ($version === null) {
+                    ++$created;
+                } else {
+                    $entry['version'] = $version;
+                }
+                $entries[] = $entry;
+            }
+        }
+        if ($errors !== []) {
+            throw new HttpException(422, 'Fichier refusé', 'Le fichier contient des erreurs : rien n\'a été enregistré. Corrigez puis importez à nouveau.', 'https://api.scholaris.cm/errors/validation', ['entries' => $errors]);
+        }
+        if ($entries === []) {
+            throw HttpException::validation(['file' => ['Aucune évaluation dans le fichier : remplissez au moins une cellule.']]);
+        }
+        $result = $this->save($principal, $establishmentId, $classId, $periodId, $entries);
+
+        return ['created' => $created, 'updated' => $result['saved'] - $created, 'unchanged' => $result['unchanged']];
+    }
+
     /** @return array<string, mixed> */
     public function lock(Principal $principal, string $establishmentId, string $classId, string $periodId): array
     {

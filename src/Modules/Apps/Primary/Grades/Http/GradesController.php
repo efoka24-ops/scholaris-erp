@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace Scholaris\Modules\Apps\Primary\Grades\Http;
 
+use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
+use Psr\Http\Message\StreamFactoryInterface;
+use Psr\Http\Message\UploadedFileInterface;
 use Scholaris\Core\Http\HttpException;
 use Scholaris\Core\Http\JsonResponder;
 use Scholaris\Modules\Apps\Primary\Grades\Application\CompetencySheetService;
@@ -20,8 +23,15 @@ final class GradesController extends Controller
 {
     private const MAX_ENTRIES = 3000;
 
-    public function __construct(JsonResponder $responder, Access $access, Store $store, private readonly CompetencySheetService $sheets, private readonly ConductService $conduct)
-    {
+    public function __construct(
+        JsonResponder $responder,
+        Access $access,
+        Store $store,
+        private readonly CompetencySheetService $sheets,
+        private readonly ConductService $conduct,
+        private readonly ResponseFactoryInterface $responses,
+        private readonly StreamFactoryInterface $streams,
+    ) {
         parent::__construct($responder, $access, $store);
     }
 
@@ -40,6 +50,34 @@ final class GradesController extends Controller
         $values = $input->done();
 
         return $this->json($this->sheets->save($principal, $establishmentId, self::id($request), self::period($request), $values['entries']));
+    }
+
+    /** Modèle CSV de la feuille (C110-PR2) : une ligne par élève, une colonne par compétence du niveau. */
+    public function importTemplate(ServerRequestInterface $request): ResponseInterface
+    {
+        [$principal, $establishmentId] = $this->context($request);
+        $csv = $this->sheets->importTemplate($principal, $establishmentId, self::id($request), self::period($request));
+
+        return $this->responses->createResponse(200)
+            ->withHeader('Content-Type', 'text/csv; charset=utf-8')
+            ->withHeader('Content-Disposition', 'attachment; filename="modele-feuille-competences.csv"')
+            ->withBody($this->streams->createStream($csv));
+    }
+
+    /** Import de la feuille par fichier CSV joint (multipart, champ « file », 2 Mo au plus) : tout ou rien (C110-PR2). */
+    public function import(ServerRequestInterface $request): ResponseInterface
+    {
+        [$principal, $establishmentId] = $this->context($request);
+        $file = $request->getUploadedFiles()['file'] ?? null;
+        if (!$file instanceof UploadedFileInterface || $file->getError() !== UPLOAD_ERR_OK || ($file->getSize() ?? 0) > 2 * 1024 * 1024) {
+            throw HttpException::validation(['file' => ['Joignez le fichier CSV de la feuille (champ « file », 2 Mo au plus).']]);
+        }
+        $content = (string) $file->getStream();
+        if (trim($content) === '') {
+            throw HttpException::validation(['file' => ['Le fichier est vide.']]);
+        }
+
+        return $this->json($this->sheets->import($principal, $establishmentId, self::id($request), self::period($request), $content));
     }
 
     public function lock(ServerRequestInterface $request): ResponseInterface

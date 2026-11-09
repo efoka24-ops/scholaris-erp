@@ -51,6 +51,39 @@ paths:
         '409': {description: "Feuille verrouillee ou version perimee"}
         '422': {description: "Eleve, competence ou code de l'echelle invalide"}
         '423': {description: "Abonnement suspendu"}
+  /api/v1/primary/classes/{id}/competency-sheet/import-template:
+    get:
+      summary: "Modele CSV de la feuille (C110-PR2) : une ligne par eleve inscrit, une colonne par competence du niveau (primary.competency.enter)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+        - {name: period_id, in: query, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "text/csv (UTF-8 avec BOM, separateur point-virgule) : identifiant, nom, codes des competences"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Classe introuvable, autre client ou hors perimetre"}
+        '422': {description: "Periode manquante"}
+  /api/v1/primary/classes/{id}/competency-sheet/import:
+    post:
+      summary: "Import de la feuille par fichier CSV joint (multipart, champ file, 2 Mo au plus) : tout ou rien, versions respectees"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+        - {name: period_id, in: query, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: {type: string, format: binary}
+      responses:
+        '200': {description: "{created, updated, unchanged}"}
+        '403': {description: "Classe hors perimetre (journalise) ou permission absente"}
+        '404': {description: "Classe introuvable, autre client ou hors perimetre"}
+        '409': {description: "Feuille verrouillee ou version perimee"}
+        '422': {description: "Fichier refuse : errors.entries liste chaque cellule fausse (eleve inconnu, competence ou code invalide), rien n'est enregistre"}
+        '423': {description: "Abonnement suspendu"}
   /api/v1/primary/classes/{id}/competency-sheet/lock:
     post:
       summary: "Verrouiller la feuille de la periode (primary.competency.validate)"

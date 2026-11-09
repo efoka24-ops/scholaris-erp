@@ -9,6 +9,8 @@ use Scholaris\Modules\Apps\Primary\Support\PrimaryRoutes;
 return static function (PrimaryRoutes $routes): void {
     $routes->get('/classes/{id}/competency-sheet', [GradesController::class, 'sheet']);
     $routes->put('/classes/{id}/competency-sheet', [GradesController::class, 'saveSheet']);
+    $routes->get('/classes/{id}/competency-sheet/import-template', [GradesController::class, 'importTemplate']);
+    $routes->post('/classes/{id}/competency-sheet/import', [GradesController::class, 'import']);
     $routes->post('/classes/{id}/competency-sheet/lock', [GradesController::class, 'lock']);
     $routes->post('/classes/{id}/competency-sheet/publish', [GradesController::class, 'publish']);
 

@@ -162,6 +162,8 @@ export const primaryEn = {
   'pri.sheet.sent': 'Entries saved.',
   'pri.sheet.queued': 'Entries kept on this phone ({count}): they will be sent as soon as the network is back.',
   'pri.sheet.conflict': 'An assessment changed on the server since you read it: nothing was overwritten.',
+  'pri.sheet.importTitle': 'Import the sheet (CSV file)',
+  'pri.sheet.importIntro': 'Download the template: one row per pupil, one column per competency. Enter the scale (or absence) code, then attach the file. A single wrong cell and nothing is saved.',
   'pri.sheet.reload': 'Reload the sheet (drops my entries)',
   'pri.conduct.title': 'Conduct',
   'pri.conduct.intro': 'Each pupil’s conduct for the period, carried over to the council.',

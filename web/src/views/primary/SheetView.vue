@@ -4,6 +4,7 @@
 // La direction verrouille puis publie la feuille ; après verrouillage, une modification passe par une correction motivée approuvée.
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import ErrorNotice from '@/components/ErrorNotice.vue';
+import GradeImportPanel from '@/components/GradeImportPanel.vue';
 import { listPeriods, listStructures, type Period } from '@/api/admin';
 import { primary } from '@/api/primary';
 import { useContextStore } from '@/stores/context';
@@ -180,6 +181,18 @@ const periodName = (p: Period): string => `${t(`pri.sheet.kind.${p.kind}` as Mes
       <p>{{ t('pri.sheet.conflict') }} {{ conflictMessage }}</p>
       <button type="button" class="btn" :disabled="busy" @click="reload">{{ t('pri.sheet.reload') }}</button>
     </div>
+
+    <!-- Import de la feuille par fichier CSV joint (C110-PR2) : même panneau que l'import des notes du socle, tout ou rien. -->
+    <GradeImportPanel
+      v-if="sheet && canEnter && !locked && sheet.competencies.length > 0 && sheet.learners.length > 0"
+      :import-path="`/primary/classes/${classId}/competency-sheet/import`"
+      :template-path="`/primary/classes/${classId}/competency-sheet/import-template`"
+      :query="{ period_id: periodId }"
+      template-name="modele-feuille-competences.csv"
+      :title="t('pri.sheet.importTitle')"
+      :intro="t('pri.sheet.importIntro')"
+      @imported="reload"
+    />
 
     <template v-if="sheet">
       <section v-if="sheet.competencies.length === 0" class="card"><p class="muted">{{ t('pri.sheet.noCompetencies') }}</p></section>

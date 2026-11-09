@@ -162,6 +162,8 @@ export const primaryFr = {
   'pri.sheet.sent': 'Saisie enregistrée.',
   'pri.sheet.queued': 'Saisie gardée sur ce téléphone ({count}) : elle partira dès que le réseau reviendra.',
   'pri.sheet.conflict': 'Une évaluation a changé sur le serveur depuis votre lecture : rien n’a été écrasé.',
+  'pri.sheet.importTitle': 'Importer la feuille (fichier CSV)',
+  'pri.sheet.importIntro': 'Téléchargez le modèle : une ligne par élève, une colonne par compétence. Saisissez le code du niveau de l’échelle (ou d’absence) puis joignez le fichier. Une seule cellule fausse et rien n’est enregistré.',
   'pri.sheet.reload': 'Recharger la feuille (abandonne ma saisie)',
   'pri.conduct.title': 'Conduite',
   'pri.conduct.intro': 'Conduite de chaque élève pour la période, reportée au conseil.',

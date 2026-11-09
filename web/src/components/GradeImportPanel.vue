@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import ErrorNotice from './ErrorNotice.vue';
 import { saveBlob } from '@/api/exports';
 import { ApiError, http } from '@/api/http';
@@ -8,11 +8,23 @@ import { useI18n } from '@/i18n';
 
 // Import CSV des notes d'une épreuve : modèle à télécharger, fichier à choisir, résultat ligne par ligne.
 // Le serveur valide tout le fichier avant d'enregistrer : une ligne en erreur et rien n'est enregistré.
-defineProps<{ columns: GridColumn[] }>();
+// Réutilisé par les applications (C-117, feuille de compétences du primaire) : importPath, templatePath et query remplacent
+// alors l'épreuve à choisir (même envoi en fichier joint, même lecture des erreurs ligne par ligne).
+const props = withDefaults(
+  defineProps<{ columns?: GridColumn[]; importPath?: string; templatePath?: string; query?: Record<string, string>; templateName?: string; title?: string; intro?: string }>(),
+  { columns: () => [], importPath: '', templatePath: '', query: () => ({}), templateName: 'modele-notes.csv', title: '', intro: '' },
+);
 const emit = defineEmits<{ imported: [] }>();
 const { t } = useI18n();
 
 const assessmentId = ref('');
+const fixed = computed(() => props.importPath !== '');
+const ready = computed(() => (fixed.value ? Object.values(props.query).every((v) => v !== '') : assessmentId.value !== ''));
+const target = computed(() =>
+  fixed.value
+    ? { importPath: props.importPath, templatePath: props.templatePath, query: props.query }
+    : { importPath: '/grades/import', templatePath: '/grades/import-template', query: { assessment_id: assessmentId.value } },
+);
 const busy = ref(false);
 const error = ref<unknown>(null);
 const lineErrors = ref<string[]>([]);
@@ -21,11 +33,11 @@ const fileName = ref('');
 let content = '';
 
 async function downloadTemplate(): Promise<void> {
-  if (!assessmentId.value) return;
+  if (!ready.value) return;
   error.value = null;
   try {
-    const csv = await http.get<string>('/grades/import-template', { assessment_id: assessmentId.value }, { expect: 'text', headers: { Accept: 'text/csv' } });
-    saveBlob(new Blob([csv], { type: 'text/csv;charset=utf-8' }), 'modele-notes.csv');
+    const csv = await http.get<string>(target.value.templatePath, target.value.query, { expect: 'text', headers: { Accept: 'text/csv' } });
+    saveBlob(new Blob([csv], { type: 'text/csv;charset=utf-8' }), props.templateName);
   } catch (e) {
     error.value = e;
   }
@@ -46,7 +58,7 @@ async function onFile(event: Event): Promise<void> {
 }
 
 async function send(): Promise<void> {
-  if (!assessmentId.value || content.trim() === '') return;
+  if (!ready.value || content.trim() === '') return;
   busy.value = true;
   error.value = null;
   lineErrors.value = [];
@@ -55,8 +67,8 @@ async function send(): Promise<void> {
     // Envoi en fichier joint (multipart) : l'hébergement refuse un corps brut text/csv.
     const form = new FormData();
     form.append('file', new Blob([content], { type: 'text/csv' }), fileName.value || 'notes.csv');
-    const res = await http.post<{ data: { created: number; updated: number; unchanged: number } }>('/grades/import', undefined, {
-      query: { assessment_id: assessmentId.value },
+    const res = await http.post<{ data: { created: number; updated: number; unchanged: number } }>(target.value.importPath, undefined, {
+      query: target.value.query,
       form,
     });
     done.value = res.data;
@@ -73,9 +85,9 @@ async function send(): Promise<void> {
 
 <template>
   <section class="import card" aria-labelledby="imp-title">
-    <h2 id="imp-title">{{ t('grades.importTitle') }}</h2>
-    <p class="muted">{{ t('grades.importIntro') }}</p>
-    <div class="field">
+    <h2 id="imp-title">{{ title || t('grades.importTitle') }}</h2>
+    <p class="muted">{{ intro || t('grades.importIntro') }}</p>
+    <div v-if="!fixed" class="field">
       <label for="imp-assessment">{{ t('grades.importAssessment') }}</label>
       <select id="imp-assessment" v-model="assessmentId">
         <option value="" disabled>{{ t('grades.choose') }}</option>
@@ -83,12 +95,12 @@ async function send(): Promise<void> {
       </select>
     </div>
     <div class="row">
-      <button type="button" class="btn" :disabled="!assessmentId" @click="downloadTemplate">{{ t('grades.importTemplate') }}</button>
-      <label class="btn btn--quiet filebtn" :class="{ 'filebtn--off': !assessmentId }">
+      <button type="button" class="btn" :disabled="!ready" @click="downloadTemplate">{{ t('grades.importTemplate') }}</button>
+      <label class="btn btn--quiet filebtn" :class="{ 'filebtn--off': !ready }">
         {{ fileName || t('grades.importChoose') }}
-        <input type="file" accept=".csv,text/csv" :disabled="!assessmentId" class="sr-only" @change="onFile" />
+        <input type="file" accept=".csv,text/csv" :disabled="!ready" class="sr-only" @change="onFile" />
       </label>
-      <button type="button" class="btn btn--primary" :disabled="busy || !assessmentId || fileName === ''" @click="send">{{ busy ? t('common.loading') : t('grades.importSend') }}</button>
+      <button type="button" class="btn btn--primary" :disabled="busy || !ready || fileName === ''" @click="send">{{ busy ? t('common.loading') : t('grades.importSend') }}</button>
     </div>
     <ErrorNotice :error="error" />
     <div v-if="lineErrors.length" class="notice notice--warning" role="alert">
