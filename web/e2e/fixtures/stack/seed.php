@@ -314,7 +314,7 @@ final class E2eSeeder extends RealStackTestCase
      *
      * @param array<string, mixed> $ctx
      */
-    private function schoolYear(array &$ctx, string $className, string $authority): string
+    private function schoolYear(array &$ctx, string $className, string $authority, ?string $level = null): string
     {
         $y = self::startYear();
         $ctx['year'] = (string) $this->as($ctx, 'admin', 'POST', '/academic-years', ['label' => $y . '-' . ($y + 1), 'starts_on' => $y . '-09-01', 'ends_on' => ($y + 1) . '-06-30'], 201)['data']['id'];
@@ -325,7 +325,7 @@ final class E2eSeeder extends RealStackTestCase
             ], 201)['data']['id'];
         }
 
-        return $this->schoolClass($ctx, $className, $authority);
+        return $this->schoolClass($ctx, $className, $authority, $level);
     }
 
     /** @param array<string, mixed> $ctx */
@@ -501,8 +501,11 @@ final class E2eSeeder extends RealStackTestCase
     public function primarySchool(): array
     {
         $ctx = $this->client('primary', 'primary', 'École primaire privée fictive de Recette', 'Awa', 'Fictive-Promotrice');
-        $class = $this->schoolYear($ctx, 'CM2 A', 'MINEDUB');
         $this->actor($ctx, 'director', 'Moussa', 'Fictif-Directeur', [['primary_directeur', 'establishment']]);
+        // C-118 : la classe CM2 A est rattachée au niveau CM2 du référentiel du primaire (sinon la feuille de compétences n'a aucune
+        // compétence à proposer) ; le référentiel du niveau est complété à l'écran par la direction.
+        $level = (string) $this->as($ctx, 'director', 'POST', '/primary/level-profiles', ['name' => 'CM2', 'is_final_level' => true, 'sort_order' => 6], 201)['data']['level_structure_id'];
+        $class = $this->schoolYear($ctx, 'CM2 A', 'MINEDUB', $level);
         $this->actor($ctx, 'teacher', 'Paul', 'Fictif-Maitre', [['enseignant', 'establishment']]);
         $this->actor($ctx, 'parent', 'Pauline', 'Fictive-Parent', [['parent', 'establishment']]);
         $ctx['pupils'] = [
@@ -510,6 +513,8 @@ final class E2eSeeder extends RealStackTestCase
             $this->pupil($ctx, $class, 'Bello', 'Fictif-CM2', (self::startYear() - 10) . '-06-21', 'male'),
             $this->pupil($ctx, $class, 'Chantal', 'Fictive-CM2', (self::startYear() - 11) . '-11-02', 'female'),
         ];
+        // Le portail parent du primaire ne montre que les enfants dont la personne connectée est garant financier (comme au guichet).
+        $this->as($ctx, 'admin', 'POST', '/people/' . $ctx['pupils'][0] . '/relations', ['related_person_id' => $ctx['people']['parent'], 'kind' => 'financial_guarantor'], 201);
 
         return $this->withSecrets($ctx);
     }
