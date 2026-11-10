@@ -99,7 +99,7 @@ final class DownloadLinkService
             throw self::gone($outcome);
         }
 
-        return ['pdf' => $this->service->pdf((string) $document['content']), 'number' => (string) $document['number']];
+        return ['pdf' => $this->service->pdfOfRow($document), 'number' => (string) $document['number']];
     }
 
     private static function gone(string $outcome): HttpException

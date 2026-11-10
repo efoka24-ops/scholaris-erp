@@ -70,7 +70,7 @@ final class Application
         echo "  attendance:retry-absences [client]  rejoue les notifications d'absence échouées (toutes les heures)\n";
         echo "  queue:send [--limit=N]  reprend les envois en échec (chaque minute)\n";
         echo "  reports:run [AAAA-MM-JJ] [client]  exécute les rapports planifiés échus (une fois par jour)\n";
-        echo "  documents:process-jobs [--max-jobs=N] [--chunk=N]  traite les lots de documents en file (chaque minute)\n";
+        echo "  documents:process-jobs [--max-jobs=N] [--chunk=N] [--max-seconds=S] [--workers=N]  traite les lots et pré-rend les bulletins (N processus)\n";
         echo '  establishment:create <client> <nom> <nursery|primary|secondary|higher>  crée un établissement
 ';
         echo '  db:check              contrôle la base configurée (migrations, schéma, utf8mb4, écriture/lecture annulées)

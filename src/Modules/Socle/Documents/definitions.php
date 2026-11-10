@@ -33,6 +33,8 @@ return [
     \Scholaris\Modules\Socle\Documents\Contracts\DocumentReissuer::class => get(DocumentService::class),
     'documents.issuance_guards.socle' => [],
     DocumentCatalog::class => autowire(PdoDocumentCatalog::class),
+    // Processus de traitement de la file lancés en arrière-plan (documents:process-jobs --workers=N, C-118).
+    \Scholaris\Modules\Socle\Documents\Infrastructure\WorkerLauncher::class => factory(static fn (): \Scholaris\Modules\Socle\Documents\Infrastructure\WorkerLauncher => new \Scholaris\Modules\Socle\Documents\Infrastructure\ShellWorkerLauncher(dirname(__DIR__, 4))),
     PdfRenderer::class => factory(static function (Config $config): PdfRenderer {
         $choice = strtolower((string) $config->get('documents.pdf_renderer', ''));
         $real = $choice === 'dompdf' || ($choice === '' && $config->get('app.env') === 'production');

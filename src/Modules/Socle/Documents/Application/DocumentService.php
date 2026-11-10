@@ -25,6 +25,7 @@ use Scholaris\Modules\Socle\Documents\Domain\TemplateGuard;
 use Scholaris\Modules\Socle\Documents\Domain\TemplateRenderer;
 use Scholaris\Modules\Socle\Documents\Domain\VerificationToken;
 use Scholaris\Modules\Socle\Documents\Infrastructure\DocumentRepository;
+use Scholaris\Modules\Socle\Documents\Infrastructure\PdfStore;
 use Scholaris\Modules\Socle\Documents\Infrastructure\SealRepository;
 use Scholaris\Modules\Socle\Documents\Infrastructure\SignerRepository;
 use Scholaris\Modules\Socle\Documents\Infrastructure\TemplateRepository;
@@ -67,6 +68,8 @@ final class DocumentService implements ExtendedDocumentIssuer, DocumentReissuer,
         private readonly DebtorDirectory $debtors,
         private readonly SettingsReader $settings,
         private readonly EstablishmentLogo $logos,
+        private readonly PdfProfiles $profiles,
+        private readonly PdfStore $store,
     ) {
     }
 
@@ -383,7 +386,26 @@ final class DocumentService implements ExtendedDocumentIssuer, DocumentReissuer,
             return null;
         }
 
-        return $this->pdf((string) $document['content']);
+        return $this->pdfOfRow($document);
+    }
+
+    /**
+     * PDF d'un document enregistré (C-118) : profil par défaut de sa catégorie (bulletin : léger, `documents.batch.light_profile`)
+     * sauf profil explicite ; le PDF pré-rendu par la file est servi tel quel s'il existe pour ce profil.
+     *
+     * @param array<string, mixed> $document ligne de `documents`
+     */
+    public function pdfOfRow(array $document, ?string $profile = null): string
+    {
+        $profile ??= $this->profiles->forCategory((string) $document['category']);
+        if (($document['pdf_rendered_at'] ?? null) !== null && ($document['pdf_profile'] ?? null) === $profile) {
+            $stored = $this->store->get((string) $document['tenant_id'], (string) $document['id'], $profile);
+            if ($stored !== null) {
+                return $stored;
+            }
+        }
+
+        return $this->pdf((string) $document['content'], $profile);
     }
 
     /** @param string $profile standard ou light (PP15 : polices de base, grandes images retirées, PDF parent < 200 Ko) */

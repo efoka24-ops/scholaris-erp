@@ -21,7 +21,9 @@ final class Schedule
     /** @var list<array{0: string, 1: list<string>}> */
     public const TASKS = [
         ['* * * * *', ['queue:send']],
-        ['* * * * *', ['documents:process-jobs']],
+        // NF-S2 (C-118) : 4 processus de la file en arrière-plan (créneaux verrouillés), chacun vide la file en 14 min au plus,
+        // avant le passage suivant du cron de l'hébergeur (toutes les 15 min).
+        ['* * * * *', ['documents:process-jobs', '--workers=4', '--max-seconds=840']],
         ['*/15 * * * *', ['sms:sync-status']],
         ['0 * * * *', ['attendance:retry-absences']],
         ['0 2 * * *', ['backup:run']],

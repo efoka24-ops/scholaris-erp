@@ -66,6 +66,7 @@ final class ScheduleTest extends TestCase
         self::assertContains(['higher:expiry-alerts'], $due, '6 h 30 tombe dans la fenêtre.');
         self::assertSame(1, count(array_keys($due, ['queue:send'], true)), 'Une tâche de chaque minute ne tourne qu\'une fois.');
         self::assertNotContains(['platform:billing-run'], $due, '6 h 00 est avant la fenêtre.');
+        self::assertContains(['documents:process-jobs', '--workers=4', '--max-seconds=840'], $due, 'NF-S2 : 4 processus en arrière-plan, moins de 15 min (C-118).');
 
         $due = Schedule::dueBetween(new DateTimeImmutable('2026-10-28 05:55'), new DateTimeImmutable('2026-10-28 06:10'));
         self::assertContains(['platform:billing-run'], $due);

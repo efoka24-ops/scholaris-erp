@@ -29,8 +29,11 @@ abstract class DocumentsTestCase extends AppTestCase
     protected DocClock $clock;
     protected FlakyQr $qr;
 
-    /** @param array<string, mixed> $overrides liaisons supplémentaires (paramètres, gardes d'émission enregistrées) */
-    protected function bootDocuments(array $overrides = []): void
+    /**
+     * @param array<string, mixed> $overrides liaisons supplémentaires (paramètres, gardes d'émission enregistrées)
+     * @param array<string, mixed> $config configuration supplémentaire (fusion récursive)
+     */
+    protected function bootDocuments(array $overrides = [], array $config = []): void
     {
         $this->permissions = new DocPermissions();
         $this->people = new InMemoryPeople();
@@ -46,10 +49,10 @@ abstract class DocumentsTestCase extends AppTestCase
             EstablishmentDirectory::class => $this->establishments,
             Clock::class => $this->clock,
             QrCodeGenerator::class => $this->qr,
-        ] + $overrides, [
+        ] + $overrides, array_replace_recursive([
             'app' => ['url' => 'https://api.scholaris.test'],
             'api' => ['idempotent_paths' => ['#^/api/v1/documents$#']],
-        ]);
+        ], $config));
 
         $this->establishments->add('t1', 'e1', 'Collège La Palmeraie');
         $this->establishments->add('t1', 'e2', 'Lycée Bilingue');

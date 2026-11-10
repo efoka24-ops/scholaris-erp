@@ -121,7 +121,7 @@ Créer les tâches cron du panneau d'hébergement (chemin du projet : le dossier
 | Commande | Fréquence | Rôle |
 |---|---|---|
 | `queue:send` | chaque minute | reprend les envois de messages en échec |
-| `documents:process-jobs` | chaque minute | génère les documents en lot (PDF) |
+| `documents:process-jobs --workers=4 --max-seconds=840` | chaque minute (ou par `schedule:run`) | génère les documents en lot et pré-rend les PDF des bulletins, en 4 processus (voir §6 ter) |
 | `sms:sync-status` | toutes les 15 minutes | met à jour l'état des SMS TeeeOTP (envoyé, remis, échec) |
 | `attendance:retry-absences` | chaque heure | rejoue les notifications d'absence échouées |
 | `reminders:send` | chaque jour (7 h) | relances de tranches de scolarité |
@@ -135,6 +135,52 @@ Créer les tâches cron du panneau d'hébergement (chemin du projet : le dossier
 | `retention:run --apply` | selon la politique de rétention (mensuel) | purge des données arrivées à échéance ; commencer par `retention:run` sans `--apply` |
 
 Vérification : après 24 h, chaque tâche a laissé une trace dans `storage/logs` sans erreur ; la file de messages ne grossit pas.
+
+### 6 ter. Bulletins en nombre : rendu léger et plusieurs processus (NF-S2)
+
+Objectif : 3 000 bulletins PDF en moins de 15 minutes. Deux réglages y concourent :
+
+1. **Profil léger** des bulletins (catégorie `bulletin`) : polices de base, grandes images retirées, PDF de 10 Kio environ au
+   lieu de 55 Kio, rendu environ 3 fois plus rapide. Actif par défaut. Pour revenir au profil standard, poser
+   `DOCUMENTS_BATCH_LIGHT_PROFILE=false` dans le `.env` du serveur. L'aperçu accepte toujours `?profile=standard`.
+2. **Pré-rendu par la file** : après l'émission, `documents:process-jobs` rend chaque bulletin et range le PDF dans
+   `storage/cache/documents-pdf` (variable `DOCUMENTS_PDF_STORE`). Le portail, l'aperçu et les liens de téléchargement servent
+   ensuite ce fichier sans nouveau rendu. C'est un cache : si le dossier est vidé, le PDF est refait à la demande.
+
+Plusieurs processus se partagent la file sans doublon. Chaque lot et chaque bulletin est pris par une mise à jour conditionnelle
+(verrou en base), et un verrou abandonné est repris après `queue.stale_after` (600 s).
+
+**Cas Camoo : une seule tâche cron, toutes les 15 minutes.** La tâche `php -f cron.php` (= `schedule:run`) lance
+`documents:process-jobs --workers=4 --max-seconds=840`. Ce lancement crée 4 processus en arrière-plan (créneaux 1 à 4) puis
+rend la main aussitôt, et les autres tâches du cron ne sont pas retardées. Chaque processus vide la file pendant 14 minutes au
+plus et s'arrête dès qu'elle est vide. Un verrou de fichier par créneau (`storage/cache/documents-worker-<k>.lock`) empêche
+d'avoir plus de 4 processus, même si le cron repasse avant la fin.
+
+**Si l'hébergeur interdit de lancer un processus** (`exec` ou `popen` dans `disable_functions`) : la commande l'affiche
+(« lancement en arrière-plan impossible ») et traite la file elle-même dans la limite de `--max-seconds`. Il n'y a alors qu'un
+seul processus, et 3 000 bulletins prennent environ 25 minutes, soit deux passages du cron. Pour tenir 15 minutes dans ce cas,
+créer 2 à 4 tâches cron supplémentaires, chacune avec son créneau :
+
+```
+cd <chemin du projet> && php artisan documents:process-jobs --slot=1 --max-seconds=840
+cd <chemin du projet> && php artisan documents:process-jobs --slot=2 --max-seconds=840
+```
+
+**Lancement manuel**, par exemple le soir des conseils de classe, en SSH :
+`php artisan documents:process-jobs --workers=4 --max-seconds=1800`. La progression se lit dans `storage/logs/schedule.log`
+et dans la santé de la plateforme (file des documents).
+
+**Mesure locale** (SQLite, poste Windows, bulletins réels du passage C-117) :
+`php tests/Load/Secondary/prerender-queue.php 160 4`.
+
+| Mode | Débit | 3 000 bulletins |
+|---|---|---|
+| Avant : rendu à la demande en profil standard, un processus | 1 491 ms par bulletin | 74,5 min |
+| File, profil léger, 1 processus | 2,1 bulletins par s (40 en 19,3 s) | 24,1 min |
+| Après : file, profil léger, 4 processus | 6,3 bulletins par s (160 en 25,5 s, 40 par processus, aucun doublon) | 8,0 min de rendu |
+
+À cela s'ajoute l'émission (66 ms par bulletin, soit 3,3 min). Le total est d'environ 11,3 min, sous les 15 min.
+À refaire sur le serveur Camoo (MySQL), avec le même script adapté ou en relevant les durées de `schedule.log`.
 
 ### 6 bis. SMS par TeeeOTP
 

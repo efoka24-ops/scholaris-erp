@@ -89,12 +89,13 @@ final class DocumentController extends BaseController
     public function preview(ServerRequestInterface $request): ResponseInterface
     {
         $this->authorize($request, DocumentPolicy::READ);
-        $profile = $request->getQueryParams()['profile'] ?? \Scholaris\Modules\Socle\Documents\Domain\LightPdfProfile::STANDARD;
-        if (!is_string($profile) || !in_array($profile, \Scholaris\Modules\Socle\Documents\Domain\LightPdfProfile::PROFILES, true)) {
+        // Sans profil explicite : profil par défaut de la catégorie (bulletin : léger, C-118) et PDF pré-rendu s'il existe.
+        $profile = $request->getQueryParams()['profile'] ?? null;
+        if ($profile !== null && (!is_string($profile) || !in_array($profile, \Scholaris\Modules\Socle\Documents\Domain\LightPdfProfile::PROFILES, true))) {
             throw \Scholaris\Core\Http\HttpException::validation(['profile' => ['Valeur attendue : standard ou light.']]);
         }
         $document = $this->find($request);
-        $pdf = $this->documents->pdf($this->documents->content($this->tenant(), $this->establishment(), (string) $document['id']), $profile);
+        $pdf = $this->documents->pdfOfRow($document, $profile);
 
         return $this->binary($pdf, 'application/pdf', (string) $document['number'] . '.pdf');
     }

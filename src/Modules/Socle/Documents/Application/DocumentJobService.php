@@ -21,7 +21,33 @@ final class DocumentJobService
         private readonly BatchService $batches,
         private readonly DocumentClock $clock,
         private readonly Config $config,
+        private readonly PdfPrerenderService $prerender,
     ) {
+    }
+
+    /**
+     * Passes successives (lots en file puis pré-rendu des PDF de bulletins) jusqu'à vider la file ou atteindre
+     * `$maxSeconds` (C-118). Sûr à lancer dans plusieurs processus à la fois : chaque tâche et chaque bulletin est pris par
+     * un UPDATE conditionnel (verrou), jamais deux fois.
+     *
+     * @return array{jobs: int, done: int, failed: int, chunks: int, rendered: int, render_failed: int}
+     */
+    public function drain(int $maxJobs = 10, ?int $chunk = null, int $maxSeconds = 0): array
+    {
+        $deadline = $maxSeconds > 0 ? microtime(true) + $maxSeconds : null;
+        $total = ['jobs' => 0, 'done' => 0, 'failed' => 0, 'chunks' => 0, 'rendered' => 0, 'render_failed' => 0];
+        do {
+            $jobs = $this->work($maxJobs, $chunk);
+            $renders = $this->prerender->work(50, $deadline);
+            foreach ($jobs as $key => $value) {
+                $total[$key] += $value;
+            }
+            $total['rendered'] += $renders['rendered'];
+            $total['render_failed'] += $renders['failed'];
+            $progress = $jobs['jobs'] + $renders['rendered'] + $renders['failed'] > 0;
+        } while ($progress && $deadline !== null && microtime(true) < $deadline);
+
+        return $total;
     }
 
     /**

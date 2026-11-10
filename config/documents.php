@@ -18,4 +18,11 @@ return [
         'max_attempts' => 3,
         'stale_after' => 600,
     ],
+    // Bulletins (NF-S2, C-118) : profil PDF léger par défaut, PDF pré-rendus par documents:process-jobs dans ce dossier (cache).
+    'batch' => [
+        'light_profile' => filter_var($env('DOCUMENTS_BATCH_LIGHT_PROFILE', 'true'), FILTER_VALIDATE_BOOL),
+    ],
+    'pdf_store_path' => (string) $env('DOCUMENTS_PDF_STORE', 'storage/cache/documents-pdf'),
+    // Verrous des créneaux de processus (documents:process-jobs --workers=N).
+    'worker_lock_path' => 'storage/cache',
 ];
