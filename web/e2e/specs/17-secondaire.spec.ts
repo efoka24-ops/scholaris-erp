@@ -8,12 +8,11 @@ import { actorPage, closeActors, expect, isoDate, selectContaining, startStack, 
  * « leg »), acceptation, administrateur activé, comptes du chef d'établissement, de la scolarité, du censeur, d'un enseignant, de
  * l'intendant, d'un parent et de l'administrateur fonctionnel, année en cours.
  * À l'écran : ouverture du lycée par l'assistant de profil, niveaux d'exemple, série, classe, autorisation d'ouverture, inscription
- * avec parent et matricule ; trimestre et séquences ; matière et coefficient ; affectation et créneau de l'emploi du temps ; frais
- * (refus d'un frais hors catalogue au public, demande d'ajout, catalogue, frais autorisé) ; appel ; notes de séquence (saisie,
+ * avec parent garant financier et matricule ; trimestre et séquences ; matière et coefficient ; affectation et créneau de l'emploi du temps ; frais
+ * (refus d'un frais hors catalogue au public, demande d'ajout, catalogue, frais autorisé, échéancier et facture) ; appel ; notes de séquence (saisie,
  * soumission, validation, verrouillage) ; règles du conseil, conseil de classe et bulletins émis ; portail parent avec paiement
- * mobile money simulé (confirmation par le webhook signé du simulateur) et reçu.
- * Par l'API, faute d'écran (rapport C-117) : rattachement du compte parent à l'élève, échéancier du frais et facture de l'élève,
- * webhook de l'opérateur (simulateur).
+ * mobile money simulé (confirmation par le webhook signé du simulateur) et reçu numéroté affiché (C-118).
+ * Hors écran : le webhook de l'opérateur (simulateur).
  */
 // Un seul semis par fichier : le semis crée l'administrateur de plateforme, qui ne peut l'être deux fois dans la même base.
 // Les tests s'enchaînent donc sur le même lycée (mode série).
@@ -32,8 +31,6 @@ const WEBHOOK_SECRET = 'secret-webhook-e2e';
 const START_YEAR = Number(isoDate().slice(0, 4)) - (Number(isoDate().slice(5, 7)) >= 8 ? 0 : 1);
 /** Jour ISO (1 = lundi) à Douala : le créneau posé ce jour-là donne l'appel du jour. */
 const WEEKDAY = ((new Date(`${isoDate()}T12:00:00Z`).getUTCDay() + 6) % 7) + 1;
-/** Élève inscrit à l'écran par le test 2 (identifiants lus par l'API pour les étapes sans écran). */
-const student = { person: '', enrollment: '', structure: '' };
 
 let stack: Stack;
 let ctx: Leg;
@@ -164,6 +161,9 @@ test("secondaire : classe de Seconde et inscription d'un élève avec son matric
   await guardian.getByLabel('Nom', { exact: true }).fill('Fictive-Parent');
   await guardian.getByLabel('Prénoms').fill('Aissatou');
   await guardian.getByLabel('Téléphone').fill(ctx.logins.parent![0]);
+  // C-118 : le parent saisi (case « Garant financier » cochée par défaut) est retrouvé par son téléphone, celui de son compte, et
+  // rattaché comme garant financier ; la fiche de l'élève le montre.
+  await expect(page.locator('#en-g-payer')).toBeChecked();
   await page.getByLabel(/Matricule national/).fill('LEG-E2E-0001');
   await page.getByRole('button', { name: 'Inscrire', exact: true }).last().click();
   await expect(page.getByText('Élève inscrit.')).toBeVisible();
@@ -173,10 +173,8 @@ test("secondaire : classe de Seconde et inscription d'un élève avec son matric
   await expect(row).toContainText('Matricule enregistré');
   await row.getByRole('button', { name: /Fictif-Lyceen Issa/ }).click();
   await expect(page.getByText(/LEG-E2E-0001/)).toBeVisible();
-  // Identifiants de l'élève pour les étapes suivantes sans écran (lus par l'API, jamais affichés).
-  const rows = (await apiAs('scol', 'GET', `/secondary/enrolment/students?academic_year_id=${ctx.year}`)).data as Array<{ person_id: string; enrollment_id: string; class_structure_id: string; last_name: string }>;
-  const row0 = rows.find((r) => r.last_name === 'Fictif-Lyceen')!;
-  Object.assign(student, { person: row0.person_id, enrollment: row0.enrollment_id, structure: row0.class_structure_id });
+  await expect(page.getByRole('heading', { name: 'Garants financiers' })).toBeVisible();
+  await expect(page.locator('article.dossier li').filter({ hasText: ctx.logins.parent![0] })).toHaveCount(1);
   await finish(info);
 });
 
@@ -283,10 +281,17 @@ test('secondaire : frais hors catalogue refusés au public, demande d’ajout, f
   await page.getByRole('button', { name: 'Ajouter le frais' }).click();
   await expect(page.getByText('Frais ajouté.')).toBeVisible();
 
-  // Sans écran (rapport C-117) : échéancier de la classe et facture de l'élève, par l'API de l'intendant.
-  const item = ((await apiAs('intendant', 'GET', '/fee-items')).data as Array<{ id: string; name: string }>).find((i) => i.name === 'Contribution APEE')!;
-  await apiAs('intendant', 'POST', '/fee-schedules', { fee_item_id: item.id, academic_year_id: ctx.year, structure_id: student.structure, amount_xaf: 10000, terms: [{ due_on: `${START_YEAR}-12-15`, amount: 10000 }] }, 201);
-  await apiAs('intendant', 'POST', '/invoices', { enrollment_id: student.enrollment }, 201);
+  // C-118 : échéancier du frais pour la 2nde A et facture de l'élève, à l'écran Frais de l'intendant.
+  await page.locator('#sf-s-item').selectOption({ label: 'Contribution APEE' });
+  await page.locator('#sf-s-class').selectOption({ label: '2nde A' });
+  await expect(page.locator('#sf-s-amount')).toHaveValue('10000');
+  await page.locator('#sf-s-due').fill(`${START_YEAR}-12-15`);
+  await page.getByRole('button', { name: 'Créer l’échéancier' }).click();
+  await expect(page.getByText('Échéancier créé.')).toBeVisible();
+  await expect(page.getByRole('listitem').filter({ hasText: 'Contribution APEE' }).filter({ hasText: '2nde A' })).toBeVisible();
+  await selectContaining(page.locator('#sf-v-student'), 'Fictif-Lyceen');
+  await page.getByRole('button', { name: 'Établir la facture' }).click();
+  await expect(page.getByRole('status').filter({ hasText: /Facture établie pour Fictif-Lyceen Issa/ })).toContainText(/10\s000 FCFA/);
   await finish(info);
 });
 
@@ -355,10 +360,7 @@ test('secondaire : règles du conseil, conseil de classe et bulletin émis', asy
 });
 
 test('secondaire : portail parent et paiement mobile money simulé avec reçu', async ({ browser }, info) => {
-  // Sans écran (rapport C-117) : le compte du parent semé est rattaché à l'élève comme garant financier (le portail famille du
-  // secondaire ne liste que les enfants dont la personne connectée est garant financier, PersonDirectory::learnersOf).
-  await apiAs('admin', 'POST', `/people/${student.person}/relations`, { related_person_id: ctx.people.parent, kind: 'financial_guarantor' }, 201);
-
+  // Le compte du parent est garant financier de l'élève depuis l'inscription (C-118, à l'écran).
   const page = await as(browser, info, 'parent');
   await page.goto('/secondaire/famille');
   await expect(page.getByText(/Fictif-Lyceen/).first()).toBeVisible();
@@ -379,7 +381,7 @@ test('secondaire : portail parent et paiement mobile money simulé avec reçu', 
   });
   expect(hook.status).toBe(200);
   expect(await hook.text(), 'webhook du simulateur').toContain('"confirmed"');
-  // « Vérifier l'état » jusqu'à la confirmation : le formulaire se referme et la facture est soldée (reçu numéroté côté serveur).
+  // « Vérifier l'état » jusqu'à la confirmation : le formulaire laisse place au reçu numéroté et la facture est soldée.
   await expect(async () => {
     if (await pay.count()) await pay.getByRole('status').getByRole('button').click();
     await expect(pay).toHaveCount(0, { timeout: 3_000 });
@@ -388,5 +390,9 @@ test('secondaire : portail parent et paiement mobile money simulé avec reçu', 
   const confirmed = ((await apiAs('intendant', 'GET', '/payments')).data as Array<{ id: string; status: string; receipt_number: string | null }>).find((p) => p.id === pending.id)!;
   expect(confirmed.status).toBe('confirmed');
   expect(confirmed.receipt_number).toBeTruthy();
+  // C-118 : le reçu numéroté s'affiche à l'écran, avec le même numéro que celui enregistré par l'intendance.
+  const receipt = page.locator('section[aria-labelledby="sf-receipt"]');
+  await expect(receipt).toContainText(`Reçu n° ${confirmed.receipt_number}`);
+  await expect(receipt).toContainText('Orange Money');
   await finish(info);
 });

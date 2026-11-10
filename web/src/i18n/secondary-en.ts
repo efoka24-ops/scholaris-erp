@@ -220,4 +220,6 @@ export const secondaryEn: Record<keyof typeof secondaryFr, string> = {
   'sec.portal.payFailed': 'The payment did not go through.',
   'sec.portal.receipt': 'Receipt No. {number}',
   'sec.portal.refresh': 'Check status',
+  'sec.portal.receiptPending': 'The receipt number will be shown as soon as it is assigned.',
+  'sec.portal.close': 'Close',
 };

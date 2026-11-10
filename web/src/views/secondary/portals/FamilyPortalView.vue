@@ -18,6 +18,8 @@ const portal = ref<FamilyPortal | null>(null);
 const paying = ref<{ childId: string; invoice: PortalInvoice; amount: number; channel: PortalChannel; phone: string; key: string } | null>(null);
 const payment = ref<PortalPayment | null>(null);
 const phoneInvalid = ref(false);
+const receipt = ref<PortalPayment | null>(null);
+const channelLabel = (channel: string): string => (channel === 'mtn_momo' ? 'MTN Mobile Money' : channel === 'orange_money' ? 'Orange Money' : channel);
 
 async function load(): Promise<void> {
   portal.value = (await run(() => secondaryPortals.family())) ?? null;
@@ -25,6 +27,7 @@ async function load(): Promise<void> {
 
 function startPay(childId: string, invoice: PortalInvoice): void {
   payment.value = null;
+  receipt.value = null;
   phoneInvalid.value = false;
   paying.value = { childId, invoice, amount: invoice.balance_xaf, channel: 'orange_money', phone: '', key: ulid() };
 }
@@ -35,7 +38,9 @@ async function pay(): Promise<void> {
   phoneInvalid.value = !validPhone(p.phone);
   if (phoneInvalid.value || p.amount < 1 || p.amount > p.invoice.balance_xaf) return;
   const done = await run(() => secondaryPortals.pay(p.childId, { invoice_id: p.invoice.id, amount_xaf: Math.round(p.amount), channel: p.channel, payer_phone: p.phone, idempotency_key: p.key }));
-  if (done) payment.value = done;
+  if (!done) return;
+  payment.value = done;
+  if (done.status === 'confirmed') await confirmed(done);
 }
 
 async function refresh(): Promise<void> {
@@ -44,11 +49,16 @@ async function refresh(): Promise<void> {
   const next = await run(() => secondaryPortals.payment(p.child_id, p.id));
   if (next) {
     payment.value = next;
-    if (next.status === 'confirmed') {
-      paying.value = null;
-      await load();
-    }
+    if (next.status === 'confirmed') await confirmed(next);
   }
+}
+
+// C-118 : le paiement confirmé laisse place au reçu numéroté (montant, opérateur, numéro), et non à un formulaire refermé.
+async function confirmed(done: PortalPayment): Promise<void> {
+  receipt.value = done;
+  paying.value = null;
+  payment.value = null;
+  await load();
 }
 
 onMounted(() => void load());
@@ -81,6 +91,16 @@ onMounted(() => void load());
       </StudentCardView>
       <SchoolLifePanel :child-id="child.person.id" />
       </template>
+
+      <section v-if="receipt" class="card stack" aria-labelledby="sf-receipt" role="status">
+        <h2 id="sf-receipt">{{ t('sec.portal.payConfirmed') }}</h2>
+        <p v-if="receipt.receipt_number" class="receipt-number"><strong>{{ t('sec.portal.receipt', { number: receipt.receipt_number }) }}</strong></p>
+        <p v-else class="muted">{{ t('sec.portal.receiptPending') }}</p>
+        <p>{{ t('sec.portal.amount') }} : {{ formatXaf(receipt.amount_xaf, locale) }} · {{ t('sec.portal.channel') }} : {{ channelLabel(receipt.channel) }}</p>
+        <div class="row">
+          <button type="button" class="btn btn--quiet" @click="receipt = null">{{ t('sec.portal.close') }}</button>
+        </div>
+      </section>
 
       <form v-if="paying" class="card stack" aria-labelledby="sf-pay" @submit.prevent="pay">
         <h2 id="sf-pay">{{ t('sec.portal.payTitle') }}</h2>

@@ -219,4 +219,6 @@ export const secondaryFr = {
   'sec.portal.payFailed': 'Le paiement n’a pas abouti.',
   'sec.portal.receipt': 'Reçu n° {number}',
   'sec.portal.refresh': 'Vérifier l’état',
+  'sec.portal.receiptPending': 'Le numéro de reçu sera affiché dès son attribution.',
+  'sec.portal.close': 'Fermer',
 } as const;
