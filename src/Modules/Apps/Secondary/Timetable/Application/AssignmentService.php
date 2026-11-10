@@ -17,6 +17,7 @@ use Scholaris\Modules\Apps\Secondary\Support\SecondaryClock;
 use Scholaris\Modules\Apps\Secondary\Support\Store;
 use Scholaris\Modules\Apps\Secondary\Timetable\Domain\TimetableGenerator;
 use Scholaris\Modules\Apps\Secondary\Timetable\Infrastructure\PdoTeachingAssignments;
+use Scholaris\Modules\Socle\Staff\Contracts\EstablishmentStaffRoster;
 
 /**
  * Données d'entrée de l'emploi du temps (T860) : affectations (classe ou demi-groupe, matière dont le volume horaire est paramétré
@@ -40,7 +41,36 @@ final class AssignmentService
         private readonly CoefficientBook $coefficients,
         private readonly ModuleGate $modules,
         private readonly SecondaryClock $clock,
+        private readonly EstablishmentStaffRoster $roster,
     ) {
+    }
+
+    /**
+     * C-118 : enseignants proposés à l'affectation, par nom (jamais d'identifiant à saisir) : personnel actif de l'établissement
+     * (socle Staff) et personnes déjà affectées dans l'établissement. Le serveur reste juge de l'affectation.
+     *
+     * @return list<array{person_id: string, name: string, grade: ?string, teaches: bool, assigned: bool}>
+     */
+    public function teachers(Principal $principal, string $establishmentId): array
+    {
+        $tenantId = $principal->tenantId;
+        $this->access->require($principal, $establishmentId, TimetableContext::READ);
+        $candidates = [];
+        foreach ($this->roster->membersOf($tenantId, $establishmentId) as $member) {
+            $candidates[$member->personId] = ['grade' => $member->grade, 'teaches' => $member->teaches, 'assigned' => false];
+        }
+        foreach ($this->store->select(PdoTeachingAssignments::ASSIGNMENTS, $tenantId, $establishmentId, [], 'created_at', 5000) as $row) {
+            $person = (string) $row['teacher_person_id'];
+            $candidates[$person] = ['grade' => $candidates[$person]['grade'] ?? null, 'teaches' => true, 'assigned' => true];
+        }
+        $names = $this->context->names($tenantId, array_keys($candidates));
+        $out = [];
+        foreach ($candidates as $personId => $info) {
+            $out[] = ['person_id' => (string) $personId, 'name' => $names[$personId] ?? (string) $personId] + $info;
+        }
+        usort($out, static fn (array $a, array $b): int => [$a['name'], $a['person_id']] <=> [$b['name'], $b['person_id']]);
+
+        return $out;
     }
 
     /**

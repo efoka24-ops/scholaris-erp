@@ -128,4 +128,6 @@ export const secondaryCouncilsEn: Record<keyof typeof secondaryCouncilsFr, strin
   'seco.status.pending': 'Pending',
   'seco.status.accepted': 'Accepted',
   'seco.status.rejected': 'Rejected',
+  'secc.levelNoCoefficient': 'No coefficient for the whole level: only the classes of streams with their own coefficients get their rules.',
+  'secc.streamOverride': 'Class {class}: coefficients of its own stream (rules published on the class)',
 };

@@ -216,6 +216,30 @@ final class TimetableTest extends TimetableWorld
         self::assertCount(1, $contract->entriesOf(self::TA, $school, $mine['id']));
     }
 
+    /** C-118 : l'affectation choisit l'enseignant dans une liste (personnel de l'établissement et enseignants déjà affectés), sans identifiant brut. */
+    public function testListeDesEnseignantsProposesALAffectation(): void
+    {
+        $w = $this->world(1, ['MATH' => 2]);
+        $school = $w['school'];
+        $this->teacher('prof-1');
+        $this->teacher('prof-2');
+        $this->people->add(self::TA, 'secretaire', 'Secrétaire', 'Fictive');
+        $this->staff[$school] = [['prof-1', 'Professeur certifié', true], ['secretaire', 'Secrétaire', false]];
+        $this->assign($school, $w['classes'][0], $w['subjects']['MATH'], 'prof-2');
+
+        $list = $this->ok('GET', '/secondary/timetable/teachers', null, self::ADMIN, self::TA, $school);
+        self::assertSame(['prof-1', 'prof-2', 'secretaire'], array_column($list, 'person_id'));
+        self::assertSame('Prof Prof-1', $list[0]['name']);
+        self::assertSame('Professeur certifié', $list[0]['grade']);
+        self::assertTrue($list[1]['assigned'], 'Déjà affecté dans l\'établissement.');
+        self::assertFalse($list[2]['teaches']);
+
+        $this->access->grant('curieux', $school);
+        self::assertSame(403, $this->call('GET', '/secondary/timetable/teachers', null, 'curieux', self::TA, $school)[0]);
+        $schoolB = $this->factory->opened(self::TB, 'leg');
+        $this->grant(self::TB, 'admin-b', $schoolB, self::CENSOR);
+        self::assertSame([], $this->ok('GET', '/secondary/timetable/teachers', null, 'admin-b', self::TB, $schoolB), 'Rien d\'un autre client.');
+    }
     private function entryOn(string $class, string $label, string $date): string
     {
         $statement = $this->pdo()->prepare("SELECT id FROM se_timetable_entries WHERE class_id = ? AND subject_label = ? AND status = 'active' AND valid_from <= ? AND (valid_to IS NULL OR valid_to >= ?)");

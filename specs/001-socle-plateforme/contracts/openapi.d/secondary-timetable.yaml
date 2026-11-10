@@ -21,6 +21,16 @@ paths:
         '409': {description: "Conflit : profil non ouvert, conflit d'emploi du temps, module non active, doublon, lecons deja traitees"}
         '422': {description: "Validation (errors par champ)"}
         '423': {description: "Abonnement suspendu : ecriture refusee"}
+  /api/v1/secondary/timetable/teachers:
+    get:
+      summary: "C-118 : enseignants proposes a l affectation, par nom : personnel actif de l etablissement et personnes deja affectees {person_id, name, grade, teaches, assigned}"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Succes {data}"}
+        '400': {description: "En-tete manquant"}
+        '403': {description: "Permission absente ou application non ouverte"}
+        '404': {description: "Application fermee"}
   /api/v1/secondary/timetable/assignments:
     get:
       summary: "Affectations d'enseignement (filter[academic_year_id|class_id|teacher_person_id|status|group_code])"

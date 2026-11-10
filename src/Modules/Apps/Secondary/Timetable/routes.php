@@ -13,6 +13,7 @@ use Scholaris\Modules\Apps\Secondary\Timetable\Http\TimetableController;
 return static function (SecondaryRoutes $routes): void {
     $routes->get('/timetable', [TimetableController::class, 'view']);
     $routes->get('/timetable/assignments', [TimetableController::class, 'assignments']);
+    $routes->get('/timetable/teachers', [TimetableController::class, 'teachers']);
     $routes->post('/timetable/assignments', [TimetableController::class, 'createAssignment']);
     $routes->patch('/timetable/assignments/{id}', [TimetableController::class, 'updateAssignment']);
     $routes->get('/timetable/bands', [TimetableController::class, 'bands']);

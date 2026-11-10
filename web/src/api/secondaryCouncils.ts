@@ -72,12 +72,15 @@ export interface RuleDraft {
   level_code: string;
   stream_id: string | null;
   scope: 'level' | 'class';
-  structure_id: string;
+  /** null : aucun coefficient pour tout le niveau, seules les versions des séries propres sont à publier (C-118). */
+  structure_id: string | null;
   label: string;
   from_example: boolean;
   example_notice: string | null;
   coefficients: CoefficientDraftLine[];
   definition: Record<string, unknown>;
+  /** C-118 : au niveau, une version par classe d'une série à coefficients propres (publiée sur la classe, qui prime sur le niveau). */
+  stream_overrides?: { structure_id: string; class_label: string; stream_id: string; label: string; coefficients: CoefficientDraftLine[]; definition: Record<string, unknown> }[];
 }
 export interface ReportCardSettings {
   report_card_types: Record<string, string> | null;
@@ -154,8 +157,8 @@ export const secondaryCouncils = {
   reportCards: (id: string): Promise<ReportCardRequest[]> => get(`/class-councils/${enc(id)}/report-cards`),
   generateReportCards: (id: string): Promise<ReportCardRequest[]> => post(`/class-councils/${enc(id)}/report-cards`),
   ruleDraft: (classId: string, scope: 'level' | 'class'): Promise<RuleDraft> => get(`${ROOT}/rule-draft`, { class_id: classId, scope }),
-  publishRules: (draft: RuleDraft): Promise<unknown> =>
-    post('/calculation-rules', { academic_year_id: draft.academic_year_id, label: draft.label, definition: draft.definition, structure_id: draft.structure_id }),
+  publishRules: (rules: { academic_year_id: string; label: string; definition: Record<string, unknown>; structure_id: string }): Promise<unknown> =>
+    post('/calculation-rules', { academic_year_id: rules.academic_year_id, label: rules.label, definition: rules.definition, structure_id: rules.structure_id }),
   settings: (): Promise<ReportCardSettings> => get(`${ROOT}/report-card-settings`),
   presetSettings: (): Promise<ReportCardSettings> => post(`${ROOT}/report-card-settings/preset`),
   preview: (councilId: string, personId: string, locale?: 'fr' | 'en'): Promise<ReportCardPreview> =>

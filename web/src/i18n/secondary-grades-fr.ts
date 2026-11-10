@@ -97,4 +97,7 @@ export const secondaryGradesFr = {
   'secg.dueOn': 'Date limite',
   'secg.remind': 'Relancer',
   'secg.withoutTeacher': '{count} matière(s) sans enseignant trouvé à l\'emploi du temps.',
+  'secg.cycleMissing': 'Le cycle des notes (soumission au censeur, validation, verrouillage) n’est pas encore préréglé pour l’établissement : les notes se saisissent, mais aucune étape ne peut être franchie.',
+  'secg.cycleGoPreset': 'Aller au préréglage du cycle',
+  'secg.cycleAskHead': 'Demandez au chef d’établissement de poser le préréglage (écran Notes, onglet Paramètres).',
 } as const;

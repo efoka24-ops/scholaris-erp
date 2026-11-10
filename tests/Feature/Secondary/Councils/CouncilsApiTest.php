@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Secondary\Councils;
 
+use Scholaris\Modules\Apps\Secondary\Catalogue\Contracts\StreamDirectory;
 use Scholaris\Modules\Apps\Secondary\Councils\Application\SecondaryCouncilLines;
 use Scholaris\Modules\Apps\Secondary\Councils\Application\SecondaryReportCardVariables;
 use Scholaris\Modules\Apps\Secondary\Councils\Infrastructure\SecondaryRuleScopes;
@@ -54,6 +55,44 @@ final class CouncilsApiTest extends SecondaryTestCase
         $scopes = $this->service(SecondaryRuleScopes::class);
         self::assertSame([$this->class, (string) $this->levels['3E']['structure_id']], $scopes->scopesOf(self::TA, $this->school, $this->class), 'Classe puis niveau.');
         self::assertSame([], $scopes->scopesOf(self::TA, $this->school, 'structure-inconnue'));
+    }
+
+    /**
+     * C-118 : les règles « pour tout le niveau » respectent le coefficient propre à une série : le brouillon du niveau porte, pour
+     * chaque classe d'une série à coefficients propres, une version à publier sur la classe (la règle de la classe prime sur celle du
+     * niveau). Sans coefficient de niveau, seules ces versions de classe sont proposées (plus de refus 409).
+     */
+    public function testReglesDuNiveauRespectentLeCoefficientDUneSerie(): void
+    {
+        $refC = null;
+        foreach ($this->service(StreamDirectory::class)->forEstablishment(self::TA, $this->school) as $stream) {
+            if ($stream->code === 'C' && $stream->cycleCode === 'second') {
+                $refC = $stream->id;
+            }
+        }
+        self::assertNotNull($refC);
+        $streamC = $this->ok('POST', '/secondary/setup/streams', ['stream_ref_id' => $refC], self::ADMIN, self::TA, $this->school);
+        $classC = (string) $this->ok('POST', '/secondary/setup/classes', ['label' => '2nde C1 (fictive)', 'level_id' => $this->levels['2NDE']['id'], 'stream_id' => $streamC['id'], 'academic_year_id' => self::YEAR], self::ADMIN, self::TA, $this->school)['structure_id'];
+        $math = $this->ok('POST', '/secondary/setup/subjects', ['code' => 'MATH', 'label' => 'Mathématiques'], self::ADMIN, self::TA, $this->school);
+        $coefficient = static fn (?string $stream, int $value): array => [
+            'academic_year_id' => self::YEAR, 'level_code' => '2NDE', 'subject_ref' => $math['id'], 'coefficient' => $value, 'weekly_hours' => 4,
+            'subject_role' => 'official', 'origin' => 'example', 'valid_from' => '2026-09-01', 'reason' => 'Valeur d\'exemple', 'stream_id' => $stream,
+        ];
+        $this->ok('POST', '/secondary/setup/coefficients', $coefficient((string) $streamC['id'], 5), self::ADMIN, self::TA, $this->school);
+        $path = '/secondary/councils/rule-draft?class_id=' . $classC . '&scope=level';
+
+        $onlyStream = $this->ok('GET', $path, null, 'censeur-ca', self::TA, $this->school);
+        self::assertNull($onlyStream['structure_id'], 'Aucun coefficient pour tout le niveau : rien à publier sur le niveau.');
+        self::assertSame([$classC], array_column($onlyStream['stream_overrides'], 'structure_id'));
+        self::assertEquals(5, $onlyStream['stream_overrides'][0]['definition']['strategy_options']['coefficients'][$onlyStream['stream_overrides'][0]['coefficients'][0]['subject_id']]['coefficient']);
+
+        $this->ok('POST', '/secondary/setup/coefficients', $coefficient(null, 3), self::ADMIN, self::TA, $this->school);
+        $both = $this->ok('GET', $path, null, 'censeur-ca', self::TA, $this->school);
+        self::assertSame((string) $this->levels['2NDE']['structure_id'], $both['structure_id']);
+        self::assertEquals(3, $both['definition']['strategy_options']['coefficients'][$both['coefficients'][0]['subject_id']]['coefficient']);
+        self::assertSame([$classC], array_column($both['stream_overrides'], 'structure_id'), 'La série C garde son coefficient 5.');
+        self::assertEquals(5, $both['stream_overrides'][0]['coefficients'][0]['coefficient']);
+        self::assertSame([], $this->ok('GET', '/secondary/councils/rule-draft?class_id=' . $classC . '&scope=class', null, 'censeur-ca', self::TA, $this->school)['stream_overrides']);
     }
 
     public function testPrereglageDesTypesDeBulletinSansEcrasement(): void

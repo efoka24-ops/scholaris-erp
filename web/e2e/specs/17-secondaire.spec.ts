@@ -232,7 +232,8 @@ test('secondaire : trimestre et séquences, matière et coefficient, affectation
   await page.getByRole('navigation', { name: 'Emploi du temps' }).getByRole('button', { name: 'Affectations' }).click();
   await page.locator('#as-class').selectOption({ label: '2nde A' });
   await selectContaining(page.locator('#as-subject'), 'Mathématiques');
-  await page.locator('#as-teacher').fill(ctx.people.teacher!);
+  // C-118 : l'enseignant est choisi par son nom dans la liste (fiche du personnel), plus par son identifiant.
+  await selectContaining(page.locator('#as-teacher'), 'Fictif-Professeur');
   await page.getByRole('button', { name: 'Affecter' }).click();
   await expect(page.locator('#po-as option').filter({ hasText: 'Mathématiques' })).toHaveCount(1);
   await selectContaining(page.locator('#po-as'), 'Mathématiques');
@@ -309,7 +310,7 @@ test('secondaire : appel du jour, notes de séquence validées et verrouillées'
   // Notes de la séquence 1 : évaluation créée, note saisie, soumise au censeur.
   await page.goto('/secondaire/notes');
   await page.locator('#secg-class').selectOption({ label: '2nde A' });
-  await page.locator('#secg-period').selectOption({ index: 1 });
+  await page.locator('#secg-period').selectOption({ label: 'Séquence 1' });
   await expect(page.locator('#secg-subject')).toBeVisible();
   await page.locator('#na-title').fill('Devoir 1');
   await page.getByRole('button', { name: 'Créer', exact: true }).click();
@@ -325,7 +326,7 @@ test('secondaire : appel du jour, notes de séquence validées et verrouillées'
   page = await as(browser, info, 'censeur');
   await page.goto('/secondaire/notes');
   await page.locator('#secg-class').selectOption({ label: '2nde A' });
-  await page.locator('#secg-period').selectOption({ index: 1 });
+  await page.locator('#secg-period').selectOption({ label: 'Séquence 1' });
   await page.getByRole('button', { name: 'Valider', exact: true }).click();
   await page.getByRole('button', { name: 'Verrouiller' }).click();
   await expect(page.getByRole('button', { name: 'Publier aux familles' })).toBeVisible();
@@ -340,16 +341,18 @@ test('secondaire : règles du conseil, conseil de classe et bulletin émis', asy
   await presetButton.click();
   await expect(presetButton).toHaveCount(0);
 
-  // Le censeur publie les règles de la classe (coefficient propre à la série C), ouvre le conseil du trimestre, valide et émet les
-  // bulletins. Les règles « pour tout le niveau » ne voient pas un coefficient saisi pour une série.
+  // Le censeur publie les règles « pour tout le niveau » : la 2nde A, de série C à coefficient propre, reçoit sa version de règles
+  // (C-118). Puis il ouvre le conseil du trimestre (« Trimestre 1 »), valide et émet les bulletins.
   await page.context().close();
   page = await as(browser, info, 'censeur');
   await page.goto('/secondaire/conseils-de-classe');
-  await page.getByRole('radio', { name: 'Pour cette classe (série propre)' }).check();
+  await expect(page.getByRole('radio', { name: 'Pour tout le niveau' })).toBeChecked();
   await page.getByRole('button', { name: 'Préparer le brouillon' }).click();
+  await expect(page.getByRole('heading', { name: /Classe 2nde A : coefficients propres/ })).toBeVisible();
   await expect(page.getByRole('cell', { name: 'Mathématiques' })).toBeVisible();
   await page.getByRole('button', { name: 'Publier les règles' }).click();
   await expect(page.getByText('Règles publiées.')).toBeVisible();
+  await expect(page.locator('option').filter({ hasText: /^Trimestre 1$/ })).toHaveCount(1);
   await page.getByRole('button', { name: 'Ouvrir le conseil' }).click();
   const line = page.getByRole('listitem').filter({ hasText: 'Fictif-Lyceen' }).first();
   await expect(line).toContainText('14');

@@ -99,4 +99,7 @@ export const secondaryGradesEn: Record<keyof typeof secondaryGradesFr, string> =
   'secg.dueOn': 'Deadline',
   'secg.remind': 'Remind',
   'secg.withoutTeacher': '{count} subject(s) without a teacher found in the timetable.',
+  'secg.cycleMissing': 'The grade cycle (submission to the deputy head, validation, locking) is not preset yet for the school: grades can be entered, but no step can be taken.',
+  'secg.cycleGoPreset': 'Go to the cycle preset',
+  'secg.cycleAskHead': 'Ask the head of school to apply the preset (Grades screen, Settings tab).',
 };

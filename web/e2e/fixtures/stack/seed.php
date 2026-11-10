@@ -470,6 +470,8 @@ final class E2eSeeder extends RealStackTestCase
         $this->actor($ctx, 'intendant', 'Adama', 'Fictif-Intendant', [['sec_intendant', 'establishment']]);
         $this->actor($ctx, 'parent', 'Aissatou', 'Fictive-Parent', [['sec_parent', 'establishment']]);
         $this->actor($ctx, 'fonctionnel', 'Moussa', 'Fictif-AdminFonctionnel', [['sec_admin_fonctionnel', 'tenant', $ctx['tenant']]]);
+        // Fiche du personnel de l'enseignant : le censeur le choisit par son nom à l'affectation de l'emploi du temps (C-118).
+        $this->as($ctx, 'admin', 'POST', '/staff', ['person_id' => $ctx['people']['teacher'], 'kind' => 'permanent', 'grade' => 'Professeur certifié'], 201);
 
         return $this->withSecrets($ctx);
     }

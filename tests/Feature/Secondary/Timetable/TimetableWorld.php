@@ -8,6 +8,8 @@ use Scholaris\Modules\Socle\Identity\Contracts\UserPersonLink;
 use Scholaris\Modules\Socle\Messaging\Contracts\Messenger;
 use Scholaris\Modules\Socle\People\Contracts\EnrollmentDirectory;
 use Scholaris\Modules\Socle\People\Contracts\PersonDirectory;
+use Scholaris\Modules\Socle\Staff\Contracts\EstablishmentStaffRoster;
+use Scholaris\Modules\Socle\Staff\Contracts\StaffMemberInfo;
 use Tests\Support\Billing\InMemoryEnrollments;
 use Tests\Support\Billing\InMemoryPeople;
 use Tests\Support\Billing\RecordingMessenger;
@@ -17,7 +19,7 @@ use Tests\Support\Secondary\SecondaryTestCase;
  * Base des tests de l'emploi du temps et du cahier de textes : personnes, inscriptions et messages en mémoire, comptes liés à des
  * personnes, établissement ouvert avec un niveau, des matières à volume horaire et des classes paramétrées. Données fictives.
  */
-abstract class TimetableWorld extends SecondaryTestCase implements UserPersonLink
+abstract class TimetableWorld extends SecondaryTestCase implements UserPersonLink, EstablishmentStaffRoster
 {
     protected const YEAR = 'annee-2026';
     protected const FROM = '2026-09-07';
@@ -31,12 +33,20 @@ abstract class TimetableWorld extends SecondaryTestCase implements UserPersonLin
     /** @var array<string, string> « client|utilisateur » => personne */
     private array $links = [];
 
+    /** @var array<string, list<array{0: string, 1: string, 2: bool}>> établissement => [personne, fonction, enseigne] (C-118) */
+    protected array $staff = [];
+
+    public function membersOf(string $tenantId, string $establishmentId): array
+    {
+        return array_map(static fn (array $m): StaffMemberInfo => new StaffMemberInfo('staff-' . $m[0], $m[0], $tenantId, 'permanent', 'active', $m[1], null, $m[2]), $this->staff[$establishmentId] ?? []);
+    }
+
     protected function setUp(): void
     {
         $this->people = new InMemoryPeople();
         $this->enrollments = new InMemoryEnrollments();
         $this->messenger = new RecordingMessenger();
-        $this->bootSecondary([PersonDirectory::class => $this->people, EnrollmentDirectory::class => $this->enrollments, Messenger::class => $this->messenger, UserPersonLink::class => $this]);
+        $this->bootSecondary([PersonDirectory::class => $this->people, EnrollmentDirectory::class => $this->enrollments, Messenger::class => $this->messenger, UserPersonLink::class => $this, EstablishmentStaffRoster::class => $this]);
     }
 
     public function personIdForUser(string $tenantId, string $userId): ?string

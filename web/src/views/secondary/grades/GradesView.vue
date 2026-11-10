@@ -19,6 +19,7 @@ import { useOfflineStore } from '@/stores/offline';
 import { useContextStore } from '@/stores/context';
 import { useI18n, type MessageKey } from '@/i18n';
 import { useAction, usePermissions } from '../useSec';
+import { periodName } from '../periodName';
 
 type Tab = 'grid' | 'import' | 'statement' | 'corrections' | 'common' | 'fraud' | 'settings';
 const VALIDATE = ['secondary.grades.validate', 'secondary.grades.lock'] as const;
@@ -81,7 +82,9 @@ const absenceCodes = computed(() => [
   ...(sheet.value?.settings.absence_codes ?? []).map((c) => ({ code: c.code, label: c.label })),
 ]);
 const est = computed(() => ctx.establishmentId ?? '');
-const periodLabel = (p: Period): string => p.label ?? p.name ?? p.id;
+const periodLabel = (p: Period): string => periodName(p, t);
+// C-118 : sans cycle des notes préréglé, le serveur refuse toute étape (« État inconnu ») : on n'en propose aucune.
+const cycleReady = computed(() => sheet.value?.settings.configured?.['assessment.lifecycle'] === true);
 const stageKey = (s: string): MessageKey => `secg.stage.${s}` as MessageKey;
 const editable = (status: string): boolean => ['draft', 'submitted', 'validated'].includes(status);
 
@@ -362,11 +365,16 @@ onMounted(loadYears);
       <h2 id="secg-grid">{{ t('secg.tab.grid') }}</h2>
       <template v-if="sheet">
         <p class="muted">{{ offlineEntry ? t('secg.offlineOn') : t('secg.offlineOff') }} <span v-if="step">{{ t('secg.step', { step }) }}</span></p>
+        <div v-if="!cycleReady" class="notice" role="note">
+          <p>{{ t('secg.cycleMissing') }}</p>
+          <button v-if="canSettings" type="button" class="btn" data-test="cycle-preset-link" @click="tab = 'settings'">{{ t('secg.cycleGoPreset') }}</button>
+          <p v-else class="muted">{{ t('secg.cycleAskHead') }}</p>
+        </div>
         <p v-if="columns.length === 0" class="muted">{{ t('secg.noAssessment') }}</p>
         <article v-for="col in columns" :key="col.id" class="column">
           <header class="column-head">
             <h3>{{ col.title }} <span class="muted small">/ {{ col.max_score }} · {{ t('secg.status', { status: t(stageKey(col.status)) }) }}</span></h3>
-            <div class="actions">
+            <div v-if="cycleReady" class="actions">
               <button v-if="col.status === 'submitted' && canValidate" type="button" class="btn" :disabled="busy" @click="move(col, 'draft')">{{ t('secg.move.draft') }}</button>
               <button v-if="nextStage(col.status) && (nextStage(col.status) === 'submitted' ? allowed : canValidate)" type="button" class="btn btn--primary" :disabled="busy" @click="move(col, nextStage(col.status) ?? '')">
                 {{ t(`secg.move.${nextStage(col.status)}` as MessageKey) }}

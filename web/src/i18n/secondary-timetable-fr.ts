@@ -139,4 +139,5 @@ export const secondaryTimetableFr = {
   'secsy.remind': 'Rappeler les cahiers en retard (NOT-12)',
   'secsy.reminded': '{n} rappel(s) envoyé(s) ; seuil : {days} jour(s) sans séance (paramètre à confirmer).',
   'secsy.late': '{subject}, {class} : {days} jour(s) sans séance',
+  'sectt.noTeachers': 'Aucun enseignant : créez d’abord sa fiche du personnel (écran Personnel).',
 } as const;

@@ -126,4 +126,6 @@ export const secondaryCouncilsFr = {
   'seco.status.pending': 'En attente',
   'seco.status.accepted': 'Accepté',
   'seco.status.rejected': 'Rejeté',
+  'secc.levelNoCoefficient': 'Aucun coefficient pour tout le niveau : seules les classes des séries à coefficients propres reçoivent leurs règles.',
+  'secc.streamOverride': 'Classe {class} : coefficients propres à sa série (règles publiées sur la classe)',
 };

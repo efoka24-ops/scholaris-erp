@@ -141,4 +141,5 @@ export const secondaryTimetableEn: Record<keyof typeof secondaryTimetableFr, str
   'secsy.remind': 'Remind overdue lesson logs (NOT-12)',
   'secsy.reminded': '{n} reminder(s) sent; limit: {days} day(s) without a lesson (setting to be confirmed).',
   'secsy.late': '{subject}, {class}: {days} day(s) without a lesson',
+  'sectt.noTeachers': 'No teacher: first create the staff record (Staff screen).',
 };

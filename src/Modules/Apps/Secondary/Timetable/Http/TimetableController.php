@@ -54,6 +54,13 @@ final class TimetableController extends Controller
         return $this->page($this->listing->page($request, PdoTeachingAssignments::ASSIGNMENTS, $principal->tenantId, $establishmentId, ['academic_year_id', 'class_id', 'teacher_person_id', 'status', 'group_code'], ['subject_code', 'created_at'], 'class_id, subject_code', $map, [], $scope));
     }
 
+    public function teachers(ServerRequestInterface $request): ResponseInterface
+    {
+        [$principal, $establishmentId] = $this->context($request);
+
+        return $this->page(['data' => $this->assignments->teachers($principal, $establishmentId)]);
+    }
+
     public function createAssignment(ServerRequestInterface $request): ResponseInterface
     {
         [$principal, $establishmentId] = $this->context($request);

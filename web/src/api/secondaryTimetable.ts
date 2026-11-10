@@ -37,6 +37,13 @@ export interface Assignment {
   room_id: string | null;
   status: 'active' | 'ended';
 }
+export interface TeacherOption {
+  person_id: string;
+  name: string;
+  grade: string | null;
+  teaches: boolean;
+  assigned: boolean;
+}
 export interface Band {
   id?: string;
   weekday: number;
@@ -248,6 +255,8 @@ export function newClientUuid(): string {
 export const secondaryTimetable = {
   view: (query: { academic_year_id?: string; class_id?: string; teacher_person_id?: string; room_id?: string; on?: string }) => get<{ entries: Entry[] }>('/timetable', query),
   assignments: (year: string) => all<Assignment>('/timetable/assignments', { 'filter[academic_year_id]': year, 'filter[status]': 'active' }),
+  /** C-118 : enseignants proposés à l'affectation, par nom (personnel de l'établissement et enseignants déjà affectés). */
+  teachers: () => get<TeacherOption[]>('/timetable/teachers'),
   createAssignment: (body: { academic_year_id: string; class_id: string; subject_ref: string; teacher_person_id: string; teacher_kind: TeacherKind; room_kind: RoomKind; group_code?: GroupCode; room_id?: string | null }) =>
     post<Assignment>('/timetable/assignments', body),
   endAssignment: (id: string) => patch<Assignment>(`/timetable/assignments/${id}`, { status: 'ended' }),

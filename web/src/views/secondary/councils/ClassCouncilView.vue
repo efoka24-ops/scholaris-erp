@@ -12,6 +12,7 @@ import {
 } from '@/api/secondaryCouncils';
 import { useI18n, type MessageKey } from '@/i18n';
 import { useAction, usePermissions } from '../useSec';
+import { periodName } from '../periodName';
 
 const { t } = useI18n();
 const { error, busy, run } = useAction();
@@ -36,7 +37,7 @@ const canPreset = computed(() => can('secondary.settings.manage', 'secondary.cou
 const councilPeriods = computed(() => periods.value.filter((p) => (p.kind as string) !== 'sequence'));
 const periodLabel = computed(() => {
   const period = periods.value.find((p) => p.id === periodId.value);
-  return period ? `${period.kind} ${period.ordinal}` : '';
+  return period ? periodName(period, t) : '';
 });
 const isOpen = computed(() => council.value?.status === 'open');
 
@@ -74,9 +75,21 @@ async function prepareDraft(): Promise<void> {
   draft.value = (await run(() => secondaryCouncils.ruleDraft(classId.value, scope.value))) ?? null;
 }
 async function publish(): Promise<void> {
-  if (!draft.value) return;
-  const done = await run(() => secondaryCouncils.publishRules(draft.value as RuleDraft));
-  published.value = done !== undefined;
+  const d = draft.value;
+  if (!d) return;
+  // C-118 : version du niveau (s'il a des coefficients) puis une version par classe d'une série à coefficients propres.
+  const versions = [
+    ...(d.structure_id !== null ? [{ academic_year_id: d.academic_year_id, label: d.label, definition: d.definition, structure_id: d.structure_id }] : []),
+    ...(d.stream_overrides ?? []).map((o) => ({ academic_year_id: d.academic_year_id, label: o.label, definition: o.definition, structure_id: o.structure_id })),
+  ];
+  let all = versions.length > 0;
+  for (const version of versions) {
+    if ((await run(() => secondaryCouncils.publishRules(version))) === undefined) {
+      all = false;
+      break;
+    }
+  }
+  published.value = all;
 }
 async function preset(): Promise<void> {
   settings.value = (await run(() => secondaryCouncils.presetSettings())) ?? settings.value;
@@ -150,7 +163,7 @@ onMounted(load);
         <select v-model="classId" :disabled="busy"><option value="" disabled>{{ t('secc.choose') }}</option><option v-for="c in classes" :key="c.structure_id" :value="c.structure_id">{{ c.label }}</option></select>
       </label>
       <label class="field">{{ t('secc.period') }}
-        <select v-model="periodId" :disabled="busy"><option value="" disabled>{{ t('secc.choose') }}</option><option v-for="p in councilPeriods" :key="p.id" :value="p.id">{{ p.kind }} {{ p.ordinal }}</option></select>
+        <select v-model="periodId" :disabled="busy"><option value="" disabled>{{ t('secc.choose') }}</option><option v-for="p in councilPeriods" :key="p.id" :value="p.id">{{ periodName(p, t) }}</option></select>
       </label>
     </section>
 
@@ -164,7 +177,7 @@ onMounted(load);
       </div>
       <template v-if="draft">
         <p v-if="draft.from_example" class="notice">{{ t('secc.fromExample', { notice: draft.example_notice ?? '' }) }}</p>
-        <div class="table-wrap">
+        <div v-if="draft.coefficients.length > 0" class="table-wrap">
           <table class="table">
             <thead><tr><th>{{ t('secc.subject') }}</th><th>{{ t('secc.coefficient') }}</th><th>{{ t('secc.role') }}</th></tr></thead>
             <tbody>
@@ -174,6 +187,20 @@ onMounted(load);
             </tbody>
           </table>
         </div>
+        <p v-else class="muted">{{ t('secc.levelNoCoefficient') }}</p>
+        <template v-for="o in draft.stream_overrides ?? []" :key="o.structure_id">
+          <h3>{{ t('secc.streamOverride', { class: o.class_label }) }}</h3>
+          <div class="table-wrap">
+            <table class="table">
+              <thead><tr><th>{{ t('secc.subject') }}</th><th>{{ t('secc.coefficient') }}</th><th>{{ t('secc.role') }}</th></tr></thead>
+              <tbody>
+                <tr v-for="line in o.coefficients" :key="line.subject_id">
+                  <td>{{ line.label }}</td><td>{{ line.coefficient }}</td><td>{{ line.role }}<span v-if="!line.counts_in_average" class="muted"> · {{ t('secc.outOfAverage') }}</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </template>
         <button class="btn btn--primary" type="button" :disabled="busy" @click="publish">{{ t('secc.publishRules') }}</button>
         <p v-if="published" class="ok">{{ t('secc.rulesPublished') }}</p>
       </template>

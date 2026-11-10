@@ -9,7 +9,7 @@ import { secondarySetup, type SchoolClass, type Subject } from '@/api/secondaryS
 import {
   byDay, GROUPS, ROOM_KINDS, TEACHER_KINDS, WEEKDAYS, secondaryTimetable,
   type Assignment, type Band, type Change, type ChangeKind, type Conflict, type DocView, type Entry, type Generation, type GroupCode,
-  type RoomKind, type TeacherKind, type TimetableDoc, type Window,
+  type RoomKind, type TeacherKind, type TeacherOption, type TimetableDoc, type Window,
 } from '@/api/secondaryTimetable';
 import { useI18n, type MessageKey } from '@/i18n';
 import { useAction, usePermissions } from '../useSec';
@@ -54,7 +54,10 @@ const changeForm = reactive({ change_kind: 'replacement' as ChangeKind, entry_id
 const className = (id: string): string => classes.value.find((c) => c.structure_id === id)?.label ?? id;
 const dayName = (d: number): string => t(`sectt.day.${d}` as MessageKey);
 const grouped = computed(() => byDay(entries.value));
-const assignmentLabel = (a: Assignment): string => `${className(a.class_id)}${a.group_code ? ` (${a.group_code})` : ''} · ${a.subject_label} · ${a.teacher_person_id}`;
+const teachers = ref<TeacherOption[]>([]);
+const teacherName = (personId: string): string => teachers.value.find((p) => p.person_id === personId)?.name ?? personId;
+const teacherOption = (p: TeacherOption): string => (p.grade ? `${p.name} · ${p.grade}` : p.name);
+const assignmentLabel = (a: Assignment): string => `${className(a.class_id)}${a.group_code ? ` (${a.group_code})` : ''} · ${a.subject_label} · ${teacherName(a.teacher_person_id)}`;
 const entryLabel = (e: Entry): string => `${dayName(e.weekday)} ${e.start_time}-${e.end_time} · ${e.class_label ?? className(e.class_id)} · ${e.subject_label}`;
 
 function flash(text: string): void {
@@ -65,6 +68,7 @@ async function loadYear(): Promise<void> {
   if (year.value === '') return;
   if (canManage.value || canRead.value) {
     classes.value = (await quiet(() => secondarySetup.classes(year.value))) ?? [];
+    teachers.value = (await quiet(() => secondaryTimetable.teachers())) ?? [];
   }
   if (canManage.value) {
     assignments.value = (await run(() => secondaryTimetable.assignments(year.value))) ?? [];
@@ -235,8 +239,9 @@ onMounted(load);
           </select>
         </div>
         <div class="field">
-          <label for="tt-id">{{ filter.view === 'class' ? t('sectt.class') : t('sectt.idLabel') }}</label>
+          <label for="tt-id">{{ filter.view === 'class' ? t('sectt.class') : filter.view === 'teacher' ? t('sectt.teacher') : t('sectt.idLabel') }}</label>
           <select v-if="filter.view === 'class'" id="tt-id" v-model="filter.id"><option value="">—</option><option v-for="c in classes" :key="c.structure_id" :value="c.structure_id">{{ c.label }}</option></select>
+          <select v-else-if="filter.view === 'teacher'" id="tt-id" v-model="filter.id"><option value="">—</option><option v-for="p in teachers" :key="p.person_id" :value="p.person_id">{{ teacherOption(p) }}</option></select>
           <input v-else id="tt-id" v-model="filter.id" maxlength="40" />
         </div>
         <div class="field"><label for="tt-on">{{ t('sectt.on') }}</label><input id="tt-on" v-model="filter.on" type="date" /></div>
@@ -289,7 +294,7 @@ onMounted(load);
       <form class="grid" @submit.prevent="assign">
         <div class="field"><label for="as-class">{{ t('sectt.class') }}</label><select id="as-class" v-model="assignForm.class_id" required><option v-for="c in classes" :key="c.structure_id" :value="c.structure_id">{{ c.label }}</option></select></div>
         <div class="field"><label for="as-subject">{{ t('sectt.subject') }}</label><select id="as-subject" v-model="assignForm.subject_ref" required><option v-for="s in subjects" :key="s.id" :value="s.id">{{ s.code }} · {{ s.label }}</option></select></div>
-        <div class="field"><label for="as-teacher">{{ t('sectt.teacher') }}</label><input id="as-teacher" v-model="assignForm.teacher_person_id" maxlength="40" required /></div>
+        <div class="field"><label for="as-teacher">{{ t('sectt.teacher') }}</label><select id="as-teacher" v-model="assignForm.teacher_person_id" required><option v-for="p in teachers" :key="p.person_id" :value="p.person_id">{{ teacherOption(p) }}</option></select><p v-if="teachers.length === 0" class="muted small">{{ t('sectt.noTeachers') }}</p></div>
         <div class="field"><label for="as-kind">{{ t('sectt.teacherKind') }}</label><select id="as-kind" v-model="assignForm.teacher_kind"><option v-for="k in TEACHER_KINDS" :key="k" :value="k">{{ t(`sectt.teacherKind.${k}`) }}</option></select></div>
         <div class="field">
           <label for="as-room-kind">{{ t('sectt.roomKind') }}</label>
@@ -335,7 +340,7 @@ onMounted(load);
       <h3>{{ t('sectt.tab.bands') }} · {{ t('sectt.teacher') }}</h3>
       <p class="muted">{{ t('sectt.availHelp') }}</p>
       <form class="grid" @submit.prevent="addWindow">
-        <div class="field"><label for="av-teacher">{{ t('sectt.teacher') }}</label><input id="av-teacher" v-model="availForm.teacher" maxlength="40" required @change="loadWindows" /></div>
+        <div class="field"><label for="av-teacher">{{ t('sectt.teacher') }}</label><select id="av-teacher" v-model="availForm.teacher" required @change="loadWindows"><option v-for="p in teachers" :key="p.person_id" :value="p.person_id">{{ teacherOption(p) }}</option></select></div>
         <ul class="chips"><li v-for="(w, i) in windows" :key="i" class="tag">{{ dayName(w.weekday) }} {{ w.start_time }}-{{ w.end_time }} · {{ t(`sectt.availability.${w.availability_kind}`) }} <button type="button" class="btn small" :aria-label="t('sectt.remove')" @click="windows = windows.filter((_, j) => j !== i)">×</button></li></ul>
         <div class="field"><label for="av-day">{{ t('sectt.weekday') }}</label><select id="av-day" v-model.number="availForm.weekday"><option v-for="d in WEEKDAYS" :key="d" :value="d">{{ dayName(d) }}</option></select></div>
         <div class="field"><label for="av-start">{{ t('sectt.start') }}</label><input id="av-start" v-model="availForm.start_time" type="time" /></div>
@@ -392,7 +397,7 @@ onMounted(load);
         </div>
         <div class="field"><label for="ch-entry">{{ t('sectt.entry') }}</label><select id="ch-entry" v-model="changeForm.entry_id" required><option v-for="e in entries" :key="e.id" :value="e.id">{{ entryLabel(e) }}</option></select></div>
         <div v-if="changeForm.change_kind === 'permutation'" class="field"><label for="ch-other">{{ t('sectt.otherEntry') }}</label><select id="ch-other" v-model="changeForm.other_entry_id" required><option v-for="e in entries" :key="e.id" :value="e.id">{{ entryLabel(e) }}</option></select></div>
-        <div v-else class="field"><label for="ch-rep">{{ t('sectt.replacement') }}</label><input id="ch-rep" v-model="changeForm.replacement_person_id" maxlength="40" required /></div>
+        <div v-else class="field"><label for="ch-rep">{{ t('sectt.replacement') }}</label><select id="ch-rep" v-model="changeForm.replacement_person_id" required><option v-for="p in teachers" :key="p.person_id" :value="p.person_id">{{ teacherOption(p) }}</option></select></div>
         <div class="field"><label for="ch-from">{{ t('sectt.fromDate') }}</label><input id="ch-from" v-model="changeForm.from_date" type="date" required /></div>
         <div class="field"><label for="ch-to">{{ t('sectt.toDate') }}</label><input id="ch-to" v-model="changeForm.to_date" type="date" /></div>
         <div class="field"><label for="ch-reason">{{ t('sectt.reason') }}</label><input id="ch-reason" v-model="changeForm.reason" maxlength="255" required /></div>

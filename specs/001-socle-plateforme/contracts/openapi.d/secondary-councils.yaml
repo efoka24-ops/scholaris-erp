@@ -238,7 +238,7 @@ paths:
         '423': {description: Abonnement suspendu}
   /api/v1/secondary/councils/rule-draft:
     get:
-      summary: Brouillon de version de règles du niveau (ou de la classe) avec les coefficients versionnés de Setup (T900), à publier par POST /calculation-rules
+      summary: "Brouillon de version de regles du niveau (ou de la classe) avec les coefficients versionnes de Setup (T900), a publier par POST /calculation-rules ; au niveau, stream_overrides donne une version par classe d une serie a coefficients propres, a publier sur la classe (C-118) ; structure_id null si le niveau n a aucun coefficient"
       parameters:
         - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
         - {name: class_id, in: query, required: true, schema: {type: string, maxLength: 40}}
