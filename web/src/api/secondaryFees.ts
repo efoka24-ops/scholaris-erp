@@ -97,6 +97,25 @@ export interface FeeItem {
   amount_xaf: number;
   active: boolean | number;
 }
+/** C-118 : échéancier d'un frais pour une classe (socle Billing, /fee-schedules). */
+export interface FeeScheduleInput {
+  fee_item_id: string;
+  academic_year_id: string;
+  structure_id: string;
+  amount_xaf: number;
+  terms: { due_on: string; amount: number }[];
+}
+export interface FeeSchedule extends FeeScheduleInput {
+  id: string;
+}
+/** Facture établie pour une inscription (socle Billing, /invoices). */
+export interface IssuedInvoice {
+  id: string;
+  learner_id: string;
+  status: string;
+  net_xaf: number;
+  balance_xaf: number;
+}
 export interface FeeItemInput {
   kind: string;
   name: string;
@@ -107,6 +126,9 @@ export interface FeeItemInput {
 export const secondaryFees = {
   feeItems: async (): Promise<FeeItem[]> => http.all<FeeItem>('/fee-items'),
   addFeeItem: async (input: FeeItemInput): Promise<FeeItem> => (await http.post<One<FeeItem>>('/fee-items', input)).data,
+  schedules: async (academicYearId: string): Promise<FeeSchedule[]> => http.all<FeeSchedule>('/fee-schedules', { academic_year_id: academicYearId }),
+  addSchedule: async (input: FeeScheduleInput): Promise<FeeSchedule> => (await http.post<One<FeeSchedule>>('/fee-schedules', input)).data,
+  invoice: async (enrollmentId: string): Promise<IssuedInvoice> => (await http.post<One<IssuedInvoice>>('/invoices', { enrollment_id: enrollmentId })).data,
   overview: async (): Promise<FeesOverview> => (await http.get<One<FeesOverview>>(`${ROOT}/overview`)).data,
   setupPrivate: async (): Promise<Record<string, { value: unknown; applied: boolean }>> =>
     (await http.post<One<{ presets: Record<string, { value: unknown; applied: boolean }> }>>(`${ROOT}/private/setup`, {})).data.presets,

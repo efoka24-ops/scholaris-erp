@@ -5,8 +5,11 @@ import { computed, onMounted, ref } from 'vue';
 import ErrorNotice from '@/components/ErrorNotice.vue';
 import {
   planTotal, secondaryFees, validInstallments,
-  type CatalogEntry, type FeeItem, type FeeRequest, type FeesOverview, type Installment, type PaymentPlan,
+  type CatalogEntry, type FeeItem, type FeeRequest, type FeeSchedule, type FeesOverview, type Installment, type IssuedInvoice, type PaymentPlan,
 } from '@/api/secondaryFees';
+import type { AcademicYear } from '@/api/admin';
+import { secondarySetup, type SchoolClass } from '@/api/secondarySetup';
+import { secondaryEnrolment, type StudentRow } from '@/api/secondaryEnrolment';
 import { useI18n } from '@/i18n';
 import { useAction, usePermissions } from '../useSec';
 
@@ -133,7 +136,67 @@ async function addEntry(): Promise<void> {
   }
 }
 
-onMounted(load);
+
+// C-118 : échéancier d'un frais pour une classe, puis facture de l'élève (socle Billing), sans passer par l'API à la main.
+const years = ref<AcademicYear[]>([]);
+const yearId = ref('');
+const classes = ref<SchoolClass[]>([]);
+const students = ref<StudentRow[]>([]);
+const schedules = ref<FeeSchedule[]>([]);
+const schedule = ref({ itemId: '', structureId: '', amount: '' as number | '', dueOn: '' });
+const enrollmentId = ref('');
+const issued = ref<{ invoice: IssuedInvoice; student: string } | null>(null);
+const itemName = (id: string): string => items.value.find((i) => i.id === id)?.name ?? '—';
+const classLabel = (structureId: string): string => classes.value.find((c) => c.structure_id === structureId)?.label ?? '—';
+const studentLabel = (s: StudentRow): string => `${s.last_name ?? ''} ${s.first_name ?? ''}`.trim();
+
+async function loadBilling(): Promise<void> {
+  // Lectures d'appoint (année, classes, élèves) : un refus de lecture laisse simplement les listes vides.
+  years.value = await secondarySetup.years().catch(() => []);
+  if (yearId.value === '') yearId.value = years.value.find((y) => y.status === 'open')?.id ?? years.value[0]?.id ?? '';
+  if (yearId.value === '') return;
+  const [c, s, f] = await Promise.all([
+    secondarySetup.classes(yearId.value).catch(() => []),
+    secondaryEnrolment.students({ academic_year_id: yearId.value }).catch(() => []),
+    secondaryFees.schedules(yearId.value).catch(() => []),
+  ]);
+  classes.value = c;
+  students.value = s;
+  schedules.value = f;
+}
+
+function pickScheduleItem(): void {
+  const picked = items.value.find((i) => i.id === schedule.value.itemId);
+  if (picked) schedule.value.amount = picked.amount_xaf;
+}
+
+async function addSchedule(): Promise<void> {
+  const s = schedule.value;
+  if (s.itemId === '' || s.structureId === '' || s.dueOn === '' || s.amount === '' || !Number.isInteger(Number(s.amount)) || Number(s.amount) < 1) return;
+  const amount = Number(s.amount);
+  const created = await run(() => secondaryFees.addSchedule({
+    fee_item_id: s.itemId, academic_year_id: yearId.value, structure_id: s.structureId, amount_xaf: amount, terms: [{ due_on: s.dueOn, amount }],
+  }));
+  if (created) {
+    schedule.value = { itemId: '', structureId: s.structureId, amount: '', dueOn: '' };
+    notice.value = t('secf.scheduleAdded');
+    schedules.value = await secondaryFees.schedules(yearId.value).catch(() => [...schedules.value, created]);
+  }
+}
+
+async function issueInvoice(): Promise<void> {
+  const student = students.value.find((s) => s.enrollment_id === enrollmentId.value);
+  if (!student) return;
+  const invoice = await run(() => secondaryFees.invoice(student.enrollment_id));
+  if (invoice) {
+    issued.value = { invoice, student: studentLabel(student) };
+    enrollmentId.value = '';
+  }
+}
+onMounted(async () => {
+  await load();
+  if (canManage.value) await loadBilling();
+});
 </script>
 
 <template>
@@ -173,6 +236,41 @@ onMounted(load);
           <div class="field"><label for="sf-i-amount">{{ t('secf.amount') }}</label><input id="sf-i-amount" v-model.number="item.amount" type="number" min="0" step="1" inputmode="numeric" /></div>
           <div><button type="submit" class="btn btn--primary" :disabled="busy">{{ t('secf.itemAdd') }}</button></div>
         </form>
+      </section>
+
+      <section v-if="canManage" class="card" aria-labelledby="sf-sched">
+        <h2 id="sf-sched">{{ t('secf.schedules') }}</h2>
+        <p class="muted">{{ t('secf.schedulesHelp') }}</p>
+        <p v-if="schedules.length === 0" class="muted">{{ t('secf.noSchedules') }}</p>
+        <ul v-else class="rows">
+          <li v-for="s in schedules" :key="s.id"><strong>{{ itemName(s.fee_item_id) }}</strong> · {{ classLabel(s.structure_id) }} · {{ money(s.amount_xaf) }}<template v-for="term in s.terms ?? []" :key="term.due_on"> · {{ t('secf.termDue', { date: term.due_on }) }}</template></li>
+        </ul>
+        <form class="stack" aria-labelledby="sf-sched-new" @submit.prevent="addSchedule">
+          <h3 id="sf-sched-new">{{ t('secf.scheduleNew') }}</h3>
+          <div class="field">
+            <label for="sf-s-item">{{ t('secf.scheduleItem') }}</label>
+            <select id="sf-s-item" v-model="schedule.itemId" required @change="pickScheduleItem"><option v-for="i in items" :key="i.id" :value="i.id">{{ i.name }}</option></select>
+          </div>
+          <div class="field">
+            <label for="sf-s-class">{{ t('secf.scheduleClass') }}</label>
+            <select id="sf-s-class" v-model="schedule.structureId" required><option v-for="c in classes" :key="c.structure_id" :value="c.structure_id">{{ c.label }}</option></select>
+          </div>
+          <div class="field"><label for="sf-s-amount">{{ t('secf.amount') }}</label><input id="sf-s-amount" v-model.number="schedule.amount" type="number" min="1" step="1" inputmode="numeric" required /></div>
+          <div class="field"><label for="sf-s-due">{{ t('secf.scheduleDue') }}</label><input id="sf-s-due" v-model="schedule.dueOn" type="date" required /></div>
+          <div><button type="submit" class="btn btn--primary" :disabled="busy || yearId === ''">{{ t('secf.scheduleAdd') }}</button></div>
+        </form>
+        <form class="stack" aria-labelledby="sf-invoice-new" @submit.prevent="issueInvoice">
+          <h3 id="sf-invoice-new">{{ t('secf.invoiceNew') }}</h3>
+          <p class="muted">{{ t('secf.invoiceHelp') }}</p>
+          <div class="field">
+            <label for="sf-v-student">{{ t('secf.invoiceStudent') }}</label>
+            <select id="sf-v-student" v-model="enrollmentId" required>
+              <option v-for="s in students" :key="s.enrollment_id" :value="s.enrollment_id">{{ studentLabel(s) }} · {{ classLabel(s.class_structure_id) }}</option>
+            </select>
+          </div>
+          <div><button type="submit" class="btn btn--primary" :disabled="busy || enrollmentId === ''">{{ t('secf.invoiceIssue') }}</button></div>
+        </form>
+        <p v-if="issued" class="notice notice--success" role="status">{{ t('secf.invoiceIssued', { student: issued.student, amount: money(issued.invoice.net_xaf), balance: money(issued.invoice.balance_xaf) }) }}</p>
       </section>
 
       <template v-if="overview.mode === 'private'">
