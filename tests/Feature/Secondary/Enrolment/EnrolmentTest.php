@@ -269,6 +269,34 @@ final class EnrolmentTest extends SecondaryTestCase
         self::assertSame(1, $again['summary']['duplicate'], 'Même matricule déjà inscrit cette année : ignoré.');
     }
 
+    /** C-118 : le parent (déjà connu par son téléphone) devient garant financier dès l'inscription ou depuis le dossier de l'élève. */
+    public function testGarantFinancierALInscriptionEtDepuisLeDossier(): void
+    {
+        $s = $this->school();
+        $known = $this->service(\Scholaris\Modules\Socle\People\Contracts\LearnerWriter::class)
+            ->createLearner(self::TA, ['last_name' => 'NGONO', 'first_name' => 'Paul', 'phone' => '+237600000000'], [], 'u')['person_id'];
+
+        $dossier = $this->ok('POST', '/secondary/enrolments', self::pupil('Aïcha', $s['sixth'], ['guardian_financial' => true]), self::ADMIN, self::TA, $s['school']);
+        self::assertSame([$known], array_column($dossier['financial_guarantors'], 'person_id'), 'Le parent déjà connu est repris, sans double.');
+        self::assertSame('+237600000000', $dossier['financial_guarantors'][0]['phone']);
+
+        $other = $this->ok('POST', '/secondary/enrolments', self::pupil('Brice', $s['sixth'], ['guardians' => [['kind' => 'guardian', 'identity' => ['last_name' => 'NGONO', 'first_name' => 'Tante', 'phone' => '+237611111111']]]]), self::ADMIN, self::TA, $s['school']);
+        self::assertSame([], $other['financial_guarantors']);
+        $linked = $this->ok('POST', '/secondary/enrolment/students/' . $other['person_id'] . '/guarantors', ['phone' => '600 00 00 00'], self::ADMIN, self::TA, $s['school']);
+        self::assertSame([$known], array_column($linked['financial_guarantors'], 'person_id'));
+        $new = $this->ok('POST', '/secondary/enrolment/students/' . $other['person_id'] . '/guarantors', ['phone' => '677000111', 'last_name' => 'NGONO', 'first_name' => 'Marie'], self::ADMIN, self::TA, $s['school']);
+        self::assertCount(2, $new['financial_guarantors']);
+        self::assertSame(422, $this->call('POST', '/secondary/enrolment/students/' . $other['person_id'] . '/guarantors', ['phone' => '677000222'], self::ADMIN, self::TA, $s['school'])[0], 'Nom exigé pour un nouveau garant.');
+        self::assertSame(422, $this->call('POST', '/secondary/enrolment/students/' . $other['person_id'] . '/guarantors', ['phone' => '677000222', 'role' => 'x'], self::ADMIN, self::TA, $s['school'])[0]);
+
+        $this->access->grant('lecteur', $s['school']);
+        $this->grant(self::TA, 'lecteur', $s['school'], ['secondary.enrol.read']);
+        self::assertSame(403, $this->call('POST', '/secondary/enrolment/students/' . $other['person_id'] . '/guarantors', ['phone' => '600000000'], 'lecteur', self::TA, $s['school'])[0]);
+        $b = $this->factory->opened(self::TB, 'ces', null, 'e-ces-b');
+        $this->grant(self::TB, 'admin-b', $b, self::DESK);
+        self::assertSame(404, $this->call('POST', '/secondary/enrolment/students/' . $other['person_id'] . '/guarantors', ['phone' => '600000000'], 'admin-b', self::TB, $b)[0]);
+    }
+
     public function testDroitsEtIsolation(): void
     {
         $s = $this->school();

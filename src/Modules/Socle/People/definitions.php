@@ -7,21 +7,23 @@ use function DI\factory;
 
 use Scholaris\Core\Config\Config;
 use Scholaris\Modules\Socle\People\Application\BirthDateWriterService;
-use Scholaris\Modules\Socle\People\Application\HealthService;
 use Scholaris\Modules\Socle\People\Application\ConsentService;
 use Scholaris\Modules\Socle\People\Application\EnrollmentWriterService;
+use Scholaris\Modules\Socle\People\Application\GuarantorLinkerService;
+use Scholaris\Modules\Socle\People\Application\HealthService;
 use Scholaris\Modules\Socle\People\Application\LearnerNumberingService;
 use Scholaris\Modules\Socle\People\Application\LearnerWriterService;
 use Scholaris\Modules\Socle\People\Application\YearPromotion;
 use Scholaris\Modules\Socle\People\Contracts\AttachmentStore;
-use Scholaris\Modules\Socle\People\Contracts\ConsentRecorder;
 use Scholaris\Modules\Socle\People\Contracts\BirthDateWriter;
 use Scholaris\Modules\Socle\People\Contracts\BirthInfo;
-use Scholaris\Modules\Socle\People\Contracts\FoodAllergies;
 use Scholaris\Modules\Socle\People\Contracts\ConsentChecker;
+use Scholaris\Modules\Socle\People\Contracts\ConsentRecorder;
 use Scholaris\Modules\Socle\People\Contracts\EnrollmentDirectory;
 use Scholaris\Modules\Socle\People\Contracts\EnrollmentWriter;
 use Scholaris\Modules\Socle\People\Contracts\FileScanner;
+use Scholaris\Modules\Socle\People\Contracts\FoodAllergies;
+use Scholaris\Modules\Socle\People\Contracts\GuarantorLinker;
 use Scholaris\Modules\Socle\People\Contracts\LearnerNumbering;
 use Scholaris\Modules\Socle\People\Contracts\LearnerWriter;
 use Scholaris\Modules\Socle\People\Contracts\MediaStore;
@@ -54,6 +56,8 @@ return [
     BirthDateWriter::class => autowire(BirthDateWriterService::class),
     LearnerNumbering::class => autowire(LearnerNumberingService::class),
     LearnerWriter::class => autowire(LearnerWriterService::class),
+    // C-118 : garant financier rattaché par son téléphone (parent déjà connu, sinon nouvelle personne).
+    GuarantorLinker::class => autowire(GuarantorLinkerService::class),
     ConsentRecorder::class => autowire(ConsentService::class),
     ConsentChecker::class => autowire(PdoConsentChecker::class),
     FoodAllergies::class => autowire(HealthService::class),

@@ -14,6 +14,7 @@ return static function (SecondaryRoutes $routes): void {
     $routes->get('/enrolment/students', [EnrolmentController::class, 'students']);
     $routes->get('/enrolment/students/{id}', [EnrolmentController::class, 'student']);
     $routes->put('/students/{id}/national-id', [EnrolmentController::class, 'nationalId']);
+    $routes->post('/enrolment/students/{id}/guarantors', [EnrolmentController::class, 'guarantor']);
 
     $routes->get('/enrolment/preregistrations', [EnrolmentController::class, 'preregistrations']);
     $routes->post('/enrolment/preregistrations', [EnrolmentController::class, 'createPreregistration']);

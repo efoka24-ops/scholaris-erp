@@ -69,6 +69,13 @@ final class EnrolmentController extends Controller
         return $this->json($this->enrolment->setNationalId($principal, $establishmentId, self::id($request), Input::body($request)));
     }
 
+    public function guarantor(ServerRequestInterface $request): ResponseInterface
+    {
+        [$principal, $establishmentId] = $this->context($request);
+
+        return $this->json($this->enrolment->attachGuarantor($principal, $establishmentId, self::id($request), Input::body($request)));
+    }
+
     public function preregistrations(ServerRequestInterface $request): ResponseInterface
     {
         [$principal, $establishmentId] = $this->context($request);

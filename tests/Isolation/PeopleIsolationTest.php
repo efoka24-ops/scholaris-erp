@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Isolation;
 
+use Scholaris\Core\Http\HttpException;
+use Scholaris\Modules\Socle\People\Contracts\GuarantorLinker;
 use Tests\Support\People\PeopleTestCase;
 
 /** Aucune donnée de personnes ne franchit la frontière entre deux clients. */
@@ -66,5 +68,24 @@ final class PeopleIsolationTest extends PeopleTestCase
         $this->person('A', 'B', ['national_id' => 'CM2026-1111'], 't2');
 
         self::assertSame(201, $this->code('POST', '/people', body: ['first_name' => 'C', 'last_name' => 'D', 'national_id' => 'CM2026-1111']));
+    }
+
+    /** C-118 : le rattachement d'un garant financier ne trouve ni ne lie jamais une personne d'un autre client. */
+    public function testLeGarantFinancierNeFranchitPasLeClient(): void
+    {
+        /** @var GuarantorLinker $linker */
+        $linker = $this->kernel->container()->get(GuarantorLinker::class);
+        $foreignParent = $this->person('Parent', 'Etranger', ['phone' => '699000606'], 't2');
+
+        self::assertNull($linker->personIdByPhone('t1', '699000606'));
+        $linked = $linker->attachFinancialGuarantor('t1', (string) $this->nadia['id'], '699000606', ['last_name' => 'Foka'], 'u1');
+        self::assertNotSame((string) $foreignParent['id'], $linked['person_id']);
+        self::assertSame([], $linker->financialGuarantorsOf('t2', (string) $this->nadia['id']));
+        try {
+            $linker->attachFinancialGuarantor('t2', (string) $this->nadia['id'], '699000606', [], 'u1');
+            self::fail('Un élève d\'un autre client reste introuvable.');
+        } catch (HttpException $e) {
+            self::assertSame(422, $e->status);
+        }
     }
 }

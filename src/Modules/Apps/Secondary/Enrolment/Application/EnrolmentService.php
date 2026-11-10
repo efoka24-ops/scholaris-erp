@@ -22,8 +22,10 @@ use Scholaris\Modules\Apps\Secondary\Support\Store;
 use Scholaris\Modules\Socle\Organisation\Contracts\OrgUnitTree;
 use Scholaris\Modules\Socle\People\Contracts\BirthInfo;
 use Scholaris\Modules\Socle\People\Contracts\EnrollmentDirectory;
+use Scholaris\Modules\Socle\People\Contracts\GuarantorLinker;
 use Scholaris\Modules\Socle\People\Contracts\LearnerWriter;
 use Scholaris\Modules\Socle\People\Contracts\PersonDirectory;
+use Scholaris\Modules\Socle\People\Contracts\PersonSummary;
 
 /**
  * Inscription au secondaire (T824 à T826, API-01, API-02, US3) : fiche de l'élève et garants (socle, LearnerWriter), inscription
@@ -61,6 +63,7 @@ final class EnrolmentService
         private readonly SecondaryEnrolmentGuard $guard,
         private readonly SecondaryClock $clock,
         private readonly FamilyNotifications $notifications,
+        private readonly GuarantorLinker $guarantors,
     ) {
     }
 
@@ -73,7 +76,7 @@ final class EnrolmentService
     public function enrol(Principal $principal, string $establishmentId, array $body): array
     {
         $errors = [];
-        $allowed = ['person_id', 'identity', 'guardians', 'class_id', 'entry_date', 'national_id', 'repeater', 'entry_kind', 'age_decision_reason', 'exclusion_decision_reason', 'documents_checked', 'confirm_different', 'special_situation'];
+        $allowed = ['person_id', 'identity', 'guardians', 'class_id', 'entry_date', 'national_id', 'repeater', 'entry_kind', 'age_decision_reason', 'exclusion_decision_reason', 'documents_checked', 'confirm_different', 'special_situation', 'guardian_financial'];
         foreach (array_keys($body) as $field) {
             if (!in_array($field, $allowed, true)) {
                 $errors[(string) $field] = ['Champ non reconnu.'];
@@ -104,6 +107,10 @@ final class EnrolmentService
         if (!is_array($guardians) || !array_is_list($guardians)) {
             $errors['guardians'] = ['Liste de garants attendue.'];
         }
+        $financial = ($body['guardian_financial'] ?? false) === true;
+        if ($financial && (!is_array($guardians) || self::payerPhone($guardians) === null)) {
+            $errors['guardian_financial'] = ['Le garant financier est le premier parent ou tuteur saisi, avec son téléphone.'];
+        }
         if ($errors !== []) {
             throw HttpException::validation($errors);
         }
@@ -114,7 +121,7 @@ final class EnrolmentService
             'repeater' => ($body['repeater'] ?? false) === true, 'entry_kind' => (string) $kind,
             'age_decision_reason' => self::text($body['age_decision_reason'] ?? null), 'exclusion_decision_reason' => self::text($body['exclusion_decision_reason'] ?? null),
             'documents_checked' => $documents, 'confirm_different' => ($body['confirm_different'] ?? false) === true,
-            'special_situation' => self::text($body['special_situation'] ?? null),
+            'special_situation' => self::text($body['special_situation'] ?? null), 'guardian_financial' => $financial,
         ];
 
         return $this->admit($principal, $establishmentId, $plan);
@@ -178,10 +185,25 @@ final class EnrolmentService
             return ['age_alert' => $ageAlert, 'class_id' => $class->id, 'person_id' => $personId];
         }
 
+        /** @var list<array{kind: string, person_id?: string, identity?: array<string, mixed>}> $guardians */
+        $guardians = is_array($plan['guardians'] ?? null) ? $plan['guardians'] : [];
+        // C-118 : le premier parent ou tuteur est aussi garant financier ; s'il est déjà connu par son téléphone (compte parent),
+        // sa fiche est reprise au lieu d'en créer un double.
+        $payerPhone = ($plan['guardian_financial'] ?? false) === true ? self::payerPhone($guardians) : null;
+        $payer = (array) ($guardians[0]['identity'] ?? []);
+        if ($payerPhone !== null && isset($guardians[0]['identity'])) {
+            $known = $this->guarantors->personIdByPhone($tenantId, $payerPhone);
+            if ($known !== null) {
+                $guardians[0] = ['kind' => $guardians[0]['kind'], 'person_id' => $known];
+            }
+        }
         if ($personId === null) {
-            /** @var list<array{kind: string, person_id?: string, identity?: array<string, mixed>}> $guardians */
-            $guardians = is_array($plan['guardians'] ?? null) ? $plan['guardians'] : [];
             $personId = $this->learners->createLearner($tenantId, $identity, $guardians, $principal->userId, ($plan['confirm_different'] ?? false) === true)['person_id'];
+        }
+        if ($payerPhone !== null) {
+            $this->guarantors->attachFinancialGuarantor($tenantId, $personId, $payerPhone, [
+                'last_name' => (string) ($payer['last_name'] ?? ''), 'first_name' => (string) ($payer['first_name'] ?? ''),
+            ], $principal->userId);
         }
         if ($excluded) {
             $this->students->upsert($tenantId, $establishmentId, $personId, ['readmission_year_id' => $class->academicYearId, 'readmission_reason' => $exclusionReason, 'readmission_decided_by' => $principal->userId]);
@@ -350,6 +372,7 @@ final class EnrolmentService
             'enrollments' => array_map(static fn ($e): array => ['id' => $e->id, 'structure_id' => $e->structureId, 'academic_year_id' => $e->academicYearId, 'status' => $e->status, 'internal_number' => $e->internalNumber], $enrollments),
             'records' => array_map(self::record(...), $records),
             'transfers' => array_map(TransferService::resource(...), $transfers),
+            'financial_guarantors' => array_map(static fn (PersonSummary $p): array => ['person_id' => $p->id, 'last_name' => $p->lastName, 'first_name' => $p->firstName, 'phone' => $p->phone], $this->guarantors->financialGuarantorsOf($tenantId, $personId)),
         ];
     }
 
@@ -414,6 +437,46 @@ final class EnrolmentService
         $date = DateTimeImmutable::createFromFormat('!Y-m-d', $value);
 
         return $date !== false && $date->format('Y-m-d') === $value;
+    }
+
+    /**
+     * C-118 : rattache un garant financier à un élève de l'établissement depuis son dossier, par le téléphone (parent déjà connu,
+     * sinon nouvelle personne avec last_name et first_name).
+     *
+     * @param array<string, mixed> $body phone, last_name, first_name
+     * @return array<string, mixed> dossier mis à jour
+     */
+    public function attachGuarantor(Principal $principal, string $establishmentId, string $personId, array $body): array
+    {
+        $tenantId = $principal->tenantId;
+        $perimeter = $this->access->require($principal, $establishmentId, self::MANAGE);
+        $record = $this->latestRecord($tenantId, $establishmentId, $personId) ?? throw HttpException::notFound('Élève introuvable dans cet établissement.');
+        $this->access->assertWritableClass($principal, $perimeter, (string) $record['class_structure_id'], 'se_student_profile', $personId);
+        $unknown = array_diff(array_keys($body), ['phone', 'last_name', 'first_name']);
+        if ($unknown !== []) {
+            throw HttpException::validation(array_fill_keys(array_map('strval', $unknown), ['Champ non reconnu.']));
+        }
+        $phone = is_string($body['phone'] ?? null) ? $body['phone'] : '';
+        $identity = ['last_name' => is_string($body['last_name'] ?? null) ? $body['last_name'] : '', 'first_name' => is_string($body['first_name'] ?? null) ? $body['first_name'] : ''];
+        $linked = $this->guarantors->attachFinancialGuarantor($tenantId, $personId, $phone, $identity, $principal->userId);
+        if (!$linked['already_linked']) {
+            $this->access->audit($principal, 'secondary.guarantor.attached', 'se_student_profile', $personId, null, ['guarantor_id' => $linked['person_id'], 'created' => $linked['created']]);
+        }
+
+        return $this->dossier($tenantId, $establishmentId, $personId);
+    }
+
+    /**
+     * Téléphone du premier parent ou tuteur saisi (garant financier à l'inscription), ou null.
+     *
+     * @param array<mixed> $guardians
+     */
+    private static function payerPhone(array $guardians): ?string
+    {
+        $first = $guardians[0] ?? null;
+        $phone = is_array($first) && is_array($first['identity'] ?? null) ? ($first['identity']['phone'] ?? null) : null;
+
+        return is_string($phone) && trim($phone) !== '' ? $phone : null;
     }
 
     private static function text(mixed $value): ?string

@@ -208,4 +208,10 @@ export const secondarySetupFr = {
   'sece.importStatus.error': 'Erreur',
   'sece.importStatus.duplicate': 'Doublon',
   'sece.importStatus.enrolled': 'Inscrit',
+  'sece.financialGuarantor': 'Garant financier : paie les frais et suit l’élève sur le portail famille (numéro exigé)',
+  'sece.guarantors': 'Garants financiers',
+  'sece.noGuarantor': 'Aucun garant financier : le portail famille ne montre cet élève à personne.',
+  'sece.guarantorHelp': 'Un parent déjà connu (par exemple avec un compte) est retrouvé par son téléphone ; sinon indiquez son nom.',
+  'sece.attachGuarantor': 'Rattacher le garant',
+  'sece.guarantorAttached': 'Garant financier rattaché.',
 } as const;

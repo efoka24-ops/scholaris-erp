@@ -210,4 +210,10 @@ export const secondarySetupEn: Record<keyof typeof secondarySetupFr, string> = {
   'sece.importStatus.error': 'Error',
   'sece.importStatus.duplicate': 'Duplicate',
   'sece.importStatus.enrolled': 'Enrolled',
+  'sece.financialGuarantor': 'Financial guarantor: pays the fees and follows the student on the family portal (number required)',
+  'sece.guarantors': 'Financial guarantors',
+  'sece.noGuarantor': 'No financial guarantor: the family portal shows this student to nobody.',
+  'sece.guarantorHelp': 'A parent already known (for example with an account) is found by phone number; otherwise enter the name.',
+  'sece.attachGuarantor': 'Link the guarantor',
+  'sece.guarantorAttached': 'Financial guarantor linked.',
 };

@@ -42,6 +42,8 @@ export interface EnrolmentInput {
   documents_checked?: string[];
   confirm_different?: boolean;
   special_situation?: string;
+  /** C-118 : le premier parent ou tuteur (avec téléphone) devient garant financier. */
+  guardian_financial?: boolean;
 }
 export interface EnrolmentRecord {
   id: string;
@@ -97,6 +99,7 @@ export interface Dossier {
   enrollments: { id: string; structure_id: string | null; academic_year_id: string; status: string; internal_number: string | null }[];
   records: EnrolmentRecord[];
   transfers: Transfer[];
+  financial_guarantors?: { person_id: string; last_name: string | null; first_name: string | null; phone: string | null }[];
 }
 export interface Preregistration {
   id: string;
@@ -156,6 +159,7 @@ export const secondaryEnrolment = {
     all<StudentRow>('/enrolment/students', { academic_year_id: query.academic_year_id, class_structure_id: query.class_structure_id, pending: query.pending ? '1' : undefined }),
   student: (personId: string): Promise<Dossier> => get(`/enrolment/students/${enc(personId)}`),
   setNationalId: (personId: string, nationalId: string): Promise<Dossier> => put(`/students/${enc(personId)}/national-id`, { national_id: nationalId }),
+  attachGuarantor: (personId: string, input: { phone: string; last_name?: string; first_name?: string }): Promise<Dossier> => post(`/enrolment/students/${enc(personId)}/guarantors`, input),
   preregistrations: (status?: string): Promise<Preregistration[]> => all<Preregistration>('/enrolment/preregistrations', status ? { 'filter[status]': status } : {}),
   createPreregistration: (input: Record<string, unknown>): Promise<Preregistration> => post('/enrolment/preregistrations', input),
   updatePreregistration: (id: string, changes: { status?: string; entry_test_score?: number; decision_reason?: string }): Promise<Preregistration> =>

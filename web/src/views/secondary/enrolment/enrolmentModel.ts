@@ -12,6 +12,8 @@ export interface EnrolForm {
   guardian_last_name: string;
   guardian_first_name: string;
   guardian_phone: string;
+  /** C-118 : le parent saisi est aussi garant financier (paie les frais, suit l’élève au portail famille). */
+  guardian_financial: boolean;
   national_id: string;
   repeater: boolean;
   documents: string;
@@ -22,7 +24,7 @@ export interface EnrolForm {
 export function emptyEnrolForm(today: string = new Date().toISOString().slice(0, 10)): EnrolForm {
   return {
     last_name: '', first_name: '', birth_date: '', gender: '', class_id: '', entry_date: today, guardian_last_name: '', guardian_first_name: '',
-    guardian_phone: '', national_id: '', repeater: false, documents: '', age_decision_reason: '', exclusion_decision_reason: '',
+    guardian_phone: '', guardian_financial: true, national_id: '', repeater: false, documents: '', age_decision_reason: '', exclusion_decision_reason: '',
   };
 }
 
@@ -62,6 +64,7 @@ export function dossierFromForm(form: EnrolForm): EnrolmentInput {
         ...(trim(form.guardian_phone) !== '' ? { phone: trim(form.guardian_phone) } : {}),
       },
     }];
+    if (form.guardian_financial && trim(form.guardian_phone) !== '') input.guardian_financial = true;
   }
   if (trim(form.national_id) !== '') input.national_id = trim(form.national_id);
   const documents = form.documents.split(',').map(trim).filter((d) => d !== '');

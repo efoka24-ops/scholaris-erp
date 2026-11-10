@@ -87,6 +87,21 @@ async function saveNationalId(): Promise<void> {
   }
 }
 
+// C-118 : garant financier rattaché depuis la fiche de l'élève (parent retrouvé par son téléphone, sinon créé avec son nom).
+const guarantorForm = reactive({ phone: '', last_name: '', first_name: '' });
+async function attachGuarantor(): Promise<void> {
+  if (!dossier.value || guarantorForm.phone.trim() === '') return;
+  const input: { phone: string; last_name?: string; first_name?: string } = { phone: guarantorForm.phone.trim() };
+  if (guarantorForm.last_name.trim() !== '') input.last_name = guarantorForm.last_name.trim();
+  if (guarantorForm.first_name.trim() !== '') input.first_name = guarantorForm.first_name.trim();
+  const updated = await run(() => secondaryEnrolment.attachGuarantor(dossier.value?.person_id ?? '', input));
+  if (updated) {
+    dossier.value = updated;
+    Object.assign(guarantorForm, { phone: '', last_name: '', first_name: '' });
+    done.value = 'sece.guarantorAttached';
+  }
+}
+
 async function enrol(): Promise<void> {
   decisionNeeded.value = null;
   const result = await run(() => secondaryEnrolment.enrol(dossierFromForm(form)));
@@ -269,6 +284,18 @@ onMounted(load);
           <li v-for="r in dossier.records" :key="r.id">{{ r.entry_date }} · {{ r.level_code }} · {{ t(`sece.kind.${r.entry_kind}`) }}<template v-if="r.age_decision_reason"> · {{ t('sece.decision', { reason: r.age_decision_reason }) }}</template></li>
           <li v-for="tr in dossier.transfers" :key="tr.id">{{ tr.transfer_date }} · {{ t(`sece.direction.${tr.direction}`) }} · {{ tr.other_school_label }}</li>
         </ul>
+        <h4 id="se-guarantor">{{ t('sece.guarantors') }}</h4>
+        <ul v-if="(dossier.financial_guarantors ?? []).length > 0" class="rows small">
+          <li v-for="g in dossier.financial_guarantors" :key="g.person_id">{{ g.last_name }} {{ g.first_name }}<template v-if="g.phone"> · {{ g.phone }}</template></li>
+        </ul>
+        <p v-else class="muted">{{ t('sece.noGuarantor') }}</p>
+        <form v-if="canManage" class="grid" aria-labelledby="se-guarantor" @submit.prevent="attachGuarantor">
+          <p class="muted">{{ t('sece.guarantorHelp') }}</p>
+          <div class="field"><label for="se-g-phone">{{ t('sece.phone') }}</label><input id="se-g-phone" v-model="guarantorForm.phone" type="tel" maxlength="20" inputmode="tel" required /></div>
+          <div class="field"><label for="se-g-last">{{ t('sece.lastName') }}</label><input id="se-g-last" v-model="guarantorForm.last_name" maxlength="100" /></div>
+          <div class="field"><label for="se-g-first">{{ t('sece.firstName') }}</label><input id="se-g-first" v-model="guarantorForm.first_name" maxlength="100" /></div>
+          <button type="submit" class="btn" :disabled="busy || guarantorForm.phone.trim() === ''">{{ t('sece.attachGuarantor') }}</button>
+        </form>
       </article>
     </section>
 
@@ -293,6 +320,7 @@ onMounted(load);
           <div class="field"><label for="en-g-last">{{ t('sece.lastName') }}</label><input id="en-g-last" v-model="form.guardian_last_name" maxlength="120" :required="minor" /></div>
           <div class="field"><label for="en-g-first">{{ t('sece.firstName') }}</label><input id="en-g-first" v-model="form.guardian_first_name" maxlength="120" :required="minor" /></div>
           <div class="field"><label for="en-g-phone">{{ t('sece.phone') }}</label><input id="en-g-phone" v-model="form.guardian_phone" type="tel" maxlength="20" inputmode="tel" /></div>
+          <label class="check"><input id="en-g-payer" v-model="form.guardian_financial" type="checkbox" :disabled="form.guardian_phone.trim() === ''" /> {{ t('sece.financialGuarantor') }}</label>
         </fieldset>
         <div class="field"><label for="en-nid">{{ t('sece.nationalIdOptional') }}</label><input id="en-nid" v-model="form.national_id" maxlength="40" autocomplete="off" /></div>
         <label class="check"><input v-model="form.repeater" type="checkbox" /> {{ t('sece.repeater') }}</label>

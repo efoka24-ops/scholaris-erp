@@ -53,6 +53,14 @@ describe('inscriptions (modèle)', () => {
     expect(body.age_decision_reason).toBeUndefined();
   });
 
+  it('C-118 : le parent saisi devient garant financier s\'il a un téléphone (case cochée par défaut)', () => {
+    const base = { ...emptyEnrolForm('2026-09-07'), last_name: 'NGONO', first_name: 'Aïcha', class_id: 'cl', guardian_last_name: 'NGONO' };
+    expect(emptyEnrolForm().guardian_financial).toBe(true);
+    expect(dossierFromForm({ ...base, guardian_phone: '+237600000000' }).guardian_financial).toBe(true);
+    expect(dossierFromForm({ ...base, guardian_phone: '' }).guardian_financial).toBeUndefined();
+    expect(dossierFromForm({ ...base, guardian_phone: '+237600000000', guardian_financial: false }).guardian_financial).toBeUndefined();
+  });
+
   it('modèle CSV neutralisé et format de fichier', () => {
     const csv = templateCsv({ columns: ['nom', 'prenoms'], required: ['nom'], sample: [['=SOMME(A1)', 'Aïcha; Marie']], separator: ';', encoding: 'UTF-8' });
     expect(csv.startsWith(`${String.fromCharCode(0xfeff)}nom;prenoms\r\n`)).toBe(true);
@@ -127,5 +135,36 @@ describe('écrans', () => {
     expect(wrapper.text()).toContain('NGONO Aïcha');
     expect(wrapper.text()).toContain(fr['sece.nid.pending']);
     expect(wrapper.text()).toContain('6e A');
+  });
+
+  it('C-118 : la fiche de l\'élève liste ses garants financiers et en rattache un par son téléphone', async () => {
+    asHead(['secondary.enrol.manage', 'secondary.enrol.read']);
+    const row = {
+      id: 'r1', person_id: 'p1', enrollment_id: 'en1', class_structure_id: 's6a', class_id: 'c6a', level_code: '6E', academic_year_id: 'y1', entry_kind: 'new',
+      entry_date: '2026-09-07', repeater: false, age_alert: false, age_decision_reason: null, exclusion_decision_reason: null, decided_by: null, documents_checked: [],
+      created_at: '', last_name: 'NGONO', first_name: 'Aïcha', gender: 'female', national_id_status: 'pending',
+    };
+    const dossier = {
+      person_id: 'p1', last_name: 'NGONO', first_name: 'Aïcha', gender: 'female', birth_date: '2014-03-12', national_id: null, national_id_status: 'pending', repeater: false,
+      final_exclusion_on: null, readmission_year_id: null, special_situation: null, enrollments: [], records: [], transfers: [], financial_guarantors: [],
+    };
+    const calls = mockApi({
+      'GET /academic-years': page([year]),
+      'GET /secondary/setup/classes': page([]),
+      'GET /secondary/enrolment/students': page([row]),
+      'GET /secondary/enrolment/students/p1': { data: dossier },
+      'POST /secondary/enrolment/students/p1/guarantors': { data: { ...dossier, financial_guarantors: [{ person_id: 'g1', last_name: 'NGONO', first_name: 'Paul', phone: '+237600000000' }] } },
+    });
+    const { wrapper } = await mountView(EnrolmentView);
+    await wrapper.findAll('button').find((b) => b.text().includes('NGONO Aïcha'))?.trigger('click');
+    await new Promise((r) => setTimeout(r, 0));
+    expect(wrapper.text()).toContain(fr['sece.noGuarantor']);
+    await wrapper.find('#se-g-phone').setValue('+237600000000');
+    await wrapper.find('form[aria-labelledby="se-guarantor"]').trigger('submit');
+    await new Promise((r) => setTimeout(r, 0));
+    const post = calls.find((c) => c.method === 'POST' && c.path === '/secondary/enrolment/students/p1/guarantors');
+    expect(post?.body).toEqual({ phone: '+237600000000' });
+    expect(wrapper.text()).toContain('NGONO Paul');
+    expect(wrapper.text()).toContain(fr['sece.guarantorAttached']);
   });
 });

@@ -10,7 +10,7 @@
 paths:
   /api/v1/secondary/enrolments:
     post:
-      summary: "API-01 : inscrire un eleve {person_id | identity, guardians?, class_id, entry_date, national_id?, repeater?, entry_kind?, age_decision_reason?, exclusion_decision_reason?, documents_checked?, confirm_different?, special_situation?}"
+      summary: "API-01 : inscrire un eleve {person_id | identity, guardians?, class_id, entry_date, national_id?, repeater?, entry_kind?, age_decision_reason?, exclusion_decision_reason?, documents_checked?, confirm_different?, special_situation?, guardian_financial? (le premier parent ou tuteur, avec son telephone, devient garant financier ; fiche reprise si ce telephone est deja connu)}"
       parameters:
         - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
       responses:
@@ -52,6 +52,21 @@ paths:
         '404': {description: "Application fermee ou ressource introuvable"}
         '409': {description: "Conflit : profil non ouvert, matricule deja attribue, inscription en cours ailleurs, etat incompatible"}
         '422': {description: "Validation (errors par champ), refus de la garde d'inscription, alerte d'age, exclu definitif"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+  /api/v1/secondary/enrolment/students/{id}/guarantors:
+    post:
+      summary: "C-118 : rattacher un garant financier {phone, last_name?, first_name?} : la personne du client qui porte ce telephone (parent deja connu), sinon une nouvelle personne (nom exige) ; dossier mis a jour avec financial_guarantors"
+      description: "Permission secondary.enrol.manage, classe de l eleve dans le perimetre. Le portail famille liste les enfants dont la personne connectee est garant financier."
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Succes {data} (dossier de l eleve)"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, classe hors perimetre ou application non ouverte"}
+        '404': {description: "Eleve introuvable dans l etablissement"}
+        '409': {description: "Plusieurs personnes portent ce telephone"}
+        '422': {description: "Telephone invalide, nom exige pour un nouveau garant, champ non reconnu"}
         '423': {description: "Abonnement suspendu : ecriture refusee"}
   /api/v1/secondary/students/{id}/national-id:
     put:
