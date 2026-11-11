@@ -77,7 +77,7 @@ watch([councilId, personId, locale], load, { immediate: true });
         </div>
       </section>
 
-      <section class="card">
+      <section v-if="v('secondary_council_decision') || v('secondary_observations')" class="card">
         <p v-if="v('secondary_council_decision')"><strong>{{ t('secb.decision') }} :</strong> {{ v('secondary_council_decision') }}</p>
         <p v-if="v('secondary_observations')"><strong>{{ t('secb.observations') }} :</strong> {{ v('secondary_observations') }}</p>
       </section>
