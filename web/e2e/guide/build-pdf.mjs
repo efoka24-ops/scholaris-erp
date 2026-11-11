@@ -359,8 +359,8 @@ try {
       const worker = lib.replace('pdf.min.mjs', 'pdf.worker.min.mjs');
       const viewer = join(work, 'viewer.html');
       writeFileSync(viewer, `<!doctype html><html><body style="margin:0;background:#888"><canvas id="c"></canvas><script type="module">
-        import * as pdfjs from '${pathToFileURL(lib).href}';
-        pdfjs.GlobalWorkerOptions.workerSrc = '${pathToFileURL(worker).href}';
+        import * as pdfjs from 'http://guide.local/pdf.mjs';
+        pdfjs.GlobalWorkerOptions.workerSrc = 'http://guide.local/pdf.worker.mjs';
         window.renderPage = async (data, n, scale) => {
           window.__doc ??= await pdfjs.getDocument({ data: Uint8Array.from(atob(data), (ch) => ch.charCodeAt(0)) }).promise;
           const p = await window.__doc.getPage(n); const v = p.getViewport({ scale }); const c = document.getElementById('c');
@@ -369,7 +369,13 @@ try {
         window.ready = true;
       </script></body></html>`);
       const v = await (await browser.newContext({ viewport: { width: 1000, height: 1400 } })).newPage();
-      await v.goto(pathToFileURL(viewer).href);
+      // Modules ES refusés en file:// : les fichiers sont servis sous une origine http fictive.
+      const served = { '/viewer.html': [viewer, 'text/html'], '/pdf.mjs': [lib, 'text/javascript'], '/pdf.worker.mjs': [worker, 'text/javascript'] };
+      await v.route('http://guide.local/**', (route) => {
+        const hit = served[new URL(route.request().url()).pathname];
+        return hit ? route.fulfill({ body: readFileSync(hit[0]), contentType: hit[1] }) : route.fulfill({ status: 404, body: '' });
+      });
+      await v.goto('http://guide.local/viewer.html');
       await v.waitForFunction(() => window.ready === true);
       const data = buf.toString('base64');
       const wanted = String(args['pages-png-list'] ?? '').split(',').filter(Boolean).map(Number);

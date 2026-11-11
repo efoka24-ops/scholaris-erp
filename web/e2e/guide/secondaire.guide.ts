@@ -77,8 +77,13 @@ async function open(browser: Browser, width = 1280): Promise<Page> {
 
 async function login(page: Page, who: string, shotName?: string): Promise<void> {
   const [id, pw] = ctx.logins[who]!;
-  await page.goto('/connexion');
-  await page.getByLabel(/^(E-mail ou téléphone|Numéro de téléphone ou e-mail)$/).fill(id);
+  const field = page.getByLabel(/^(E-mail ou téléphone|Numéro de téléphone ou e-mail)$/);
+  for (let attempt = 0; ; attempt++) {
+    await page.goto('/connexion').catch(() => undefined);
+    if (await field.waitFor({ state: 'visible', timeout: 15_000 }).then(() => true, () => false)) break;
+    if (attempt >= 3) throw new Error('écran de connexion indisponible');
+  }
+  await field.fill(id);
   await page.getByLabel('Mot de passe', { exact: true }).fill(pw);
   if (shotName) await shot(page, shotName);
   await page.getByRole('button', { name: 'Se connecter' }).click();
