@@ -12,6 +12,8 @@ import { secondarySetup, type SchoolClass } from '@/api/secondarySetup';
 import { secondaryEnrolment, type StudentRow } from '@/api/secondaryEnrolment';
 import { useI18n } from '@/i18n';
 import { useAction, usePermissions } from '../useSec';
+import StudentSelect from '../StudentSelect.vue';
+import { useStudentDirectory } from '../studentDirectory';
 
 const { t } = useI18n();
 const { error, busy, run } = useAction();
@@ -29,6 +31,13 @@ const canManage = computed(() => can('secondary.billing.manage'));
 const canValidate = computed(() => can('secondary.fees.validate'));
 const canRequest = computed(() => can('secondary.fees.catalog', 'secondary.billing.manage'));
 const canKeepCatalog = computed(() => can('secondary.profile.manage'));
+// Lectures des frais (FeesController::READ, catalogue : FeeCatalogController::READ) : le caissier lit seulement la vue d'ensemble.
+const canReadFees = computed(() => can('secondary.fees.read', 'secondary.finance.read', 'secondary.billing.manage', 'secondary.fees.catalog', 'secondary.fees.validate'));
+const canReadCatalog = computed(() => canReadFees.value || can('secondary.apee.read', 'secondary.profile.manage'));
+// Encaissement au guichet (FIX-SEC) : l'élève est choisi par son nom, la caisse du socle encaisse sur ses factures ouvertes.
+const canCash = computed(() => can('secondary.billing.cash', 'secondary.billing.manage'));
+const directory = useStudentDirectory();
+const cashStudent = ref('');
 const money = (n: number): string => `${new Intl.NumberFormat('fr-FR').format(n)} FCFA`;
 
 const plan = ref({ personId: '', invoiceId: '', reason: '', installments: [{ due_on: '', amount: 0 }] as Installment[] });
@@ -42,8 +51,8 @@ async function load(): Promise<void> {
   overview.value = o;
   if (canManage.value) items.value = (await run(() => secondaryFees.feeItems())) ?? [];
   if (item.value.kind === '') item.value.kind = o.kinds[0] ?? '';
-  if (o.mode === 'private') plans.value = (await run(() => secondaryFees.plans())) ?? [];
-  if (o.mode === 'public_catalog') {
+  if (o.mode === 'private' && canReadFees.value) plans.value = (await run(() => secondaryFees.plans())) ?? [];
+  if (o.mode === 'public_catalog' && canReadCatalog.value) {
     catalog.value = (await run(() => secondaryFees.catalog())) ?? [];
     requests.value = (await run(() => secondaryFees.requests())) ?? [];
   }
@@ -196,6 +205,7 @@ async function issueInvoice(): Promise<void> {
 onMounted(async () => {
   await load();
   if (canManage.value) await loadBilling();
+  if (canCash.value || canManage.value) await directory.load();
 });
 </script>
 
@@ -216,6 +226,16 @@ onMounted(async () => {
         <p class="muted">{{ t('secf.toConfirm') }}</p>
         <p>{{ t('secf.refusedKinds', { kinds: overview.refused_kinds.join(', ') || '—' }) }}</p>
         <p class="muted">{{ t('secf.noExclusion') }}</p>
+      </section>
+
+      <section v-if="canCash" class="card" aria-labelledby="sf-cash">
+        <h2 id="sf-cash">{{ t('secf.cash.title') }}</h2>
+        <p class="muted">{{ t('secf.cash.help') }}</p>
+        <StudentSelect id="sf-cash-student" v-model="cashStudent" :label="t('secf.cash.student')" :students="directory.students.value" :loaded="directory.loaded.value" />
+        <p>
+          <RouterLink v-if="cashStudent" class="btn btn--primary" :to="{ name: 'billing', query: { tab: 'cash', learner: cashStudent, learner_name: directory.nameOf(cashStudent) } }">{{ t('secf.cash.go') }}</RouterLink>
+          <RouterLink v-else class="btn" :to="{ name: 'billing', query: { tab: 'cash' } }">{{ t('secf.cash.desk') }}</RouterLink>
+        </p>
       </section>
 
       <section v-if="canManage" class="card" aria-labelledby="sf-items">
@@ -290,10 +310,7 @@ onMounted(async () => {
         <section v-if="canManage" class="card" aria-labelledby="sf-plan-new">
           <h2 id="sf-plan-new">{{ t('secf.planNew') }}</h2>
           <form class="stack" @submit.prevent="proposePlan">
-            <div class="field">
-              <label for="sf-person">{{ t('secf.personId') }}</label>
-              <input id="sf-person" v-model="plan.personId" type="text" maxlength="40" autocomplete="off" />
-            </div>
+            <StudentSelect id="sf-person" v-model="plan.personId" :label="t('secf.personId')" :students="directory.students.value" :loaded="directory.loaded.value" />
             <div class="field">
               <label for="sf-invoice">{{ t('secf.invoiceId') }}</label>
               <input id="sf-invoice" v-model="plan.invoiceId" type="text" maxlength="40" autocomplete="off" />
@@ -323,7 +340,7 @@ onMounted(async () => {
           <p v-if="plans.length === 0" class="muted">{{ t('secf.noPlans') }}</p>
           <ul v-else class="rows">
             <li v-for="p in plans" :key="p.id">
-              <strong>{{ p.person_id }}</strong> · {{ money(p.total_amount) }} · {{ t(`secf.planStatus.${p.status}`) }}
+              <strong>{{ directory.nameOf(p.person_id) }}</strong> · {{ money(p.total_amount) }} · {{ t(`secf.planStatus.${p.status}`) }}
               <span v-if="p.in_force" class="tag">{{ t('secf.inForce') }}</span>
               <div class="muted">{{ p.installments.map((i) => `${i.due_on} : ${money(i.amount)}`).join(' · ') }}</div>
               <div class="actions">

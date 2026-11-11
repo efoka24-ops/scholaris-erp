@@ -28,7 +28,7 @@ export const secondaryServicesFr = {
   'secsv.noSubscriptions': 'Aucun abonnement en cours.',
   'secsv.subscribe': 'Abonner un élève',
   'secsv.offer': 'Offre',
-  'secsv.personId': 'Identifiant de l’élève',
+  'secsv.personId': 'Élève',
   'secsv.startsOn': 'Début',
   'secsv.endsOn': 'Fin (facultatif)',
   'secsv.stop': 'Arrêt',
@@ -80,7 +80,7 @@ export const secondaryServicesFr = {
 
   'secfr.title': 'Situation financière',
   'secfr.intro': 'Facturé, encaissé et reste dû par classe et par niveau, prévisions d’encaissement. Agrégats seulement.',
-  'secfr.year': 'Année scolaire (identifiant)',
+  'secfr.year': 'Année scolaire',
   'secfr.refresh': 'Actualiser',
   'secfr.asOf': 'Situation au {date}',
   'secfr.establishment': 'Établissement',

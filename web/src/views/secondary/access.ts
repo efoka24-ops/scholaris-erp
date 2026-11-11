@@ -14,8 +14,9 @@ export const S = {
   reportCards: ['secondary.reportcard.read', 'secondary.reportcard.validate', 'secondary.council.prepare', 'secondary.council.preside'],
   workshops: ['secondary.workshops.read', 'secondary.workshops.manage', 'secondary.workshops.session'],
   internships: ['secondary.internships.manage'],
-  staff: ['secondary.settings.read', 'secondary.settings.manage', 'secondary.syllabus.visa', 'secondary.timetable.manage', 'secondary.billing.manage', 'secondary.finance.read'],
-  payroll: ['secondary.finance.read', 'secondary.billing.manage', 'secondary.settings.manage'],
+  /** Personnel : aussi l'administration du personnel du socle (staff.read, staff.manage : administrateur du client, FIX-SEC). */
+  staff: ['secondary.settings.read', 'secondary.settings.manage', 'secondary.syllabus.visa', 'secondary.timetable.manage', 'secondary.billing.manage', 'secondary.finance.read', 'staff.read', 'staff.manage'],
+  payroll: ['secondary.finance.read', 'secondary.billing.manage', 'secondary.settings.manage', 'staff.manage'],
   services: ['secondary.services.manage', 'secondary.library.manage', 'secondary.infirmary.manage', 'secondary.billing.manage', 'secondary.settings.manage', 'secondary.finance.read'],
   financeReports: ['secondary.fees.read', 'secondary.finance.read', 'secondary.billing.manage', 'secondary.fees.catalog', 'secondary.fees.validate', 'secondary.enrol.manage', 'secondary.settings.manage'],
   teacher: ['secondary.lesson.log', 'secondary.grades.enter', 'secondary.attendance.take'],

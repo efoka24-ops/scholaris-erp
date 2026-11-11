@@ -13,7 +13,8 @@ import { expect, isoDate, selectContaining, startStack, type Json, type Stack } 
 test.describe.configure({ mode: 'serial' });
 
 const here = dirname(fileURLToPath(import.meta.url));
-const OUT = join(here, '..', '..', '..', 'specs', '005-application-secondaire', 'guide', 'images');
+// GUIDE_OUT : dossier de captures de contrôle (rejeu sans toucher aux images du guide).
+const OUT = process.env.GUIDE_OUT ?? join(here, '..', '..', '..', 'specs', '005-application-secondaire', 'guide', 'images');
 mkdirSync(OUT, { recursive: true });
 
 interface Leg {
@@ -616,6 +617,8 @@ test('08-09 : règles, conseil de classe, bulletins, orientation', async ({ brow
     const link = page.locator('main').getByRole('link', { name: 'Aperçu' }).first();
     await link.click();
     await expect(page).toHaveURL(/bulletins/);
+    // FIX-SEC : l'aperçu est calculé à la demande ; attendre l'élève avant la capture.
+    await expect(page.getByText('Élève :').first()).toBeVisible({ timeout: 60_000 });
     await shot(page, '08-bulletin-apercu', { maxHeight: 3000 });
   });
   await soft('bulletins écran', async () => {

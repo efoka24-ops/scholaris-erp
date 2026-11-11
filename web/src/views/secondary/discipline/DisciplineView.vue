@@ -10,6 +10,7 @@ import {
 } from '@/api/secondaryDiscipline';
 import { useI18n, type MessageKey } from '@/i18n';
 import { useAction, usePermissions } from '../useSec';
+import { periodName } from '../periodName';
 
 const { t } = useI18n();
 const { error, busy, run } = useAction();
@@ -152,7 +153,7 @@ onMounted(async () => {
 
     <section v-if="hours" class="card" aria-labelledby="secd-hours">
       <h2 id="secd-hours">{{ t('secd.hoursTitle') }} · {{ hours.class_name }}</h2>
-      <p class="muted">{{ t('secd.period', { label: hours.period.label, from: hours.period.from, to: hours.period.to }) }}</p>
+      <p class="muted">{{ t('secd.period', { label: hours.period.kind ? periodName({ id: hours.period.label, kind: hours.period.kind, ordinal: hours.period.ordinal ?? null, label: hours.period.label }, t) : hours.period.label, from: hours.period.from, to: hours.period.to }) }}</p>
       <p v-if="hours.students.length === 0" class="muted">{{ t('secd.noStudents') }}</p>
       <ul v-else class="rows">
         <li v-for="s in hours.students" :key="s.person_id">

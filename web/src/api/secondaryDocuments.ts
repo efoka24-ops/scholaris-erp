@@ -19,6 +19,8 @@ export interface DocumentKindInfo {
   source: DocumentSource;
   module: string | null;
   available: boolean;
+  /** Motif d'indisponibilité (FIX-SEC) : module inactif, ou enseignement exigé non offert par le profil. */
+  unavailable_reason?: 'module_inactive' | 'teaching_kind_not_offered' | null;
   direct: boolean;
   can_issue: boolean;
 }
@@ -88,3 +90,8 @@ export const secondaryDocumentPickers = {
   candidates: async (classId: string): Promise<DocumentCandidate[]> =>
     (await http.get<{ data: { items: DocumentCandidate[] } }>(`${ROOT}/candidates`, { class_id: classId })).data.items,
 };
+
+/** Clé du libellé d'indisponibilité d'un type (FIX-SEC) : jamais « module inactif » quand le module est actif. */
+export function unavailableKey(kind: Pick<DocumentKindInfo, 'unavailable_reason'>): 'sec.docs.moduleOff' | 'sec.docs.teachingOff' {
+  return kind.unavailable_reason === 'teaching_kind_not_offered' ? 'sec.docs.teachingOff' : 'sec.docs.moduleOff';
+}

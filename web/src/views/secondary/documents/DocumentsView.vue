@@ -4,7 +4,7 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import ErrorNotice from '@/components/ErrorNotice.vue';
 import {
-  issuable, requiredFields, secondaryDocumentPickers, secondaryDocuments,
+  issuable, requiredFields, secondaryDocumentPickers, secondaryDocuments, unavailableKey,
   type DocumentCandidate, type DocumentKindInfo, type IssuedSecondaryDocument, type SecondaryClassRow,
 } from '@/api/secondaryDocuments';
 import { useI18n } from '@/i18n';
@@ -160,8 +160,8 @@ onMounted(async () => {
         <li v-for="k in kinds" :key="k.kind">
           <strong>{{ k.doc }}</strong> · {{ label(k) }}
           <span v-if="k.qr" class="tag">{{ t('sec.docs.qr') }}</span>
-          <span v-if="technicalOnly(k)" class="tag">{{ t('sec.docs.notTechnical') }}</span>
-          <span v-if="!k.available" class="tag tag--warning">{{ t('sec.docs.moduleOff') }}</span>
+          <span v-if="technicalOnly(k) && k.unavailable_reason !== 'teaching_kind_not_offered'" class="tag">{{ t('sec.docs.notTechnical') }}</span>
+          <span v-if="!k.available" class="tag tag--warning">{{ t(unavailableKey(k)) }}</span>
           <span v-else-if="k.source === 'socle'" class="muted"> · {{ t('sec.docs.bySocle') }}</span>
           <span v-else-if="!k.direct" class="muted"> · {{ t('sec.docs.byFlow') }}</span>
         </li>

@@ -11,10 +11,14 @@ import {
 } from '@/api/secondaryServices';
 import { useI18n } from '@/i18n';
 import { useAction, usePermissions } from '../useSec';
+import StudentSelect from '../StudentSelect.vue';
+import { useStudentDirectory } from '../studentDirectory';
 
 const { t } = useI18n();
 const { error, busy, run } = useAction();
 const { can } = usePermissions();
+// Élèves choisis par leur nom (FIX-SEC) : annuaire des élèves, jamais l'identifiant interne à saisir.
+const directory = useStudentDirectory();
 
 const GROUPS: { group: ServiceGroup; module: SecondaryModule; kinds: ServiceKind[] }[] = [
   { group: 'canteen-transport', module: 'canteen_transport', kinds: ['canteen', 'transport'] },
@@ -86,6 +90,7 @@ async function loadInfirmary(): Promise<void> {
 
 async function load(): Promise<void> {
   await loadProfile();
+  if (visibleGroups.value.length > 0 || showInfirmary.value) await directory.load();
   for (const g of visibleGroups.value) await loadGroup(g.group);
   if (showInfirmary.value) await loadInfirmary();
 }
@@ -223,7 +228,7 @@ onMounted(load);
       <p v-if="subscriptions[g.group].length === 0" class="muted">{{ t('secsv.noSubscriptions') }}</p>
       <ul v-else class="rows">
         <li v-for="s in subscriptions[g.group]" :key="s.id">
-          <strong>{{ s.student_name ?? s.person_id }}</strong> · {{ s.offer_label }}<template v-if="s.stop_label"> · {{ s.stop_label }}</template>
+          <strong>{{ s.student_name ?? directory.nameOf(s.person_id) }}</strong> · {{ s.offer_label }}<template v-if="s.stop_label"> · {{ s.stop_label }}</template>
           <span v-if="s.invoice_id" class="tag">{{ t('secsv.invoiced') }}</span>
           <div class="muted">{{ s.starts_on }}<template v-if="s.ends_on"> → {{ s.ends_on }}</template></div>
           <div v-if="canWriteServices && !readOnly(g.module)" class="actions">
@@ -240,7 +245,7 @@ onMounted(load);
             <option v-for="o in offers[g.group].filter((x) => x.active)" :key="o.id" :value="o.id">{{ o.label }}</option>
           </select>
         </div>
-        <div class="field"><label :for="`sv-person-${g.group}`">{{ t('secsv.personId') }}</label><input :id="`sv-person-${g.group}`" v-model="subForm[g.group].personId" type="text" maxlength="40" autocomplete="off" /></div>
+        <StudentSelect :id="`sv-person-${g.group}`" v-model="subForm[g.group].personId" :label="t('secsv.personId')" :students="directory.students.value" :loaded="directory.loaded.value" />
         <div v-if="stopsOf(g.group).length > 0" class="field">
           <label :for="`sv-stop-${g.group}`">{{ t('secsv.stop') }}</label>
           <select :id="`sv-stop-${g.group}`" v-model="subForm[g.group].stop">
@@ -263,12 +268,12 @@ onMounted(load);
         <h3>{{ t('secsv.exemptions') }}</h3>
         <p v-if="exemptions.length === 0" class="muted">{{ t('secsv.noExemptions') }}</p>
         <ul v-else class="rows">
-          <li v-for="e in exemptions" :key="e.person_id">{{ e.person_id }} · {{ t('secsv.exemptTo', { date: e.exempt_until }) }}</li>
+          <li v-for="e in exemptions" :key="e.person_id">{{ directory.nameOf(e.person_id) }} · {{ t('secsv.exemptTo', { date: e.exempt_until }) }}</li>
         </ul>
 
         <form v-if="!readOnly('infirmary')" class="stack" @submit.prevent="recordVisit">
           <h3>{{ t('secsv.visitNew') }}</h3>
-          <div class="field"><label for="sv-v-person">{{ t('secsv.personId') }}</label><input id="sv-v-person" v-model="visitForm.personId" type="text" maxlength="40" autocomplete="off" /></div>
+          <StudentSelect id="sv-v-person" v-model="visitForm.personId" :label="t('secsv.personId')" :students="directory.students.value" :loaded="directory.loaded.value" />
           <div class="field">
             <label for="sv-v-reason">{{ t('secsv.reason') }}</label>
             <select id="sv-v-reason" v-model="visitForm.reason">
@@ -291,7 +296,7 @@ onMounted(load);
         <p v-if="visits.length === 0" class="muted">{{ t('secsv.noVisits') }}</p>
         <ul v-else class="rows">
           <li v-for="v in visits" :key="v.id">
-            <strong>{{ v.student_name ?? v.person_id }}</strong> · {{ v.visited_at.slice(0, 16).replace('T', ' ') }} · {{ t(`secsv.reason.${v.reason_code}`) }} · {{ t(`secsv.outcome.${v.outcome}`) }}
+            <strong>{{ v.student_name ?? directory.nameOf(v.person_id) }}</strong> · {{ v.visited_at.slice(0, 16).replace('T', ' ') }} · {{ t(`secsv.reason.${v.reason_code}`) }} · {{ t(`secsv.outcome.${v.outcome}`) }}
             <span v-if="v.parent_called" class="tag">{{ t('secsv.parentCalled') }}</span>
             <div class="actions"><button type="button" class="btn" :disabled="busy" @click="showVisit(v)">{{ t('secsv.showNotes') }}</button></div>
             <p v-if="openedVisit && openedVisit.id === v.id" class="muted">{{ openedVisit.notes ?? '—' }}</p>
@@ -300,7 +305,7 @@ onMounted(load);
 
         <h3>{{ t('secsv.healthRecord') }}</h3>
         <form class="stack" @submit.prevent="openRecord">
-          <div class="field"><label for="sv-r-person">{{ t('secsv.personId') }}</label><input id="sv-r-person" v-model="recordPerson" type="text" maxlength="40" autocomplete="off" /></div>
+          <StudentSelect id="sv-r-person" v-model="recordPerson" :label="t('secsv.personId')" :students="directory.students.value" :loaded="directory.loaded.value" />
           <div><button type="submit" class="btn" :disabled="busy">{{ t('secsv.open') }}</button></div>
         </form>
         <form v-if="record" class="stack" @submit.prevent="saveRecord">
@@ -316,7 +321,7 @@ onMounted(load);
         <h3>{{ t('secsv.accessLog') }}</h3>
         <p v-if="log.length === 0" class="muted">{{ t('secsv.noLog') }}</p>
         <ul v-else class="rows">
-          <li v-for="l in log" :key="l.id">{{ l.created_at.slice(0, 16).replace('T', ' ') }} · {{ l.user_id }} · {{ t(`secsv.access.${l.access_kind}` as 'secsv.access.read_record') }}<template v-if="l.person_id"> · {{ l.person_id }}</template></li>
+          <li v-for="l in log" :key="l.id">{{ l.created_at.slice(0, 16).replace('T', ' ') }} · {{ l.user_id }} · {{ t(`secsv.access.${l.access_kind}` as 'secsv.access.read_record') }}<template v-if="l.person_id"> · {{ directory.nameOf(l.person_id) }}</template></li>
         </ul>
       </template>
     </section>

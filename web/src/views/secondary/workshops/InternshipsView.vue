@@ -4,6 +4,8 @@ import ErrorNotice from '@/components/ErrorNotice.vue';
 import { useI18n, type MessageKey } from '@/i18n';
 import { useAction, usePermissions } from '../useSec';
 import { internshipsApi, type Company, type Internship } from './workshops';
+import StudentSelect from '../StudentSelect.vue';
+import { useStudentDirectory } from '../studentDirectory';
 import { workshopMessages } from './workshopMessages';
 import { workshopMessagesEn } from './workshopMessagesEn';
 
@@ -21,6 +23,9 @@ const allowed = computed(() => can('secondary.internships.manage'));
 const companies = ref<Company[]>([]);
 const placements = ref<Internship[]>([]);
 const done = ref('');
+// Élève choisi par son nom (FIX-SEC) ; sa classe vient de son inscription.
+const directory = useStudentDirectory();
+const placementClass = ref('');
 const company = reactive({ label: '', sector: '' });
 const placement = reactive({ person_id: '', structure_id: '', company_id: '', tutor_name: '', starts_on: '', ends_on: '', score_coefficient: '' });
 
@@ -44,7 +49,10 @@ async function recordEvaluation(item: Internship): Promise<void> {
   const updated = await run(() => internshipsApi.update(item.id, { score: Number(value), status: 'completed' }));
   if (updated) placements.value = placements.value.map((x) => x.id === updated.id ? updated : x);
 }
-onMounted(load);
+onMounted(async () => {
+  await load();
+  if (allowed.value) await directory.load();
+});
 </script>
 
 <template>
@@ -53,6 +61,6 @@ onMounted(load);
     <ErrorNotice :error="error" />
     <p v-if="done" class="notice notice--success" role="status">{{ done }}</p>
     <section v-if="allowed" class="card"><h2>{{ t('secw.company') }}</h2><ul class="rows"><li v-for="entry in companies" :key="entry.id">{{ entry.label }}<template v-if="entry.sector"> · {{ entry.sector }}</template></li></ul><form class="grid" @submit.prevent="addCompany"><div class="field"><label for="company-name">{{ t('secw.company') }}</label><input id="company-name" v-model="company.label" required /></div><div class="field"><label for="company-sector">{{ t('secw.sector') }}</label><input id="company-sector" v-model="company.sector" /></div><button class="btn btn--primary" :disabled="busy">{{ t('secw.addCompany') }}</button></form></section>
-    <section v-if="allowed" class="card"><h2>{{ t('secw.internshipsTitle') }}</h2><p v-if="!placements.length" class="muted">{{ t('secw.noInternships') }}</p><ul class="rows"><li v-for="entry in placements" :key="entry.id"><strong>{{ entry.company.label }}</strong> · {{ entry.person_id }} · {{ entry.starts_on }} – {{ entry.ends_on }} · {{ entry.status }}<template v-if="entry.score !== null"> · {{ entry.score }}</template><button class="btn" type="button" @click="recordEvaluation(entry)">{{ t('secw.score') }}</button></li></ul><form class="grid" @submit.prevent="addPlacement"><div class="field"><label for="intern-person">{{ t('secw.person') }}</label><input id="intern-person" v-model="placement.person_id" required /></div><div class="field"><label for="intern-class">{{ t('secw.class') }}</label><input id="intern-class" v-model="placement.structure_id" required /></div><div class="field"><label for="intern-company">{{ t('secw.company') }}</label><select id="intern-company" v-model="placement.company_id" required><option v-for="entry in companies" :key="entry.id" :value="entry.id">{{ entry.label }}</option></select></div><div class="field"><label for="intern-tutor">{{ t('secw.tutor') }}</label><input id="intern-tutor" v-model="placement.tutor_name" required /></div><div class="field"><label for="intern-start">{{ t('secw.starts') }}</label><input id="intern-start" v-model="placement.starts_on" type="date" required /></div><div class="field"><label for="intern-end">{{ t('secw.ends') }}</label><input id="intern-end" v-model="placement.ends_on" type="date" required /></div><div class="field"><label for="intern-coef">{{ t('secw.coefficient') }}</label><input id="intern-coef" v-model="placement.score_coefficient" type="number" min="0.01" step="0.01" /></div><button class="btn btn--primary" :disabled="busy || !companies.length">{{ t('secw.createInternship') }}</button></form></section>
+    <section v-if="allowed" class="card"><h2>{{ t('secw.internshipsTitle') }}</h2><p v-if="!placements.length" class="muted">{{ t('secw.noInternships') }}</p><ul class="rows"><li v-for="entry in placements" :key="entry.id"><strong>{{ entry.company.label }}</strong> · {{ directory.nameOf(entry.person_id) }} · {{ entry.starts_on }} – {{ entry.ends_on }} · {{ t(`secw.status.${entry.status}`) }}<template v-if="entry.score !== null"> · {{ entry.score }}</template><button class="btn" type="button" @click="recordEvaluation(entry)">{{ t('secw.score') }}</button></li></ul><form class="grid" @submit.prevent="addPlacement"><StudentSelect id="intern-person" v-model="placement.person_id" :label="t('secw.person')" :students="directory.students.value" :loaded="directory.loaded.value" required @pick="(s) => { placement.structure_id = s?.class_structure_id ?? ''; placementClass = s?.class_label ?? ''; }" /><p v-if="placementClass" class="muted">{{ t('secw.class') }} : {{ placementClass }}</p><div class="field"><label for="intern-company">{{ t('secw.company') }}</label><select id="intern-company" v-model="placement.company_id" required><option v-for="entry in companies" :key="entry.id" :value="entry.id">{{ entry.label }}</option></select></div><div class="field"><label for="intern-tutor">{{ t('secw.tutor') }}</label><input id="intern-tutor" v-model="placement.tutor_name" required /></div><div class="field"><label for="intern-start">{{ t('secw.starts') }}</label><input id="intern-start" v-model="placement.starts_on" type="date" required /></div><div class="field"><label for="intern-end">{{ t('secw.ends') }}</label><input id="intern-end" v-model="placement.ends_on" type="date" required /></div><div class="field"><label for="intern-coef">{{ t('secw.coefficient') }}</label><input id="intern-coef" v-model="placement.score_coefficient" type="number" min="0.01" step="0.01" /></div><button class="btn btn--primary" :disabled="busy || !companies.length">{{ t('secw.createInternship') }}</button></form></section>
   </div>
 </template>

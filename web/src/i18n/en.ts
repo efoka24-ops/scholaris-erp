@@ -608,6 +608,8 @@ export const en: Record<keyof typeof fr, string> = {
   'billing.collectedToday': 'Cash collected',
   'billing.collect': 'Collect',
   'billing.familyRef': 'Family payment reference',
+  'billing.learnerTarget': 'Pupil: {name}. The amount is allocated to their open invoices.',
+  'billing.learnerClear': 'Collect by family reference instead',
   'billing.amountXaf': 'Amount in FCFA',
   'billing.allocationRule': 'Automatic allocation: arrears first, then oldest instalments. Numbered receipt sent to the parent by SMS.',
   'billing.collectGo': 'Collect and issue the receipt',

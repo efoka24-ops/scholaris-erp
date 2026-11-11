@@ -28,6 +28,9 @@ export interface Period {
   from: string;
   to: string;
   label: string;
+  /** Période du socle choisie par défaut (FIX-SEC) : l'écran traduit « Trimestre 1 » par son genre et son rang. */
+  kind?: string;
+  ordinal?: number;
 }
 export interface StudentHours {
   person_id: string;

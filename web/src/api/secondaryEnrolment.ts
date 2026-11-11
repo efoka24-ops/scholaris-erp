@@ -23,6 +23,15 @@ export interface Identity {
   birth_place?: string;
   phone?: string;
 }
+export interface DirectoryStudent {
+  person_id: string;
+  last_name: string | null;
+  first_name: string | null;
+  full_name: string;
+  class_structure_id: string;
+  class_label: string | null;
+  academic_year_id: string;
+}
 export interface GuardianInput {
   kind: GuardianKind;
   person_id?: string;
@@ -157,6 +166,9 @@ export const secondaryEnrolment = {
   enrol: (input: EnrolmentInput): Promise<Dossier> => post('/enrolments', input),
   students: (query: { academic_year_id?: string; class_structure_id?: string; pending?: boolean } = {}): Promise<StudentRow[]> =>
     all<StudentRow>('/enrolment/students', { academic_year_id: query.academic_year_id, class_structure_id: query.class_structure_id, pending: query.pending ? '1' : undefined }),
+  /** Annuaire (nom et classe de la dernière inscription) : choisir un élève par son nom, jamais par son identifiant (FIX-SEC). */
+  directory: (query: { academic_year_id?: string; class_structure_id?: string } = {}): Promise<DirectoryStudent[]> =>
+    get<{ items: DirectoryStudent[] }>('/enrolment/directory', { academic_year_id: query.academic_year_id, class_structure_id: query.class_structure_id }).then((r) => r.items),
   student: (personId: string): Promise<Dossier> => get(`/enrolment/students/${enc(personId)}`),
   setNationalId: (personId: string, nationalId: string): Promise<Dossier> => put(`/students/${enc(personId)}/national-id`, { national_id: nationalId }),
   attachGuarantor: (personId: string, input: { phone: string; last_name?: string; first_name?: string }): Promise<Dossier> => post(`/enrolment/students/${enc(personId)}/guarantors`, input),

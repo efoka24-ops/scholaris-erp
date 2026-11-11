@@ -187,6 +187,7 @@ export const secondaryEn: Record<keyof typeof secondaryFr, string> = {
   'sec.docs.qr': 'QR',
   'sec.docs.moduleOff': 'module inactive',
   'sec.docs.notTechnical': 'technical education only',
+  'sec.docs.teachingOff': 'unavailable: the school does not offer technical education',
   'sec.docs.bySocle': 'issued automatically on payment',
   'sec.docs.byFlow': 'issued during the related process',
 
@@ -205,6 +206,10 @@ export const secondaryEn: Record<keyof typeof secondaryFr, string> = {
   'sec.portal.noDocument': 'No document yet.',
   'sec.portal.noChild': 'No child enrolled in this school is linked to your account.',
   'sec.portal.invoices': 'Invoices',
+  'sec.portal.invoiceFallback': 'Invoice of {amount}',
+  'sec.student.search': 'Search by name or class',
+  'sec.student.choose': 'Choose a student',
+  'sec.student.none': 'No enrolled student to show.',
   'sec.portal.remaining': '{amount} left',
   'sec.portal.pay': 'Pay',
   'sec.portal.payAtDesk': 'Online payment is not offered yet: please pay at the cash desk.',

@@ -30,7 +30,7 @@ export const secondaryServicesEn: Record<keyof typeof secondaryServicesFr, strin
   'secsv.noSubscriptions': 'No current subscription.',
   'secsv.subscribe': 'Subscribe a student',
   'secsv.offer': 'Offer',
-  'secsv.personId': 'Student identifier',
+  'secsv.personId': 'Student',
   'secsv.startsOn': 'Start',
   'secsv.endsOn': 'End (optional)',
   'secsv.stop': 'Stop',
@@ -82,7 +82,7 @@ export const secondaryServicesEn: Record<keyof typeof secondaryServicesFr, strin
 
   'secfr.title': 'Financial position',
   'secfr.intro': 'Invoiced, collected and outstanding by class and level, expected collections. Aggregates only.',
-  'secfr.year': 'School year (identifier)',
+  'secfr.year': 'School year',
   'secfr.refresh': 'Refresh',
   'secfr.asOf': 'Position on {date}',
   'secfr.establishment': 'School',

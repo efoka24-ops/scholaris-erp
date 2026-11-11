@@ -4,7 +4,7 @@
 // deux fois), suivi de l'état jusqu'à la confirmation sur le téléphone.
 import { onMounted, ref } from 'vue';
 import ErrorNotice from '@/components/ErrorNotice.vue';
-import { secondaryPortals, validPhone, type FamilyPortal, type PortalChannel, type PortalInvoice, type PortalPayment } from '@/api/secondaryPortals';
+import { invoiceTitle, secondaryPortals, validPhone, type FamilyPortal, type PortalChannel, type PortalInvoice, type PortalPayment } from '@/api/secondaryPortals';
 import { formatXaf } from '@/lib/format';
 import { ulid } from '@/lib/ulid';
 import { useI18n } from '@/i18n';
@@ -82,7 +82,7 @@ onMounted(() => void load());
           <h3>{{ t('sec.portal.invoices') }}</h3>
           <ul class="rows">
             <li v-for="inv in child.invoices" :key="inv.id">
-              {{ inv.reference ?? inv.id }} · {{ t('sec.portal.remaining', { amount: formatXaf(inv.balance_xaf, locale) }) }}
+              {{ invoiceTitle(inv, t('sec.portal.invoiceFallback', { amount: formatXaf(inv.net_xaf, locale) })) }} · {{ t('sec.portal.remaining', { amount: formatXaf(inv.balance_xaf, locale) }) }}
               <button type="button" class="btn btn--quiet" :disabled="busy" @click="startPay(child.person.id, inv)">{{ t('sec.portal.pay') }}</button>
             </li>
           </ul>

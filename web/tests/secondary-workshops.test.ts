@@ -44,8 +44,10 @@ describe('secondary workshops and internships screens', () => {
     const wrapper = mount(InternshipsView);
     expect(wrapper.text()).toContain('Stages en entreprise');
     expect(wrapper.text()).toContain('Entreprise');
-    expect(wrapper.find('#intern-class').exists()).toBe(true);
-    expect(wrapper.find('#intern-class').attributes('required')).toBeDefined();
+    // FIX-SEC : l'élève se choisit par son nom (liste obligatoire) ; sa classe vient de son inscription, plus d'identifiant à saisir.
+    expect(wrapper.find('select#intern-person').exists()).toBe(true);
+    expect(wrapper.find('select#intern-person').attributes('required')).toBeDefined();
+    expect(wrapper.find('#intern-class').exists()).toBe(false);
     wrapper.unmount();
   });
 });

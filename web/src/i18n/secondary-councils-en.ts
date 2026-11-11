@@ -29,7 +29,7 @@ export const secondaryCouncilsEn: Record<keyof typeof secondaryCouncilsFr, strin
   'secc.typesMissing': 'Report card types are not set yet for this school.',
   'secc.typesSet': 'Report card types: {types}',
   'secc.preset': 'Set the report card types',
-  'secc.letterheadHint': 'Letterhead (delegations, contacts) and subject groups: settings secondary.report_card.letterhead and secondary.report_card.subject_groups.',
+  'secc.letterheadHint': 'The report card letterhead (delegations, contacts) and subject groups are set in the school settings by its administrator.',
   'secc.open': 'Open the council',
   'secc.noCouncil': 'No council open for this class and period.',
   'secc.status': 'Status: {status}',
@@ -59,6 +59,10 @@ export const secondaryCouncilsEn: Record<keyof typeof secondaryCouncilsFr, strin
   'secc.cardStatus.queued': 'Queued',
   'secc.cardStatus.issued': 'Issued',
   'secc.cardStatus.failed': 'Failed',
+  'secc.councilStatus.open': 'open',
+  'secc.councilStatus.validated': 'validated',
+  'secc.reportType.secondary_report_trimester': 'term report card',
+  'secc.reportType.secondary_report_annual': 'annual report card',
 
   'secb.title': 'Report card',
   'secb.intro': 'Values produced for the report card template: subjects table, summary, class profile, discipline and work.',
@@ -76,6 +80,8 @@ export const secondaryCouncilsEn: Record<keyof typeof secondaryCouncilsFr, strin
   'secb.table.secondary_discipline_table': 'Discipline',
   'secb.table.secondary_work_table': 'Work',
   'secb.missing': 'Choose a council and a student from the class council screen.',
+  'secb.loading': 'Computing the report card…',
+  'secb.empty': 'No report card to show for this student and council.',
 
   'seco.eyebrow': 'Councils · Guidance',
   'seco.title': 'Guidance and appeals',

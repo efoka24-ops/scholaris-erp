@@ -7,6 +7,8 @@ import { saveBlob } from '@/api/exports';
 import { secondaryServices, type FinancialSituation, type SituationTotals } from '@/api/secondaryServices';
 import { useI18n } from '@/i18n';
 import { useAction, usePermissions } from '../useSec';
+import { secondarySetup } from '@/api/secondarySetup';
+import type { AcademicYear } from '@/api/admin';
 
 const { t } = useI18n();
 const { error, busy, run } = useAction();
@@ -15,6 +17,8 @@ const { can } = usePermissions();
 const year = ref('');
 const situation = ref<FinancialSituation | null>(null);
 const notice = ref('');
+// Année choisie par son libellé (FIX-SEC), jamais par son identifiant.
+const years = ref<AcademicYear[]>([]);
 const canSituation = computed(() => can('secondary.fees.read', 'secondary.finance.read', 'secondary.billing.manage', 'secondary.fees.catalog', 'secondary.fees.validate'));
 const canExport = computed(() => can('secondary.enrol.manage', 'secondary.settings.manage'));
 const money = (n: number): string => `${new Intl.NumberFormat('fr-FR').format(n)} FCFA`;
@@ -25,12 +29,12 @@ async function load(): Promise<void> {
   const s = await run(() => secondaryServices.situation(year.value.trim() || undefined));
   if (s) {
     situation.value = s;
-    year.value = s.academic_year_id;
+    if (years.value.some((y) => y.id === s.academic_year_id)) year.value = s.academic_year_id;
   }
 }
 
 async function download(): Promise<void> {
-  const id = year.value.trim();
+  const id = year.value.trim() || situation.value?.academic_year_id || '';
   if (id === '') return;
   const blob = await run(() => secondaryServices.yearEndExport(id));
   if (blob) {
@@ -39,7 +43,10 @@ async function download(): Promise<void> {
   }
 }
 
-onMounted(load);
+onMounted(async () => {
+  years.value = await secondarySetup.years().catch(() => []);
+  await load();
+});
 </script>
 
 <template>
@@ -53,7 +60,7 @@ onMounted(load);
     <p v-if="notice" class="notice notice--success" role="status">{{ notice }}</p>
 
     <form class="card stack" @submit.prevent="load">
-      <div class="field"><label for="fr-year">{{ t('secfr.year') }}</label><input id="fr-year" v-model="year" type="text" maxlength="40" autocomplete="off" /></div>
+      <div class="field"><label for="fr-year">{{ t('secfr.year') }}</label><select id="fr-year" v-model="year"><option value="">{{ t('secdb.yearCurrent') }}</option><option v-for="y in years" :key="y.id" :value="y.id">{{ y.label }}</option></select></div>
       <div v-if="canSituation"><button type="submit" class="btn" :disabled="busy">{{ t('secfr.refresh') }}</button></div>
     </form>
 
@@ -105,7 +112,7 @@ onMounted(load);
     <section v-if="canExport" class="card" aria-labelledby="fr-export">
       <h2 id="fr-export">{{ t('secfr.export') }}</h2>
       <p class="muted">{{ t('secfr.exportHelp') }}</p>
-      <button type="button" class="btn btn--primary" :disabled="busy || year.trim() === ''" @click="download">{{ t('secfr.download') }}</button>
+      <button type="button" class="btn btn--primary" :disabled="busy || (year.trim() === '' && !situation)" @click="download">{{ t('secfr.download') }}</button>
     </section>
   </div>
 </template>

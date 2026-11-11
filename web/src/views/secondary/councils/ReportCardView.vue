@@ -13,6 +13,7 @@ const { t } = useI18n();
 const route = useRoute();
 const { error, busy, run } = useAction();
 const preview = ref<ReportCardPreview | null>(null);
+const loaded = ref(false);
 const locale = ref<'fr' | 'en'>('fr');
 
 const councilId = computed(() => (typeof route.query.council === 'string' ? route.query.council : ''));
@@ -20,14 +21,16 @@ const personId = computed(() => (typeof route.query.person === 'string' ? route.
 const tables = computed(() => REPORT_TABLES.map((name) => ({ name, table: parseDocTable(preview.value?.variables[name]) })).filter((x) => x.table !== null));
 const v = (name: string): string => String(preview.value?.variables[name] ?? '');
 
-function span(cell: string | DocTableCell, key: 'colspan' | 'rowspan'): number | undefined {
-  return typeof cell === 'string' ? undefined : cell[key];
+function span(cell: string | number | DocTableCell | null, key: 'colspan' | 'rowspan'): number | undefined {
+  return cell !== null && typeof cell === 'object' ? cell[key] : undefined;
 }
 
 async function load(): Promise<void> {
   preview.value = null;
+  loaded.value = false;
   if (councilId.value === '' || personId.value === '') return;
   preview.value = (await run(() => secondaryCouncils.preview(councilId.value, personId.value, locale.value))) ?? null;
+  loaded.value = true;
 }
 
 watch([councilId, personId, locale], load, { immediate: true });
@@ -79,6 +82,8 @@ watch([councilId, personId, locale], load, { immediate: true });
         <p v-if="v('secondary_observations')"><strong>{{ t('secb.observations') }} :</strong> {{ v('secondary_observations') }}</p>
       </section>
     </template>
+    <p v-else-if="!loaded" class="card muted" role="status">{{ t('secb.loading') }}</p>
+    <p v-else-if="!error" class="card muted">{{ t('secb.empty') }}</p>
   </div>
 </template>
 

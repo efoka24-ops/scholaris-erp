@@ -608,6 +608,8 @@ export const fr = {
   'billing.collectedToday': 'Espèces encaissées',
   'billing.collect': 'Encaisser',
   'billing.familyRef': 'Référence de paiement famille',
+  'billing.learnerTarget': 'Élève : {name}. Le montant est affecté à ses factures ouvertes.',
+  'billing.learnerClear': 'Encaisser par référence famille',
   'billing.amountXaf': 'Montant en FCFA',
   'billing.allocationRule': 'Affectation automatique : retards d\'abord, puis échéances les plus anciennes. Reçu numéroté envoyé par SMS au parent.',
   'billing.collectGo': "Encaisser et émettre le reçu",

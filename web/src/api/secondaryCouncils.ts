@@ -95,11 +95,13 @@ export interface DocTableCell {
   colspan?: number;
   rowspan?: number;
 }
-export type DocTableRow = (string | DocTableCell)[] | { kind: string; cells: (string | DocTableCell)[] };
+/** Une cellule du moteur de documents : texte, nombre, null ou objet (DocumentTable du socle). */
+export type DocCell = string | number | null | DocTableCell;
+export type DocTableRow = DocCell[] | { kind: string; cells: DocCell[] };
 export interface DocTable {
   class?: string;
   columns: { label: string; align?: string; width?: number }[];
-  head?: (string | DocTableCell)[][];
+  head?: DocCell[][];
   rows: DocTableRow[];
 }
 export interface ReportCardPreview {
@@ -123,12 +125,14 @@ export function parseDocTable(raw: unknown): DocTable | null {
   }
 }
 
-export function rowCells(row: DocTableRow): { kind: string; cells: (string | DocTableCell)[] } {
-  return Array.isArray(row) ? { kind: '', cells: row } : { kind: row.kind, cells: row.cells };
+export function rowCells(row: DocTableRow): { kind: string; cells: DocCell[] } {
+  return Array.isArray(row) ? { kind: '', cells: row } : { kind: row.kind ?? '', cells: Array.isArray(row.cells) ? row.cells : [] };
 }
 
-export function cellText(cell: string | DocTableCell): string {
-  return typeof cell === 'string' ? cell : cell.text;
+export function cellText(cell: DocCell): string {
+  if (cell === null || cell === undefined) return '';
+  if (typeof cell === 'object') return String(cell.text ?? '');
+  return String(cell);
 }
 
 /** Valeurs propres décodées (le socle les rend en objet ou en texte JSON). */

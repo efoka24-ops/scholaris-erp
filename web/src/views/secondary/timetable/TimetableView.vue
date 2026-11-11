@@ -5,7 +5,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import ErrorNotice from '@/components/ErrorNotice.vue';
 import type { AcademicYear } from '@/api/admin';
-import { secondarySetup, type SchoolClass, type Subject } from '@/api/secondarySetup';
+import { secondarySetup, type Room, type SchoolClass, type Subject } from '@/api/secondarySetup';
 import {
   byDay, GROUPS, ROOM_KINDS, TEACHER_KINDS, WEEKDAYS, secondaryTimetable,
   type Assignment, type Band, type Change, type ChangeKind, type Conflict, type DocView, type Entry, type Generation, type GroupCode,
@@ -57,6 +57,9 @@ const grouped = computed(() => byDay(entries.value));
 const teachers = ref<TeacherOption[]>([]);
 const teacherName = (personId: string): string => teachers.value.find((p) => p.person_id === personId)?.name ?? personId;
 const teacherOption = (p: TeacherOption): string => (p.grade ? `${p.name} · ${p.grade}` : p.name);
+// Salles déclarées au paramétrage (FIX-SEC) : choisies et affichées par leur nom, jamais par leur identifiant.
+const rooms = ref<Room[]>([]);
+const roomName = (roomId: string): string => rooms.value.find((r) => r.room_id === roomId)?.label ?? '—';
 const assignmentLabel = (a: Assignment): string => `${className(a.class_id)}${a.group_code ? ` (${a.group_code})` : ''} · ${a.subject_label} · ${teacherName(a.teacher_person_id)}`;
 const entryLabel = (e: Entry): string => `${dayName(e.weekday)} ${e.start_time}-${e.end_time} · ${e.class_label ?? className(e.class_id)} · ${e.subject_label}`;
 
@@ -69,6 +72,7 @@ async function loadYear(): Promise<void> {
   if (canManage.value || canRead.value) {
     classes.value = (await quiet(() => secondarySetup.classes(year.value))) ?? [];
     teachers.value = (await quiet(() => secondaryTimetable.teachers())) ?? [];
+    rooms.value = (await quiet(() => secondarySetup.rooms())) ?? [];
   }
   if (canManage.value) {
     assignments.value = (await run(() => secondaryTimetable.assignments(year.value))) ?? [];
@@ -239,10 +243,10 @@ onMounted(load);
           </select>
         </div>
         <div class="field">
-          <label for="tt-id">{{ filter.view === 'class' ? t('sectt.class') : filter.view === 'teacher' ? t('sectt.teacher') : t('sectt.idLabel') }}</label>
+          <label for="tt-id">{{ filter.view === 'class' ? t('sectt.class') : filter.view === 'teacher' ? t('sectt.teacher') : t('sectt.room') }}</label>
           <select v-if="filter.view === 'class'" id="tt-id" v-model="filter.id"><option value="">—</option><option v-for="c in classes" :key="c.structure_id" :value="c.structure_id">{{ c.label }}</option></select>
           <select v-else-if="filter.view === 'teacher'" id="tt-id" v-model="filter.id"><option value="">—</option><option v-for="p in teachers" :key="p.person_id" :value="p.person_id">{{ teacherOption(p) }}</option></select>
-          <input v-else id="tt-id" v-model="filter.id" maxlength="40" />
+          <select v-else id="tt-id" v-model="filter.id"><option value="">—</option><option v-for="r in rooms" :key="r.room_id" :value="r.room_id">{{ r.label }}</option></select>
         </div>
         <div class="field"><label for="tt-on">{{ t('sectt.on') }}</label><input id="tt-on" v-model="filter.on" type="date" /></div>
         <div class="actions">
@@ -264,7 +268,7 @@ onMounted(load);
         <p class="muted">{{ doc.doc }} · {{ doc.on }}</p>
         <div v-for="d in doc.days" :key="d.weekday" class="day">
           <h3>{{ d.label }}</h3>
-          <ul class="rows"><li v-for="e in d.entries" :key="e.id">{{ e.start_time }}-{{ e.end_time }} · {{ e.subject_label }} · {{ e.class_label }} · {{ e.teacher_name }}<template v-if="e.room_id"> · {{ e.room_id }}</template></li></ul>
+          <ul class="rows"><li v-for="e in d.entries" :key="e.id">{{ e.start_time }}-{{ e.end_time }} · {{ e.subject_label }} · {{ e.class_label }} · {{ e.teacher_name }}<template v-if="e.room_id"> · {{ roomName(e.room_id) }}</template></li></ul>
         </div>
         <p class="muted small">{{ doc.notice }}</p>
       </article>
@@ -275,7 +279,7 @@ onMounted(load);
         <ul class="rows">
           <li v-for="e in d.entries" :key="e.id">
             <strong>{{ e.start_time }}-{{ e.end_time }}</strong> {{ e.subject_label }}<template v-if="e.group_code"> ({{ e.group_code }})</template>
-            <span class="muted">· {{ e.class_label ?? className(e.class_id) }} · {{ e.teacher_name || e.teacher_person_id }}<template v-if="e.room_id"> · {{ e.room_id }}</template></span>
+            <span class="muted">· {{ e.class_label ?? className(e.class_id) }} · {{ e.teacher_name || e.teacher_person_id }}<template v-if="e.room_id"> · {{ roomName(e.room_id) }}</template></span>
             <div v-if="canManage" class="actions no-print"><button type="button" class="btn" :disabled="busy" @click="remove(e)">{{ t('sectt.remove') }}</button></div>
           </li>
         </ul>
@@ -302,7 +306,7 @@ onMounted(load);
           <p v-if="assignForm.room_kind === 'workshop'" class="muted small">{{ t('sectt.workshopHelp') }}</p>
         </div>
         <div class="field"><label for="as-group">{{ t('sectt.group') }}</label><select id="as-group" v-model="assignForm.group_code"><option value="">{{ t('sectt.wholeClass') }}</option><option v-for="g in GROUPS" :key="g" :value="g">{{ g }}</option></select></div>
-        <div class="field"><label for="as-room">{{ t('sectt.room') }}</label><input id="as-room" v-model="assignForm.room_id" maxlength="40" /></div>
+        <div class="field"><label for="as-room">{{ t('sectt.room') }}</label><select id="as-room" v-model="assignForm.room_id"><option value="">{{ t('sectt.noRoom') }}</option><option v-for="r in rooms" :key="r.room_id" :value="r.room_id">{{ r.label }}</option></select><p v-if="rooms.length === 0" class="muted small">{{ t('sectt.noRooms') }}</p></div>
         <button type="submit" class="btn btn--primary" :disabled="busy">{{ t('sectt.assign') }}</button>
       </form>
 
@@ -356,7 +360,7 @@ onMounted(load);
       <form class="grid" @submit.prevent="saveClassRoom">
         <h3>{{ t('sectt.classRoom') }}</h3>
         <div class="field"><label for="cr-class">{{ t('sectt.class') }}</label><select id="cr-class" v-model="roomForm.class_id" required><option v-for="c in classes" :key="c.structure_id" :value="c.structure_id">{{ c.label }}</option></select></div>
-        <div class="field"><label for="cr-room">{{ t('sectt.room') }}</label><input id="cr-room" v-model="roomForm.room_id" maxlength="40" required /></div>
+        <div class="field"><label for="cr-room">{{ t('sectt.room') }}</label><select id="cr-room" v-model="roomForm.room_id" required><option v-for="r in rooms" :key="r.room_id" :value="r.room_id">{{ r.label }}</option></select><p v-if="rooms.length === 0" class="muted small">{{ t('sectt.noRooms') }}</p></div>
         <button type="submit" class="btn btn--primary" :disabled="busy">{{ t('sectt.save') }}</button>
       </form>
     </section>

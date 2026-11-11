@@ -27,7 +27,7 @@ export const secondaryCouncilsFr = {
   'secc.typesMissing': 'Les types de bulletin ne sont pas encore réglés pour cet établissement.',
   'secc.typesSet': 'Types de bulletin : {types}',
   'secc.preset': 'Régler les types de bulletin',
-  'secc.letterheadHint': 'En-tête (délégations, contacts) et groupes de matières : paramètres secondary.report_card.letterhead et secondary.report_card.subject_groups.',
+  'secc.letterheadHint': 'L’en-tête du bulletin (délégations, contacts) et les groupes de matières se règlent dans les paramètres de l’établissement, par son administrateur.',
   'secc.open': 'Ouvrir le conseil',
   'secc.noCouncil': 'Aucun conseil ouvert pour cette classe et cette période.',
   'secc.status': 'État : {status}',
@@ -57,6 +57,10 @@ export const secondaryCouncilsFr = {
   'secc.cardStatus.queued': 'En attente',
   'secc.cardStatus.issued': 'Émis',
   'secc.cardStatus.failed': 'Échec',
+  'secc.councilStatus.open': 'ouvert',
+  'secc.councilStatus.validated': 'validé',
+  'secc.reportType.secondary_report_trimester': 'bulletin trimestriel',
+  'secc.reportType.secondary_report_annual': 'bulletin annuel',
 
   'secb.title': 'Bulletin',
   'secb.intro': 'Variables produites pour le modèle du bulletin : tableau des matières, récapitulatif, profil de la classe, discipline et travail.',
@@ -74,6 +78,8 @@ export const secondaryCouncilsFr = {
   'secb.table.secondary_discipline_table': 'Discipline',
   'secb.table.secondary_work_table': 'Travail',
   'secb.missing': 'Choisissez un conseil et un élève depuis l’écran du conseil de classe.',
+  'secb.loading': 'Calcul du bulletin en cours…',
+  'secb.empty': 'Aucun bulletin à afficher pour cet élève et ce conseil.',
 
   'seco.eyebrow': 'Conseils · Orientation',
   'seco.title': 'Orientation et recours',

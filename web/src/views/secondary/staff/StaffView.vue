@@ -10,7 +10,7 @@ import { EMPLOYMENT_STATUSES, hoursOf, secondaryStaff, STAFF_CATEGORIES, type Em
 const { t } = useI18n();
 const { error, busy, run } = useAction();
 const { can } = usePermissions();
-const canManage = computed(() => can('secondary.settings.manage'));
+const canManage = computed(() => can('secondary.settings.manage', 'staff.manage'));
 const profiles = ref<StaffProfile[]>([]);
 const hours = ref<StaffHours[]>([]);
 const month = ref(new Date().toISOString().slice(0, 7));

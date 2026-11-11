@@ -10,10 +10,14 @@ import { useContextStore } from '@/stores/context';
 import { useI18n } from '@/i18n';
 import { formatDateTime, formatXaf, todayIso } from '@/lib/format';
 import { ulid } from '@/lib/ulid';
+import { useRoute } from 'vue-router';
 
 // Frais et paiements : journal du jour, caisse (encaissement d'espèces par référence famille), factures et reçus.
 const { t, locale } = useI18n();
 const ctx = useContextStore();
+const route = useRoute();
+// Caisse ouverte depuis un écran d'application (secondaire : élève choisi par son nom) : ?tab=cash&learner=<id>&learner_name=<nom>.
+const learner = ref<{ id: string; name: string } | null>(typeof route.query.learner === 'string' && route.query.learner !== '' ? { id: route.query.learner, name: typeof route.query.learner_name === 'string' ? route.query.learner_name : '' } : null);
 
 interface CashSession {
   id: string;
@@ -33,7 +37,7 @@ interface Receipt {
   issued_at: string;
 }
 
-const tab = ref<'journal' | 'cash' | 'invoices' | 'receipts'>('journal');
+const tab = ref<'journal' | 'cash' | 'invoices' | 'receipts'>(route.query.tab === 'cash' || learner.value ? 'cash' : 'journal');
 const payments = ref<Payment[]>([]);
 const invoices = ref<Invoice[]>([]);
 const receipts = ref<Receipt[]>([]);
@@ -96,7 +100,8 @@ async function collect(): Promise<void> {
   if (!amount.value || amount.value < 1) return;
   loading.value = true;
   try {
-    const res = await http.post<{ data: Payment }>('/cash/receipts', { amount_xaf: amount.value, family_reference: reference.value.trim() || undefined }, { idempotencyKey: cashKey });
+    const target = learner.value ? { learner_id: learner.value.id } : { family_reference: reference.value.trim() || undefined };
+    const res = await http.post<{ data: Payment }>('/cash/receipts', { amount_xaf: amount.value, ...target }, { idempotencyKey: cashKey });
     info.value = t('billing.collected', { number: res.data.receipt_number ?? res.data.receipt?.number ?? '' });
     cashKey = ulid();
     amount.value = null;
@@ -193,7 +198,8 @@ onMounted(load);
         </div>
         <form v-if="canCash" class="card" novalidate @submit.prevent="collect">
           <h2>{{ t('billing.collect') }}</h2>
-          <div class="field"><label for="b-ref">{{ t('billing.familyRef') }}</label><input id="b-ref" v-model="reference" type="text" placeholder="FAM-0412" autocomplete="off" /></div>
+          <p v-if="learner" class="notice" role="status">{{ t('billing.learnerTarget', { name: learner.name }) }} <button type="button" class="btn btn--quiet" @click="learner = null">{{ t('billing.learnerClear') }}</button></p>
+          <div v-else class="field"><label for="b-ref">{{ t('billing.familyRef') }}</label><input id="b-ref" v-model="reference" type="text" placeholder="FAM-0412" autocomplete="off" /></div>
           <div class="field"><label for="b-amt">{{ t('billing.amountXaf') }}</label><input id="b-amt" v-model.number="amount" type="number" min="1" step="1" inputmode="numeric" /></div>
           <p class="muted">{{ t('billing.allocationRule') }}</p>
           <button type="submit" class="btn btn--primary" :disabled="loading || !amount">{{ t('billing.collectGo') }}</button>

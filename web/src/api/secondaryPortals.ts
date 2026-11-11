@@ -8,6 +8,8 @@ const ROOT = '/secondary/portal';
 export interface PortalInvoice {
   id: string;
   reference: string | null;
+  /** Frais facturés (FIX-SEC) : nom lisible de la facture. */
+  label?: string | null;
   net_xaf: number;
   paid_xaf: number;
   balance_xaf: number;
@@ -66,4 +68,12 @@ export const secondaryPortals = {
 /** Téléphone mobile accepté par le serveur : 8 à 15 chiffres, « + » initial facultatif, espaces, points et tirets ignorés. */
 export function validPhone(raw: string): boolean {
   return /^\+?\d{8,15}$/.test(raw.replace(/[\s.-]/g, ''));
+}
+
+/** Nom d'une facture pour la famille (FIX-SEC) : ses frais, sinon sa référence ; jamais son identifiant interne. */
+export function invoiceTitle(invoice: Pick<PortalInvoice, 'label' | 'reference'>, fallback: string): string {
+  const label = invoice.label?.trim();
+  if (label) return label;
+  const reference = invoice.reference?.trim();
+  return reference ? reference : fallback;
 }

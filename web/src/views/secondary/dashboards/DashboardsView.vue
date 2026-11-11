@@ -24,6 +24,10 @@ import type { ExportFormat } from '@/api/exports';
 import { S } from '../access';
 import { useAction, usePermissions } from '../useSec';
 import ObjectiveList from './ObjectiveList.vue';
+import StudentSelect from '../StudentSelect.vue';
+import { useStudentDirectory } from '../studentDirectory';
+import { secondarySetup } from '@/api/secondarySetup';
+import type { AcademicYear } from '@/api/admin';
 
 type Tab = 'head' | 'pedagogy' | 'finance' | 'network' | 'claims' | 'reports';
 
@@ -54,6 +58,16 @@ const claimForm = reactive({ classId: '', personId: '', subject: '', text: '', r
 const closing = reactive<Record<string, { outcome: ClaimOutcome; note: string }>>({});
 const reports = computed<ReportName[]>(() => REPORTS.filter((r) => (r === 'network' ? can(...S.dashboardNetwork) : can(...S.dashboardHead))));
 const canWriteClaims = computed(() => can(...S.dashboardClaimsWrite));
+// Années choisies par leur libellé (FIX-SEC) ; sans lecture des années (promoteur), seule l'année en cours est proposée.
+const years = ref<AcademicYear[]>([]);
+const yearOptions = computed(() => {
+  const list = years.value.map((y) => ({ id: y.id, label: y.label }));
+  const current = period.value;
+  if (current && current.academic_year_label && !list.some((y) => y.id === current.academic_year_id)) list.unshift({ id: current.academic_year_id, label: current.academic_year_label });
+  return list;
+});
+const directory = useStudentDirectory();
+const claimClass = ref('');
 
 const params = (): DashboardQuery => ({ academic_year_id: query.year, period_id: query.term });
 const number = (value: number | null | undefined): string => (value === null || value === undefined ? '—' : new Intl.NumberFormat(locale.value).format(value));
@@ -88,6 +102,7 @@ async function recordClaim(): Promise<void> {
   if (saved) {
     notice.value = t('secdb.claims.recorded');
     Object.assign(claimForm, { classId: '', personId: '', subject: '', text: '', received: '' });
+    claimClass.value = '';
     await load();
   }
 }
@@ -118,6 +133,8 @@ async function download(report: ReportName, format: ExportFormat): Promise<void>
 watch(tab, load);
 onMounted(async () => {
   tab.value = tabs.value[0] ?? 'head';
+  years.value = await secondarySetup.years().catch(() => []);
+  if (can(...S.dashboardClaims)) await directory.load();
   if (tabs.value.length > 0) await load();
 });
 </script>
@@ -139,7 +156,7 @@ onMounted(async () => {
     <form v-if="tab !== 'reports'" class="card stack" :aria-label="t('secdb.filters')" @submit.prevent="load">
       <div class="field">
         <label for="sdb-year">{{ t('secdb.year') }}</label>
-        <input id="sdb-year" v-model="query.year" type="text" maxlength="40" autocomplete="off" :placeholder="period?.academic_year_id ?? ''" />
+        <select id="sdb-year" v-model="query.year"><option value="">{{ t('secdb.yearCurrent') }}</option><option v-for="y in yearOptions" :key="y.id" :value="y.id">{{ y.label }}</option></select>
         <p class="hint">{{ t('secdb.yearHint') }}</p>
       </div>
       <div v-if="tab !== 'network' && tab !== 'claims'" class="field">
@@ -266,8 +283,8 @@ onMounted(async () => {
       <p class="muted">{{ t('secdb.claims.intro') }}</p>
       <form v-if="canWriteClaims" class="stack" @submit.prevent="recordClaim">
         <h3>{{ t('secdb.claims.new') }}</h3>
-        <div class="field"><label for="sdb-c-class">{{ t('secdb.claims.class') }}</label><input id="sdb-c-class" v-model="claimForm.classId" type="text" maxlength="40" required /></div>
-        <div class="field"><label for="sdb-c-person">{{ t('secdb.claims.person') }}</label><input id="sdb-c-person" v-model="claimForm.personId" type="text" maxlength="40" required /></div>
+        <StudentSelect id="sdb-c-person" v-model="claimForm.personId" :label="t('secdb.claims.person')" :students="directory.students.value" :loaded="directory.loaded.value" required @pick="(s) => { claimForm.classId = s?.class_structure_id ?? ''; claimClass = s?.class_label ?? ''; }" />
+        <p v-if="claimClass" class="muted">{{ t('secdb.claims.class') }} : {{ claimClass }}</p>
         <div class="field"><label for="sdb-c-subject">{{ t('secdb.claims.subject') }}</label><input id="sdb-c-subject" v-model="claimForm.subject" type="text" maxlength="160" /></div>
         <div class="field"><label for="sdb-c-text">{{ t('secdb.claims.text') }}</label><textarea id="sdb-c-text" v-model="claimForm.text" maxlength="500" rows="3" required></textarea></div>
         <div class="field"><label for="sdb-c-received">{{ t('secdb.claims.received') }}</label><input id="sdb-c-received" v-model="claimForm.received" type="date" /></div>
@@ -275,7 +292,7 @@ onMounted(async () => {
       </form>
       <ul class="claims">
         <li v-for="claim in claims" :key="claim.id" class="claim">
-          <p><strong>{{ claim.received_on }}</strong> · {{ claim.subject_label || '—' }} · {{ claim.status === 'open' ? t('secdb.claims.open') : t('secdb.claims.closed') }}</p>
+          <p><strong>{{ claim.received_on }}</strong> · {{ directory.nameOf(claim.person_id) }} · {{ claim.subject_label || '—' }} · {{ claim.status === 'open' ? t('secdb.claims.open') : t('secdb.claims.closed') }}</p>
           <p>{{ claim.claim_text }}</p>
           <p v-if="claim.outcome">{{ t(`secdb.outcome.${claim.outcome}` as MessageKey) }} : {{ claim.outcome_note }}</p>
           <form v-if="claim.status === 'open' && canWriteClaims" class="stack" @submit.prevent="closeClaim(claim.id)">
@@ -296,8 +313,8 @@ onMounted(async () => {
     <section v-if="tab === 'reports'" class="card stack" aria-labelledby="sdb-reports">
       <h2 id="sdb-reports">{{ t('secdb.tab.reports') }}</h2>
       <p class="muted">{{ t('secdb.reports.intro') }}</p>
-      <div class="field"><label for="sdb-r-year">{{ t('secdb.year') }}</label><input id="sdb-r-year" v-model="query.year" type="text" maxlength="40" autocomplete="off" /></div>
-      <div class="field"><label for="sdb-r-previous">{{ t('secdb.reports.previous') }}</label><input id="sdb-r-previous" v-model="query.previous" type="text" maxlength="40" autocomplete="off" /></div>
+      <div class="field"><label for="sdb-r-year">{{ t('secdb.year') }}</label><select id="sdb-r-year" v-model="query.year"><option value="">{{ t('secdb.yearCurrent') }}</option><option v-for="y in yearOptions" :key="y.id" :value="y.id">{{ y.label }}</option></select></div>
+      <div class="field"><label for="sdb-r-previous">{{ t('secdb.reports.previous') }}</label><select id="sdb-r-previous" v-model="query.previous"><option value="">{{ t('secdb.reports.noPrevious') }}</option><option v-for="y in yearOptions" :key="y.id" :value="y.id">{{ y.label }}</option></select></div>
       <ul class="reports">
         <li v-for="report in reports" :key="report">
           <span>{{ t(`secdb.report.${report}` as MessageKey) }}</span>

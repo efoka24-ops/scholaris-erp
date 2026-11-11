@@ -186,6 +186,7 @@ export const secondaryFr = {
   'sec.docs.qr': 'QR',
   'sec.docs.moduleOff': 'module inactif',
   'sec.docs.notTechnical': 'réservé à l’enseignement technique',
+  'sec.docs.teachingOff': 'indisponible : l’établissement n’offre pas l’enseignement technique',
   'sec.docs.bySocle': 'émis automatiquement au paiement',
   'sec.docs.byFlow': 'émis pendant le parcours concerné',
 
@@ -204,6 +205,10 @@ export const secondaryFr = {
   'sec.portal.noDocument': 'Aucun document pour l’instant.',
   'sec.portal.noChild': 'Aucun enfant inscrit dans cet établissement n’est rattaché à votre compte.',
   'sec.portal.invoices': 'Factures',
+  'sec.portal.invoiceFallback': 'Facture de {amount}',
+  'sec.student.search': 'Rechercher par nom ou classe',
+  'sec.student.choose': 'Choisir un élève',
+  'sec.student.none': 'Aucun élève inscrit à afficher.',
   'sec.portal.remaining': 'reste {amount}',
   'sec.portal.pay': 'Payer',
   'sec.portal.payAtDesk': 'Le paiement en ligne n’est pas encore proposé : réglez auprès de la caisse.',

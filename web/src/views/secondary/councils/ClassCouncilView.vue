@@ -138,6 +138,14 @@ function chips(line: SecondaryCouncilLine): string[] {
   if (x.workshop_practical) out.push(t('secc.workshopMarks', { points: String(x.workshop_practical.points), outOf: String(x.workshop_practical.out_of), count: String(x.workshop_practical.evaluations) }));
   return out;
 }
+/** Libellé traduit d'une valeur technique (état, type de bulletin, rôle de matière) ; la valeur brute seulement si aucune traduction n'existe. */
+function labelOf(key: string, raw: string): string {
+  const out = t(key as MessageKey);
+  return out === key ? raw : out;
+}
+const councilStatus = (status: string): string => labelOf(`secc.councilStatus.${status}`, status);
+const reportType = (code: string): string => labelOf(`secc.reportType.${code}`, code);
+const subjectRole = (role: string): string => labelOf(`secs.roles.${role}`, role);
 function cardStatus(status: string): string {
   return t(`secc.cardStatus.${status}` as MessageKey);
 }
@@ -182,7 +190,7 @@ onMounted(load);
             <thead><tr><th>{{ t('secc.subject') }}</th><th>{{ t('secc.coefficient') }}</th><th>{{ t('secc.role') }}</th></tr></thead>
             <tbody>
               <tr v-for="line in draft.coefficients" :key="line.subject_id">
-                <td>{{ line.label }}</td><td>{{ line.coefficient }}</td><td>{{ line.role }}<span v-if="!line.counts_in_average" class="muted"> · {{ t('secc.outOfAverage') }}</span></td>
+                <td>{{ line.label }}</td><td>{{ line.coefficient }}</td><td>{{ subjectRole(line.role) }}<span v-if="!line.counts_in_average" class="muted"> · {{ t('secc.outOfAverage') }}</span></td>
               </tr>
             </tbody>
           </table>
@@ -195,7 +203,7 @@ onMounted(load);
               <thead><tr><th>{{ t('secc.subject') }}</th><th>{{ t('secc.coefficient') }}</th><th>{{ t('secc.role') }}</th></tr></thead>
               <tbody>
                 <tr v-for="line in o.coefficients" :key="line.subject_id">
-                  <td>{{ line.label }}</td><td>{{ line.coefficient }}</td><td>{{ line.role }}<span v-if="!line.counts_in_average" class="muted"> · {{ t('secc.outOfAverage') }}</span></td>
+                  <td>{{ line.label }}</td><td>{{ line.coefficient }}</td><td>{{ subjectRole(line.role) }}<span v-if="!line.counts_in_average" class="muted"> · {{ t('secc.outOfAverage') }}</span></td>
                 </tr>
               </tbody>
             </table>
@@ -208,7 +216,7 @@ onMounted(load);
 
     <section class="card">
       <h2>{{ t('secc.settingsTitle') }}</h2>
-      <p v-if="settings?.report_card_types">{{ t('secc.typesSet', { types: Object.values(settings.report_card_types).join(', ') }) }}</p>
+      <p v-if="settings?.report_card_types">{{ t('secc.typesSet', { types: Object.values(settings.report_card_types).map(reportType).join(', ') }) }}</p>
       <p v-else class="muted">{{ t('secc.typesMissing') }}</p>
       <button v-if="canPreset && !settings?.report_card_types" class="btn" type="button" :disabled="busy" @click="preset">{{ t('secc.preset') }}</button>
       <p class="muted small">{{ t('secc.letterheadHint') }}</p>
@@ -221,8 +229,8 @@ onMounted(load);
       </template>
       <template v-else>
         <div class="row">
-          <strong>{{ council.period_label }}</strong>
-          <span class="tag">{{ t('secc.status', { status: council.status }) }}</span>
+          <strong>{{ periodLabel || council.period_label }}</strong>
+          <span class="tag">{{ t('secc.status', { status: councilStatus(council.status) }) }}</span>
           <template v-if="isOpen && canPrepare">
             <button class="btn" type="button" :disabled="busy" @click="act('refresh')">{{ t('secc.refresh') }}</button>
             <button class="btn btn--primary" type="button" :disabled="busy" :title="t('secc.validateHint')" @click="act('validate')">{{ t('secc.validate') }}</button>
