@@ -31,6 +31,8 @@ const subsystem = ref('francophone');
 const yearLabel = ref('');
 // Trimestres de l'année en cours (Organisation), choisis par leur nom ; jamais d'identifiant technique à saisir.
 const trimesters = ref<TrimesterLine[]>([]);
+// Début de l'année en cours : le référentiel importé en cours d'année vaut dès la rentrée, sinon les unités déjà passées restent sans discipline.
+const yearStart = ref('');
 // Le directeur (R09) règle le référentiel de son école si le paramètre national le permet (RG-TER-6) ; le serveur reste juge.
 const schoolMayManage = computed(() => settings.value.find((s) => s.key === 'public_primary.referential.school_may_manage')?.value !== false);
 const nationalManager = computed(() => ctx.can('public_primary.referential.manage'));
@@ -48,6 +50,7 @@ onMounted(async () => {
     const year = await currentYear();
     if (!year) return;
     if (!yearLabel.value) yearLabel.value = year.label;
+    yearStart.value = year.starts_on.slice(0, 10);
     const periods = (await listPeriods(year.id)).filter((p) => p.kind === 'trimester').sort((a, b) => a.ordinal - b.ordinal);
     trimesters.value = periods.map((p) => ({ period_id: p.id, ordinal: p.ordinal, included: true, starts_on: p.starts_on.slice(0, 10), ends_on: p.ends_on.slice(0, 10) }));
   });
@@ -62,7 +65,7 @@ async function loadLevel(): Promise<void> {
 
 async function importExample(): Promise<void> {
   await run(async () => {
-    await publicPrimary.importExample(subsystem.value, level.value);
+    await publicPrimary.importExample(subsystem.value, level.value, yearStart.value || undefined);
     await loadLevel();
   });
 }

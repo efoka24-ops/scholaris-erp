@@ -41,6 +41,9 @@ describe('référentiel du primaire public (directeur)', () => {
       'GET /academic-years': page([year]),
       'GET /periods': page(periods),
       'POST /public-primary/units/generate': { data: [] },
+      'POST /public-primary/frames/import-example': { data: [] },
+      'GET /public-primary/frames': page([]),
+      'GET /public-primary/units': { data: [] },
     });
     const { wrapper } = await mountView(ReferentialView);
     await flushPromises();
@@ -51,6 +54,12 @@ describe('référentiel du primaire public (directeur)', () => {
     expect(wrapper.text()).toContain('Trimestre 3');
     expect((wrapper.get('#ts-0').element as HTMLInputElement).value).toBe('2026-09-01');
     expect((wrapper.get('#rf-year').element as HTMLInputElement).value).toBe('2026-2027');
+
+    // Le référentiel importé en cours d'année vaut dès la rentrée : les unités déjà passées gardent leurs disciplines.
+    const importButton = wrapper.findAll('button').find((b) => b.text().includes("Importer le référentiel d'exemple"));
+    await importButton?.trigger('click');
+    await flushPromises();
+    expect(calls.find((c) => c.path === '/public-primary/frames/import-example')?.body?.valid_from).toBe('2000-09-01');
 
     await wrapper.get('#tp-2').setValue(false);
     await wrapper.findAll('form').at(-1)?.trigger('submit');

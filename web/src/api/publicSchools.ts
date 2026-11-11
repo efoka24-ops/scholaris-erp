@@ -798,7 +798,8 @@ export interface CouncilInput {
 export const publicPrimary = {
   settings: (): Promise<SettingRow[]> => ppGet('/settings'),
   frames: (levelCode?: string): Promise<Frame[]> => ppAll('/frames', levelCode ? { level_code: levelCode } : {}),
-  importExample: (subsystem: string, levelCode: string): Promise<Frame[]> => ppPost('/frames/import-example', { subsystem, level_code: levelCode }),
+  importExample: (subsystem: string, levelCode: string, validFrom?: string): Promise<Frame[]> =>
+    ppPost('/frames/import-example', { subsystem, level_code: levelCode, ...(validFrom ? { valid_from: validFrom } : {}) }),
   units: (yearLabel: string, levelCode: string): Promise<LearningUnit[]> => ppGet('/units', { year_label: yearLabel, level_code: levelCode }),
   generateUnits: (body: { year_label: string; level_code: string; trimesters: { period_id: string; starts_on: string; ends_on: string }[] }): Promise<LearningUnit[]> =>
     ppPost('/units/generate', body),
