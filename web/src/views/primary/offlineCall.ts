@@ -1,6 +1,7 @@
 // Appel par demi-journée (attendance.mode = day_part) : même brouillon et même file hors ligne que l'appel par créneau, mais la
 // séance est identifiée par la classe et le moment de la journée, sans créneau d'emploi du temps. L'envoi (POST
 // /attendance-sessions/sync) est idempotent par client_uuid : rejouer le même appel ne crée jamais de doublon.
+import { ApiError, http as defaultHttp, type HttpClient } from '@/api/http';
 import { cacheDelete, cacheGet, cachePut } from '@/offline/db';
 import { enqueue, listQueue } from '@/offline/queue';
 import { counters, loadDraft, type Draft, type RosterEntry } from '@/offline/attendance';
@@ -13,6 +14,27 @@ export const partKey = (classId: string, part: DayPart): string => `dp:${classId
 
 export async function loadPartDraft(est: string, classId: string, part: DayPart, date: string): Promise<Draft> {
   return loadDraft(est, partKey(classId, part), date);
+}
+
+/**
+ * Liste d'appel d'une classe (FIX-PRI 1) : élèves inscrits et leurs noms, selon le périmètre du rôle dans l'école primaire
+ * (GET /primary/classes/{id}/call-roster). La liste générale des inscriptions du socle (/enrollments) ne suffit pas : pour un maître
+ * sans affectation de service ni créneau d'emploi du temps, elle est vide. Mise en cache pour l'appel hors ligne (même clé que le socle).
+ */
+export async function loadPartRoster(est: string, classId: string, client: HttpClient = defaultHttp): Promise<{ roster: RosterEntry[]; fromCache: boolean }> {
+  const key = `roster:${est}:${classId}`;
+  try {
+    const res = await client.get<{ data: { learners: RosterEntry[] } }>(`/primary/classes/${classId}/call-roster`, {}, { establishmentId: est });
+    const roster = res.data.learners.map((l) => ({ person_id: l.person_id, name: l.name }));
+    await cachePut(key, roster);
+    return { roster, fromCache: false };
+  } catch (e) {
+    if (e instanceof ApiError && (e.network || e.status >= 500)) {
+      const cached = await cacheGet<RosterEntry[]>(key);
+      if (cached) return { roster: cached, fromCache: true };
+    }
+    throw e;
+  }
 }
 
 /** Classes connues de l'appareil (cache), pour ouvrir l'appel sans réseau. */

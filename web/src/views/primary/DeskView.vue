@@ -9,6 +9,7 @@ import { DOCUMENT_KINDS, primary, type DocumentKind, type EnrolmentInvoice, type
 import { useI18n, type MessageKey } from '@/i18n';
 import { formatXaf, todayIso } from '@/lib/format';
 import { P } from './access';
+import { deskEnrollments } from './fixes';
 import { currentYear, structureIndex, useAction, usePermissions } from './usePri';
 
 const { t } = useI18n();
@@ -41,7 +42,8 @@ async function load(): Promise<void> {
     const year = await currentYear();
     const index = await structureIndex();
     classes.value = Object.fromEntries(index.list.map((s) => [s.id, s.name]));
-    const { items } = await http.page<Enrollment>('/enrollments', { 'filter[status]': 'active', ...(year ? { 'filter[academic_year_id]': year.id } : {}) });
+    // Inscriptions en cours : validées ET validées sous réserve des pièces (FIX-PRI 2 : le seul statut « active » cachait ces dernières).
+    const items = await deskEnrollments(year?.id ?? null);
     rows.value = items;
     await Promise.all(
       items.slice(0, 50).map(async (e) => {
@@ -106,6 +108,7 @@ onMounted(() => void load());
           <div class="row row--between">
             <div class="grow">
               <strong>{{ fullName(e.person_id) }}</strong>
+              <span v-if="e.status === 'conditional'" class="tag tag--warning">{{ t('pri.desk.conditional') }}</span>
               <div class="muted">{{ e.structure_id ? (classes[e.structure_id] ?? e.structure_id) : t('pri.desk.noClass') }}<span v-if="e.internal_number"> · {{ e.internal_number }}</span></div>
             </div>
             <button type="button" class="btn btn--quiet" :aria-expanded="opened === e.id" @click="toggle(e)">{{ opened === e.id ? t('pri.desk.close') : t('pri.desk.open') }}</button>

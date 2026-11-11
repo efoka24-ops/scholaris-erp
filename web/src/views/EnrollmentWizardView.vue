@@ -6,6 +6,7 @@ import { ApiError, http } from '@/api/http';
 import { formatXaf } from '@/lib/format';
 import { useContextStore } from '@/stores/context';
 import { useI18n } from '@/i18n';
+import { enrolmentInvoiceRoute } from '@/views/primary/fixes';
 
 // Inscription en 5 étapes (maquettes Inscription.html et InscriptionPieces.html) :
 // 1 Identité, 2 Parents et garant, 3 Filière, 4 Pièces, 5 Frais et paiement.
@@ -64,7 +65,11 @@ const invoice = ref<InvoiceView | null>(null);
 const familyReference = ref('');
 const done = ref<'validated' | 'conditional' | null>(null);
 
-const canPay = computed(() => ctx.can('billing.manage'));
+// Facture de l'étape 5 : facturation du socle (service financier) ou facture d'inscription du primaire (secrétariat, FIX-PRI 3).
+const invoiceRoute = computed(() => enrolmentInvoiceRoute((...p) => ctx.can(...p), ctx.establishmentType, enrollmentId.value));
+const canPay = computed(() => invoiceRoute.value !== null);
+// La facture d'inscription du primaire porte sur une inscription validée (le socle ne la voit pas en brouillon) : émise juste après la validation.
+const invoiceAfterValidation = computed(() => invoiceRoute.value?.path.startsWith('/primary/') === true);
 const stepNames = computed(() => [t('enroll.step1'), t('enroll.step2'), t('enroll.step3'), t('enroll.step4'), t('enroll.step5')]);
 const percent = computed(() => {
   const identity = [learner.last_name, learner.first_name, learner.birth_date, learner.birth_place, learner.gender, learner.nationality, learner.phone].filter((v) => v !== '').length;
@@ -196,16 +201,17 @@ async function upload(kind: string, event: Event): Promise<void> {
 async function loadInvoice(): Promise<void> {
   step.value = 5;
   invoice.value = null;
-  if (!canPay.value) return;
+  const route = invoiceRoute.value;
+  if (!route || invoiceAfterValidation.value) return;
   const guarantor = relatives.value.find((r) => r.kind === 'financial_guarantor') ?? relatives.value[0];
   await guarded(async () => {
     try {
-      invoice.value = (await http.post<{ data: InvoiceView }>('/invoices', { enrollment_id: enrollmentId.value })).data;
+      invoice.value = (await http.post<{ data: InvoiceView }>(route.path, route.body ?? {})).data;
     } catch (e) {
       if (!(e instanceof ApiError && e.status === 422)) throw e;
       error.value = e;
     }
-    if (guarantor && invoice.value) {
+    if (guarantor && invoice.value && ctx.can('billing.manage', 'billing.cash')) {
       familyReference.value = (await http.post<{ data: { reference: string } }>('/payment-references', { guarantor_id: guarantor.id })).data.reference;
     }
   });
@@ -214,6 +220,14 @@ async function loadInvoice(): Promise<void> {
 async function validate(): Promise<void> {
   const row = await guarded(() => http.post<{ data: { status: string } }>(`/enrollments/${enrollmentId.value}/validate`));
   if (row) done.value = row.data.status === 'conditional' ? 'conditional' : 'validated';
+  const route = invoiceRoute.value;
+  if (row && route && invoiceAfterValidation.value) {
+    try {
+      invoice.value = (await http.post<{ data: InvoiceView }>(route.path, route.body ?? {})).data;
+    } catch (e) {
+      error.value = e;
+    }
+  }
 }
 
 onMounted(() => void loadChoices());
@@ -238,6 +252,7 @@ onMounted(() => void loadChoices());
     <section v-if="done" class="card" role="status">
       <h2>{{ done === 'validated' ? t('enroll.validated') : t('enroll.conditional') }}</h2>
       <p>{{ done === 'validated' ? t('enroll.validatedText') : t('enroll.conditionalText') }}</p>
+      <p v-if="invoice && invoiceAfterValidation" data-test="enrol-invoice">{{ t('pri.enroll.invoiced', { net: formatXaf(invoice.net_xaf, locale) }) }}</p>
       <router-link class="btn btn--primary" :to="{ name: 'people' }">{{ t('enroll.backToPeople') }}</router-link>
     </section>
 
@@ -357,6 +372,7 @@ onMounted(() => void loadChoices());
           <p v-if="familyReference">{{ t('enroll.reference') }} <b class="mono">{{ familyReference }}</b><br /><span class="muted small">{{ t('enroll.referenceHint') }}</span></p>
           <router-link class="btn" :to="{ name: 'billing' }">{{ t('enroll.payCounter') }}</router-link>
         </template>
+        <p v-else-if="invoiceAfterValidation" class="muted">{{ t('pri.enroll.invoiceAfter') }}</p>
         <p v-else-if="!canPay" class="muted">{{ t('enroll.noBilling') }}</p>
         <p v-else class="muted">{{ t('enroll.noInvoice') }}</p>
         <div class="row">

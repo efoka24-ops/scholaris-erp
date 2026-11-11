@@ -424,7 +424,7 @@ export const primaryP2 = {
   reportCards: async (councilId: string): Promise<ReportCard[]> => (await get<{ items: ReportCard[] }>(`/councils/${councilId}/report-cards`)).items,
   preview: (councilId: string, personId: string, kind: 'term' | 'annual' = 'term'): Promise<{ snapshot: ReportSnapshot; variables: Record<string, string | null>; council_status: string }> => get(`/councils/${councilId}/report-cards/preview`, { person_id: personId, kind }),
   issueCards: (councilId: string): Promise<{ issued: number; failed: number; skipped: number; items: ReportCard[] }> => post(`/councils/${councilId}/report-cards/issue`),
-  publishCards: (councilId: string): Promise<{ published: number; notified: number; items: ReportCard[] }> => post(`/councils/${councilId}/report-cards/publish`),
+  publishCards: (councilId: string): Promise<{ published: number; notified: number; families?: number; not_notified?: Record<string, number>; items: ReportCard[] }> => post(`/councils/${councilId}/report-cards/publish`),
   reportCard: (id: string): Promise<ReportCard> => get(`/report-cards/${id}`),
   rectify: (id: string, body: { reason: string } & LineChanges): Promise<ReportCard> => post(`/report-cards/${id}/rectify`, body),
 

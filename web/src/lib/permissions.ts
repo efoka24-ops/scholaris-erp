@@ -175,6 +175,8 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     'primary.referential.read', 'primary.learner.read', 'primary.competency.read', 'primary.competency.validate', 'primary.conduct.read', 'primary.journal.read',
     'primary.council.read', 'primary.report_card.read', 'primary.remediation.read', 'primary.remediation.write', 'primary.exam.read', 'primary.exam.manage',
     'primary.tutelage.export', 'primary.services.read', 'primary.pickup.read', 'primary.pickup.handover', 'organisation.read',
+    // Migration 202611110745 (FIX-PRI 1) : appel par demi-journée ouvert à la direction.
+    'attendance.read', 'attendance.take',
   ],
   primary_adjoint: [
     'primary.referential.manage', 'assessment.validate', 'scheduling.manage', 'primary.referential.read', 'primary.learner.read', 'primary.competency.read',

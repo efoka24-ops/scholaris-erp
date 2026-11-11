@@ -8,6 +8,7 @@ import { primary, type SetupStatus } from '@/api/primary';
 import { useI18n } from '@/i18n';
 import type { MessageKey } from '@/i18n';
 import { P } from './access';
+import { setupKeyLabel, setupValueLabel } from './fixes';
 import { useAction, usePermissions } from './usePri';
 
 const { t } = useI18n();
@@ -72,8 +73,8 @@ onMounted(() => void load());
         <p>{{ t('pri.setup.intro') }}</p>
         <ul class="presets">
           <li v-for="p in status.presets" :key="p.key">
-            <code>{{ p.key }}</code> : {{ t('pri.setup.current') }} <strong>{{ p.current ?? t('pri.setup.unset') }}</strong>, {{ t('pri.setup.recommended') }}
-            <strong>{{ p.recommended }}</strong>
+            {{ setupKeyLabel(t, p.key) }} : {{ t('pri.setup.current') }} <strong>{{ setupValueLabel(t, p.key, p.current) ?? t('pri.setup.unset') }}</strong>, {{ t('pri.setup.recommended') }}
+            <strong>{{ setupValueLabel(t, p.key, p.recommended) }}</strong>
             <span class="tag" :class="p.ok ? 'tag--success' : 'tag--warning'">{{ p.ok ? t('pri.setup.ok') : t('pri.setup.todo') }}</span>
           </li>
         </ul>

@@ -8,8 +8,9 @@ import {
   type ServiceAttendance, type ServiceCandidate, type ServicePlan, type ServicePlans, type ServiceSubscription,
 } from '@/api/primary';
 import { useI18n, type MessageKey } from '@/i18n';
-import { todayIso } from '@/lib/format';
+import { formatXaf, todayIso } from '@/lib/format';
 import { P } from './access';
+import { capacityValue, serviceFees, type CatalogueFee } from './fixes';
 import { useAction, usePermissions } from './usePri';
 
 const { t, locale } = useI18n();
@@ -25,7 +26,9 @@ const marks = reactive<Record<string, boolean | null>>({});
 const notice = ref('');
 const tried = ref(false);
 const canManage = computed(() => can(...P.servicesManage));
-const newPlan = reactive({ service_kind: '', label: '', fee_code: '', billing_cycle: 'term' as (typeof SERVICE_CYCLES)[number], capacity: '', route_label: '' });
+// Frais du catalogue proposés pour le forfait (null : catalogue illisible, saisie libre du code).
+const fees = ref<CatalogueFee[] | null>(null);
+const newPlan = reactive({ service_kind: '', label: '', fee_code: '', billing_cycle: 'term' as (typeof SERVICE_CYCLES)[number], capacity: '' as string | number, route_label: '' });
 const subscribe = reactive({ person_id: '', starts_on: todayIso() });
 const billing = reactive({ cycle_key: '', due_on: todayIso(), result: '' });
 const day = ref(todayIso());
@@ -84,7 +87,9 @@ function open(p: ServicePlan): void {
 async function createPlan(): Promise<void> {
   tried.value = true;
   if (!newPlan.label.trim() || !newPlan.fee_code.trim() || !newPlan.service_kind) return;
-  const capacity = newPlan.capacity.trim() === '' ? null : Number(newPlan.capacity);
+  if (fees.value && fees.value.length > 0 && !fees.value.some((f) => f.code === newPlan.fee_code.trim())) return;
+  // Le champ numérique rend un nombre : avant FIX-PRI 6, `.trim()` levait une erreur et le forfait n'était jamais envoyé.
+  const capacity = capacityValue(newPlan.capacity);
   const done = await act.run(() => primaryServices.createPlan({
     service_kind: newPlan.service_kind, label: newPlan.label.trim(), fee_code: newPlan.fee_code.trim(), billing_cycle: newPlan.billing_cycle,
     capacity, route_label: newPlan.route_label.trim() === '' ? null : newPlan.route_label.trim(),
@@ -145,6 +150,10 @@ async function saveAttendance(): Promise<void> {
 
 watch(day, () => void loadAttendance());
 onMounted(() => void loadPlans());
+// Les droits peuvent arriver après le montage (contexte chargé en différé) : la liste des frais suit canManage.
+watch(canManage, async (manage) => {
+  if (manage && fees.value === null) fees.value = await serviceFees();
+}, { immediate: true });
 </script>
 
 <template>
@@ -181,7 +190,16 @@ onMounted(() => void loadPlans());
         <div class="grid2">
           <div class="field"><label for="sv-kind">{{ t('pri.svc.kind') }}</label><select id="sv-kind" v-model="newPlan.service_kind"><option v-for="(k, code) in catalogue.kinds" :key="code" :value="code">{{ locale === 'en' ? k.en : k.fr }}</option></select></div>
           <div class="field"><label for="sv-label">{{ t('pri.svc.label') }}</label><input id="sv-label" v-model="newPlan.label" type="text" maxlength="160" :aria-invalid="tried && !newPlan.label.trim()" /><span v-if="tried && !newPlan.label.trim()" class="error">{{ t('pri.svc.required') }}</span></div>
-          <div class="field"><label for="sv-fee">{{ t('pri.svc.fee') }}</label><input id="sv-fee" v-model="newPlan.fee_code" type="text" maxlength="40" :aria-invalid="tried && !newPlan.fee_code.trim()" /><span v-if="tried && !newPlan.fee_code.trim()" class="error">{{ t('pri.svc.required') }}</span></div>
+          <div class="field">
+            <label for="sv-fee">{{ t('pri.svc.fee') }}</label>
+            <select v-if="fees && fees.length > 0" id="sv-fee" v-model="newPlan.fee_code" :aria-invalid="tried && !newPlan.fee_code.trim()">
+              <option value="" disabled>{{ t('pri.svc.pickFee') }}</option>
+              <option v-for="f in fees" :key="f.code" :value="f.code">{{ f.name }} ({{ f.code }}) · {{ formatXaf(f.amount_xaf) }}</option>
+            </select>
+            <input v-else id="sv-fee" v-model="newPlan.fee_code" type="text" maxlength="40" :aria-invalid="tried && !newPlan.fee_code.trim()" aria-describedby="sv-fee-hint" />
+            <span v-if="tried && !newPlan.fee_code.trim()" class="error">{{ t('pri.svc.required') }}</span>
+            <span v-if="fees && fees.length === 0" id="sv-fee-hint" class="muted" data-test="fee-hint">{{ t('pri.svc.noCodedFee') }}</span>
+          </div>
           <div class="field"><label for="sv-cycle">{{ t('pri.svc.cycle') }}</label><select id="sv-cycle" v-model="newPlan.billing_cycle"><option v-for="c in SERVICE_CYCLES" :key="c" :value="c">{{ t(`pri.svc.cycle.${c}` as MessageKey) }}</option></select></div>
           <div class="field"><label for="sv-cap">{{ t('pri.svc.capacity') }}</label><input id="sv-cap" v-model="newPlan.capacity" type="number" min="1" max="5000" /></div>
           <div class="field"><label for="sv-route">{{ t('pri.svc.route') }}</label><input id="sv-route" v-model="newPlan.route_label" type="text" maxlength="160" /></div>

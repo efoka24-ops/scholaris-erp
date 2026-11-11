@@ -5,7 +5,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import ErrorNotice from '@/components/ErrorNotice.vue';
 import ExportButton from '@/components/ExportButton.vue';
-import { primaryP2, type ExamCandidate, type ExamCatalogue, type ExamSession, type ExamSheet } from '@/api/primary';
+import { primary, primaryP2, type ExamCandidate, type ExamCatalogue, type ExamSession, type ExamSheet } from '@/api/primary';
 import { useI18n, type MessageKey } from '@/i18n';
 import { P } from './access';
 import { usePicker } from './usePicker';
@@ -14,6 +14,8 @@ import { useAction, usePermissions } from './usePri';
 const { t, locale } = useI18n();
 const { can } = usePermissions();
 const { error, busy, run } = useAction();
+// Erreurs de la création de session, affichées sous le formulaire (champ par champ) et non en haut de page (FIX-PRI 5).
+const creation = useAction();
 const picker = usePicker();
 const catalogue = ref<ExamCatalogue | null>(null);
 const sessions = ref<ExamSession[]>([]);
@@ -25,6 +27,11 @@ const sheetValues = reactive<Record<string, string>>({});
 const csv = ref('');
 const notice = ref<string | null>(null);
 const draft = reactive({ exam_code: '', level: '', centre: '', sub_centre: '', closes: '', written: '' });
+/**
+ * Niveaux proposés : ceux cochés « niveau d'examen » dans les profils de niveau (le serveur refuse les autres, 422). Avant FIX-PRI 5,
+ * tous les niveaux étaient proposés et le refus restait sans explication à l'écran. Profils illisibles : tous les niveaux (repli).
+ */
+const examLevels = ref<{ id: string; name: string }[]>([]);
 const canManage = computed(() => can(...P.examManage));
 const session = computed(() => sessions.value.find((s) => s.id === sessionId.value) ?? null);
 const kindLabel = (code: string): string => {
@@ -49,7 +56,7 @@ async function loadCandidates(): Promise<void> {
 async function create(): Promise<void> {
   const year = picker.year.value;
   if (!year) return;
-  const created = await run(() => primaryP2.createExamSession({
+  const created = await creation.run(() => primaryP2.createExamSession({
     academic_year_id: year.id, exam_code: draft.exam_code, level_structure_id: draft.level,
     centre_label: draft.centre.trim() || null, sub_centre_label: draft.sub_centre.trim() || null,
     registration_closes_on: draft.closes || null, written_on: draft.written || null,
@@ -108,7 +115,12 @@ onMounted(async () => {
     await picker.load();
     catalogue.value = await primaryP2.examCatalogue();
     draft.exam_code = Object.keys(catalogue.value.kinds)[0] ?? '';
-    draft.level = picker.levels.value[picker.levels.value.length - 1]?.id ?? '';
+    try {
+      examLevels.value = (await primary.profiles()).filter((p) => p.is_exam_level).map((p) => ({ id: p.level_structure_id, name: picker.levelName(p.level_structure_id) }));
+    } catch {
+      examLevels.value = picker.levels.value;
+    }
+    draft.level = examLevels.value[examLevels.value.length - 1]?.id ?? '';
     await loadSessions();
   });
   await loadCandidates();
@@ -135,13 +147,17 @@ onMounted(async () => {
         <h2>{{ t('pri.exam.create') }}</h2>
         <div class="grid2">
           <div class="field"><label for="ex-code">{{ t('pri.exam.exam') }}</label><select id="ex-code" v-model="draft.exam_code"><option v-for="(k, code) in catalogue.kinds" :key="code" :value="code">{{ kindLabel(String(code)) }}</option></select></div>
-          <div class="field"><label for="ex-level">{{ t('pri.exam.level') }}</label><select id="ex-level" v-model="draft.level"><option v-for="l in picker.levels.value" :key="l.id" :value="l.id">{{ l.name }}</option></select></div>
+          <div class="field"><label for="ex-level">{{ t('pri.exam.level') }}</label><select id="ex-level" v-model="draft.level" :aria-invalid="examLevels.length === 0"><option v-for="l in examLevels" :key="l.id" :value="l.id">{{ l.name }}</option></select></div>
           <div class="field"><label for="ex-centre">{{ t('pri.exam.centre') }}</label><input id="ex-centre" v-model="draft.centre" type="text" maxlength="160" /></div>
           <div class="field"><label for="ex-sub">{{ t('pri.exam.subCentre') }}</label><input id="ex-sub" v-model="draft.sub_centre" type="text" maxlength="160" /></div>
           <div class="field"><label for="ex-closes">{{ t('pri.exam.closes') }}</label><input id="ex-closes" v-model="draft.closes" type="date" /></div>
           <div class="field"><label for="ex-written">{{ t('pri.exam.written') }}</label><input id="ex-written" v-model="draft.written" type="date" /></div>
         </div>
-        <button type="submit" class="btn" :disabled="busy || draft.level === ''">{{ t('pri.exam.createButton') }}</button>
+        <p v-if="examLevels.length === 0" class="notice" role="status" data-test="no-exam-level">
+          {{ t('pri.exam.noExamLevel') }} <router-link :to="{ name: 'pri-levels' }">{{ t('pri.exam.openLevels') }}</router-link>
+        </p>
+        <ErrorNotice :error="creation.error.value" />
+        <button type="submit" class="btn" :disabled="busy || creation.busy.value || draft.level === ''">{{ t('pri.exam.createButton') }}</button>
       </form>
     </section>
 

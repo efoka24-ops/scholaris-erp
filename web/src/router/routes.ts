@@ -147,7 +147,8 @@ export const routes: RouteRecordRaw[] = [
     path: '/personnes',
     name: 'people',
     component: () => import('@/views/PeopleView.vue'),
-    meta: { perms: ['people.read'], needsEstablishment: true, titleKey: 'people.title', nav: { labelKey: 'nav.people', order: 50 } },
+    // people.manage suffit (le serveur l'accepte comme lecture complète) : le secrétariat du primaire n'a pas people.read (FIX-PRI 3).
+    meta: { perms: ['people.read', 'people.manage'], needsEstablishment: true, titleKey: 'people.title', nav: { labelKey: 'nav.people', order: 50 } },
   },
   {
     path: '/inscription',
@@ -160,7 +161,7 @@ export const routes: RouteRecordRaw[] = [
     name: 'person',
     component: () => import('@/views/PersonView.vue'),
     props: true,
-    meta: { perms: ['people.read'], needsEstablishment: true, titleKey: 'people.title' },
+    meta: { perms: ['people.read', 'people.manage'], needsEstablishment: true, titleKey: 'people.title' },
   },
   {
     path: '/facturation',

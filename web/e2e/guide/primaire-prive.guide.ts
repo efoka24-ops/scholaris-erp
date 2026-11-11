@@ -61,6 +61,8 @@ test('guide primaire privé : captures', async ({ browser }, info) => {
       fee_item_id: item.data.id, academic_year_id: ctx.year, amount_xaf: 120000,
       terms: [{ due_on: `${y}-10-15`, amount: 40000 }, { due_on: `${y + 1}-01-15`, amount: 40000 }, { due_on: `${y + 1}-04-15`, amount: 40000 }],
     }, { ...opts, expect: 201 });
+    // Frais du service de cantine, avec un code (minuscules) : le forfait de service le choisit dans le catalogue (FIX-PRI 6).
+    await stack.api('POST', '/fee-items', { kind: 'other', code: 'cantine', name: 'Cantine', amount_xaf: 15000 }, { ...opts, expect: 201 });
     const ref = await stack.api('POST', '/payment-references', { guarantor_id: ctx.people.parent }, { ...opts, expect: 201 });
     familyReference = String(ref.data.reference);
   });
@@ -87,7 +89,14 @@ test('guide primaire privé : captures', async ({ browser }, info) => {
   await shot(page, DIR, 'pri-02-accueil-application');
 
   // --- Paramétrage : niveaux, référentiel ---
-  await visit(page, '/primaire/niveaux', 'pri-03-niveaux');
+  // Le CM2 est le niveau du CEP : la direction coche « niveau d'examen » (sinon la session d'examen est refusée, FIX-PRI 5).
+  await attempt("niveaux : niveau d'examen", async () => {
+    await page.goto('/primaire/niveaux');
+    const exam = page.getByRole('listitem').filter({ hasText: 'CM2' }).getByRole('checkbox', { name: /niveau d’examen/i });
+    if (!(await exam.isChecked())) await exam.check();
+    await expect(exam).toBeChecked();
+    await shot(page, DIR, 'pri-03-niveaux');
+  });
   await page.goto('/primaire/referentiel');
   await page.locator('#dm-code').fill('LANG');
   await page.locator('#dm-fr').fill('Langue et communication');
@@ -160,7 +169,7 @@ test('guide primaire privé : captures', async ({ browser }, info) => {
     await shot(sec, DIR, 'pri-04-guichet-facture-documents');
   });
   await sec.context().close();
-  // Fiche de l'élève et ses garants : par l'administrateur (le rôle secrétaire n'ouvre pas « Personnes et inscriptions », G-PRI).
+  // Fiche de l'élève et ses garants (le secrétariat ouvre aussi « Personnes et inscriptions » depuis FIX-PRI 3).
   const adm2 = await actorPage(browser, stack, info);
   await uiLogin(adm2, ...ctx.logins.admin!);
   await visit(adm2, '/personnes', 'pri-04-personnes', 1400);
@@ -396,7 +405,7 @@ test('guide primaire privé : captures', async ({ browser }, info) => {
     await acc2.goto('/primaire/services');
     await acc2.locator('#sv-kind').selectOption({ index: 0 });
     await acc2.locator('#sv-label').fill('Cantine du midi');
-    await acc2.locator('#sv-fee').fill('CANTINE');
+    await acc2.locator('#sv-fee').selectOption('cantine');
     await acc2.locator('#sv-cycle').selectOption({ label: 'Trimestre' }).catch(() => undefined);
     await acc2.locator('#sv-cap').fill('40');
     await shot(acc2, DIR, 'pri-10-services', { maxHeight: 1600 });

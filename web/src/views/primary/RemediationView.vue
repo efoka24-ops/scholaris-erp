@@ -27,15 +27,25 @@ const formLabel = (code: string): string => {
   return f ? (locale.value === 'en' ? f.en : f.fr) : code;
 };
 
+// Chargements successifs (changement de classe, rechargement après enregistrement) : seul le dernier fait foi. Avant FIX-PRI 4, deux
+// chargements simultanés (montage + changement de classe) se croisaient : l'un remettait le registre à vide pendant que l'autre le lisait
+// (« Une erreur inattendue s'est produite »), et la forme de remédiation restait vide (séance refusée).
+let loadSeq = 0;
+
 async function load(): Promise<void> {
+  const seq = ++loadSeq;
+  const classId = picker.classId.value;
   register.value = null;
   plan.value = null;
-  if (picker.classId.value === '') return;
+  if (classId === '') return;
   await run(async () => {
-    register.value = await primaryP2.remediation(picker.classId.value);
-    plans.value = await primaryP2.plans(picker.classId.value);
-    session.form = Object.keys(register.value.forms)[0] ?? '';
-    draftPlan.person = register.value.learners[0]?.person_id ?? '';
+    const reg = await primaryP2.remediation(classId);
+    const list = await primaryP2.plans(classId);
+    if (seq !== loadSeq) return;
+    register.value = reg;
+    plans.value = list;
+    if (!(session.form in reg.forms)) session.form = Object.keys(reg.forms)[0] ?? '';
+    draftPlan.person = reg.learners[0]?.person_id ?? '';
   });
 }
 
@@ -76,10 +86,10 @@ async function addReview(): Promise<void> {
   }
 }
 
+// Le choix de la classe (y compris le premier, posé par picker.load) déclenche le chargement : un seul chargement au montage.
 watch(picker.classId, () => void load());
 onMounted(async () => {
   await run(() => picker.load());
-  await load();
 });
 </script>
 

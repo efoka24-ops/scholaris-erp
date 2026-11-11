@@ -36,7 +36,11 @@ export const useOfflineStore = defineStore('offline', () => {
       const report = await flushQueue();
       lastReport.value = report;
       lastSyncAt.value = new Date().toISOString();
-      if (report.offline) online.value = false;
+      // Seule une requête qui n'aboutit pas signale l'absence de réseau. Avant FIX-PRI 9, une réponse 5xx ou 429 du serveur mettait
+      // l'appareil « hors ligne » sans retour possible (l'événement « online » du navigateur ne vient jamais s'il n'y a pas eu de coupure).
+      // Toute réponse du serveur prouve au contraire que le réseau est là.
+      if (report.unreachable) online.value = false;
+      else if (report.offline || report.unauthorized || report.sent + report.conflicts + report.errors > 0) online.value = true;
       return report;
     } finally {
       syncing.value = false;

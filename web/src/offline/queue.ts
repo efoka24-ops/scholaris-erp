@@ -32,6 +32,11 @@ export interface FlushReport {
   errors: number;
   /** Faux réseau ou serveur injoignable : il reste des éléments à envoyer plus tard. */
   offline: boolean;
+  /**
+   * Réseau réellement coupé (la requête n'a pas abouti). Un serveur qui répond 5xx ou 429 met `offline` à vrai (on réessaiera) mais
+   * PAS `unreachable` : l'appareil est en ligne, il ne faut pas afficher « Vous êtes hors ligne » (FIX-PRI 9).
+   */
+  unreachable?: boolean;
   /** Session expirée : se reconnecter avant de réessayer. */
   unauthorized: boolean;
 }
@@ -116,6 +121,7 @@ async function sendChunk(client: HttpClient, chunk: QueueItem[], report: FlushRe
     if (!(e instanceof ApiError)) throw e;
     if (e.network || e.status >= 500 || e.status === 429) {
       report.offline = true;
+      if (e.network) report.unreachable = true;
       return true;
     }
     if (e.status === 401) {

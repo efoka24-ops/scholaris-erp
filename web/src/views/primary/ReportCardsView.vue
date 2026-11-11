@@ -7,6 +7,7 @@ import ErrorNotice from '@/components/ErrorNotice.vue';
 import { primaryP2, type CouncilSummary, type ReportCard, type ReportSnapshot } from '@/api/primary';
 import { useI18n, type MessageKey } from '@/i18n';
 import { P } from './access';
+import { publishSummary } from './fixes';
 import BulletinCard from './BulletinCard.vue';
 import { usePicker } from './usePicker';
 import { useAction, usePermissions } from './usePri';
@@ -71,7 +72,7 @@ async function publish(): Promise<void> {
   const done = await run(() => primaryP2.publishCards(councilId.value));
   if (done) {
     cards.value = done.items;
-    result.value = t('pri.cards.publishedResult', { published: done.published, notified: done.notified });
+    result.value = publishSummary(t, done);
   }
 }
 

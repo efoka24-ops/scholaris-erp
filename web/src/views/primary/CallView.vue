@@ -5,12 +5,12 @@ import { computed, onMounted, ref, watch } from 'vue';
 import ErrorNotice from '@/components/ErrorNotice.vue';
 import { listStructures } from '@/api/admin';
 import type { AttendanceStatus } from '@/api/types';
-import { clearStatus, loadRoster, saveDraft, setStatus, type Draft, type RosterEntry } from '@/offline/attendance';
+import { clearStatus, saveDraft, setStatus, type Draft, type RosterEntry } from '@/offline/attendance';
 import { useOfflineStore } from '@/stores/offline';
 import { useContextStore } from '@/stores/context';
 import { useI18n, type MessageKey } from '@/i18n';
 import { formatDate, nowHhmm, todayIso } from '@/lib/format';
-import { cachedClasses, counters, DAY_PARTS, loadPartDraft, queuedPart, rememberClasses, submitPartCall, type DayPart } from './offlineCall';
+import { cachedClasses, counters, DAY_PARTS, loadPartDraft, loadPartRoster, queuedPart, rememberClasses, submitPartCall, type DayPart } from './offlineCall';
 
 const { t, locale } = useI18n();
 const ctx = useContextStore();
@@ -52,7 +52,7 @@ async function openClass(): Promise<void> {
   draft.value = null;
   if (classId.value === '') return;
   try {
-    const r = await loadRoster(est.value, classId.value);
+    const r = await loadPartRoster(est.value, classId.value);
     roster.value = r.roster;
     fromCache.value = r.fromCache;
     draft.value = await loadPartDraft(est.value, classId.value, part.value, date);
