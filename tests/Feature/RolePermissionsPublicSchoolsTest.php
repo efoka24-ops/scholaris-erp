@@ -109,6 +109,10 @@ final class RolePermissionsPublicSchoolsTest extends TestCase
         'pub_departmental_delegate' => ['public_primary.exams.consolidate', 'documents.read'],
         'pub_district_inspector' => ['documents.read'],
         'pub_pedagogical_advisor' => ['documents.read'],
+        // database/migrations/202611110830_roles_public_primary_fix_pub.sql (FIX-PUB) : unités de l'école par le directeur,
+        // années scolaires lues par la direction des examens pour ouvrir une session.
+        'pub_school_director' => ['public_primary.referential.school_manage'],
+        'pub_exam_directorate' => ['organisation.read'],
     ];
 
     /** @var array<string, array{level: string, sensitive: bool, label_fr: string, label_en: string}> */
@@ -227,6 +231,7 @@ final class RolePermissionsPublicSchoolsTest extends TestCase
             'saisie des critères : titulaire de classe seulement' => ['public_primary.evaluation.write', ['pub_class_teacher']],
             'avis de l\'inspecteur au deuxième redoublement (RG-PAS-2)' => ['public_primary.promotion.opinion', ['pub_district_inspector']],
             'lot hors ligne (API-04) : R07, R09, R10' => ['sync.batches.submit', ['pub_class_teacher', 'pub_district_inspector', 'pub_school_director']],
+            'référentiel d\'exemple et unités de l\'école (FIX-PUB, paramètre school_may_manage) : directeur seulement' => ['public_primary.referential.school_manage', ['pub_school_director']],
             'gestion des appareils : directeur et administrateur fonctionnel' => ['sync.devices.manage', ['pub_functional_admin', 'pub_school_director']],
         ];
     }

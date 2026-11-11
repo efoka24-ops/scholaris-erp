@@ -219,17 +219,10 @@ test('guide primaire public : captures', async ({ browser }, info) => {
     await director.waitForTimeout(1500);
     await director.getByRole('button', { name: /Importer le référentiel d'exemple/ }).click({ timeout: 10_000 });
     await director.waitForTimeout(2000);
-    const periods = (ctx as unknown as { periods: string[] }).periods ?? [];
-    const y0 = Number(yearLabel().slice(0, 4));
-    const bounds = [[`${y0}-09-01`, `${y0}-12-18`], [`${y0 + 1}-01-04`, `${y0 + 1}-03-26`], [`${y0 + 1}-04-06`, `${y0 + 1}-06-30`]];
-    for (let i = 0; i < 3; i++) {
-      if (!(await director.locator(`#tp-${i}`).count())) break;
-      await director.locator(`#tp-${i}`).fill(periods[i] ?? '');
-      await director.locator(`#ts-${i}`).fill(bounds[i]![0]!);
-      await director.locator(`#te-${i}`).fill(bounds[i]![1]!);
-    }
+    // Trimestres de l'année en cours proposés par leur nom, dates reprises de l'administration (FIX-PUB) : aucun identifiant à saisir.
+    await expect(director.getByText('Inclure le trimestre 1')).toBeVisible();
     await director.getByRole('button', { name: 'Générer les unités' }).click();
-    await director.waitForTimeout(2500);
+    await expect(director.getByText(/Unité 8/)).toBeVisible();
     await shot(director, DIR, 'pub-07-referentiel', { maxHeight: 2600 });
   });
 

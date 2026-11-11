@@ -44,11 +44,19 @@ async function load(): Promise<void> {
   });
 }
 
+// Les trois lectures sont faites ensemble puis appliquées d'un coup : l'état financier et la liste des familles non contributrices
+// ne se contredisent jamais à l'écran (une famille qui vient de payer ne reste pas listée pendant que l'état la compte déjà).
 async function openYear(): Promise<void> {
   if (!yearId.value) return;
-  entries.value = await publicSchoolsP2.apeeEntries(yearId.value);
-  statement.value = await publicSchoolsP2.apeeStatement(yearId.value);
-  nonPayers.value = canSeeNames.value ? await publicSchoolsP2.nonContributors(yearId.value) : null;
+  const id = yearId.value;
+  const [list, sheet, names] = await Promise.all([
+    publicSchoolsP2.apeeEntries(id),
+    publicSchoolsP2.apeeStatement(id),
+    canSeeNames.value ? publicSchoolsP2.nonContributors(id) : Promise.resolve(null),
+  ]);
+  entries.value = list;
+  statement.value = sheet;
+  nonPayers.value = names;
 }
 
 async function sendVote(): Promise<void> {
@@ -82,9 +90,13 @@ async function record(): Promise<void> {
       proof_ref: e.proof_ref || undefined,
       client_uuid: ulid(),
     });
-    done.value = res.receipt_number ? t('pp.apee.receipt', { number: res.receipt_number }) : res.state === 'pending' ? t('pp.apee.pending') : t('pp.apee.recorded');
     entry.value = { ...entry.value, amount: 0, family_ref: '', label: '', proof_ref: '', operator_ref: '' };
-    await openYear();
+    // Message de réussite affiché une fois l'état et les listes relus : l'écran annoncé est déjà à jour.
+    try {
+      await openYear();
+    } finally {
+      done.value = res.receipt_number ? t('pp.apee.receipt', { number: res.receipt_number }) : res.state === 'pending' ? t('pp.apee.pending') : t('pp.apee.recorded');
+    }
   });
 }
 

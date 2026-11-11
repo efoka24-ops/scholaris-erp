@@ -18,14 +18,18 @@ use Scholaris\Modules\Apps\PublicPrimary\Support\Rules;
 
 /**
  * Référentiel national (EX-EVA-01), unités d'apprentissage (EX-EVA-02) et paramètres effectifs de la Primaire publique. Lecture : tout
- * acteur de l'évaluation ou du passage. Écriture : `public_primary.referential.manage` seulement (Inspection générale R04,
- * administrateur fonctionnel R21 : RG-TER-6, l'école ne modifie pas le référentiel).
+ * acteur de l'évaluation ou du passage. Écriture : `public_primary.referential.manage` (Inspection générale R04, administrateur
+ * fonctionnel R21 : RG-TER-6) ; le directeur (R09, `public_primary.referential.school_manage` sur toute l'école) importe le
+ * référentiel d'exemple et génère les unités tant que le paramètre `public_primary.referential.school_may_manage` le permet (pilote
+ * sans niveau national ; décision du ministère, à confirmer).
  */
 final class ReferentialController
 {
     public const MANAGE = 'public_primary.referential.manage';
+    public const SCHOOL_MANAGE = 'public_primary.referential.school_manage';
+    public const SCHOOL_MAY_MANAGE = 'public_primary.referential.school_may_manage';
     public const READERS = [
-        self::MANAGE, 'public_primary.evaluation.write', 'public_primary.evaluation.validate', 'public_primary.promotion.write',
+        self::MANAGE, self::SCHOOL_MANAGE,'public_primary.evaluation.write', 'public_primary.evaluation.validate', 'public_primary.promotion.write',
         'public_primary.promotion.validate', 'public_primary.promotion.opinion',
     ];
 
@@ -134,10 +138,19 @@ final class ReferentialController
     private function manager(ServerRequestInterface $request): Principal
     {
         $principal = Input::principal($request);
-        if ($this->scope->reach($principal, self::MANAGE, Input::establishment($request))->isEmpty()) {
-            throw HttpException::forbidden('Le référentiel national se règle au niveau national (RG-TER-6) : permission ' . self::MANAGE . ' requise.');
+        $establishmentId = Input::establishment($request);
+        if (!$this->scope->reach($principal, self::MANAGE, $establishmentId)->isEmpty()) {
+            return $principal;
+        }
+        if ($this->scope->reach($principal, self::SCHOOL_MANAGE, $establishmentId)->wholeSchool) {
+            if ($this->rules->bool($principal->tenantId, $establishmentId, self::SCHOOL_MAY_MANAGE)) {
+                return $principal;
+            }
+
+            throw HttpException::forbidden('Le référentiel et le calendrier des unités sont réglés au niveau national (RG-TER-6, paramètre '
+                . self::SCHOOL_MAY_MANAGE . ') : adressez-vous à l\'Inspection générale ou à l\'administrateur fonctionnel.');
         }
 
-        return $principal;
+        throw HttpException::forbidden('Le référentiel national se règle au niveau national (RG-TER-6) : permission ' . self::MANAGE . ' requise.');
     }
 }

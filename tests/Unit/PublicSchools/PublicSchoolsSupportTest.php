@@ -29,7 +29,9 @@ final class PublicSchoolsSupportTest extends TestCase
         'pub_departmental_delegate' => ['public_primary.exams.consolidate', 'public_primary.exams.attest'],
         'pub_inspection_general' => ['public_schools.inspection.manage'],
         'pub_functional_admin' => ['public_schools.inspection.manage'],
-        'pub_school_director' => ['public_schools.canteen.read'],
+        // 202611110830_roles_public_primary_fix_pub.sql (FIX-PUB) : unités de l'école, années scolaires pour la direction des examens.
+        'pub_school_director' => ['public_schools.canteen.read', 'public_primary.referential.school_manage'],
+        'pub_exam_directorate' => ['organisation.read'],
         'pub_canteen_manager' => ['public_schools.canteen.read'],
         'pub_school_health_agent' => ['public_schools.canteen.read'],
     ];

@@ -69,6 +69,10 @@ final class Rules
             'default' => 8, 'status' => 'cdc_default',
             'source' => 'Curriculum 2018 niveau 1 (8 centres d\'intérêt d\'environ un mois), repris par le CDC (EX-EVA-02).',
         ],
+        'public_primary.referential.school_may_manage' => [
+            'default' => true, 'status' => 'to_confirm',
+            'source' => 'RG-TER-6 : le référentiel et le calendrier des unités se règlent au niveau national. Tant qu\'aucun niveau national n\'est déployé (pilote d\'une école), le directeur importe le référentiel d\'exemple et génère les unités de son école ; l\'Inspection générale ou l\'administrateur fonctionnel met false pour le réserver au niveau national.',
+        ],
         'public_primary.evaluation.evaluation_week_days' => [
             'default' => 7, 'status' => 'cdc_default',
             'source' => 'CDC public : dernière semaine de chaque unité pour l\'intégration, l\'évaluation et la remédiation.',

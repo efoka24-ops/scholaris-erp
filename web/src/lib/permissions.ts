@@ -105,7 +105,8 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
   // Écoles publiques (migration 202610152351_roles_public_schools.sql) : R01-R10 et R15-R21 ; R13 est le rôle « parent » ci-dessus.
   // Maternelle publique (migration 202610161240_roles_public_nursery.sql) : R11 et R12 ; R14 n'est pas un compte.
   pub_cabinet: ['public_schools.aggregates.read'],
-  pub_exam_directorate: ['public_schools.aggregates.read', 'public_primary.exams.consolidate', 'public_primary.exams.import'],
+  // Migration 202611110830 (FIX-PUB) : organisation.read pour ouvrir une session d'examen (années scolaires).
+  pub_exam_directorate: ['public_schools.aggregates.read', 'public_primary.exams.consolidate', 'public_primary.exams.import', 'organisation.read'],
   pub_planning: ['public_schools.aggregates.read', 'public_schools.census.validate'],
   pub_inspection_general: ['public_schools.aggregates.read', 'public_schools.inspection.read', 'documents.templates.manage', 'public_primary.referential.manage', 'public_schools.inspection.manage'],
   pub_regional_delegate: [
@@ -136,6 +137,8 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     'documents.read', 'public_nursery.contribution.manage', 'public_nursery.register.read',
     // Migration 202610281401 (lot P3) : consultation de la cantine et des campagnes de santé.
     'public_schools.canteen.read',
+    // Migration 202611110830 (FIX-PUB) : référentiel d'exemple et unités de l'école, si le paramètre school_may_manage le permet.
+    'public_primary.referential.school_manage',
   ],
   pub_class_teacher: [
     'public_schools.school.read', 'public_schools.pupils.read', 'public_schools.attendance.read', 'public_schools.attendance.write',

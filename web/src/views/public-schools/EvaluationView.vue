@@ -2,7 +2,7 @@
 // Saisie des critères (EX-EVA-03, API-06) sur téléphone et hors ligne : une discipline à la fois, une ligne par élève, une case par
 // critère et par occasion (un appui : réussi, deux : échoué, trois : absent). La saisie est gardée chiffrée sur l'appareil et envoyée
 // dès que le réseau est là ; les mentions (A, ECA, NA selon l'échelle paramétrée) sont calculées par le serveur.
-import { computed, onMounted, ref } from 'vue';
+import { computed, ref } from 'vue';
 import ErrorNotice from '@/components/ErrorNotice.vue';
 import { publicPrimary, type ClassRow, type Grid, type LearningUnit, type Outcome } from '@/api/publicSchools';
 import { useI18n } from '@/i18n';
@@ -54,7 +54,8 @@ function mentionOf(personId: string): string {
 }
 const frozen = (personId: string): boolean => grid.value?.frozen.includes(personId) === true;
 
-onMounted(async () => {
+// Chargement à l'ouverture du coffre (VaultGate) : les listes sont gardées chiffrées, rien ne se lit ni ne s'écrit coffre fermé.
+async function start(): Promise<void> {
   queue.value = await listChecksQueue().catch(() => []);
   await run(async () => {
     let year: { id: string; label: string } | null;
@@ -71,7 +72,7 @@ onMounted(async () => {
     classes.value = res.classes;
     fromCache.value = res.fromCache;
   });
-});
+}
 
 async function openClass(): Promise<void> {
   grid.value = null;
@@ -143,7 +144,7 @@ async function discard(uuid: string): Promise<void> {
       <h1>{{ t('pp.eval.title') }}</h1>
       <p class="lede">{{ t('pp.eval.intro') }}</p>
     </header>
-    <VaultGate>
+    <VaultGate @unlocked="start">
       <ErrorNotice :error="error" />
       <p v-if="!offline.online" class="notice notice--warning" role="status">{{ t('pp.eval.offline') }}</p>
       <p v-if="fromCache" class="muted" role="status">{{ t('ps.call.fromCache') }}</p>

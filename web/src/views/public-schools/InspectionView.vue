@@ -3,7 +3,7 @@
 // chiffré, rejeu idempotent, conflits conservés), comptage sur place comparé au registre (O1), recommandations suivies à la visite
 // suivante, rapport DOC-26 transmis au directeur, signalement d'un frais exigé illégalement. Le directeur et l'enseignant lisent
 // leurs rapports ; les grilles se règlent au niveau national.
-import { computed, onMounted, ref } from 'vue';
+import { computed, ref } from 'vue';
 import ErrorNotice from '@/components/ErrorNotice.vue';
 import {
   openDocument,
@@ -54,7 +54,8 @@ const grid = computed(() => grids.value.find((g) => g.id === (current.value?.gri
 const scaleLabel = (s: ScaleCode): string => (locale.value === 'en' ? s.label_en : s.label_fr);
 const itemLabel = (i: { label_fr: string; label_en: string }): string => (locale.value === 'en' ? i.label_en : i.label_fr);
 
-onMounted(async () => {
+// Chargement à l'ouverture du coffre (VaultGate) : les listes sont gardées chiffrées, rien ne se lit ni ne s'écrit coffre fermé.
+async function loadAll(): Promise<void> {
   await run(async () => {
     const loaded = await loadGrids();
     grids.value = loaded.grids;
@@ -66,7 +67,7 @@ onMounted(async () => {
     }
   });
   await refresh();
-});
+}
 
 async function refresh(): Promise<void> {
   queue.value = await listVisitQueue();
@@ -169,7 +170,7 @@ async function handleFee(f: FeeReport, state: string): Promise<void> {
     <p v-if="done" class="notice notice--success" role="status">{{ done }}</p>
     <p v-if="fromCache" class="notice">{{ t('ps.ins.offline') }}</p>
 
-    <VaultGate>
+    <VaultGate @unlocked="loadAll">
       <section v-if="queue.length > 0" class="card" aria-labelledby="in-queue">
         <h2 id="in-queue">{{ t('ps.ins.queue', { n: queue.length }) }}</h2>
         <ul class="rows">

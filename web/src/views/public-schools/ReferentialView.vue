@@ -4,15 +4,24 @@
 // de départ, leur statut (texte officiel, valeur du cahier des charges, à confirmer) et leur source. Aucune valeur n'est en dur.
 import { computed, onMounted, ref } from 'vue';
 import ErrorNotice from '@/components/ErrorNotice.vue';
+import { listPeriods } from '@/api/admin';
 import { publicPrimary, type Frame, type LearningUnit, type SettingRow } from '@/api/publicSchools';
 import { useI18n } from '@/i18n';
 import { formatDate } from '@/lib/format';
 import { useContextStore } from '@/stores/context';
-import { useAction } from './usePs';
+import { currentYear, useAction } from './usePs';
 
 const { t, locale } = useI18n();
 const ctx = useContextStore();
 const { error, busy, run } = useAction();
+
+interface TrimesterLine {
+  period_id: string;
+  ordinal: number;
+  included: boolean;
+  starts_on: string;
+  ends_on: string;
+}
 
 const settings = ref<SettingRow[]>([]);
 const frames = ref<Frame[]>([]);
@@ -20,18 +29,27 @@ const units = ref<LearningUnit[]>([]);
 const level = ref('CE1');
 const subsystem = ref('francophone');
 const yearLabel = ref('');
-const trimesters = ref([
-  { period_id: '', starts_on: '', ends_on: '' },
-  { period_id: '', starts_on: '', ends_on: '' },
-  { period_id: '', starts_on: '', ends_on: '' },
-]);
-const canManage = computed(() => ctx.can('public_primary.referential.manage'));
+// Trimestres de l'année en cours (Organisation), choisis par leur nom ; jamais d'identifiant technique à saisir.
+const trimesters = ref<TrimesterLine[]>([]);
+// Le directeur (R09) règle le référentiel de son école si le paramètre national le permet (RG-TER-6) ; le serveur reste juge.
+const schoolMayManage = computed(() => settings.value.find((s) => s.key === 'public_primary.referential.school_may_manage')?.value !== false);
+const nationalManager = computed(() => ctx.can('public_primary.referential.manage'));
+const schoolManager = computed(() => ctx.can('public_primary.referential.school_manage'));
+const canManage = computed(() => nationalManager.value || (schoolManager.value && schoolMayManage.value));
+const nationalOnly = computed(() => !nationalManager.value && schoolManager.value && !schoolMayManage.value);
+const chosen = computed(() => trimesters.value.filter((x) => x.included));
 const statusLabel = (s: SettingRow['status']): string => t(s === 'official' ? 'pp.ref.official' : s === 'cdc_default' ? 'pp.ref.cdc' : 'pp.ref.toConfirm');
 const show = (v: unknown): string => (typeof v === 'string' ? v : JSON.stringify(v));
 
 onMounted(async () => {
   await run(async () => {
     settings.value = await publicPrimary.settings();
+    if (!canManage.value) return;
+    const year = await currentYear();
+    if (!year) return;
+    if (!yearLabel.value) yearLabel.value = year.label;
+    const periods = (await listPeriods(year.id)).filter((p) => p.kind === 'trimester').sort((a, b) => a.ordinal - b.ordinal);
+    trimesters.value = periods.map((p) => ({ period_id: p.id, ordinal: p.ordinal, included: true, starts_on: p.starts_on.slice(0, 10), ends_on: p.ends_on.slice(0, 10) }));
   });
 });
 
@@ -51,7 +69,11 @@ async function importExample(): Promise<void> {
 
 async function generate(): Promise<void> {
   await run(async () => {
-    units.value = await publicPrimary.generateUnits({ year_label: yearLabel.value, level_code: level.value, trimesters: trimesters.value.filter((x) => x.period_id !== '') });
+    units.value = await publicPrimary.generateUnits({
+      year_label: yearLabel.value,
+      level_code: level.value,
+      trimesters: chosen.value.map((x) => ({ period_id: x.period_id, starts_on: x.starts_on, ends_on: x.ends_on })),
+    });
   });
 }
 </script>
@@ -91,14 +113,16 @@ async function generate(): Promise<void> {
       <h2 id="rf-units">{{ t('pp.ref.units') }}</h2>
       <ul><li v-for="u in units" :key="u.id">{{ t('pp.common.unitLabel', { n: u.unit_no }) }} · {{ formatDate(u.starts_on) }} – {{ formatDate(u.ends_on) }} · {{ t('pp.ref.evalWeek') }} {{ formatDate(u.evaluation_week_from) }}<span v-if="u.is_final_integration"> · {{ t('pp.ref.final') }}</span></li></ul>
       <form v-if="canManage" class="controls" @submit.prevent="generate">
-        <fieldset v-for="(tr, i) in trimesters" :key="i" class="line">
-          <legend>{{ t('pp.cards.trimester', { n: i + 1 }) }}</legend>
-          <div class="field"><label :for="`tp-${i}`">{{ t('pp.ref.periodId') }}</label><input :id="`tp-${i}`" v-model="tr.period_id" type="text" /></div>
-          <div class="field"><label :for="`ts-${i}`">{{ t('pp.ref.from') }}</label><input :id="`ts-${i}`" v-model="tr.starts_on" type="date" /></div>
-          <div class="field"><label :for="`te-${i}`">{{ t('pp.ref.to') }}</label><input :id="`te-${i}`" v-model="tr.ends_on" type="date" /></div>
+        <p v-if="trimesters.length === 0" class="muted">{{ t('pp.ref.noTrimesters') }}</p>
+        <fieldset v-for="(tr, i) in trimesters" :key="tr.period_id" class="line">
+          <legend>{{ t('pp.cards.trimester', { n: tr.ordinal }) }}</legend>
+          <label class="check"><input :id="`tp-${i}`" v-model="tr.included" type="checkbox" />{{ t('pp.ref.include', { n: tr.ordinal }) }}</label>
+          <div class="field"><label :for="`ts-${i}`">{{ t('pp.ref.from') }}</label><input :id="`ts-${i}`" v-model="tr.starts_on" type="date" :disabled="!tr.included" /></div>
+          <div class="field"><label :for="`te-${i}`">{{ t('pp.ref.to') }}</label><input :id="`te-${i}`" v-model="tr.ends_on" type="date" :disabled="!tr.included" /></div>
         </fieldset>
-        <button type="submit" class="btn btn--primary" :disabled="busy || !yearLabel">{{ t('pp.ref.generate') }}</button>
+        <button type="submit" class="btn btn--primary" :disabled="busy || !yearLabel || chosen.length === 0">{{ t('pp.ref.generate') }}</button>
       </form>
+      <p v-else-if="nationalOnly" class="notice" role="note">{{ t('pp.ref.nationalOnly') }}</p>
     </section>
 
     <section class="card" aria-labelledby="rf-settings">
@@ -124,4 +148,5 @@ async function generate(): Promise<void> {
 <style scoped>
 .controls { display: grid; gap: 8px; }
 .line { border: 1px solid var(--input-border); padding: 8px; display: grid; gap: 6px; }
+.check { display: inline-flex; gap: 6px; align-items: center; }
 </style>

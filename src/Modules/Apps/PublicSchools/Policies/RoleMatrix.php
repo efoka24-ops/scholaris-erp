@@ -42,7 +42,7 @@ final class RoleMatrix
             'label_fr' => 'Direction des examens, concours et certification', 'label_en' => 'Directorate of examinations, competitions and certification',
             'permissions' => [
                 'public_schools.aggregates.read', 'public_primary.exams.consolidate', 'public_primary.exams.import',
-                'reporting.territory_aggregates.read',
+                'reporting.territory_aggregates.read', 'organisation.read',
             ],
         ],
         'pub_planning' => [
@@ -108,6 +108,7 @@ final class RoleMatrix
                 'public_primary.evaluation.publish', 'public_primary.evaluation.rectify', 'public_primary.promotion.validate',
                 'public_primary.exams.write', 'organisation.read', 'sync.batches.submit', 'sync.devices.manage', 'identity.named_access.read',
                 'documents.read', 'public_nursery.contribution.manage', 'public_nursery.register.read', 'public_schools.canteen.read',
+                'public_primary.referential.school_manage',
             ],
         ],
         'pub_class_teacher' => [

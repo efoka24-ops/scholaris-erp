@@ -8,7 +8,8 @@ import type { Stack } from '../specs/stack';
 const here = dirname(fileURLToPath(import.meta.url));
 export const ROOT = join(here, '..', '..', '..');
 export const PRIVATE_IMAGES = join(ROOT, 'specs', '003-application-primaire', 'guide', 'images');
-export const PUBLIC_IMAGES = join(ROOT, 'specs', '004-applications-primaire-maternelle-publiques', 'primaire', 'guide', 'images');
+// GUIDE_PUBLIC_IMAGES : dossier de sortie d'un rejeu de contrôle, sans toucher aux images du guide.
+export const PUBLIC_IMAGES = process.env.GUIDE_PUBLIC_IMAGES ?? join(ROOT, 'specs', '004-applications-primaire-maternelle-publiques', 'primaire', 'guide', 'images');
 
 /** Liste des captures faites (nom, titre de page) : affichée en fin de script pour le rapport. */
 export const shots: string[] = [];
