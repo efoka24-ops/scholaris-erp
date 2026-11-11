@@ -84,11 +84,12 @@ final class RolePermissionsTest extends TestCase
     public static function primaryRoles(): array
     {
         return [
+            // FIX-PRI (migration 202611110745) : appel ouvert à la direction (attendance.read, attendance.take).
             // P-002 (migration 202610231411) : conseil, bulletins, remédiation, examen, tutelle, services, sortie sécurisée (lecture).
             'primary_promoteur' => ['primary_promoteur', false, ['primary.dashboard.read', 'reporting.read', 'primary.referential.read', 'primary.learner.read', 'primary.competency.read', 'primary.conduct.read', 'primary.journal.read',
                 'primary.council.read', 'primary.report_card.read', 'primary.remediation.read', 'primary.exam.read', 'primary.tutelage.export', 'primary.services.read', 'organisation.read']],
             'primary_directeur' => ['primary_directeur', true, ['primary.settings.manage', 'primary.council.preside', 'primary.report_card.sign', 'assessment.correction.approve', 'primary.promotion.decide', 'primary.dashboard.read', 'primary.referential.read', 'primary.learner.read', 'primary.competency.read', 'primary.competency.validate', 'primary.conduct.read', 'primary.journal.read',
-                'primary.council.read', 'primary.report_card.read', 'primary.remediation.read', 'primary.remediation.write', 'primary.exam.read', 'primary.exam.manage', 'primary.tutelage.export', 'primary.services.read', 'primary.pickup.read', 'primary.pickup.handover', 'organisation.read']],
+                'primary.council.read', 'primary.report_card.read', 'primary.remediation.read', 'primary.remediation.write', 'primary.exam.read', 'primary.exam.manage', 'primary.tutelage.export', 'primary.services.read', 'primary.pickup.read', 'primary.pickup.handover', 'organisation.read', 'attendance.read', 'attendance.take']],
             'primary_adjoint' => ['primary_adjoint', false, ['primary.referential.manage', 'assessment.validate', 'scheduling.manage', 'primary.referential.read', 'primary.learner.read', 'primary.competency.read', 'primary.competency.validate', 'primary.conduct.read', 'primary.journal.read',
                 'primary.council.read', 'primary.report_card.read', 'primary.remediation.read', 'primary.remediation.write', 'primary.exam.read', 'organisation.read']],
             'primary_secretaire' => ['primary_secretaire', false, ['people.manage', 'primary.enrol', 'documents.issue', 'primary.exam.manage', 'primary.referential.read', 'primary.learner.read',
