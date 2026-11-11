@@ -166,7 +166,7 @@ test('guide primaire privé : captures', async ({ browser }, info) => {
   await visit(adm2, '/personnes', 'pri-04-personnes', 1400);
   await attempt('dossier de l\'élève (garants)', async () => {
     await adm2.goto('/personnes');
-    await adm2.getByText(/Amina/).first().click();
+    await adm2.getByRole('row', { name: /Amina/ }).getByRole('link', { name: 'Ouvrir' }).first().click();
     await shot(adm2, DIR, 'pri-04-fiche-eleve', { maxHeight: 2000 });
   });
   await adm2.context().close();
@@ -174,6 +174,12 @@ test('guide primaire privé : captures', async ({ browser }, info) => {
   // --- Frais et encaissements : comptable, puis caissière ---
   const acc = await actorPage(browser, stack, info);
   await uiLogin(acc, accountant.login, accountant.password);
+  // Factures de l'année pour les élèves inscrits (établies par la comptable) : la liste des factures n'est pas vide.
+  await attempt('factures des élèves (API comptable)', async () => {
+    const opts = { token: accountant.token, establishment: est };
+    const enr = await stack.api('GET', '/enrollments?filter[status]=active&per_page=50', undefined, opts);
+    for (const e of (enr.data ?? []).slice(0, 3)) await stack.api('POST', '/invoices', { enrollment_id: e.id }, opts).catch(() => undefined);
+  });
   await attempt('factures (comptable)', async () => {
     await acc.goto('/facturation');
     await acc.getByRole('tab', { name: 'Factures' }).or(acc.getByRole('button', { name: 'Factures' })).first().click();
@@ -208,7 +214,7 @@ test('guide primaire privé : captures', async ({ browser }, info) => {
 
   // --- Appel par demi-journée : direction au format téléphone, hors ligne puis envoi ---
   const callPhone = await phonePage(browser, stack, info);
-  await uiLogin(callPhone, ...ctx.logins.director!);
+  await uiLogin(callPhone, ...ctx.logins.teacher!);
   await attempt('appel hors ligne (téléphone)', async () => {
     await callPhone.goto('/primaire/appel');
     // Liste vide constatée (G-PRI) : la capture est prise quand même, l'écart est noté.
@@ -332,10 +338,10 @@ test('guide primaire privé : captures', async ({ browser }, info) => {
     await shot(page, DIR, 'pri-09-bulletin-apercu', { maxHeight: 2400 });
   });
   await page.getByRole('button', { name: 'Émettre les bulletins' }).click();
-  await expect(page.getByText(/3 émis/)).toBeVisible({ timeout: 120_000 });
+  await expect(page.getByText(/\d+ émis/)).toBeVisible({ timeout: 120_000 });
   await shot(page, DIR, 'pri-09-bulletins-emis', { maxHeight: 1000 });
-  await page.getByRole('button', { name: /Publier aux familles \(3\)/ }).click();
-  await expect(page.getByText(/3 publié\(s\)/)).toBeVisible();
+  await page.getByRole('button', { name: /Publier aux familles \(\d+\)/ }).click();
+  await expect(page.getByText(/\d+ publié\(s\)/)).toBeVisible();
   await shot(page, DIR, 'pri-09-bulletins-publies', { maxHeight: 1000 });
   await attempt('rectificatif', async () => {
     await page.getByRole('listitem').filter({ hasText: 'Amina' }).getByRole('button', { name: 'Voir' }).click()

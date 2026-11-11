@@ -64,6 +64,8 @@ Chacun ne voit que les cartes de son rôle. Un maître, par exemple, voit l'appe
 
 **Qui** : le directeur. **Où** : **École primaire**, cadre **Démarrage**.
 
+![Le cadre Démarrage avant les réglages](images/pri-02-demarrage.png)
+
 À la première ouverture, le cadre **Démarrage** liste quelques réglages recommandés pour une école primaire (par exemple l'appel par demi-journée), avec leur valeur **actuel** et **recommandé**.
 
 1. Lisez la liste.

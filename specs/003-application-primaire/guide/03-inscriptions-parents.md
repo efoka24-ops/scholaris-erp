@@ -80,9 +80,7 @@ Le message **Inscription validée** (dossier complet) ou **Inscription sous rés
 ![Liste des personnes](images/pri-04-personnes.png)
 
 1. Cherchez l'élève par son nom.
-2. Cliquez sur son nom : sa fiche s'ouvre.
-
-![Fiche de l'élève](images/pri-04-fiche-eleve.png)
+2. Cliquez sur **Ouvrir** sur sa ligne : sa fiche s'ouvre.
 
 La fiche regroupe l'identité, l'inscription de l'année, les parents et les **garants financiers**. Depuis la fiche, vous pouvez ajouter un garant financier oublié.
 

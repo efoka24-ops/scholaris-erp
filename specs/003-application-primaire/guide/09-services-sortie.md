@@ -15,7 +15,7 @@
 5. **Capacité (facultatif)** : le nombre de places ; **Circuit ou lieu (facultatif)** pour le transport.
 6. Cliquez sur **Créer le forfait**. Le message « Forfait créé. » s'affiche.
 
-![Forfait ouvert : abonnés, facturation, présence](images/pri-10-services-forfait.png)
+> Point constaté pendant la préparation de ce guide : sur l'école d'essai, **Créer le forfait** n'a pas abouti avec un code de frais absent du catalogue. Saisissez exactement le code d'un frais existant (demandez-le à la comptable).
 
 ### Abonner un élève
 

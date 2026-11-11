@@ -17,9 +17,9 @@ Avant de commencer : le niveau d'examen (CM2 ou Class 6) doit être coché **Niv
 3. Saisissez la date de **Fin des inscriptions** et la date des **Épreuves le**.
 4. Cliquez sur **Créer la session**. Elle est en **Préparation**.
 
-## 8.2 Inscrire les candidats et attribuer les numéros
+> Point constaté pendant la préparation de ce guide : sur l'école d'essai, **Créer la session** a été refusé par le serveur (données jugées invalides) sans message clair à l'écran. Si cela vous arrive, vérifiez que la date de fin des inscriptions précède la date des épreuves, puis signalez-le à l'équipe SCHOLARIS. Les étapes suivantes sont décrites d'après l'écran.
 
-![Liste des candidats](images/pri-10-examen-candidats.png)
+## 8.2 Inscrire les candidats et attribuer les numéros
 
 1. Cliquez sur **Inscrire les élèves du niveau**. Tous les élèves inscrits au niveau d'examen deviennent candidats. Le message indique « n candidat(s) inscrit(s), n déjà inscrit(s). » Un élève n'est jamais inscrit deux fois.
 2. Cliquez sur **Attribuer les numéros**. Chaque candidat reçoit un numéro (exemple : CEP-0001).
@@ -29,8 +29,6 @@ Avant de commencer : le niveau d'examen (CM2 ou Class 6) doit être coché **Niv
 L'en-tête de la session compte les inscrits, admis, ajournés et absents, et le taux de réussite.
 
 ## 8.3 La fiche d'inscription
-
-![Fiche d'inscription du candidat](images/pri-10-examen-fiche.png)
 
 1. Cliquez sur **Fiche** sur la ligne du candidat.
 2. Complétez les champs demandés (lieu de naissance, nom du père, nom de la mère, numéro de carte scolaire…). L'écran signale « n champ(s) obligatoire(s) à compléter. »

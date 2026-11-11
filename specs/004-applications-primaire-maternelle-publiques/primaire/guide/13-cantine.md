@@ -4,7 +4,9 @@
 
 « Repas servis par classe, stocks, campagnes de santé en effectifs avec le consentement des parents. **Aucun dossier médical.** »
 
-![Cantine et santé scolaire](images/pub-13-cantine.png)
+![Cantine et santé scolaire, vue du directeur (consultation)](images/pub-13-cantine.png)
+
+Le responsable de la cantine voit le même écran, avec les zones de saisie actives.
 
 ## 13.1 Repas servis
 

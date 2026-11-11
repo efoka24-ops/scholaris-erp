@@ -63,6 +63,8 @@ L'arrêté du 14 août 2026 rend obligatoires deux outils : le **registre de rem
 
 Le **Suivi hebdomadaire** compare, semaine par semaine, les minutes faites au temps attendu.
 
+> Point constaté pendant la préparation de ce guide : sur l'école d'essai, l'écran du maître affichait les élèves par un code (suite de lettres et de chiffres) au lieu de leur nom, avec le bandeau « Une erreur inattendue s'est produite ». Si c'est votre cas, cochez les élèves dans l'ordre de la liste de la classe et signalez-le à la direction.
+
 ### Fiche de suivi individualisée
 
 1. Dans **Nouvelle fiche**, choisissez l'élève, décrivez les **Difficultés** et les **Actions** prévues, puis **Ouvrir la fiche**.

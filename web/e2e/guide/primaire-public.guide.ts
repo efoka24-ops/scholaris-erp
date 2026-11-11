@@ -49,7 +49,7 @@ async function scopedUser(admin: Account, first: string, last: string, role: str
   const opts = { token: admin.token, establishment: ctx.establishment };
   const created = await stack.api('POST', '/users', { first_name: first, last_name: last, phone }, { ...opts, expect: 201 });
   const person = String(created.data.person_id);
-  await stack.api('POST', '/role-assignments', { person_id: person, role, scope_type: scopeType, scope_id: scopeId, establishment_id: ctx.establishment }, { ...opts, expect: 201 });
+  await stack.api('POST', '/role-assignments', { person_id: person, role, scope_type: scopeType, scope_id: scopeId, ...(scopeType === 'tenant' ? { establishment_id: ctx.establishment } : {}) }, { ...opts, expect: 201 });
   const password = 'Recette-E2E-' + randomBytes(4).toString('hex') + '!';
   await stack.activate(phone, password);
   const { token } = await stack.login(phone, password);
@@ -71,6 +71,11 @@ async function enrolPupil(page: Page, last: string, first: string, gender: 'Fill
   if (capture) await shot(page, DIR, capture, { maxHeight: 1800 });
   await page.getByRole('button', { name: "Inscrire l'élève" }).click();
   await expect(page.getByText('Élève inscrit').first()).toBeVisible();
+}
+
+function yearLabel(): string {
+  const n = new Date();
+  return `${n.getFullYear() - (n.getMonth() < 7 ? 1 : 0)}-${n.getFullYear() + (n.getMonth() < 7 ? 0 : 1)}`;
 }
 
 test('guide primaire public : captures', async ({ browser }, info) => {
@@ -190,7 +195,8 @@ test('guide primaire public : captures', async ({ browser }, info) => {
   // --- 3. Directeur : cahier d'appel, présence des enseignants, alertes, personnel, messages ---
   await attempt('cahier d\'appel', async () => {
     await director.goto('/ecole-publique/classes');
-    await director.getByRole('link', { name: /Cahier d.appel/ }).first().click();
+    await director.getByRole('region', { name: "Classes de l'année" }).getByRole('button', { name: 'Détails' }).first().click();
+    await director.getByRole('link', { name: /Cahier d.appel de/ }).first().click();
     await shot(director, DIR, 'pub-05-cahier-appel', { maxHeight: 1800 });
   });
   await attempt('présence des enseignants', async () => {
@@ -207,18 +213,39 @@ test('guide primaire public : captures', async ({ browser }, info) => {
   // --- 4. Référentiel et unités d'apprentissage ---
   await attempt('référentiel d\'exemple', async () => {
     await director.goto('/ecole-publique/referentiel');
-    await director.getByRole('button', { name: /Importer le référentiel d'exemple/ }).click();
+    await director.locator('#rf-level').fill('CM2');
+    await director.locator('#rf-year').fill(yearLabel());
+    await director.getByRole('button', { name: 'Afficher', exact: true }).click();
     await director.waitForTimeout(1500);
+    await director.getByRole('button', { name: /Importer le référentiel d'exemple/ }).click({ timeout: 10_000 });
+    await director.waitForTimeout(2000);
+    const periods = (ctx as unknown as { periods: string[] }).periods ?? [];
+    const y0 = Number(yearLabel().slice(0, 4));
+    const bounds = [[`${y0}-09-01`, `${y0}-12-18`], [`${y0 + 1}-01-04`, `${y0 + 1}-03-26`], [`${y0 + 1}-04-06`, `${y0 + 1}-06-30`]];
+    for (let i = 0; i < 3; i++) {
+      if (!(await director.locator(`#tp-${i}`).count())) break;
+      await director.locator(`#tp-${i}`).fill(periods[i] ?? '');
+      await director.locator(`#ts-${i}`).fill(bounds[i]![0]!);
+      await director.locator(`#te-${i}`).fill(bounds[i]![1]!);
+    }
     await director.getByRole('button', { name: 'Générer les unités' }).click();
-    await director.waitForTimeout(1500);
+    await director.waitForTimeout(2500);
     await shot(director, DIR, 'pub-07-referentiel', { maxHeight: 2600 });
   });
 
   // --- 5. Instituteur (ordinateur) : évaluation par critères, remédiation, bulletins ---
   const tdesk = await actorPage(browser, stack, info);
   await uiLogin(tdesk, ...ctx.logins.teacher!);
-  await attempt('évaluation par critères', async () => {
+  await attempt('code personnel (ordinateur)', async () => {
     await tdesk.goto('/ecole-publique/evaluation');
+    await tdesk.getByRole('group', { name: 'Code personnel à 6 chiffres' }).getByRole('textbox', { name: 'Chiffre 1' }).click({ timeout: 10_000 });
+    await tdesk.keyboard.type('482913');
+    await tdesk.getByRole('group', { name: 'Confirmez le code' }).getByRole('textbox', { name: 'Chiffre 1' }).click();
+    await tdesk.keyboard.type('482913');
+    await tdesk.getByRole('button', { name: 'Créer le code' }).click();
+  });
+  await attempt('évaluation par critères', async () => {
+    if (!tdesk.url().includes('/evaluation')) await tdesk.goto('/ecole-publique/evaluation');
     await selectContaining(tdesk.locator('#pp-class'), 'CM2 A').catch(() => undefined);
     await tdesk.locator('#pp-unit').selectOption({ index: 1 }).catch(() => undefined);
     await tdesk.locator('#pp-frame').selectOption({ index: 1 }).catch(() => undefined);
@@ -243,7 +270,12 @@ test('guide primaire public : captures', async ({ browser }, info) => {
   });
 
   // --- 6. Questionnaire statistique, paquet minimum, examens, inspection, cantine (vues de la direction) ---
-  await visit(director, '/ecole-publique/statistiques', 'pub-10-questionnaire', 2400);
+  await attempt('questionnaire statistique', async () => {
+    await director.goto('/ecole-publique/statistiques');
+    await director.getByRole('button', { name: 'Ouvrir le questionnaire' }).click();
+    await director.waitForTimeout(3000);
+    await shot(director, DIR, 'pub-10-questionnaire', { maxHeight: 2400 });
+  });
   await visit(director, '/ecole-publique/paquet-minimum', 'pub-09-paquet-minimum', 2000);
   await visit(director, '/ecole-publique/examens', 'pub-11-examens-ecole', 2000);
   await visit(director, '/ecole-publique/inspection', 'pub-12-inspection-ecole', 2000);

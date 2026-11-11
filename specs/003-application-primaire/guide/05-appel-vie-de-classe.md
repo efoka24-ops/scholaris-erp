@@ -42,8 +42,6 @@ L'appel fonctionne **même sans connexion** (zone sans réseau, crédit épuisé
 
 Le menu **File d'envoi** (`/synchronisation`) montre ce qui attend d'être envoyé.
 
-![File d'envoi](images/pri-06-file-envoi.png)
-
 Si un appel de la même classe pour le même moment attend déjà, l'écran prévient : « Un appel de cette classe pour ce moment attend déjà son envoi. » Ne refaites pas l'appel.
 
 ## 5.3 La conduite
@@ -53,7 +51,7 @@ Si un appel de la même classe pour le même moment attend déjà, l'écran pré
 ![Conduite de la période](images/pri-07-conduite.png)
 
 1. Choisissez la **Classe** et la **Période** (exemple : Trimestre 1).
-2. Pour chaque élève, cliquez sur le niveau de conduite qui convient (l'échelle de l'école, quatre niveaux par défaut).
+2. Pour chaque élève, cliquez sur le niveau de conduite qui convient : **Très bonne**, **Bonne**, **Passable** ou **Mauvaise** (échelle par défaut de l'école). Le niveau choisi passe en couleur.
 3. Cliquez sur **Enregistrer la conduite**. Le message « Conduite enregistrée. » s'affiche.
 
 La conduite est reprise au conseil des maîtres et sur le bulletin.

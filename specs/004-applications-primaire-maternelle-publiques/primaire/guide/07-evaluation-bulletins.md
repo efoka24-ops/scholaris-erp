@@ -14,7 +14,7 @@
 
 **Où** : **École publique > Référentiel et paramètres** (`/ecole-publique/referentiel`).
 
-![Référentiel, unités et paramètres](images/pub-07-referentiel.png)
+> Point constaté pendant la préparation de ce guide : sur l'école d'essai, le directeur ne voyait pas les boutons **Importer le référentiel d'exemple** et **Générer les unités** ; sans unités, l'écran d'évaluation n'a ni classe ni unité à proposer. Les unités se génèrent alors avec le compte qui gère le référentiel (niveau national). La génération demande aussi l'**identifiant** de chaque trimestre, à recopier depuis l'administration.
 
 - **Disciplines et critères** : choisissez le **Niveau** puis **Afficher**. Chaque discipline liste ses critères ; une **discipline clé** compte pour le passage. Le référentiel est réglé **au niveau national**. Tant que le référentiel officiel n'est pas chargé, **Importer le référentiel d'exemple (à remplacer par l'officiel)** permet de commencer.
 - **Unités d'apprentissage** : l'année compte plusieurs unités (8 par défaut), réparties sur les trimestres, chacune avec une **semaine d'évaluation**. Le directeur clique sur **Générer les unités**.

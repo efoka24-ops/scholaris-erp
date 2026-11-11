@@ -13,7 +13,9 @@
 
 ## 14.2 Lire les indicateurs
 
-La date des données est indiquée (« Données au … »). Les indicateurs comprennent notamment :
+La date des données est indiquée (« Données au … »). Les chiffres sont recalculés **chaque nuit** à partir des données des écoles : une école qui vient de commencer affiche « Aucune donnée calculée » et des tirets (—) jusqu'au premier calcul. Chaque carte rappelle sous le chiffre comment il est calculé (exemple : « présents / (présents + absents) à l'appel »).
+
+Les indicateurs comprennent notamment :
 
 - les effectifs par niveau et par sexe, la **parité filles-garçons** ;
 - les **élèves par enseignant** et les **élèves par salle utilisée** ;
