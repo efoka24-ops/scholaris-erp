@@ -57,7 +57,7 @@ const SECONDARY_ROLE_PERMISSIONS: Record<string, string[]> = {
     'settings.read', 'enrol.read', 'exams.read', 'fees.read', 'billing.manage', 'fees.catalog', 'workshops.costs.read', 'finance.read', 'profile.read', 'catalogue.read',
     '@billing.read', '@billing.manage', '@billing.reversal.approve', '@organisation.read',
   ),
-  sec_caissier: sec('billing.cash', '@billing.read', '@billing.cash', '@billing.reversal.request'),
+  sec_caissier: sec('billing.cash', 'profile.read', '@billing.read', '@billing.cash', '@billing.reversal.request'),
   sec_scolarite: sec('enrol.manage', 'documents.issue', 'exams.lists', 'profile.read', 'catalogue.read', '@organisation.read'),
   sec_infirmier: sec('infirmary.manage'),
   sec_responsable_services: sec('services.manage'),
