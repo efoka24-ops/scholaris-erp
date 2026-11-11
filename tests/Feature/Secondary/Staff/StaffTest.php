@@ -237,6 +237,25 @@ final class StaffTest extends SecondaryTestCase
         self::assertSame(404, $this->call('GET', '/secondary/payroll/' . $slip['id'] . '/pdf', null, 'intendant-b', self::TB, $schoolB)[0], 'Autre client.');
     }
 
+    /**
+     * FIX-SEC, défaut 8 : l'administrateur du client (super_admin : staff.read, staff.manage du socle, aucun droit secondary.*)
+     * recevait « Accès refusé » sur Personnel et Paie. Il lit et tient les profils, lit la paie ; préparer et valider restent à
+     * l'intendant et au chef d'établissement.
+     */
+    public function testLAdministrateurDuClientOuvrePersonnelEtPaie(): void
+    {
+        $admin = 'admin-du-client';
+        $this->grant(self::TA, $admin, $this->college, ['staff.read', 'staff.manage', 'vacations.validate']);
+        self::assertNotSame([], $this->ok('GET', '/secondary/staff/profiles', null, $admin, self::TA, $this->college)['items']);
+        self::assertIsArray($this->ok('GET', '/secondary/staff/hours?month=2026-10', null, $admin, self::TA, $this->college)['items']);
+        $profile = $this->ok('PUT', '/secondary/staff/profiles', ['person_id' => 'person-salarie', 'employment_status' => 'private_employee'], $admin, self::TA, $this->college);
+        self::assertSame('private_employee', $profile['employment_status']);
+        self::assertSame([], $this->ok('GET', '/secondary/staff/payroll/payslips', null, $admin, self::TA, $this->college)['items']);
+        self::assertNotSame([], $this->ok('GET', '/secondary/staff/payroll/rules', null, $admin, self::TA, $this->college)['eligible_statuses']);
+        [$status] = $this->call('POST', '/secondary/staff/payroll/payslips', ['staff_profile_id' => $profile['id'], 'month_ref' => '2026-10', 'gross_amount' => 1000], $admin, self::TA, $this->college);
+        self::assertSame(403, $status, 'Préparer un bulletin reste à l\'intendant.');
+    }
+
     private function lessonLog(string $id, string $school, string $teacher, string $slot, string $date, float $hours): void
     {
         $this->service(Store::class)->insert('se_lesson_logs', self::TA, $school, [

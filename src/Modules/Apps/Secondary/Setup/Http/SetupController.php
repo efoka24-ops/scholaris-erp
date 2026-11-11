@@ -24,6 +24,9 @@ use Scholaris\Modules\Apps\Secondary\Support\Store;
  */
 final class SetupController extends Controller
 {
+    /** Salles : lecteurs du paramétrage et de l'emploi du temps (noms des salles, aucune donnée personnelle). */
+    private const ROOMS_READ = [...StructureService::READ, 'secondary.timetable.read', 'secondary.timetable.manage', 'secondary.timetable.validate', 'secondary.lesson.log'];
+
     public function __construct(
         JsonResponder $responder,
         Access $access,
@@ -197,7 +200,8 @@ final class SetupController extends Controller
     {
         $map = static fn (array $row): array => RoomRulesService::room($row);
 
-        return $this->listPage($request, 'se_room_profiles', ['room_kind', 'room_id'], ['label'], 'label', $map);
+        // Les salles se lisent aussi depuis l'emploi du temps (FIX-SEC) : choisies et affichées par leur nom, jamais par leur identifiant.
+        return $this->listPage($request, 'se_room_profiles', ['room_kind', 'room_id'], ['label'], 'label', $map, [], self::ROOMS_READ);
     }
 
     public function saveRoom(ServerRequestInterface $request): ResponseInterface

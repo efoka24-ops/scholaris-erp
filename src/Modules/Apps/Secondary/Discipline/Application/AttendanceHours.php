@@ -18,6 +18,8 @@ use Scholaris\Modules\Socle\Organisation\Contracts\CurrentPeriod;
  */
 final class AttendanceHours
 {
+    private const KINDS = ['trimester' => 'Trimestre', 'sequence' => 'Séquence', 'semester' => 'Semestre'];
+
     public function __construct(
         private readonly AttendanceTotals $totals,
         private readonly CurrentPeriod $periods,
@@ -25,7 +27,12 @@ final class AttendanceHours
     ) {
     }
 
-    /** @return array{from: string, to: string, label: string} */
+    /**
+     * Libellé par défaut en français (« Trimestre 1 », données enregistrées et SMS) ; `kind` et `ordinal` permettent à l'écran de le
+     * traduire (FIX-SEC : plus de « trimester 1 »).
+     *
+     * @return array{from: string, to: string, label: string, kind?: string, ordinal?: int}
+     */
     public function period(string $tenantId, string $establishmentId, ?string $from, ?string $to, ?string $label = null): array
     {
         if ($from !== null && $to !== null) {
@@ -49,7 +56,17 @@ final class AttendanceHours
             throw HttpException::validation(['from' => ['Aucune période ne couvre ce jour : donnez les bornes de la période.']]);
         }
 
-        return ['from' => $chosen->startsOn, 'to' => $chosen->endsOn, 'label' => $label ?? ($chosen->kind . ' ' . $chosen->ordinal)];
+        if ($label !== null) {
+            return ['from' => $chosen->startsOn, 'to' => $chosen->endsOn, 'label' => $label];
+        }
+
+        return ['from' => $chosen->startsOn, 'to' => $chosen->endsOn, 'label' => self::label($chosen->kind, $chosen->ordinal), 'kind' => $chosen->kind, 'ordinal' => $chosen->ordinal];
+    }
+
+    /** Libellé français d'une période du socle : « Trimestre 1 », « Séquence 2 », « Semestre 1 », sinon « Période 3 ». */
+    public static function label(string $kind, int $ordinal): string
+    {
+        return (self::KINDS[$kind] ?? 'Période') . ' ' . $ordinal;
     }
 
     /** @return array<string, AttendanceSummary> par élève ayant au moins une séance validée */

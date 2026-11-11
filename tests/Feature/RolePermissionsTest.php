@@ -187,7 +187,7 @@ final class RolePermissionsTest extends TestCase
         'enseignant' => [],
         'sec_conseiller_orientation' => ['orientation.manage', 'catalogue.read', '@organisation.read'],
         'sec_intendant' => ['fees.catalog', 'profile.read', 'catalogue.read', '@billing.read', '@billing.manage', '@billing.reversal.approve', '@organisation.read'],
-        'sec_caissier' => ['billing.cash', '@billing.read', '@billing.cash', '@billing.reversal.request'],
+        'sec_caissier' => ['billing.cash', 'profile.read', '@billing.read', '@billing.cash', '@billing.reversal.request'],
         'sec_scolarite' => ['enrol.manage', 'documents.issue', 'exams.lists', 'profile.read', 'catalogue.read', '@organisation.read'],
         'sec_infirmier' => ['infirmary.manage'],
         'sec_responsable_services' => ['services.manage'],

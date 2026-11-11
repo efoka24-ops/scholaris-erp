@@ -9,6 +9,7 @@ use Scholaris\Modules\Apps\Secondary\Enrolment\Application\EnrolmentService;
 use Scholaris\Modules\Apps\Secondary\Enrolment\Contracts\StudentRegistry;
 use Scholaris\Modules\Apps\Secondary\Enrolment\Infrastructure\PdoStudentRegistry;
 use Scholaris\Modules\Apps\Secondary\Notifications\Contracts\FamilyNotifications;
+use Scholaris\Modules\Apps\Secondary\Policies\RoleMatrix;
 use Scholaris\Modules\Socle\Assessment\Contracts\AdmissionDirectory;
 use Scholaris\Modules\Socle\Organisation\Contracts\AuthorizationData;
 use Scholaris\Modules\Socle\Organisation\Contracts\AuthorizationRegistry;
@@ -119,6 +120,29 @@ final class EnrolmentTest extends SecondaryTestCase
         $other = $this->ok('POST', '/secondary/enrolments', self::pupil('Brice', $s['sixth']), self::ADMIN, self::TA, $s['school']);
         self::assertSame(409, $this->call('PUT', '/secondary/students/' . $other['person_id'] . '/national-id', ['national_id' => 'CM2026-000123'], self::ADMIN, self::TA, $s['school'])[0], 'Matricule unique.');
         self::assertSame(409, $this->call('POST', '/secondary/enrolments', self::pupil('Carine', $s['sixth'], ['national_id' => 'CM2026-000123']), self::ADMIN, self::TA, $s['school'])[0], 'Matricule déjà attribué.');
+    }
+
+    /**
+     * FIX-SEC (défauts 2 et 4) : annuaire des élèves (nom et classe) pour choisir un élève par son nom à la caisse, à l'infirmerie, aux
+     * services, aux ateliers et aux stages ; aucune donnée sensible ; refusé sans droit.
+     */
+    public function testAnnuaireDesElevesParNomEtClassePourLaCaisseEtLesServices(): void
+    {
+        $s = $this->school();
+        $this->ok('POST', '/secondary/enrolments', self::pupil('Aïcha', $s['sixth']), self::ADMIN, self::TA, $s['school']);
+        $this->ok('POST', '/secondary/enrolments', self::pupil('Bertine', $s['sixth']), self::ADMIN, self::TA, $s['school']);
+        $this->grant(self::TA, 'caissier-a', $s['school'], RoleMatrix::permissionsOf('sec_caissier'));
+        $this->grant(self::TA, 'infirmier-a', $s['school'], RoleMatrix::permissionsOf('sec_infirmier'));
+
+        foreach (['caissier-a', 'infirmier-a'] as $who) {
+            $rows = $this->ok('GET', '/secondary/enrolment/directory', null, $who, self::TA, $s['school'])['items'];
+            self::assertSame(['NGONO Aïcha', 'NGONO Bertine'], array_column($rows, 'full_name'), $who);
+            self::assertSame(['6e A', '6e A'], array_column($rows, 'class_label'), $who);
+            self::assertSame([], array_diff(array_keys($rows[0]), ['person_id', 'last_name', 'first_name', 'full_name', 'class_structure_id', 'class_label', 'academic_year_id']), 'Aucune donnée sensible.');
+        }
+        self::assertSame(403, $this->call('GET', '/secondary/enrolment/directory', null, 'sans-droit', self::TA, $s['school'])[0]);
+        self::assertSame(200, $this->call('GET', '/secondary/fees/overview', null, 'caissier-a', self::TA, $s['school'])[0], 'Défaut 1 : le caissier ouvre l\'écran Frais.');
+        self::assertSame(200, $this->call('GET', '/secondary/setup/profile', null, 'caissier-a', self::TA, $s['school'])[0], 'Défaut 1 : le profil (modules du menu) est lisible.');
     }
 
     public function testGardeCycleAutorisationEtAucunRefusPourImpaye(): void

@@ -94,6 +94,7 @@ final class SecondaryPortalsTest extends SecondaryTestCase
         self::assertFalse($data['children'][1]['national_id_registered']);
         self::assertSame('fees_private', $first['fees_mode']);
         self::assertSame(['fac-1'], array_column($first['invoices'], 'id'));
+        self::assertSame('Pension (exemple)', $first['invoices'][0]['label'], 'FIX-SEC : facture nommée par ses frais, jamais par son identifiant.');
         self::assertStringNotContainsString('MAT-FICTIF-001', (string) json_encode($data), 'D5');
 
         self::assertSame(403, $this->call('GET', '/secondary/portal/family', null, self::STUDENT, self::TA, $this->school)[0], 'L\'élève n\'a pas le droit famille.');

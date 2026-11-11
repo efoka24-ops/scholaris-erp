@@ -20,10 +20,10 @@ final class ProfileFactory
 
     /** @var array<string, array{cycles: list<string>, teaching_kinds: list<string>, ownership: ?string, modules: list<string>, head_title: ?string}> */
     public const EXPECTED = [
-        'leg' => ['cycles' => ['first', 'second'], 'teaching_kinds' => ['general'], 'ownership' => 'public', 'modules' => ['second_cycle', 'orientation', 'official_exams', 'fees_public_catalog'], 'head_title' => 'proviseur'],
-        'lycee_technique' => ['cycles' => ['first', 'second'], 'teaching_kinds' => ['technical'], 'ownership' => 'public', 'modules' => ['second_cycle', 'orientation', 'official_exams', 'workshops', 'internships', 'fees_public_catalog'], 'head_title' => 'proviseur'],
-        'ces' => ['cycles' => ['first'], 'teaching_kinds' => ['general'], 'ownership' => 'public', 'modules' => ['official_exams', 'fees_public_catalog'], 'head_title' => 'principal'],
-        'cetic' => ['cycles' => ['first'], 'teaching_kinds' => ['technical'], 'ownership' => 'public', 'modules' => ['official_exams', 'workshops', 'internships', 'fees_public_catalog'], 'head_title' => 'principal'],
+        'leg' => ['cycles' => ['first', 'second'], 'teaching_kinds' => ['general'], 'ownership' => 'public', 'modules' => ['second_cycle', 'orientation', 'official_exams', 'fees_public_catalog', 'authorizations'], 'head_title' => 'proviseur'],
+        'lycee_technique' => ['cycles' => ['first', 'second'], 'teaching_kinds' => ['technical'], 'ownership' => 'public', 'modules' => ['second_cycle', 'orientation', 'official_exams', 'workshops', 'internships', 'fees_public_catalog', 'authorizations'], 'head_title' => 'proviseur'],
+        'ces' => ['cycles' => ['first'], 'teaching_kinds' => ['general'], 'ownership' => 'public', 'modules' => ['official_exams', 'fees_public_catalog', 'authorizations'], 'head_title' => 'principal'],
+        'cetic' => ['cycles' => ['first'], 'teaching_kinds' => ['technical'], 'ownership' => 'public', 'modules' => ['official_exams', 'workshops', 'internships', 'fees_public_catalog', 'authorizations'], 'head_title' => 'principal'],
         'college_prive' => ['cycles' => ['first'], 'teaching_kinds' => ['general'], 'ownership' => null, 'modules' => ['official_exams', 'fees_private', 'authorizations', 'payroll_simple'], 'head_title' => 'principal'],
         'lycee_prive' => ['cycles' => ['first', 'second'], 'teaching_kinds' => ['general'], 'ownership' => null, 'modules' => ['second_cycle', 'orientation', 'official_exams', 'fees_private', 'authorizations', 'payroll_simple'], 'head_title' => 'proviseur'],
         'autre' => ['cycles' => [], 'teaching_kinds' => [], 'ownership' => null, 'modules' => [], 'head_title' => null],

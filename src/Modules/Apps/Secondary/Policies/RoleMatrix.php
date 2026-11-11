@@ -64,7 +64,7 @@ final class RoleMatrix
         'enseignant' => ['secondary.timetable.read', 'secondary.syllabus.read', 'secondary.attendance.read', 'secondary.grades.read', 'secondary.reportcard.read', 'secondary.workshops.read', 'secondary.workshops.session', 'secondary.dashboard.read'],
         'sec_conseiller_orientation' => ['secondary.catalogue.read', 'organisation.read'],
         'sec_intendant' => ['secondary.settings.read', 'secondary.enrol.read', 'secondary.exams.read', 'secondary.fees.read', 'secondary.workshops.costs.read', 'secondary.finance.read', 'secondary.profile.read', 'secondary.catalogue.read', 'billing.read', 'billing.manage', 'billing.reversal.approve', 'organisation.read'],
-        'sec_caissier' => ['billing.read', 'billing.cash', 'billing.reversal.request'],
+        'sec_caissier' => ['billing.read', 'billing.cash', 'billing.reversal.request', 'secondary.profile.read'],
         'sec_scolarite' => ['secondary.profile.read', 'secondary.catalogue.read', 'organisation.read'],
         'sec_parent' => ['secondary.family.pay'],
         'sec_admin_fonctionnel' => ['secondary.profile.read', 'secondary.catalogue.read', 'identity.roles.assign', 'organisation.read'],

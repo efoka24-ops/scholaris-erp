@@ -55,6 +55,14 @@ final class EnrolmentController extends Controller
         return $this->page(self::slice($request, $rows));
     }
 
+    /** Annuaire des élèves (nom, classe) pour choisir un élève par son nom (FIX-SEC). */
+    public function directory(ServerRequestInterface $request): ResponseInterface
+    {
+        [$principal, $establishmentId] = $this->context($request);
+
+        return $this->json(['items' => $this->enrolment->directory($principal, $establishmentId, self::query($request, 'academic_year_id'), self::query($request, 'class_structure_id'))]);
+    }
+
     public function student(ServerRequestInterface $request): ResponseInterface
     {
         [$principal, $establishmentId] = $this->context($request);

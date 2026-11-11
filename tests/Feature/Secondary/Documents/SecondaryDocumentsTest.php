@@ -108,6 +108,11 @@ final class SecondaryDocumentsTest extends SecondaryTestCase
 
         // Lycée général qui active les ateliers : le module ne suffit pas, l'enseignement technique est exigé.
         $this->service(PdoProfileStore::class)->saveProfile(self::TA, $this->school, 'test', ['modules' => ['second_cycle', 'orientation', 'official_exams', 'fees_public_catalog', 'workshops']], [], 'Activation fictive des ateliers', 'admin-a');
+        // FIX-SEC, défaut 6 : le catalogue dit pourquoi un type est indisponible, au lieu de « module inactif » pour un module actif.
+        $general = array_column($this->ok('GET', '/secondary/documents/kinds', null, self::SCOLARITE, self::TA, $this->school)['items'], null, 'doc');
+        self::assertSame([false, 'teaching_kind_not_offered'], [$general['DOC-23']['available'], $general['DOC-23']['unavailable_reason']], 'Ateliers actifs au LEG : réservé à l\'enseignement technique.');
+        self::assertSame('module_inactive', $general['DOC-21']['unavailable_reason'], 'Stages inactifs.');
+        self::assertNull($tech['DOC-23']['unavailable_reason']);
         $documents = $this->service(SecondaryDocuments::class);
         try {
             $documents->issue(self::TA, $this->school, TechnicalDocumentTypes::WORKSHOP_SHEET, 'eleve-1', [], 'agent-1');

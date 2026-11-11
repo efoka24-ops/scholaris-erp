@@ -12,6 +12,7 @@ use Scholaris\Modules\Apps\Secondary\Support\SecondaryRoutes;
 return static function (SecondaryRoutes $routes): void {
     $routes->post('/enrolments', [EnrolmentController::class, 'enrol']);
     $routes->get('/enrolment/students', [EnrolmentController::class, 'students']);
+    $routes->get('/enrolment/directory', [EnrolmentController::class, 'directory']);
     $routes->get('/enrolment/students/{id}', [EnrolmentController::class, 'student']);
     $routes->put('/students/{id}/national-id', [EnrolmentController::class, 'nationalId']);
     $routes->post('/enrolment/students/{id}/guarantors', [EnrolmentController::class, 'guarantor']);

@@ -10,6 +10,8 @@ use Scholaris\Core\Http\HttpException;
 use Scholaris\Core\Http\JsonResponder;
 use Scholaris\Modules\Apps\Secondary\Documents\Application\DocumentTypeCatalogue;
 use Scholaris\Modules\Apps\Secondary\Documents\Application\StudentDocuments;
+use Scholaris\Modules\Apps\Secondary\Documents\Contracts\SecondaryDocumentType;
+use Scholaris\Modules\Apps\Secondary\Setup\Contracts\EstablishmentProfile;
 use Scholaris\Modules\Apps\Secondary\Setup\Contracts\EstablishmentProfiles;
 use Scholaris\Modules\Apps\Secondary\Support\Access;
 use Scholaris\Modules\Apps\Secondary\Support\Controller;
@@ -49,6 +51,7 @@ final class DocumentsController extends Controller
                 'qr' => $type->qr, 'source' => $type->source, 'module' => $type->module,
                 'required_teaching_kind' => $type->requiredTeachingKind,
                 'available' => $type->isAvailableFor($profile),
+                'unavailable_reason' => self::unavailableReason($type, $profile),
                 'direct' => $type->direct && !$type->issuedBySocle(),
                 'can_issue' => !$this->access->perimeter($principal, $establishmentId, $type->permissions)->isEmpty(),
             ];
@@ -107,5 +110,21 @@ final class DocumentsController extends Controller
         }
 
         return $this->json(['items' => $this->documents->issuedFor($principal->tenantId, $personId)]);
+    }
+
+    /**
+     * Pourquoi un type n'est pas disponible (FIX-SEC) : module inactif, ou module actif mais enseignement exigé non offert par le
+     * profil (DOC-21 à DOC-24 : enseignement technique). Null si le type est disponible.
+     */
+    private static function unavailableReason(SecondaryDocumentType $type, EstablishmentProfile $profile): ?string
+    {
+        if ($type->module !== null && !$profile->isActive($type->module)) {
+            return 'module_inactive';
+        }
+        if ($type->requiredTeachingKind !== null && !$profile->offersTeaching($type->requiredTeachingKind)) {
+            return 'teaching_kind_not_offered';
+        }
+
+        return null;
     }
 }

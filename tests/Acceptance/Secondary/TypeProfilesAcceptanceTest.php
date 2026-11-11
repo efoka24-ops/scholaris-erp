@@ -167,7 +167,8 @@ final class TypeProfilesAcceptanceTest extends SecondaryTestCase
         $profile = $this->profile($leg);
         self::assertSame(['first', 'second'], $profile['cycles']);
         self::assertSame('public', $profile['ownership'], 'Propriété fixée par le type.');
-        self::assertSame(['fees_public_catalog', 'official_exams', 'orientation', 'second_cycle'], self::sorted($this->active($leg)));
+        // FIX-SEC (décision du 2 novembre 2026) : autorisation d'ouverture active par défaut, public compris.
+        self::assertSame(['authorizations', 'fees_public_catalog', 'official_exams', 'orientation', 'second_cycle'], self::sorted($this->active($leg)));
         self::assertNotContains('sec_chef_travaux', $this->proposedRoles($leg), 'Aucun rôle d\'atelier sans le module.');
         self::assertContains('sec_conseiller_orientation', $this->proposedRoles($leg));
 

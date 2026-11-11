@@ -39,6 +39,17 @@ paths:
         '409': {description: "Conflit : profil non ouvert, matricule deja attribue, inscription en cours ailleurs, etat incompatible"}
         '422': {description: "Validation (errors par champ), refus de la garde d'inscription, alerte d'age, exclu definitif"}
         '423': {description: "Abonnement suspendu : ecriture refusee"}
+  /api/v1/secondary/enrolment/directory:
+    get:
+      summary: "Annuaire des eleves (nom, prenom, classe de la derniere inscription) pour choisir un eleve par son nom : caisse, infirmerie, services, ateliers, stages ; perimetre classe applique"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: academic_year_id, in: query, required: false, schema: {type: string}}
+        - {name: class_structure_id, in: query, required: false, schema: {type: string}}
+      responses:
+        '200': {description: "Succes {data: {items: [{person_id, last_name, first_name, full_name, class_structure_id, class_label, academic_year_id}]}}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Application fermee"}
   /api/v1/secondary/enrolment/students/{id}:
     get:
       summary: "Dossier de l'eleve (identite courte, statut du matricule, redoublement, exclusion, inscriptions, transferts)"

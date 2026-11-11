@@ -42,6 +42,11 @@ final class EnrolmentService
     public const READ = ['secondary.enrol.read', 'secondary.enrol.manage', 'secondary.enrol.validate', 'secondary.settings.manage'];
     public const MANAGE = ['secondary.enrol.manage'];
     public const DECIDE = ['secondary.enrol.validate'];
+    /** Annuaire des élèves (nom et classe) : lecture des inscriptions et rôles qui servent un élève choisi par son nom (FIX-SEC). */
+    public const DIRECTORY = [
+        ...self::READ, 'secondary.billing.cash', 'secondary.billing.manage', 'secondary.services.manage', 'secondary.infirmary.manage',
+        'secondary.library.manage', 'secondary.workshops.manage', 'secondary.workshops.session', 'secondary.internships.manage',
+    ];
     public const AGE_ALERT = 'https://api.scholaris.cm/errors/admission-age-alert';
     public const EXCLUDED = 'https://api.scholaris.cm/errors/final-exclusion';
     public const ENTRY_KINDS = ['new', 'reenrolment', 'transfer_in', 'primary_entry', 'import'];
@@ -275,6 +280,51 @@ final class EnrolmentService
         $this->notifyValidated($tenantId, $establishmentId, $personId, (string) $record['enrollment_id']);
 
         return $this->dossier($tenantId, $establishmentId, $personId);
+    }
+
+    /**
+     * Annuaire des élèves (FIX-SEC) : nom, prénom et classe de la dernière inscription de chaque élève, pour choisir un élève par son
+     * nom dans les écrans qui en ont besoin (caisse, infirmerie, cantine, internat, ateliers, stages), jamais par son identifiant.
+     * Aucune donnée sensible (ni date de naissance, ni matricule, ni contact) ; périmètre classe appliqué.
+     *
+     * @return list<array{person_id: string, last_name: ?string, first_name: ?string, full_name: string, class_structure_id: string, class_label: ?string, academic_year_id: string}>
+     */
+    public function directory(Principal $principal, string $establishmentId, ?string $academicYearId, ?string $classStructureId): array
+    {
+        $tenantId = $principal->tenantId;
+        $perimeter = $this->access->require($principal, $establishmentId, self::DIRECTORY);
+        $where = [];
+        if ($academicYearId !== null) {
+            $where['academic_year_id'] = $academicYearId;
+        }
+        if ($classStructureId !== null) {
+            $where['class_structure_id'] = $classStructureId;
+        }
+        $latest = [];
+        foreach ($this->store->select('se_enrolment_records', $tenantId, $establishmentId, $where, 'created_at DESC', 5000) as $row) {
+            $latest[(string) $row['person_id']] ??= $row;
+        }
+        $latest = array_filter($latest, static fn (array $row): bool => $perimeter->coversClass((string) $row['class_structure_id']));
+        $names = [];
+        foreach ($this->people->findMany($tenantId, array_map('strval', array_keys($latest))) as $person) {
+            $names[$person->id] = $person;
+        }
+        $labels = [];
+        $out = [];
+        foreach ($latest as $personId => $row) {
+            $structureId = (string) $row['class_structure_id'];
+            $labels[$structureId] ??= $this->classes->find($tenantId, $establishmentId, $structureId)->label ?? '';
+            $person = $names[(string) $personId] ?? null;
+            $full = trim(($person->lastName ?? '') . ' ' . ($person->firstName ?? ''));
+            $out[] = [
+                'person_id' => (string) $personId, 'last_name' => $person?->lastName, 'first_name' => $person?->firstName,
+                'full_name' => $full !== '' ? $full : (string) $personId, 'class_structure_id' => $structureId,
+                'class_label' => $labels[$structureId] !== '' ? $labels[$structureId] : null, 'academic_year_id' => (string) $row['academic_year_id'],
+            ];
+        }
+        usort($out, static fn (array $a, array $b): int => [mb_strtolower($a['full_name']), $a['person_id']] <=> [mb_strtolower($b['full_name']), $b['person_id']]);
+
+        return $out;
     }
 
     /**

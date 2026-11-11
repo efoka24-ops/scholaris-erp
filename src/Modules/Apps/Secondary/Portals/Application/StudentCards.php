@@ -97,8 +97,10 @@ final class StudentCards
                 if ($invoice->subjectId !== $learnerId || $invoice->establishmentId !== $establishmentId || $invoice->balanceXaf <= 0 || isset($out[$invoice->id])) {
                     continue;
                 }
+                // Libellé lisible (FIX-SEC) : les frais facturés, pour que la famille ne voie jamais l'identifiant de la facture.
+                $labels = array_values(array_unique(array_filter(array_map(static fn (array $l): string => trim((string) $l['label']), $invoice->lines), static fn (string $l): bool => $l !== '')));
                 $out[$invoice->id] = [
-                    'id' => $invoice->id, 'reference' => $invoice->reference, 'net_xaf' => $invoice->netXaf, 'paid_xaf' => $invoice->paidXaf, 'balance_xaf' => $invoice->balanceXaf,
+                    'id' => $invoice->id, 'reference' => $invoice->reference, 'label' => $labels === [] ? null : implode(', ', $labels), 'net_xaf' => $invoice->netXaf, 'paid_xaf' => $invoice->paidXaf, 'balance_xaf' => $invoice->balanceXaf,
                     'installments' => array_map(static fn (array $i): array => ['label' => $i['label'], 'due_on' => $i['due_on'], 'amount_xaf' => $i['amount_xaf'], 'paid_xaf' => $i['paid_xaf']], $invoice->installments),
                 ];
             }

@@ -54,7 +54,8 @@ final class AssignmentService
     public function teachers(Principal $principal, string $establishmentId): array
     {
         $tenantId = $principal->tenantId;
-        $this->access->require($principal, $establishmentId, TimetableContext::READ);
+        // Aussi les ateliers et les stages (FIX-SEC) : l'enseignant d'une séance pratique se choisit par son nom.
+        $this->access->require($principal, $establishmentId, [...TimetableContext::READ, 'secondary.workshops.manage', 'secondary.workshops.session', 'secondary.internships.manage']);
         $candidates = [];
         foreach ($this->roster->membersOf($tenantId, $establishmentId) as $member) {
             $candidates[$member->personId] = ['grade' => $member->grade, 'teaches' => $member->teaches, 'assigned' => false];

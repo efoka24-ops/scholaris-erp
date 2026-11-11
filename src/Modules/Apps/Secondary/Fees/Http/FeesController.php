@@ -22,8 +22,8 @@ use Scholaris\Modules\Apps\Secondary\Support\Store;
 final class FeesController extends Controller
 {
     public const READ = ['secondary.fees.read', 'secondary.finance.read', 'secondary.billing.manage', 'secondary.fees.catalog', 'secondary.fees.validate'];
-    /** Aperçu du mode des frais : aussi la tenue du catalogue (secondary.profile.manage), qui travaille sur l'écran Frais (C-117). */
-    public const OVERVIEW = [...self::READ, 'secondary.profile.manage'];
+    /** Aperçu du mode des frais : aussi la tenue du catalogue (secondary.profile.manage, C-117) et le caissier (secondary.billing.cash, FIX-SEC). */
+    public const OVERVIEW = [...self::READ, 'secondary.profile.manage', 'secondary.billing.cash'];
     public const MANAGE = ['secondary.billing.manage'];
     private const SOCLE_KINDS = ['registration', 'tuition', 'other'];
 
