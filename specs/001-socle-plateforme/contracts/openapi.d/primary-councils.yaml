@@ -154,7 +154,7 @@ paths:
       parameters:
         - {name: id, in: path, required: true, schema: {type: string}}
       responses:
-        '200': {description: "Reponse {data: {published, notified, items[]}}"}
+        '200': {description: "Reponse {data: {published, notified, families, not_notified{motif: nombre}, items[]}} ; not_notified : garants non prevenus par motif (consent_missing, no_contact...)"}
         '403': {description: "Permission absente"}
         '404': {description: "Conseil introuvable"}
         '409': {description: "Aucun bulletin emis a publier"}

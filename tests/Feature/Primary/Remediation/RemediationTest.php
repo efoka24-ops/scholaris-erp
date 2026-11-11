@@ -66,4 +66,16 @@ final class RemediationTest extends PrimaryTestCase
         $this->grantAll(self::TB, 'directeur-b', self::EB);
         self::assertSame(404, $this->call('GET', "/primary/remediation-plans/$id", null, 'directeur-b', self::TB, self::EB)[0]);
     }
+    /** FIX-PRI 4 : la saisie propose les élèves par leur nom, avant toute séance (et non par leur identifiant). */
+    public function testLesElevesDuRegistreSontNommesAvantToutSeance(): void
+    {
+        $register = $this->ok('GET', "/primary/classes/{$this->class}/remediation", null, 'maitre');
+        self::assertSame([], $register['sessions']);
+        self::assertSame(['NOM0 Prénom0', 'NOM1 Prénom1', 'NOM2 Prénom2'], array_column($register['learners'], 'name'));
+
+        $session = ['held_on' => '2026-10-19', 'duration_minutes' => 40, 'remediation_form' => 'needs_group', 'subject_label' => 'Lecture', 'objective' => 'Lire', 'person_ids' => ['e2']];
+        $created = $this->call('POST', "/primary/classes/{$this->class}/remediation", $session, 'maitre');
+        self::assertSame(201, $created[0]);
+        self::assertSame('NOM1 Prénom1', $created[1]['data']['participants'][0]['name']);
+    }
 }

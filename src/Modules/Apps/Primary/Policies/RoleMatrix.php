@@ -60,6 +60,15 @@ final class RoleMatrix
         'primary_surveillant' => ['organisation.read'],
     ];
 
+    /**
+     * Appel par demi-journée ouvert à la direction (lecture de la liste et appel d'une classe), migration 202611110745 (FIX-PRI 1).
+     *
+     * @var array<string, list<string>>
+     */
+    public const EXTRA_FIX_PRI = [
+        'primary_directeur' => ['attendance.read', 'attendance.take'],
+    ];
+
     /** @var array<string, array<string, array{0: string, 1: string}>> */
     public const MATRIX = [
         'parametrage' => ['P02' => ['V', 'primary.settings.manage'], 'P03' => ['E', 'primary.referential.manage']],

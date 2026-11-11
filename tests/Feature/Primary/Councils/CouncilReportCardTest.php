@@ -14,9 +14,9 @@ use Scholaris\Modules\Socle\People\Contracts\EnrollmentDirectory;
 use Scholaris\Modules\Socle\People\Contracts\PersonDirectory;
 use Tests\Support\Billing\InMemoryEnrollments;
 use Tests\Support\Billing\InMemoryPeople;
-use Tests\Support\Billing\RecordingMessenger;
 use Tests\Support\Primary\FakeClassResults;
 use Tests\Support\Primary\PrimaryTestCase;
+use Tests\Support\Primary\SelectiveMessenger;
 
 /**
  * T540-T542, T545 : conseil des maîtres (compétences, conduite, moyennes facultatives, rang, absences, décision motivée), bulletins
@@ -27,7 +27,7 @@ final class CouncilReportCardTest extends PrimaryTestCase
 {
     private InMemoryEnrollments $enrollments;
     private InMemoryPeople $people;
-    private RecordingMessenger $messenger;
+    private SelectiveMessenger $messenger;
     private FakeClassResults $results;
     /** @var array<int, array{id: string, starts_on: string, ends_on: string, sequences: list<array{id: string, starts_on: string}>}> */
     private array $terms;
@@ -40,7 +40,7 @@ final class CouncilReportCardTest extends PrimaryTestCase
     {
         $this->enrollments = new InMemoryEnrollments();
         $this->people = new InMemoryPeople();
-        $this->messenger = new RecordingMessenger();
+        $this->messenger = new SelectiveMessenger();
         $this->results = new FakeClassResults();
         $link = new class () implements UserPersonLink {
             public function personIdForUser(string $tenantId, string $userId): ?string
@@ -127,10 +127,12 @@ final class CouncilReportCardTest extends PrimaryTestCase
         self::assertSame(409, $this->call('POST', "/primary/councils/$id/reopen", ['reason' => 'erreur'])[0], 'Réouverture impossible après émission.');
 
         self::assertSame([], $this->ok('GET', '/primary/family/children/e1/report-cards', null, 'parent-1')['items'], 'Non publié : invisible.');
+        // FIX-PRI 7 : un garant sans consentement aux communications n'est pas prévenu, et l'écran sait pourquoi.
+        $this->messenger->blocked['g-4'] = 'consent_missing';
         $published = $this->ok('POST', "/primary/councils/$id/report-cards/publish");
-        self::assertSame([4, 4], [$published['published'], $published['notified']]);
+        self::assertSame([4, 3, 4, ['consent_missing' => 1]], [$published['published'], $published['notified'], $published['families'], $published['not_notified']]);
         $sms = $this->messenger->of('pri.not02.report_card_ready');
-        self::assertCount(4, $sms);
+        self::assertCount(3, $sms);
         self::assertSame('Trimestre 1', $sms[0]['variables']['period_label']);
         $family = $this->ok('GET', '/primary/family/children/e1/report-cards', null, 'parent-1')['items'];
         self::assertCount(1, $family);

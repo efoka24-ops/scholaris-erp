@@ -57,7 +57,8 @@ final class RemediationService
         }
         $sessions = $this->store->select(self::SESSIONS, $t, $establishmentId, ['class_structure_id' => $classId], 'held_on DESC, id', 2000, $extra, $params);
         $participants = $this->participantsOf($t, $establishmentId, array_map(static fn (array $s): string => (string) $s['id'], $sessions));
-        $names = $this->classes->names($t, array_values(array_unique(array_merge(...array_values($participants ?: [[]])))));
+        // Noms des participants ET des élèves de la classe (cases à cocher de la saisie) : sans eux, l'écran affichait l'identifiant.
+        $names = $this->classes->names($t, array_values(array_unique([...$context['learner_ids'], ...array_merge(...array_values($participants ?: [[]]))])));
         $items = [];
         $weeks = [];
         foreach ($sessions as $session) {
@@ -122,7 +123,9 @@ final class RemediationService
         });
         $this->access->audit($principal, 'primary.remediation.session_recorded', self::SESSIONS, $id, null, ['class_structure_id' => $classId, 'learners' => count($people)]);
 
-        return self::sessionResource($this->store->findOrFail(self::SESSIONS, $t, $establishmentId, $id)) + ['participants' => array_map(static fn ($p): array => ['person_id' => (string) $p], $people)];
+        $names = $this->classes->names($t, array_values(array_map('strval', $people)));
+
+        return self::sessionResource($this->store->findOrFail(self::SESSIONS, $t, $establishmentId, $id)) + ['participants' => array_map(static fn ($p): array => ['person_id' => (string) $p, 'name' => $names[(string) $p] ?? (string) $p], $people)];
     }
 
     /** @return list<array<string, mixed>> fiches de la classe (ou d'un élève) */

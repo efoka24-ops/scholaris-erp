@@ -115,7 +115,13 @@ final class ReportCardService
         return $counts + ['items' => $this->list($principal, $establishmentId, $councilId)];
     }
 
-    /** @return array{published: int, notified: int, items: list<array<string, mixed>>} */
+    /**
+     * Publication aux familles. `notified` compte les garants prévenus par SMS ; `families` compte les garants (financiers ou tuteurs)
+     * des élèves publiés et `not_notified` donne, par motif du socle (consent_missing, no_contact, opted_out…), ceux qui ne l'ont pas
+     * été : le bulletin reste visible dans l'espace des parents, mais l'écran dit pourquoi aucun SMS n'est parti (FIX-PRI 7).
+     *
+     * @return array{published: int, notified: int, families: int, not_notified: array<string, int>, items: list<array<string, mixed>>}
+     */
     public function publish(Principal $principal, string $establishmentId, string $councilId): array
     {
         $t = $principal->tenantId;
@@ -126,19 +132,28 @@ final class ReportCardService
         }
         $now = $this->clock->now();
         $notified = 0;
+        $families = 0;
+        $reasons = [];
         $byPerson = [];
         foreach ($rows as $row) {
             $this->store->update(self::TABLE, $t, $establishmentId, ['status' => 'published', 'published_by' => $principal->userId, 'published_at' => $now, 'updated_at' => $now], ['id' => (string) $row['id']]);
             $byPerson[(string) $row['person_id']][] = (string) $row['id'];
         }
         foreach ($byPerson as $personId => $ids) {
-            $count = $this->notify($t, $establishmentId, $personId, (string) $council['period_label']);
+            [$count, $guardians, $blocked] = $this->notify($t, $establishmentId, $personId, (string) $council['period_label']);
             $notified += $count;
+            $families += $guardians;
+            foreach ($blocked as $reason) {
+                $reasons[$reason] = ($reasons[$reason] ?? 0) + 1;
+            }
             $this->store->update(self::TABLE, $t, $establishmentId, ['notified_count' => $count], ['id' => $ids[0]]);
         }
         $this->access->audit($principal, 'primary.report_cards.published', CouncilService::COUNCILS, $councilId, null, ['published' => count($rows), 'notified' => $notified]);
 
-        return ['published' => count($rows), 'notified' => $notified, 'items' => $this->list($principal, $establishmentId, $councilId)];
+        return [
+            'published' => count($rows), 'notified' => $notified, 'families' => $families, 'not_notified' => $reasons,
+            'items' => $this->list($principal, $establishmentId, $councilId),
+        ];
     }
 
     /** @return array<string, mixed> */
@@ -249,18 +264,26 @@ final class ReportCardService
         return $outcome;
     }
 
-    private function notify(string $tenantId, string $establishmentId, string $personId, string $periodLabel): int
+    /** @return array{0: int, 1: int, 2: list<string>} garants prévenus, garants, motifs des envois bloqués */
+    private function notify(string $tenantId, string $establishmentId, string $personId, string $periodLabel): array
     {
         $child = $this->people->find($tenantId, $personId);
         $count = 0;
+        $guardians = 0;
+        $blocked = [];
         foreach ($this->people->guarantorsOf($tenantId, $personId) as $guardian) {
             $result = $this->messenger->send($tenantId, $establishmentId, $guardian->id, self::TEMPLATE, [
                 'child_name' => $child === null ? '' : $child->fullName(), 'period_label' => $periodLabel, 'link' => self::LINK,
             ]);
-            $count += $result->status === DeliveryResult::BLOCKED ? 0 : 1;
+            ++$guardians;
+            if ($result->status === DeliveryResult::BLOCKED) {
+                $blocked[] = $result->reason ?? 'blocked';
+            } else {
+                ++$count;
+            }
         }
 
-        return $count;
+        return [$count, $guardians, $blocked];
     }
 
     /**

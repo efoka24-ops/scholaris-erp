@@ -49,6 +49,17 @@ final class PrimaryRolesMigrationTest extends TestCase
         self::assertSame(RoleMatrix::EXTRA_ORGANISATION, $granted);
     }
 
+    public function testMigrationAppelDeLaDirectionEtMatriceConcordent(): void
+    {
+        $sql = (string) file_get_contents(dirname(__DIR__, 4) . '/database/migrations/202611110745_roles_primary_fix_pri.sql');
+        preg_match_all("/VALUES \('(primary_[a-z_]+)', '([a-z_.]+)'\)/", $sql, $matches, PREG_SET_ORDER);
+        $granted = [];
+        foreach ($matches as $m) {
+            $granted[$m[1]][] = $m[2];
+        }
+        self::assertSame(RoleMatrix::EXTRA_FIX_PRI, $granted);
+    }
+
     public function testToutePermissionDeLaMatriceEstDansUneMigration(): void
     {
         $all = '';

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Scholaris\Modules\Apps\Primary\Attendance\Http\CallRosterController;
 use Scholaris\Modules\Apps\Primary\Attendance\Http\SetupController;
 use Scholaris\Modules\Apps\Primary\Support\PrimaryRoutes;
 
@@ -9,4 +10,5 @@ use Scholaris\Modules\Apps\Primary\Support\PrimaryRoutes;
 return static function (PrimaryRoutes $routes): void {
     $routes->get('/setup', [SetupController::class, 'status']);
     $routes->post('/setup/apply', [SetupController::class, 'apply']);
+    $routes->get('/classes/{id}/call-roster', [CallRosterController::class, 'show']);
 };
