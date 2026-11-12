@@ -27,7 +27,9 @@ Ce chapitre concerne surtout les lycées techniques, les CETIC et les établisse
 
 Dans **Séance pratique**, l'enseignant indique la classe, la date et, pour chaque élève, son poste et les EPI portés, puis **Enregistrer la séance**. « Sans tous les EPI requis, l'élève reste observateur et aucun poste machine ne lui est attribué. »
 
-Remarque : cette version demande des **identifiants** (classe, enseignant, élèves) dans certains champs. Demandez-les à la scolarité.
+La **Classe** et l'**Enseignant** se choisissent dans des listes. Les élèves de la classe s'affichent avec une case à cocher : cochez les présents, puis choisissez pour chacun son poste et les EPI portés.
+
+Tant qu'aucun atelier n'existe, l'écran du chef des travaux affiche les quatre étapes à suivre. Les autres rôles lisent une courte explication.
 
 Les notes d'atelier remontent au conseil de classe (« Atelier : 14 / 20 »).
 
@@ -35,7 +37,7 @@ Les notes d'atelier remontent au conseil de classe (« Atelier : 14 / 20 »).
 
 1. Ouvrez **Secondaire > Stages**.
 2. **Entreprise** : saisissez le nom et le **Secteur**, puis **Ajouter l'entreprise**.
-3. **Créer le stage** : élève, entreprise, **Maître de stage**, **Début**, **Fin**, **Coefficient de stage (paramétré)**.
+3. **Créer le stage** : choisissez l'**Élève** par son nom (sa classe est reprise automatiquement), l'entreprise, **Maître de stage**, **Début**, **Fin**, **Coefficient de stage (paramétré)**.
 4. Saisissez la **Référence de convention** (la convention DOC-21 peut être émise).
 5. Pendant le stage : **Ajouter une visite** (visiteur, **Date de visite**, **Notes**).
 6. À la fin : **Évaluation du tuteur** et **Note de stage** (fiche d'appréciation DOC-22).

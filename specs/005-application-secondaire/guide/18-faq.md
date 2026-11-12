@@ -39,6 +39,9 @@ Dans un établissement public, seuls les frais du catalogue peuvent être créé
 **Le parent a payé par mobile money mais la facture n'est pas soldée.**
 Le paiement reste « en attente » tant que l'opérateur ne l'a pas confirmé. Le parent clique sur **Vérifier l'état**. Si le paiement est refusé ou expiré, il peut recommencer.
 
+**Le parent se présente à la caisse sans sa référence de paiement.**
+Ce n'est pas nécessaire : dans **Secondaire > Frais**, bloc **Encaissement au guichet**, retrouvez l'élève par son nom ou sa classe, puis cliquez sur **Encaisser pour cet élève** (chapitre 04, section 4.5).
+
 **Les frais d'examen peuvent-ils être encaissés par l'établissement ?**
 Non : ils se paient sur cartescolaire.cm. L'établissement importe le relevé des paiements dans **Carte scolaire**.
 

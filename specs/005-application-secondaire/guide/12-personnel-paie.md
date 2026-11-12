@@ -8,7 +8,7 @@ Ce chapitre explique comment renseigner le statut de chaque membre du personnel,
 
 | Tâche | Qui |
 |---|---|
-| Statut d'emploi, grade, référence de paie | Chef d'établissement, administrateur fonctionnel |
+| Statut d'emploi, grade, référence de paie | Chef d'établissement, administrateur fonctionnel, administrateur de l'établissement |
 | Consulter les heures du mois | Chef d'établissement, censeur, intendant |
 | Statuts éligibles à la paie | Chef d'établissement |
 | Heures du personnel non enseignant | Intendant (saisie), chef d'établissement (validation) |
@@ -25,6 +25,10 @@ Les membres viennent du dossier du personnel (menu **Personnel** de l'administra
 4. Cliquez sur **Enregistrer**. Message : « Statut enregistré. »
 
 ![Écran Personnel](images/12-personnel.png)
+
+L'**administrateur de l'établissement** (rôle « Super administrateur » du client), qui tient le dossier du personnel de l'administration, ouvre aussi **Personnel** et tient les statuts. Il lit la **Paie** ; préparer et valider un bulletin de paie restent réservés à l'intendant et au chef d'établissement.
+
+![Personnel ouvert par l'administrateur de l'établissement](images/12-personnel-administrateur.png)
 
 ## 12.2 Heures du mois
 

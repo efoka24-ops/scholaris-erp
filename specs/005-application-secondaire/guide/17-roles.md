@@ -12,6 +12,7 @@ Le serveur vérifie toujours les droits : une tentative hors de votre rôle est 
 | **Censeur** ou préfet des études | Emploi du temps (affectations, plages, génération, remplacements) ; visa du cahier de textes ; valide et verrouille les notes ; prépare le conseil de classe (règles, propositions, émission des bulletins) ; gère les candidats aux examens officiels | 05, 07, 08, 10 |
 | **Surveillant général** | Absences et retards, justification des absences, discipline (incidents, propositions de sanction), note de conduite, saisine du conseil de discipline | 06 |
 | **Promoteur** (privé) | Tableaux de bord et finances en lecture ; valide les plans de paiement | 04, 14 |
+| **Administrateur de l'établissement** (« Super administrateur » du client) | Autorisations d'ouverture, années et périodes, comptes ; ouvre **Personnel** (statuts) et lit la **Paie**, sans préparer ni valider les bulletins de paie | 02, 12 |
 | **Administrateur fonctionnel** | Profil et modules, paramètres, comptes et rôles, modèles de documents, catalogue des frais autorisés | 02, 04 |
 
 ## 17.2 Pédagogie
@@ -30,7 +31,7 @@ Le serveur vérifie toujours les droits : une tentative hors de votre rôle est 
 |---|---|---|
 | **Secrétaire** ou chargé de la scolarité | Préinscriptions, inscriptions, réinscriptions, transferts, import, matricules, carte scolaire ; émet les documents (certificats, cartes, listes) ; listes des candidats aux examens | 03, 10, 16 |
 | **Intendant** ou économe | Frais, échéanciers, factures, plans de paiement, relevé de la carte scolaire, situation financière ; approuve les annulations de paiement | 04, 12, 14 |
-| **Caissier** | Encaisse au guichet et délivre le reçu ; demande l'annulation d'un paiement erroné | 04 |
+| **Caissier** | Carte **Frais** de l'espace Secondaire ; encaisse au guichet en retrouvant l'élève par son nom (ou par la référence famille) et délivre le reçu ; demande l'annulation d'un paiement erroné | 04 |
 
 ## 17.4 Services
 

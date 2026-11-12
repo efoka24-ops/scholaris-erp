@@ -116,7 +116,7 @@ La liste affiche par exemple « MATH · Mathématiques — coef. 5 · 6 h/sem. �
 
 ## 2.8 Autorisations d'ouverture
 
-**Toute inscription exige une autorisation d'ouverture valide pour la classe** (public compris). Sans elle, l'inscription est refusée.
+**Toute inscription exige une autorisation d'ouverture valide pour la classe** (public compris). Sans elle, l'inscription est refusée. Le module **Autorisations d'ouverture** est actif d'office dans les profils des établissements publics (lycée général, lycée technique, CES, CETIC) créés depuis cette version. Un établissement ouvert plus tôt l'active lui-même dans l'assistant de profil (section 2.1).
 
 **Qui** : l'administrateur de l'établissement (rôle « Super administrateur » du client). **Où** : **Administration > Autorisations d'ouverture** (`/administration/autorisations`).
 

@@ -34,7 +34,7 @@ Le bas de l'écran liste les **Documents du secondaire** :
 | DOC-30 État des vacations et bulletin de paie | émis à l'écran de la paie |
 | DOC-31 Attestation interne de résultat à un examen | avec QR |
 
-Les étiquettes **module inactif** ou **réservé à l'enseignement technique** signalent les documents indisponibles pour votre établissement.
+Un document indisponible porte son motif : **module inactif** (le module n'est pas activé dans le profil) ou « indisponible : l'établissement n'offre pas l'enseignement technique » (conventions et fiches de stage, DOC-21 à DOC-24, dans un lycée général).
 
 ![Écran Documents](images/15-documents.png)
 

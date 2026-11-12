@@ -149,6 +149,19 @@ async function selectSeries(select: Locator, code: string): Promise<void> {
   await select.selectOption((await option.getAttribute('value')) ?? '');
 }
 
+/**
+ * Ouvre un écran et attend un repère ; si la pile locale répond par une erreur passagère (base SQLite occupée par un autre
+ * serveur php -S : 500 « Une erreur interne est survenue »), recharge l'écran (3 essais au plus).
+ */
+async function gotoReady(page: Page, path: string, ready: Locator): Promise<void> {
+  for (let attempt = 0; ; attempt++) {
+    await page.goto(path);
+    if (await ready.waitFor({ state: 'visible', timeout: 20_000 }).then(() => true, () => false)) return;
+    if (attempt >= 2) await expect(ready).toBeVisible();
+    problems.push({ step: `rechargement ${path}`, error: 'repère absent, écran rechargé' });
+  }
+}
+
 /** Clique chaque onglet (nav.tabs) d'un écran et le capture. */
 async function eachTab(page: Page, prefix: string, skip: RegExp[] = []): Promise<void> {
   const buttons = page.locator('main nav.tabs button, main nav[aria-label] > button');
@@ -431,8 +444,7 @@ test('05 : cycle des notes préréglé, affectation, créneau, emploi du temps, 
 
 test('04 : catalogue, demande d’ajout, frais, échéancier, facture, caisse, situation', async ({ browser }) => {
   let page = await as(browser, 'intendant');
-  await page.goto('/secondaire/frais');
-  await expect(page.getByRole('heading', { name: 'Catalogue des frais autorisés (public)' })).toBeVisible();
+  await gotoReady(page, '/secondaire/frais', page.getByRole('heading', { name: 'Catalogue des frais autorisés (public)' }));
   await shot(page, '04-frais-accueil', { maxHeight: 2400 });
   const itemForm = page.locator('form[aria-labelledby="sf-items-new"]');
   await itemForm.locator('#sf-i-kind').selectOption('other');
@@ -502,6 +514,23 @@ test('04 : catalogue, demande d’ajout, frais, échéancier, facture, caisse, s
     await shot(page, '04-caisse-ouverte');
     await page.getByText('Factures', { exact: true }).click();
     await shot(page, '04-caisse-factures');
+  });
+  // FIX-SEC : encaissement au guichet par recherche de l'élève (sans référence famille), depuis Secondaire > Frais.
+  await soft('caisse par élève', async () => {
+    await page.goto('/secondaire/frais');
+    const card = page.locator('section[aria-labelledby="sf-cash"]');
+    await expect(card).toBeVisible();
+    await page.locator('#sf-cash-student-search').fill('Lyceenne');
+    await selectContaining(page.locator('#sf-cash-student'), 'Fictive-Lyceenne');
+    await shot(page, '04-caisse-recherche-eleve', { el: card });
+    await card.getByRole('link', { name: 'Encaisser pour cet élève' }).click();
+    await expect(page).toHaveURL(/facturation/);
+    await expect(page.locator('#b-amt')).toBeVisible();
+    await page.locator('#b-amt').fill('5000');
+    await shot(page, '04-caisse-eleve');
+    await page.getByRole('button', { name: 'Encaisser et émettre le reçu' }).click();
+    await expect(page.getByText(/Encaissement enregistré/).first()).toBeVisible();
+    await shot(page, '04-caisse-recu');
   });
 });
 
@@ -675,6 +704,15 @@ test('10-13 : examens officiels, ateliers, stages, personnel, paie, services, ta
     await selectContaining(page.locator('#sst-member'), 'Fictif-Professeur');
     await page.waitForTimeout(500);
     await shot(page, '12-personnel-fiche', { el: page.locator('section[aria-labelledby="sst-profiles"]') });
+  });
+  // FIX-SEC : l'administrateur du client (droits Personnel du socle) ouvre Personnel et Paie.
+  await soft('administrateur personnel', async () => {
+    page = await as(browser, 'admin');
+    await page.goto('/secondaire/personnel');
+    await expect(page.locator('#sst-member')).toBeVisible();
+    await shot(page, '12-personnel-administrateur', { maxHeight: 2000 });
+    await page.goto('/secondaire/paie');
+    await shot(page, '12-paie-administrateur', { maxHeight: 2000 });
   });
   page = await as(browser, 'fonctionnel');
   for (const [path, name] of [['/secondaire/paie', '12-paie'], ['/secondaire/services', '12-services']] as const) {

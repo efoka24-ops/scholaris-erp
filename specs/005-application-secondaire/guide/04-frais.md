@@ -73,17 +73,44 @@ La facture reprend tous les échéanciers de la classe de l'élève. Le parent *
 
 ## 4.5 Encaisser au guichet et délivrer le reçu
 
-**Qui** : le caissier (ou l'intendant). **Où** : **Frais et paiements** dans le menu de gauche (`/facturation`), l'écran de caisse commun à toutes les applications SCHOLARIS. Le caissier n'a pas de carte dans l'espace **Secondaire** : il travaille dans cet écran.
+**Qui** : le caissier (ou l'intendant). **Où** : la carte **Frais** de l'espace **Secondaire** (`/secondaire/frais`), qui ouvre ensuite **Frais et paiements** (`/facturation`), l'écran de caisse commun à toutes les applications SCHOLARIS.
 
-L'écran a quatre onglets : **Journal du jour**, **Caisse**, **Factures** et **Reçus**.
+L'espace **Secondaire** du caissier affiche la carte **Frais**. Il y voit l'aperçu des frais et le bloc **Encaissement au guichet**.
+
+![Espace Secondaire du caissier](images/04-caissier-accueil.png)
+
+L'écran **Frais et paiements** a quatre onglets : **Journal du jour**, **Caisse**, **Factures** et **Reçus**.
 
 ![Journal du jour du caissier](images/04-caissier-facturation.png)
 
-1. **Ouvrir la caisse** (le matin) : onglet **Caisse**, saisissez le **Fonds de caisse** puis cliquez sur **Ouvrir la caisse**. L'écran affiche « Caisse n° … ouverte », le fonds de caisse et les **Espèces encaissées**.
-2. **Encaisser** : saisissez la **Référence de paiement famille** et le **Montant en FCFA**, puis cliquez sur **Encaisser et émettre le reçu**. Message : « Encaissement enregistré. Reçu … ». Le montant est affecté automatiquement (retards d'abord, puis échéances les plus anciennes) et le reçu numéroté est envoyé par SMS au parent.
-3. **Arrêter la caisse** (le soir) : saisissez les **Espèces comptées (FCFA)** puis cliquez sur **Arrêter la caisse**. Message : « La caisse est arrêtée. »
+### Ouvrir la caisse (le matin)
+
+Onglet **Caisse** : saisissez le **Fonds de caisse** puis cliquez sur **Ouvrir la caisse**. L'écran affiche « Caisse n° … ouverte », le fonds de caisse et les **Espèces encaissées**.
 
 ![Caisse ouverte, prête à encaisser](images/04-caisse-ouverte.png)
+
+### Encaisser pour un élève
+
+Le parent se présente au guichet sans référence : retrouvez l'élève par son nom.
+
+1. Ouvrez **Secondaire > Frais**, bloc **Encaissement au guichet**.
+2. Dans le champ de recherche, tapez une partie du nom ou la classe, puis choisissez l'**Élève** dans la liste (nom et classe).
+3. Cliquez sur **Encaisser pour cet élève**. L'onglet **Caisse** s'ouvre avec la mention « Élève : … Le montant est affecté à ses factures ouvertes. »
+4. Saisissez le **Montant en FCFA**, puis cliquez sur **Encaisser et émettre le reçu**. Message : « Encaissement enregistré. Reçu … ».
+
+![Recherche de l'élève au guichet](images/04-caisse-recherche-eleve.png)
+
+![Caisse ouverte pour l'élève choisi](images/04-caisse-eleve.png)
+
+![Encaissement enregistré et reçu émis](images/04-caisse-recu.png)
+
+Le montant est affecté automatiquement (retards d'abord, puis échéances les plus anciennes) et le reçu numéroté est envoyé par SMS au parent.
+
+Si le parent donne sa **Référence de paiement famille** (par exemple après un paiement mobile money), cliquez sur **Encaisser par référence famille** : le champ de la référence remplace le nom de l'élève.
+
+### Arrêter la caisse (le soir)
+
+Saisissez les **Espèces comptées (FCFA)** puis cliquez sur **Arrêter la caisse**. Message : « La caisse est arrêtée. »
 
 - L'onglet **Factures** liste les factures avec **Net à payer**, **Payé** et **Reste dû**.
 - L'onglet **Reçus** liste les reçus ; le bouton **PDF** les réimprime.

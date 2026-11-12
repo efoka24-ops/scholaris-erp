@@ -9,7 +9,7 @@ Ce chapitre présente les tableaux de bord de la direction : objectifs de l'éta
 ## 14.1 Choisir la période
 
 1. Ouvrez **Secondaire > Tableaux de bord**.
-2. Laissez vide l'**Année scolaire** pour l'année en cours.
+2. Choisissez l'**Année scolaire** dans la liste (l'année en cours est proposée).
 3. Choisissez le **Trimestre** (par défaut **Trimestre en cours**).
 4. Cliquez sur **Actualiser**.
 

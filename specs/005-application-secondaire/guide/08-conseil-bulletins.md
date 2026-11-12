@@ -62,6 +62,8 @@ Chaque bulletin reçoit un **numéro unique**. Le parent le retrouve sur son por
 
 Depuis le conseil, cliquez sur **Aperçu** à côté de l'élève : l'écran **Bulletin** affiche les tableaux **Matières**, **Récapitulatif**, **Profil de la classe**, **Discipline** et **Travail**, la **Décision du conseil** et les **Observations**. Choisissez la **Langue** (français ou anglais). Après émission, l'aperçu indique « Instantané enregistré à l'émission le … » : le bulletin émis ne change plus.
 
-Remarque : dans cette version, l'écran d'aperçu peut s'afficher vide ; le bulletin émis reste consultable par son numéro (portail famille, documents de l'élève).
+L'aperçu est calculé à la demande : l'écran affiche « Calcul du bulletin en cours… » pendant quelques secondes, puis le bulletin. « Aucun bulletin à afficher » signale un élève sans bulletin pour cette période.
+
+![Aperçu du bulletin d'un élève](images/08-bulletin-apercu.png)
 
 Cliquez sur **Retour au conseil** pour revenir.

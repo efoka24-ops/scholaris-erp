@@ -16,7 +16,7 @@ Pour chaque enfant, la carte affiche :
 
 - la **classe**, le **niveau** et l'**année** (par exemple « 2nde A · Seconde · année 2026-2027 ») ;
 - l'état du matricule (**Matricule enregistré** ou **Matricule en attente**) ;
-- le **Reste à payer** et la liste des **Factures** ;
+- le **Reste à payer** et la liste des **Factures**, chacune nommée par ses frais (par exemple « Contribution APEE ») ;
 - les **Documents** émis (certificat de scolarité, carte…) ;
 - la **Vie scolaire** : **Résultats publiés**, **Bulletins**, **Assiduité** (absences, non justifiées, retards), **Devoirs des deux dernières semaines** (cahier de textes) et **Services** (cantine, transport).
 

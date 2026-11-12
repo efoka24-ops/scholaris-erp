@@ -21,23 +21,23 @@ Un module coupé reste consultable : « Ce module a été coupé : ses données 
 
 1. **Dispenses d'EPS du jour** : la liste des élèves dispensés aujourd'hui.
 2. **Nouveau passage** :
-   - saisissez l'**Identifiant de l'élève** ;
+   - choisissez l'**Élève** : tapez une partie de son nom ou sa classe, puis choisissez-le dans la liste ;
    - choisissez le **Motif du passage** (par exemple **Malaise ou maladie**) et la **Suite donnée** (par exemple **Retour en classe**) ;
    - cochez **Parents appelés** si c'est le cas ;
    - saisissez vos **Notes** (elles sont chiffrées) et, si besoin, la **Dispense d'EPS jusqu'au** ;
    - cliquez sur **Enregistrer le passage**.
 3. **Passages récents** : les derniers passages.
-4. **Dossier de santé** : saisissez l'identifiant de l'élève puis cliquez sur **Ouvrir**.
+4. **Dossier de santé** : choisissez l'élève par son nom puis cliquez sur **Ouvrir**.
 5. **Journal des consultations** : qui a consulté quoi, et quand.
 
 ![Infirmerie, vue par l'infirmier](images/12-services-infirmier.png)
 
-Remarque : cette version demande l'**identifiant** de l'élève (et non son nom). Demandez-le à la scolarité.
+Les dispenses d'EPS affichent le nom des élèves.
 
 ## 13.2 Cantine et transport
 
 1. **Nouvelle offre** : choisissez la **Nature** (**Cantine** ou **Transport**), saisissez le **Libellé**, la **Capacité (facultatif)**, le **Code du frais** utilisé pour facturer et le **Montant (FCFA)**, puis cliquez sur **Créer**.
-2. **Abonner un élève** : choisissez l'**Offre**, saisissez l'identifiant de l'élève, le **Début** et la **Fin (facultatif)**. Cochez **Émettre la facture** pour facturer la famille. Cliquez sur **Abonner un élève**.
+2. **Abonner un élève** : choisissez l'**Offre**, choisissez l'élève par son nom, le **Début** et la **Fin (facultatif)**. Cochez **Émettre la facture** pour facturer la famille. Cliquez sur **Abonner un élève**.
 3. **Abonnements en cours** : la liste des élèves abonnés. Le parent voit l'abonnement sur son portail (rubrique **Services**).
 
 ![Cantine et transport, vue par le responsable des services](images/12-services-responsable.png)

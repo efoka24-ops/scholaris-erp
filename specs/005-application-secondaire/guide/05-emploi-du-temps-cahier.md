@@ -24,7 +24,7 @@ L'affectation dit **qui enseigne quelle matière dans quelle classe**. Elle comm
 1. Ouvrez **Secondaire > Emploi du temps**, vérifiez l'**Année scolaire**, puis l'onglet **Affectations**.
 2. Choisissez la **Classe** (2nde A) et la **Matière** (MATH · Mathématiques).
 3. Choisissez l'**Enseignant** dans la liste des noms (personnel actif de l'établissement).
-4. Choisissez le **Statut** (**Permanent** ou vacataire), la **Nature de salle** (salle de classe, laboratoire, atelier) et le **Demi-groupe** (**Toute la classe**, ou G1 / G2 pour un dédoublement).
+4. Choisissez le **Statut** (**Permanent** ou vacataire), la **Nature de salle** (salle de classe, laboratoire, atelier), la **Salle** dans la liste des salles déclarées (chapitre 02) ou **Sans salle attitrée** et le **Demi-groupe** (**Toute la classe**, ou G1 / G2 pour un dédoublement).
 5. Cliquez sur **Affecter**. L'affectation apparaît en haut : « 2nde A · Mathématiques · Paul Fictif-Professeur · Permanent · Salle de classe ».
 
 ![Affectation d'un enseignant de mathématiques en 2nde A](images/05-edt-affectation-saisie.png)
@@ -67,7 +67,7 @@ L'emploi du temps peut être imprimé (document DOC-07, sans numéro ni QR).
 
 ## 5.5 Remplacements et permutations
 
-Onglet **Remplacements** : choisissez le créneau, le remplaçant (ou le créneau à échanger), la date de début et, si besoin, la date de fin. « Le passé reste tel qu'il a été tenu. Élèves et parents de la classe sont notifiés. » Le titulaire reprend son créneau le lendemain de la date de fin.
+Onglet **Remplacements** : choisissez le créneau, le **Remplaçant** dans la liste des noms (ou le créneau à échanger), la date de début et, si besoin, la date de fin. « Le passé reste tel qu'il a été tenu. Élèves et parents de la classe sont notifiés. » Le titulaire reprend son créneau le lendemain de la date de fin.
 
 ![Onglet Remplacements](images/05-edt-onglet-05-remplacements.png)
 
