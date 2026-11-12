@@ -11,6 +11,7 @@
  *        --out ../../specs/005-application-secondaire/guide/Guide-SCHOLARIS-Secondaire.pdf \
  *        --title "Guide d'utilisation" --subtitle "Application Secondaire" [--edition "Novembre 2026"] [--pages-png <dossier>]
  *
+ * --pdfjs : vérifie aussi les numéros du sommaire sur le PDF produit (texte de chaque page) et les corrige au besoin.
  * --pages-png : exporte aussi chaque page du PDF en PNG (contrôle visuel), si pdfjs-dist est installé quelque part
  *               (option --pdfjs <dossier node_modules/pdfjs-dist>) ; sinon ignoré.
  *
@@ -341,21 +342,20 @@ try {
   mkdirSync(dirname(OUT), { recursive: true });
   const css1 = '.chapter.first { break-before: auto; }';
   const full = page(cover + toc(pages) + chapters.map(chapterHtml).join('\n')).replace('</style>', css1 + '</style>');
-  const { buf } = await render(full, OUT);
+  let { buf } = await render(full, OUT);
   const total = countPages(buf);
   console.log(`PDF : ${OUT}`);
   console.log(`${chapters.length} chapitres, ${total} pages (attendu ${at - 1}).`);
   chapters.forEach((c, k) => console.log(`  p. ${String(pages[k]).padStart(3)}  ${c.title}`));
   if (broken.size) console.warn(`Images introuvables : ${[...broken].join(', ')}`);
 
-  // 3) Contrôle visuel facultatif : pages en PNG par pdf.js.
-  if (args['pages-png']) {
-    const pdfjsDir = args.pdfjs ? resolve(String(args.pdfjs)) : null;
-    const lib = pdfjsDir && [join(pdfjsDir, 'legacy', 'build', 'pdf.min.mjs'), join(pdfjsDir, 'build', 'pdf.min.mjs')].find((p) => existsSync(p));
-    if (!lib) console.warn('--pages-png ignoré : indiquez --pdfjs <chemin de node_modules/pdfjs-dist>.');
-    else {
-      const outDir = resolve(String(args['pages-png']));
-      mkdirSync(outDir, { recursive: true });
+  // 3) Avec --pdfjs : numéros du sommaire vérifiés sur le PDF réel (le rendu d'ensemble peut gagner ou perdre une page
+  //    par rapport aux chapitres rendus seuls) et corrigés au besoin ; puis contrôle visuel facultatif (pages en PNG).
+  const pdfjsDir = args.pdfjs ? resolve(String(args.pdfjs)) : null;
+  const lib = pdfjsDir && [join(pdfjsDir, 'legacy', 'build', 'pdf.min.mjs'), join(pdfjsDir, 'build', 'pdf.min.mjs')].find((p) => existsSync(p));
+  if (args['pages-png'] && !lib) console.warn('--pages-png ignoré : indiquez --pdfjs <chemin de node_modules/pdfjs-dist>.');
+  if (lib) {
+    {
       const worker = lib.replace('pdf.min.mjs', 'pdf.worker.min.mjs');
       const viewer = join(work, 'viewer.html');
       writeFileSync(viewer, `<!doctype html><html><body style="margin:0;background:#888"><canvas id="c"></canvas><script type="module">
@@ -366,6 +366,11 @@ try {
           const p = await window.__doc.getPage(n); const v = p.getViewport({ scale }); const c = document.getElementById('c');
           c.width = v.width; c.height = v.height; await p.render({ canvasContext: c.getContext('2d'), viewport: v }).promise; return window.__doc.numPages;
         };
+        window.pageText = async (data, n) => {
+          window.__doc ??= await pdfjs.getDocument({ data: Uint8Array.from(atob(data), (ch) => ch.charCodeAt(0)) }).promise;
+          const tc = await (await window.__doc.getPage(n)).getTextContent(); return tc.items.map((i) => i.str).join(' ');
+        };
+        window.reset = () => { window.__doc = undefined; };
         window.ready = true;
       </script></body></html>`);
       const v = await (await browser.newContext({ viewport: { width: 1000, height: 1400 } })).newPage();
@@ -377,14 +382,39 @@ try {
       });
       await v.goto('http://guide.local/viewer.html');
       await v.waitForFunction(() => window.ready === true);
-      const data = buf.toString('base64');
-      const wanted = String(args['pages-png-list'] ?? '').split(',').filter(Boolean).map(Number);
-      const list = wanted.length ? wanted : Array.from({ length: total }, (_, k) => k + 1);
-      for (const n of list) {
-        await v.evaluate(([d, k]) => window.renderPage(d, k, 1.3), [data, n]);
-        await v.locator('#c').screenshot({ path: join(outDir, `page-${String(n).padStart(3, '0')}.png`) });
+      // Page réelle du début de chaque chapitre : première page (après la précédente) dont le texte commence par son titre.
+      const norm = (t) => t.replace(/\*\*|`/g, '').replace(/\s+/g, '');
+      let data = buf.toString('base64');
+      const real = [];
+      let from = front + 1;
+      for (const c of chapters) {
+        const head = norm(c.title).slice(0, 25);
+        let found = 0;
+        for (let n = from; n <= total && !found; n++) {
+          const txt = norm(await v.evaluate(([d, k]) => window.pageText(d, k), [data, n]));
+          if (txt.startsWith(head)) found = n;
+        }
+        real.push(found || pages[real.length]);
+        if (found) from = found + 1;
       }
-      console.log(`${list.length} page(s) exportée(s) en PNG dans ${outDir}`);
+      const diff = real.map((p, k) => (p !== pages[k] ? `${chapters[k].title} : ${pages[k]} -> ${p}` : '')).filter(Boolean);
+      if (diff.length) {
+        console.log(`Sommaire corrigé d'après le PDF réel : ${diff.join(' ; ')}`);
+        ({ buf } = await render(page(cover + toc(real) + chapters.map(chapterHtml).join('\n')).replace('</style>', css1 + '</style>'), OUT));
+        data = buf.toString('base64');
+        await v.evaluate(() => window.reset());
+      } else console.log('Sommaire vérifié sur le PDF réel : numéros exacts.');
+      if (args['pages-png']) {
+        const outDir = resolve(String(args['pages-png']));
+        mkdirSync(outDir, { recursive: true });
+        const wanted = String(args['pages-png-list'] ?? '').split(',').filter(Boolean).map(Number);
+        const list = wanted.length ? wanted : Array.from({ length: total }, (_, k) => k + 1);
+        for (const n of list) {
+          await v.evaluate(([d, k]) => window.renderPage(d, k, 1.3), [data, n]);
+          await v.locator('#c').screenshot({ path: join(outDir, `page-${String(n).padStart(3, '0')}.png`) });
+        }
+        console.log(`${list.length} page(s) exportée(s) en PNG dans ${outDir}`);
+      }
     }
   }
 } finally {
