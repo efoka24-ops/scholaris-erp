@@ -303,6 +303,11 @@ final class EnrolmentTest extends SecondaryTestCase
         $dossier = $this->ok('POST', '/secondary/enrolments', self::pupil('Aïcha', $s['sixth'], ['guardian_financial' => true]), self::ADMIN, self::TA, $s['school']);
         self::assertSame([$known], array_column($dossier['financial_guarantors'], 'person_id'), 'Le parent déjà connu est repris, sans double.');
         self::assertSame('+237600000000', $dossier['financial_guarantors'][0]['phone']);
+        self::assertNull($dossier['financial_guarantors'][0]['payment_reference'], 'D-BUL : aucune référence émise, rien d\'inventé.');
+        $this->pdo()->prepare('INSERT INTO payment_references (id, tenant_id, establishment_id, guarantor_id, reference, created_at) VALUES (?, ?, ?, ?, ?, ?)')
+            ->execute(['01DBULREF00000000000000001', self::TA, $s['school'], $known, 'FAM-9001', '2026-11-12T09:00:00+01:00']);
+        $shown = $this->ok('GET', '/secondary/enrolment/students/' . $dossier['person_id'], null, self::ADMIN, self::TA, $s['school']);
+        self::assertSame('FAM-9001', $shown['financial_guarantors'][0]['payment_reference'], 'D-BUL : référence famille sur la fiche de l\'élève.');
 
         $other = $this->ok('POST', '/secondary/enrolments', self::pupil('Brice', $s['sixth'], ['guardians' => [['kind' => 'guardian', 'identity' => ['last_name' => 'NGONO', 'first_name' => 'Tante', 'phone' => '+237611111111']]]]), self::ADMIN, self::TA, $s['school']);
         self::assertSame([], $other['financial_guarantors']);

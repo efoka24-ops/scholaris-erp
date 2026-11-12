@@ -28,6 +28,8 @@ use Scholaris\Modules\Socle\People\Contracts\PersonDirectory;
  */
 return [
     Messenger::class => autowire(MessengerImpl::class),
+    // D-BUL : message de service essentiel (sans consentement recueilli, refus explicite respecté).
+    \Scholaris\Modules\Socle\Messaging\Contracts\EssentialMessenger::class => autowire(MessengerImpl::class),
     // Réglages personnels de notification (C-112) : défaut sûr « application seulement » tant qu'ils ne sont pas livrés.
     \Scholaris\Modules\Socle\Messaging\Contracts\NotificationChannelPreferences::class => autowire(\Scholaris\Modules\Socle\Messaging\Infrastructure\InAppOnlyPreferences::class),
     \Scholaris\Modules\Socle\Messaging\Contracts\SupportDesk::class => autowire(\Scholaris\Modules\Socle\Messaging\Application\SupportService::class),

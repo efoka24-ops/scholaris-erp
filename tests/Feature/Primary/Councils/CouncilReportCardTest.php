@@ -8,6 +8,7 @@ use Scholaris\Modules\Socle\Assessment\Contracts\AdmissionDirectory;
 use Scholaris\Modules\Socle\Assessment\Contracts\ClassResults;
 use Scholaris\Modules\Socle\Identity\Contracts\Scope;
 use Scholaris\Modules\Socle\Identity\Contracts\UserPersonLink;
+use Scholaris\Modules\Socle\Messaging\Contracts\EssentialMessenger;
 use Scholaris\Modules\Socle\Messaging\Contracts\Messenger;
 use Scholaris\Modules\Socle\Organisation\Contracts\OrgUnitTree;
 use Scholaris\Modules\Socle\People\Contracts\EnrollmentDirectory;
@@ -50,7 +51,7 @@ final class CouncilReportCardTest extends PrimaryTestCase
         };
         $this->bootPrimary([
             EnrollmentDirectory::class => $this->enrollments, PersonDirectory::class => $this->people, Messenger::class => $this->messenger,
-            UserPersonLink::class => $link, ClassResults::class => $this->results,
+            EssentialMessenger::class => $this->messenger, UserPersonLink::class => $link, ClassResults::class => $this->results,
         ]);
         $this->terms = $this->seedYear(self::TA, self::EA);
         $this->ok('POST', '/primary/referentials/example/apply', ['academic_year_id' => self::YEAR]);
@@ -127,12 +128,16 @@ final class CouncilReportCardTest extends PrimaryTestCase
         self::assertSame(409, $this->call('POST', "/primary/councils/$id/reopen", ['reason' => 'erreur'])[0], 'Réouverture impossible après émission.');
 
         self::assertSame([], $this->ok('GET', '/primary/family/children/e1/report-cards', null, 'parent-1')['items'], 'Non publié : invisible.');
-        // FIX-PRI 7 : un garant sans consentement aux communications n'est pas prévenu, et l'écran sait pourquoi.
-        $this->messenger->blocked['g-4'] = 'consent_missing';
+        // D-BUL (12 novembre 2026) : SMS essentiel par défaut ; le garant sans consentement recueilli est prévenu, le garant
+        // désinscrit (refus explicite) ne l'est pas, et l'écran sait pourquoi (FIX-PRI 7).
+        $this->messenger->withoutConsent[] = 'g-4';
+        $this->messenger->blocked['g-3'] = 'opted_out';
         $published = $this->ok('POST', "/primary/councils/$id/report-cards/publish");
-        self::assertSame([4, 3, 4, ['consent_missing' => 1]], [$published['published'], $published['notified'], $published['families'], $published['not_notified']]);
+        self::assertSame([4, 3, 4, ['opted_out' => 1]], [$published['published'], $published['notified'], $published['families'], $published['not_notified']]);
         $sms = $this->messenger->of('pri.not02.report_card_ready');
         self::assertCount(3, $sms);
+        self::assertSame(['g-1', 'g-2', 'g-4'], array_column($sms, 'person'));
+        self::assertSame([true, true, true], array_column($sms, 'essential'));
         self::assertSame('Trimestre 1', $sms[0]['variables']['period_label']);
         $family = $this->ok('GET', '/primary/family/children/e1/report-cards', null, 'parent-1')['items'];
         self::assertCount(1, $family);
@@ -205,6 +210,13 @@ final class CouncilReportCardTest extends PrimaryTestCase
         $snapshot = $this->ok('GET', "/primary/report-cards/{$annual['id']}")['snapshot'];
         self::assertSame('Admis(e) en classe supérieure', $snapshot['decision']['label']);
         self::assertCount(3, $snapshot['annual']['terms']);
+
+        // D-BUL : l'école désactive le caractère essentiel, le consentement s'applique de nouveau.
+        $this->setSetting('primary.report_card.sms_essential', false);
+        $this->messenger->withoutConsent[] = 'g-4';
+        $published = $this->ok('POST', "/primary/councils/{$council['id']}/report-cards/publish");
+        self::assertSame([3, 4, ['consent_missing' => 1]], [$published['notified'], $published['families'], $published['not_notified']]);
+        self::assertSame([false, false, false], array_column($this->messenger->of('pri.not02.report_card_ready'), 'essential'));
 
         // Niveau final : « fin de cycle », jamais promu.
         $this->results->averages[$t3['id']]['f1'] = 15.0;

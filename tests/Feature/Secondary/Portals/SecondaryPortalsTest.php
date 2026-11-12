@@ -101,6 +101,22 @@ final class SecondaryPortalsTest extends SecondaryTestCase
         self::assertSame(403, $this->call('GET', '/secondary/portal/family', null, 'personnel-sans-droit', self::TA, $this->school)[0]);
     }
 
+    public function testLeParentVoitSaReferenceDePaiementEtJamaisCelleDUneAutreFamille(): void
+    {
+        self::assertNull($this->ok('GET', '/secondary/portal/family', null, self::PARENT, self::TA, $this->school)['payment_reference'], 'Aucune référence émise.');
+        $insert = $this->pdo()->prepare('INSERT INTO payment_references (id, tenant_id, establishment_id, guarantor_id, reference, created_at) VALUES (?, ?, ?, ?, ?, ?)');
+        $insert->execute(['01DBULREF00000000000000011', self::TA, $this->school, 'parent-1', 'FAM-9011', '2026-11-12T09:00:00+01:00']);
+        $insert->execute(['01DBULREF00000000000000012', self::TA, $this->school, 'parent-2', 'FAM-9012', '2026-11-12T09:00:00+01:00']);
+        $insert->execute(['01DBULREF00000000000000013', self::TB, 'autre-ecole', 'parent-1', 'FAM-9013', '2026-11-12T09:00:00+01:00']);
+
+        $data = $this->ok('GET', '/secondary/portal/family', null, self::PARENT, self::TA, $this->school);
+
+        self::assertSame('FAM-9011', $data['payment_reference']);
+        self::assertStringNotContainsString('FAM-9012', (string) json_encode($data), 'Jamais la référence d\'une autre famille.');
+        self::assertStringNotContainsString('FAM-9013', (string) json_encode($data), 'Jamais celle d\'un autre client.');
+        self::assertSame('FAM-9012', $this->ok('GET', '/secondary/portal/family', null, self::OTHER_PARENT, self::TA, $this->school)['payment_reference']);
+    }
+
     public function testLElevePortailEtDocumentsRetenusEnCasDeBlocage(): void
     {
         $data = $this->ok('GET', '/secondary/portal/student', null, self::STUDENT, self::TA, $this->school);

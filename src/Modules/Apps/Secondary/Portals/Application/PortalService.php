@@ -8,6 +8,7 @@ use Scholaris\Core\Http\HttpException;
 use Scholaris\Core\Security\Principal;
 use Scholaris\Modules\Apps\Secondary\Setup\Contracts\EstablishmentProfiles;
 use Scholaris\Modules\Apps\Secondary\Support\Access;
+use Scholaris\Modules\Socle\Billing\Contracts\FamilyPaymentReferences;
 use Scholaris\Modules\Socle\Billing\Contracts\InvoiceIssuer;
 use Scholaris\Modules\Socle\Billing\Contracts\PaymentOrder;
 use Scholaris\Modules\Socle\Billing\Contracts\PaymentOutcome;
@@ -43,6 +44,7 @@ final class PortalService
         private readonly PaymentRequester $payments,
         private readonly Access $access,
         private readonly SchoolLife $life,
+        private readonly FamilyPaymentReferences $references,
     ) {
     }
 
@@ -112,7 +114,10 @@ final class PortalService
             $children[] = $card;
         }
 
-        return ['guardian_id' => $guardianId, 'can_pay' => $canPay, 'family_balance_xaf' => $total, 'children' => $children];
+        // D-BUL : la référence de paiement famille du parent connecté, et seulement la sienne (guichet, mobile money).
+        $reference = $this->references->referenceOf($t, $guardianId);
+
+        return ['guardian_id' => $guardianId, 'can_pay' => $canPay, 'family_balance_xaf' => $total, 'payment_reference' => $reference, 'children' => $children];
     }
 
     /**

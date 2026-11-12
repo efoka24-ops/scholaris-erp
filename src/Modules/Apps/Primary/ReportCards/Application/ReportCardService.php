@@ -18,6 +18,7 @@ use Scholaris\Modules\Socle\Documents\Contracts\DocumentReissuer;
 use Scholaris\Modules\Socle\Documents\Contracts\ExtendedDocumentIssuer;
 use Scholaris\Modules\Socle\Documents\Contracts\IssueOptions;
 use Scholaris\Modules\Socle\Messaging\Contracts\DeliveryResult;
+use Scholaris\Modules\Socle\Messaging\Contracts\EssentialMessenger;
 use Scholaris\Modules\Socle\Messaging\Contracts\Messenger;
 use Scholaris\Modules\Socle\People\Contracts\PersonDirectory;
 
@@ -53,6 +54,7 @@ final class ReportCardService
         private readonly PersonDirectory $people,
         private readonly Guardianship $family,
         private readonly Messenger $messenger,
+        private readonly EssentialMessenger $essential,
         private readonly PrimaryClock $clock,
     ) {
     }
@@ -268,13 +270,16 @@ final class ReportCardService
     private function notify(string $tenantId, string $establishmentId, string $personId, string $periodLabel): array
     {
         $child = $this->people->find($tenantId, $personId);
+        // D-BUL : message essentiel par défaut (sans consentement recueilli, refus explicite respecté), désactivable par l'école ou la plateforme.
+        $essential = $this->settings->bool($tenantId, $establishmentId, 'primary.report_card.sms_essential');
         $count = 0;
         $guardians = 0;
         $blocked = [];
         foreach ($this->people->guarantorsOf($tenantId, $personId) as $guardian) {
-            $result = $this->messenger->send($tenantId, $establishmentId, $guardian->id, self::TEMPLATE, [
-                'child_name' => $child === null ? '' : $child->fullName(), 'period_label' => $periodLabel, 'link' => self::LINK,
-            ]);
+            $variables = ['child_name' => $child === null ? '' : $child->fullName(), 'period_label' => $periodLabel, 'link' => self::LINK];
+            $result = $essential
+                ? $this->essential->sendEssential($tenantId, $establishmentId, $guardian->id, self::TEMPLATE, $variables)
+                : $this->messenger->send($tenantId, $establishmentId, $guardian->id, self::TEMPLATE, $variables);
             ++$guardians;
             if ($result->status === DeliveryResult::BLOCKED) {
                 $blocked[] = $result->reason ?? 'blocked';

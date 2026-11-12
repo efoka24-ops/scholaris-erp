@@ -67,3 +67,6 @@ Date : 2026-10-20. Chaque question a une **valeur par défaut proposée**, toujo
 2. MQ-08, MQ-11, MQ-14, DOC-M1, DOC-M2 (une seule séance avec une école cible) : débloquent référentiel, sections, carnet.
 3. MQ-02, MQ-03, MQ-05, MQ-06, MQ-09, MQ-10, MQ-12, DOC-M3, DOC-M4, DOC-M6 : sortie, consentement, passage, frais, rôles.
 4. Le reste au fil de l'eau ; les valeurs par défaut suffisent pour construire.
+
+## I. Décisions du propriétaire
+- **12 novembre 2026, SMS « carnet de suivi disponible » (`nursery.not06.progress_book`, D-BUL)** : c'est un **message essentiel**, comme le bulletin des autres applications. Il part sans consentement recueilli, mais une désinscription ou un consentement révoqué sont toujours respectés. Le paramètre `nursery.progress_book.sms_essential` vaut `true` au niveau plateforme (migration `202611120930`) ; `false` le désactive.

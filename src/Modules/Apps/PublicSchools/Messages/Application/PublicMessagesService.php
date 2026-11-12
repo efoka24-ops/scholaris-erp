@@ -8,6 +8,7 @@ use Scholaris\Modules\Apps\PublicSchools\Contracts\ClassRoster;
 use Scholaris\Modules\Apps\PublicSchools\Contracts\PublicMessages;
 use Scholaris\Modules\Socle\Identity\Contracts\RoleDirectory;
 use Scholaris\Modules\Socle\Messaging\Contracts\DeliveryResult;
+use Scholaris\Modules\Socle\Messaging\Contracts\EssentialMessenger;
 use Scholaris\Modules\Socle\Messaging\Contracts\Messenger;
 use Scholaris\Modules\Socle\Organisation\Contracts\EstablishmentDirectory;
 use Scholaris\Modules\Socle\Organisation\Contracts\SettingsReader;
@@ -27,8 +28,17 @@ final class PublicMessagesService implements PublicMessages
 
     private const DEFAULT_ESSENTIAL = ['pub.not14.parent'];
 
+    /**
+     * Messages de SERVICE essentiels (décision du 12 novembre 2026, D-BUL) : envoyés sans consentement recueilli, refus explicite
+     * respecté (EssentialMessenger du socle). Paramètre `public_schools.messages.service_essential_templates` (plateforme, client ou
+     * école) ; une liste vide désactive la règle. Défaut : le SMS « bulletin disponible » (NOT-04).
+     */
+    public const SERVICE_ESSENTIAL_KEY = 'public_schools.messages.service_essential_templates';
+    private const DEFAULT_SERVICE_ESSENTIAL = ['pub.not04.parent'];
+
     public function __construct(
         private readonly Messenger $messenger,
+        private readonly EssentialMessenger $essential,
         private readonly PersonDirectory $people,
         private readonly ClassRoster $classes,
         private readonly RoleDirectory $roles,
@@ -90,7 +100,9 @@ final class PublicMessagesService implements PublicMessages
     private function deliver(string $tenantId, string $establishmentId, string $personId, string $templateKey, array $variables): bool
     {
         try {
-            $result = $this->messenger->send($tenantId, $establishmentId, $personId, $templateKey, $variables, [], $this->isEssential($tenantId, $templateKey));
+            $result = in_array($templateKey, $this->serviceEssentialTemplates($tenantId, $establishmentId), true)
+                ? $this->essential->sendEssential($tenantId, $establishmentId, $personId, $templateKey, $variables)
+                : $this->messenger->send($tenantId, $establishmentId, $personId, $templateKey, $variables, [], $this->isEssential($tenantId, $templateKey));
         } catch (Throwable) {
             return false;
         }
@@ -104,6 +116,14 @@ final class PublicMessagesService implements PublicMessages
         $value = $this->settings->value($tenantId, null, 'public_schools.messages.essential_templates', self::DEFAULT_ESSENTIAL);
 
         return is_array($value) ? array_values(array_map('strval', $value)) : self::DEFAULT_ESSENTIAL;
+    }
+
+    /** @return list<string> */
+    private function serviceEssentialTemplates(string $tenantId, string $establishmentId): array
+    {
+        $value = $this->settings->value($tenantId, $establishmentId, self::SERVICE_ESSENTIAL_KEY, self::DEFAULT_SERVICE_ESSENTIAL);
+
+        return is_array($value) ? array_values(array_map('strval', $value)) : self::DEFAULT_SERVICE_ESSENTIAL;
     }
 
     private function establishmentName(string $tenantId, string $establishmentId): string

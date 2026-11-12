@@ -171,6 +171,20 @@ final class MessagesTest extends PublicSchoolsTestCase
         self::assertTrue($this->container()->get(PublicMessages::class)->isEssential('t1', 'pub.not13.director'));
     }
 
+    public function testLeBulletinDisponibleEstUnMessageDeServiceEssentielParametrable(): void
+    {
+        $messages = $this->container()->get(PublicMessages::class);
+
+        self::assertSame(1, $messages->notifyGuardians('t1', 'e1', 's1', 'pub.not04.parent', ['school_year' => '2026-2027', 'details' => 'Unité 1']));
+        self::assertSame(1, $messages->notifyGuardians('t1', 'e1', 's1', 'pub.not01.parent', ['reference' => 'SYN-2026-0000001']));
+        self::assertSame(['pub.not04.parent'], $this->essential->templates, 'D-BUL : essentiel par défaut, les autres modèles restent ordinaires.');
+
+        $this->settings->values['public_schools.messages.service_essential_templates'] = [];
+        $messages->notifyGuardians('t1', 'e1', 's1', 'pub.not04.parent', ['school_year' => '2026-2027', 'details' => 'Unité 2']);
+        self::assertSame(['pub.not04.parent'], $this->essential->templates, 'Liste vide : la règle est désactivée.');
+        self::assertCount(2, $this->messenger->of('pub.not04.parent'));
+    }
+
     public function testUnTerritoireNEstAnnonceQuParSonInspection(): void
     {
         [$response, $json] = $this->api('POST', '/public/announcements', 'inspector', ['territory_id' => 'arr-1', 'title' => 'Calendrier des évaluations', 'body' => 'Les évaluations commencent le 12 octobre.']);

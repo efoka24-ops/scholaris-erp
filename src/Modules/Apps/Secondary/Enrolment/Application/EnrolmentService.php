@@ -19,6 +19,7 @@ use Scholaris\Modules\Apps\Secondary\Setup\Contracts\SchoolRules;
 use Scholaris\Modules\Apps\Secondary\Support\Access;
 use Scholaris\Modules\Apps\Secondary\Support\SecondaryClock;
 use Scholaris\Modules\Apps\Secondary\Support\Store;
+use Scholaris\Modules\Socle\Billing\Contracts\FamilyPaymentReferences;
 use Scholaris\Modules\Socle\Organisation\Contracts\OrgUnitTree;
 use Scholaris\Modules\Socle\People\Contracts\BirthInfo;
 use Scholaris\Modules\Socle\People\Contracts\EnrollmentDirectory;
@@ -69,6 +70,7 @@ final class EnrolmentService
         private readonly SecondaryClock $clock,
         private readonly FamilyNotifications $notifications,
         private readonly GuarantorLinker $guarantors,
+        private readonly FamilyPaymentReferences $references,
     ) {
     }
 
@@ -422,7 +424,11 @@ final class EnrolmentService
             'enrollments' => array_map(static fn ($e): array => ['id' => $e->id, 'structure_id' => $e->structureId, 'academic_year_id' => $e->academicYearId, 'status' => $e->status, 'internal_number' => $e->internalNumber], $enrollments),
             'records' => array_map(self::record(...), $records),
             'transfers' => array_map(TransferService::resource(...), $transfers),
-            'financial_guarantors' => array_map(static fn (PersonSummary $p): array => ['person_id' => $p->id, 'last_name' => $p->lastName, 'first_name' => $p->firstName, 'phone' => $p->phone], $this->guarantors->financialGuarantorsOf($tenantId, $personId)),
+            // D-BUL : référence de paiement famille de chaque garant financier (lecture seule, null si aucune n'a été émise).
+            'financial_guarantors' => array_map(fn (PersonSummary $p): array => [
+                'person_id' => $p->id, 'last_name' => $p->lastName, 'first_name' => $p->firstName, 'phone' => $p->phone,
+                'payment_reference' => $this->references->referenceOf($tenantId, $p->id),
+            ], $this->guarantors->financialGuarantorsOf($tenantId, $personId)),
         ];
     }
 

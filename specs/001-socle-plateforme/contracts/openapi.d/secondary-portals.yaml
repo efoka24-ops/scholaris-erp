@@ -20,7 +20,7 @@ paths:
       parameters:
         - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
       responses:
-        '200': {description: "{data: {guardian_id, can_pay, family_balance_xaf, children: [fiche + invoices: [{id, reference, net_xaf, paid_xaf, balance_xaf, installments}]]}}"}
+        '200': {description: "{data: {guardian_id, can_pay, family_balance_xaf, payment_reference (D-BUL : reference famille du parent connecte, null si non emise), children: [fiche + invoices: [{id, reference, net_xaf, paid_xaf, balance_xaf, installments}]]}}"}
         '403': {description: "Droit secondary.family.read absent ou compte sans fiche personne"}
         '404': {description: "Application fermee"}
   /api/v1/secondary/portal/student/school-life:

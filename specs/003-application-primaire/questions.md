@@ -46,3 +46,6 @@ Date : 2026-10-13. Chaque question a une **valeur par défaut paramétrable prop
 1. DOC-1, DOC-2, DOC-3 et Q1 à Q7 (une seule séance) : débloquent le bulletin, la stratégie de calcul et le référentiel.
 2. DOC-4, DOC-5, DOC-6, DOC-9 et Q8 à Q11, Q17, Q18 : débloquent clôture d'année, examens, frais, rôles.
 3. Le reste au fil de l'eau ; les valeurs par défaut suffisent pour construire.
+
+## D. Décisions du propriétaire
+- **12 novembre 2026, NOT-PRI-02 « bulletin disponible » (D-BUL)** : c'est un **message essentiel**. Il est envoyé aux garants même sans consentement recueilli aux communications. Le refus explicite (désinscription, consentement révoqué) est toujours respecté. Le paramètre `primary.report_card.sms_essential` vaut `true` par défaut ; l'école ou la plateforme le désactive par `/settings`, et le consentement s'applique alors de nouveau. Le résumé de publication compte toujours les familles prévenues et les motifs de non-envoi (`opted_out`, `consent_revoked`, `no_contact`, `consent_missing` si le paramètre est désactivé).

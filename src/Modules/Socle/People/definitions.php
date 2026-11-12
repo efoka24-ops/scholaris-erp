@@ -60,6 +60,8 @@ return [
     GuarantorLinker::class => autowire(GuarantorLinkerService::class),
     ConsentRecorder::class => autowire(ConsentService::class),
     ConsentChecker::class => autowire(PdoConsentChecker::class),
+    // D-BUL : refus explicite (consentement révoqué), distinct de l'absence de consentement.
+    \Scholaris\Modules\Socle\People\Contracts\ConsentRefusals::class => autowire(PdoConsentChecker::class),
     FoodAllergies::class => autowire(HealthService::class),
     BirthInfo::class => autowire(PdoBirthInfo::class),
     \Scholaris\Modules\Socle\People\Contracts\PersonDemographics::class => autowire(\Scholaris\Modules\Socle\People\Infrastructure\PdoPersonDemographics::class),

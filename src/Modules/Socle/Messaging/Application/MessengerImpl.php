@@ -6,6 +6,7 @@ namespace Scholaris\Modules\Socle\Messaging\Application;
 
 use Scholaris\Core\Support\Ulid;
 use Scholaris\Modules\Socle\Messaging\Contracts\DeliveryResult;
+use Scholaris\Modules\Socle\Messaging\Contracts\EssentialMessenger;
 use Scholaris\Modules\Socle\Messaging\Contracts\Messenger;
 use Scholaris\Modules\Socle\Messaging\Domain\Audience;
 use Scholaris\Modules\Socle\Messaging\Domain\Channel;
@@ -19,7 +20,7 @@ use Scholaris\Modules\Socle\Messaging\Infrastructure\TemplateRepository;
  * Envoi à une personne depuis un modèle (appelé par Billing, Attendance, Identity...). Chaque appel est tracé :
  * un message, une livraison par canal, avec le motif quand le message est bloqué ou mis en file.
  */
-final class MessengerImpl implements Messenger
+final class MessengerImpl implements Messenger, EssentialMessenger
 {
     public function __construct(
         private readonly Store $store,
@@ -38,6 +39,34 @@ final class MessengerImpl implements Messenger
         array $variables = [],
         array $channels = [],
         bool $urgent = false,
+    ): DeliveryResult {
+        return $this->dispatch($tenantId, $establishmentId, $personId, $templateKey, $variables, $channels, $urgent, false);
+    }
+
+    public function sendEssential(
+        string $tenantId,
+        string $establishmentId,
+        string $personId,
+        string $templateKey,
+        array $variables = [],
+        array $channels = [],
+    ): DeliveryResult {
+        return $this->dispatch($tenantId, $establishmentId, $personId, $templateKey, $variables, $channels, false, true);
+    }
+
+    /**
+     * @param array<string, scalar> $variables
+     * @param list<string> $channels
+     */
+    private function dispatch(
+        string $tenantId,
+        string $establishmentId,
+        string $personId,
+        string $templateKey,
+        array $variables,
+        array $channels,
+        bool $urgent,
+        bool $essentialService,
     ): DeliveryResult {
         try {
             TemplateRenderer::assertVariablesAllowed($variables);
@@ -62,6 +91,7 @@ final class MessengerImpl implements Messenger
             'variables' => json_encode($variables, JSON_THROW_ON_ERROR | JSON_FORCE_OBJECT),
             'audience' => json_encode(Audience::of(Audience::PERSON, $personId)->toArray(), JSON_THROW_ON_ERROR),
             'urgent' => $urgent ? 1 : 0,
+            'essential_service' => $essentialService ? 1 : 0,
             'status' => MessageService::COMPLETED,
             'scheduled_at' => null,
             'recipients_count' => 1,

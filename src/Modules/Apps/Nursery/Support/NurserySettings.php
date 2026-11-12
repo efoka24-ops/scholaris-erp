@@ -26,6 +26,8 @@ final class NurserySettings
     public const DEV_DISCOURAGED_TERMS = 'nursery.dev.discouraged_terms';
     public const ENROL_MIN_AGE_MONTHS = 'nursery.enrol.min_age_months';
     public const PROGRESS_BLOCK_ON_DEBT = 'nursery.progress_book.block_on_debt';
+    /** D-BUL (12 novembre 2026) : SMS « carnet disponible » traité comme message de service essentiel ; seul `false` le désactive. */
+    public const PROGRESS_SMS_ESSENTIAL = 'nursery.progress_book.sms_essential';
     public const DAY_START = 'nursery.day.start_time';
     public const LIFEBOOK_RETENTION_DAYS = 'nursery.lifebook.retention_days';
     public const TRANSITION_RETAIN_NEEDS_REQUEST = 'nursery.transition.retain_requires_parent_request';
@@ -46,6 +48,7 @@ final class NurserySettings
         self::DEV_DISCOURAGED_TERMS => 'list',
         self::ENROL_MIN_AGE_MONTHS => 'int',
         self::PROGRESS_BLOCK_ON_DEBT => 'bool',
+        self::PROGRESS_SMS_ESSENTIAL => 'bool',
         self::DAY_START => 'time',
         self::LIFEBOOK_RETENTION_DAYS => 'int',
         self::TRANSITION_RETAIN_NEEDS_REQUEST => 'bool',

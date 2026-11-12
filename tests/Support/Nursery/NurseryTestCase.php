@@ -18,6 +18,7 @@ use Scholaris\Core\Support\Ulid;
 use Scholaris\Modules\Apps\Nursery\Support\NurseryClock;
 use Scholaris\Modules\Socle\Audit\Contracts\AuditLog;
 use Scholaris\Modules\Socle\Identity\Contracts\PermissionScopes;
+use Scholaris\Modules\Socle\Messaging\Contracts\EssentialMessenger;
 use Scholaris\Modules\Socle\Messaging\Contracts\Messenger;
 use Scholaris\Modules\Socle\Messaging\Contracts\SafetyMessenger;
 use Scholaris\Modules\Socle\Organisation\Contracts\CurrentPeriod;
@@ -80,6 +81,7 @@ abstract class NurseryTestCase extends TestCase
             AuditLog::class => $this->audit,
             SafetyMessenger::class => $this->safety,
             Messenger::class => $this->messenger,
+            EssentialMessenger::class => $this->messenger,
             NurseryClock::class => new NurseryClock($now),
             CurrentPeriod::class => $this->periods,
         ]);

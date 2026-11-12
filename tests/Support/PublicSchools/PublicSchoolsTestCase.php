@@ -22,6 +22,7 @@ use Scholaris\Modules\Socle\Identity\Contracts\NamedAccessJournal;
 use Scholaris\Modules\Socle\Identity\Contracts\PermissionScopes;
 use Scholaris\Modules\Socle\Identity\Contracts\RoleDirectory;
 use Scholaris\Modules\Socle\Identity\Contracts\Scope;
+use Scholaris\Modules\Socle\Messaging\Contracts\EssentialMessenger;
 use Scholaris\Modules\Socle\Messaging\Contracts\Messenger;
 use Scholaris\Modules\Socle\Organisation\Contracts\CurrentPeriod;
 use Scholaris\Modules\Socle\Organisation\Contracts\EstablishmentDirectory;
@@ -66,6 +67,7 @@ abstract class PublicSchoolsTestCase extends TestCase
     protected InMemoryPeople $people;
     protected InMemoryEnrollments $enrollments;
     protected RecordingMessenger $messenger;
+    protected RecordingEssentialMessenger $essential;
     protected FakeClassRoster $classes;
     protected FakeCurrentPeriod $periods;
     protected FakePermissionScopes $scopes;
@@ -85,6 +87,7 @@ abstract class PublicSchoolsTestCase extends TestCase
         $this->people = new InMemoryPeople();
         $this->enrollments = new InMemoryEnrollments();
         $this->messenger = new RecordingMessenger();
+        $this->essential = new RecordingEssentialMessenger($this->messenger);
         $this->classes = new FakeClassRoster($this->enrollments);
         $this->periods = new FakeCurrentPeriod();
         $this->scopes = new FakePermissionScopes();
@@ -115,6 +118,7 @@ abstract class PublicSchoolsTestCase extends TestCase
             EnrollmentDirectory::class => $this->enrollments,
             ConsentChecker::class => new InMemoryConsents(),
             Messenger::class => $this->messenger,
+            EssentialMessenger::class => $this->essential,
             SettingsReader::class => $this->settings,
             EstablishmentDirectory::class => $establishments,
             StaffDirectory::class => $this->staff,

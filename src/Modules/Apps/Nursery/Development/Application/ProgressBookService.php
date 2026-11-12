@@ -10,9 +10,11 @@ use Scholaris\Core\Support\Ulid;
 use Scholaris\Modules\Apps\Nursery\Sections\Application\ChildDirectory;
 use Scholaris\Modules\Apps\Nursery\Support\Access;
 use Scholaris\Modules\Apps\Nursery\Support\NurseryClock;
+use Scholaris\Modules\Apps\Nursery\Support\NurserySettings;
 use Scholaris\Modules\Apps\Nursery\Support\Paging;
 use Scholaris\Modules\Apps\Nursery\Support\Perimeter;
 use Scholaris\Modules\Apps\Nursery\Support\Store;
+use Scholaris\Modules\Socle\Messaging\Contracts\EssentialMessenger;
 use Scholaris\Modules\Socle\Messaging\Contracts\Messenger;
 use Scholaris\Modules\Socle\Organisation\Contracts\CurrentPeriod;
 use Scholaris\Modules\Socle\People\Contracts\PersonDirectory;
@@ -39,6 +41,8 @@ final class ProgressBookService
         private readonly Messenger $messenger,
         private readonly NurseryClock $clock,
         private readonly Access $access,
+        private readonly EssentialMessenger $essential,
+        private readonly NurserySettings $settings,
     ) {
     }
 
@@ -148,10 +152,15 @@ final class ProgressBookService
         $this->store->update(self::TABLE, $perimeter->tenantId, $perimeter->establishmentId, ['status' => 'published', 'published_at' => $now, 'updated_at' => $now], ['id' => $id]);
         $this->access->audit($principal, 'nursery.progress_book.published', 'progress_book', $id);
         $child = $this->people->find($perimeter->tenantId, (string) $row['learner_id']);
+        // D-BUL : message de service essentiel (sans consentement recueilli, refus explicite respecté) sauf si l'école l'a désactivé.
+        $essential = $this->settings->get($perimeter->tenantId, $perimeter->establishmentId, NurserySettings::PROGRESS_SMS_ESSENTIAL) !== false;
         foreach ($this->people->guarantorsOf($perimeter->tenantId, (string) $row['learner_id']) as $guardian) {
-            $this->messenger->send($perimeter->tenantId, $perimeter->establishmentId, $guardian->id, self::TEMPLATE_PUBLISHED, [
-                'child_name' => $child !== null ? $child->fullName() : '', 'period_label' => (string) $row['period_id'], 'link' => self::PORTAL_LINK,
-            ]);
+            $variables = ['child_name' => $child !== null ? $child->fullName() : '', 'period_label' => (string) $row['period_id'], 'link' => self::PORTAL_LINK];
+            if ($essential) {
+                $this->essential->sendEssential($perimeter->tenantId, $perimeter->establishmentId, $guardian->id, self::TEMPLATE_PUBLISHED, $variables);
+            } else {
+                $this->messenger->send($perimeter->tenantId, $perimeter->establishmentId, $guardian->id, self::TEMPLATE_PUBLISHED, $variables);
+            }
         }
 
         return $this->resource($this->store->findOrFail(self::TABLE, $perimeter->tenantId, $perimeter->establishmentId, $id));

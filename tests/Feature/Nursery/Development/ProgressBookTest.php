@@ -36,6 +36,19 @@ final class ProgressBookTest extends DevelopmentTestCase
         self::assertSame(409, $this->code('POST', '/nursery/progress-books', ['learner_id' => $this->ada['child']], 'educatrice-a'), 'Un seul carnet par enfant et par période.');
     }
 
+    public function testLEcolePeutRetirerAuSmsDuCarnetSonCaractereEssentiel(): void
+    {
+        $this->setSetting(self::TA, self::EA, 'nursery.progress_book.sms_essential', false);
+        $id = (string) $this->draft()['id'];
+        $this->ok('POST', '/nursery/progress-books/' . $id . '/submit', [], 'educatrice-a');
+        $this->ok('POST', '/nursery/progress-books/' . $id . '/validate', []);
+        $this->ok('POST', '/nursery/progress-books/' . $id . '/publish', []);
+
+        $flags = $this->messenger->essentialFlags('nursery.not06.progress_book');
+        self::assertNotSame([], $flags);
+        self::assertNotContains(true, $flags, 'D-BUL : paramètre désactivé, le consentement s\'applique.');
+    }
+
     public function testCircuitCompletEtInvisibiliteAvantPublication(): void
     {
         $book = $this->draft();
@@ -54,6 +67,8 @@ final class ProgressBookTest extends DevelopmentTestCase
         self::assertCount(1, $visible);
         self::assertSame('Une période riche en découvertes.', $visible[0]['synthesis']);
         self::assertContains($this->ada['parent'], $this->messenger->recipients());
+        self::assertNotContains(false, $this->messenger->essentialFlags('nursery.not06.progress_book'), 'D-BUL : message de service essentiel par défaut.');
+        self::assertNotSame([], $this->messenger->essentialFlags('nursery.not06.progress_book'));
         self::assertSame(409, $this->code('POST', '/nursery/progress-books/' . $id . '/return', []), 'Un carnet publié est figé.');
         self::assertSame(409, $this->code('POST', '/nursery/progress-books/' . $id . '/publish', []));
     }

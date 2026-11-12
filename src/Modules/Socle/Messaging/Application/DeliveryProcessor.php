@@ -8,16 +8,17 @@ use Psr\Log\LoggerInterface;
 use Scholaris\Core\Support\Ulid;
 use Scholaris\Modules\Socle\Integrations\Contracts\MailGateway;
 use Scholaris\Modules\Socle\Integrations\Contracts\SmsGateway;
+use Scholaris\Modules\Socle\Messaging\Contracts\OptOutRegistry;
+use Scholaris\Modules\Socle\Messaging\Contracts\VoiceGateway;
 use Scholaris\Modules\Socle\Messaging\Domain\Channel;
 use Scholaris\Modules\Socle\Messaging\Domain\TemplateException;
 use Scholaris\Modules\Socle\Messaging\Domain\TemplateRenderer;
-use Scholaris\Modules\Socle\Messaging\Contracts\VoiceGateway;
-use Scholaris\Modules\Socle\Messaging\Contracts\OptOutRegistry;
 use Scholaris\Modules\Socle\Messaging\Infrastructure\DeliveryRepository;
 use Scholaris\Modules\Socle\Messaging\Infrastructure\SmsUsageRepository;
 use Scholaris\Modules\Socle\Messaging\Infrastructure\TemplateRepository;
 use Scholaris\Modules\Socle\Organisation\Contracts\EstablishmentDirectory;
 use Scholaris\Modules\Socle\People\Contracts\ConsentChecker;
+use Scholaris\Modules\Socle\People\Contracts\ConsentRefusals;
 use Scholaris\Modules\Socle\People\Contracts\PersonDirectory;
 use Throwable;
 
@@ -48,6 +49,7 @@ final class DeliveryProcessor
         private readonly MessagingClock $clock,
         private readonly LoggerInterface $logger,
         private readonly OptOutRegistry $optOuts,
+        private readonly ConsentRefusals $refusals,
     ) {
     }
 
@@ -65,7 +67,7 @@ final class DeliveryProcessor
 
         $outcome = $this->decide($delivery, $message, $tenantId, $establishmentId, $channel, $now);
 
-        $values = ['status' => $outcome['status'], 'reason' => $outcome['reason'], 'updated_at' => $this->clock->iso($now), 'category' => $this->isEssential($message) ? 'essential' : 'standard'];
+        $values = ['status' => $outcome['status'], 'reason' => $outcome['reason'], 'updated_at' => $this->clock->iso($now), 'category' => $this->isEssential($message) || self::isEssentialService($message) ? 'essential' : 'standard'];
         if ($outcome['status'] === self::QUEUED) {
             $values['not_before'] = $outcome['not_before'] ?? null;
         } else {
@@ -107,13 +109,18 @@ final class DeliveryProcessor
         $personId = (string) $delivery['recipient_id'];
         // RG-COM-2 : un message essentiel (modèle de plateforme de catégorie « essential ») ignore consentement et désinscription.
         $essential = $this->isEssential($message);
-        if (!$essential && !$this->consents->hasConsent($tenantId, $personId, ConsentChecker::COMMUNICATION)) {
+        // D-BUL (12 novembre 2026) : un message de SERVICE essentiel part sans consentement recueilli, mais jamais contre un refus explicite.
+        $service = !$essential && self::isEssentialService($message);
+        if ($service && $this->refusals->hasRevoked($tenantId, $personId, ConsentChecker::COMMUNICATION)) {
+            return ['status' => self::BLOCKED, 'reason' => 'consent_revoked'];
+        }
+        if (!$essential && !$service && !$this->consents->hasConsent($tenantId, $personId, ConsentChecker::COMMUNICATION)) {
             return ['status' => self::BLOCKED, 'reason' => 'consent_missing'];
         }
         if (!$essential && $this->optOuts->isOptedOut($tenantId, $personId, $channel)) {
             return ['status' => self::BLOCKED, 'reason' => 'opted_out'];
         }
-        if (!$essential && $channel === Channel::SMS && $this->capReached($tenantId, $establishmentId, $personId, $now)) {
+        if (!$essential && !$service && $channel === Channel::SMS && $this->capReached($tenantId, $establishmentId, $personId, $now)) {
             return ['status' => self::BLOCKED, 'reason' => 'sms_cap_reached'];
         }
         $person = $this->persons->find($tenantId, $personId);
@@ -176,6 +183,12 @@ final class DeliveryProcessor
         $key = $message['template_key'] ?? null;
 
         return is_string($key) && $key !== '' && $this->templates->isEssential($key);
+    }
+
+    /** @param array<string, mixed> $message */
+    private static function isEssentialService(array $message): bool
+    {
+        return (int) ($message['essential_service'] ?? 0) === 1;
     }
 
     /** PP11 : plafond annuel de SMS standard, multiplié par le nombre d'élèves dont le destinataire est garant. */

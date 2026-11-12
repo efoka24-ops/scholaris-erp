@@ -52,7 +52,7 @@ paths:
         '404': {description: "Application fermee"}
   /api/v1/secondary/enrolment/students/{id}:
     get:
-      summary: "Dossier de l'eleve (identite courte, statut du matricule, redoublement, exclusion, inscriptions, transferts)"
+      summary: "Dossier de l'eleve (identite courte, statut du matricule, redoublement, exclusion, inscriptions, transferts, garants financiers avec leur reference de paiement famille payment_reference, D-BUL)"
       parameters:
         - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
         - {name: id, in: path, required: true, schema: {type: string}}

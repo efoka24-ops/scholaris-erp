@@ -22,6 +22,7 @@ final class PrimarySettings
         'primary.report_card.default_coefficient' => ['default' => 1.0, 'source' => 'C-111 : coefficient d\'une matière absente du référentiel de l\'école (même pondération que le moteur de notes du socle), à confirmer', 'label' => 'Coefficient par défaut des matières sans coefficient de catalogue'],
         'primary.report_card.annual' => ['default' => true, 'source' => 'Q2 (récapitulatif annuel au dernier trimestre)', 'label' => 'Récapitulatif annuel émis au dernier trimestre'],
         'primary.report_card.block_on_debt' => ['default' => false, 'source' => 'Q17', 'label' => 'Bulletin bloqué en cas d\'impayé'],
+        'primary.report_card.sms_essential' => ['default' => true, 'source' => 'Décision du propriétaire du 12 novembre 2026 (D-BUL) : le SMS « bulletin disponible » est un message essentiel, envoyé sans consentement recueilli ; une désinscription ou un consentement révoqué restent respectés', 'label' => 'SMS « bulletin disponible » traité comme message essentiel'],
         'primary.report_card.locale' => ['default' => null, 'source' => 'Q1 (langue de la section du niveau si vide)', 'label' => 'Langue imposée des bulletins (fr, en ou vide)'],
         'primary.report_card.letterhead' => ['default' => [
             'authority_fr' => '', 'authority_en' => '', 'contacts' => '',

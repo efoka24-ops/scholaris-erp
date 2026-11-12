@@ -34,3 +34,4 @@ Q23 (HTTPS avant données réelles de mineurs), Q4 (architecture, débloque tout
 ## Réponses de l'utilisateur
 - 2026-10-15, Q4 : **oui**. Architecture validée : `PublicSchools` (commun, `pub_`), `PublicPrimary` (`pp_`), `PublicNursery` (`pn_`). T600 débloquée.
 - 2026-10-15, Q23 : le site reste en **HTTP** le temps d'activer HTTPS. Conséquence (valeur par défaut retenue) : pilote technique avec données synthétiques seulement ; aucune donnée réelle d'élève avant HTTPS.
+- 2026-11-12, décision du propriétaire (D-BUL) : le SMS « bulletin disponible » (`pub.not04.parent`, NOT-04) est un **message essentiel**. Il part sans consentement recueilli, mais une désinscription ou un consentement révoqué sont toujours respectés. Le paramètre `public_schools.messages.service_essential_templates` vaut `["pub.not04.parent"]` par défaut (plateforme, client ou école) ; une liste vide désactive la règle.
