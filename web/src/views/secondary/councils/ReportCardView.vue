@@ -7,9 +7,10 @@ import { useRoute } from 'vue-router';
 import ErrorNotice from '@/components/ErrorNotice.vue';
 import { REPORT_TABLES, cellText, parseDocTable, rowCells, secondaryCouncils, type DocTableCell, type ReportCardPreview } from '@/api/secondaryCouncils';
 import { useI18n, type MessageKey } from '@/i18n';
+import { formatDateTime } from '@/lib/format';
 import { useAction } from '../useSec';
 
-const { t } = useI18n();
+const { t, locale: uiLocale } = useI18n();
 const route = useRoute();
 const { error, busy, run } = useAction();
 const preview = ref<ReportCardPreview | null>(null);
@@ -53,7 +54,7 @@ watch([councilId, personId, locale], load, { immediate: true });
         </label>
         <p><strong>{{ t('secb.student') }} :</strong> {{ v('secondary_last_name') }} {{ v('secondary_first_names') }} · {{ v('secondary_class_name') }} · {{ v('secondary_academic_year') }}</p>
         <p v-if="v('secondary_matricule')"><strong>{{ t('secb.matricule') }} :</strong> {{ v('secondary_matricule') }}</p>
-        <p class="muted">{{ preview.snapshot ? t('secb.snapshot', { date: preview.snapshot.built_at }) : t('secb.noSnapshot') }}</p>
+        <p class="muted">{{ preview.snapshot ? t('secb.snapshot', { date: formatDateTime(preview.snapshot.built_at, uiLocale) }) : t('secb.noSnapshot') }}</p>
       </section>
 
       <section v-for="item in tables" :key="item.name" class="card">

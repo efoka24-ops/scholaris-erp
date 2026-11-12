@@ -15,6 +15,7 @@ use Scholaris\Modules\Apps\Secondary\Services\Infrastructure\HealthCipher;
 use Scholaris\Modules\Apps\Secondary\Support\Access;
 use Scholaris\Modules\Apps\Secondary\Support\SecondaryClock;
 use Scholaris\Modules\Apps\Secondary\Support\Store;
+use Scholaris\Modules\Socle\Identity\Contracts\UserPersonLink;
 use Scholaris\Modules\Socle\People\Contracts\EnrollmentDirectory;
 use Scholaris\Modules\Socle\People\Contracts\EnrollmentInfo;
 use Scholaris\Modules\Socle\People\Contracts\PersonDirectory;
@@ -47,7 +48,36 @@ final class Infirmary implements PeExemptions
         private readonly SecondaryClock $clock,
         private readonly EnrollmentDirectory $enrollments,
         private readonly PersonDirectory $people,
+        private readonly UserPersonLink $userPeople,
     ) {
+    }
+
+    /**
+     * Ligne du journal des consultations avec les noms lisibles (auteur de la consultation et élève concerné), jamais de
+     * donnée de santé. Un compte sans personne liée garde un nom null : l'écran affiche alors un libellé générique.
+     *
+     * @param array<string, mixed> $row
+     * @param array<string, string|null> $names noms déjà résolus le temps d'une page (clés « u: » et « p: »)
+     * @return array<string, mixed>
+     */
+    public function logView(array $row, array &$names): array
+    {
+        $tenantId = (string) $row['tenant_id'];
+        $userId = (string) $row['user_id'];
+        $personId = $row['person_id'] === null ? null : (string) $row['person_id'];
+        if (!array_key_exists('u:' . $userId, $names)) {
+            $linked = $this->userPeople->personIdForUser($tenantId, $userId);
+            $names['u:' . $userId] = $linked === null ? null : $this->people->find($tenantId, $linked)?->fullName();
+        }
+        if ($personId !== null && !array_key_exists('p:' . $personId, $names)) {
+            $names['p:' . $personId] = $this->people->find($tenantId, $personId)?->fullName();
+        }
+
+        return [
+            'id' => (string) $row['id'], 'person_id' => $personId, 'student_name' => $personId === null ? null : $names['p:' . $personId],
+            'user_id' => $userId, 'user_name' => $names['u:' . $userId], 'access_kind' => (string) $row['access_kind'],
+            'object_id' => $row['object_id'], 'created_at' => (string) $row['created_at'],
+        ];
     }
 
     /**

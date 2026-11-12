@@ -5,12 +5,12 @@
 // (jamais un diplôme : RG-EXA-3), dossier signé vers le secondaire. Le serveur reste juge des droits.
 import { computed, onMounted, ref } from 'vue';
 import ErrorNotice from '@/components/ErrorNotice.vue';
-import { openDocument, publicExams, type ExamCandidate, type ExamSession, type ExamSessionDetail, type ExamSummary } from '@/api/publicSchools';
+import { openDocument, publicExams, publicSchools, type ClassRow, type ExamCandidate, type ExamSession, type ExamSessionDetail, type ExamSummary, type RosterPupil } from '@/api/publicSchools';
 import { useI18n } from '@/i18n';
 import type { MessageKey } from '@/i18n';
 import { formatDate } from '@/lib/format';
 import { useContextStore } from '@/stores/context';
-import { currentYear, useAction } from './usePs';
+import { currentYear, fullName, useAction } from './usePs';
 
 const { t, locale } = useI18n();
 const ctx = useContextStore();
@@ -26,6 +26,16 @@ const yearId = ref('');
 const yearLabel = ref('');
 const newSession = ref({ exam_code: 'cep', written_on: '' });
 const addition = ref({ person_id: '', structure_id: '', reason: '' });
+// Ajout d'un candidat : la classe puis l'élève choisis par leur nom (liste nominative), jamais un identifiant technique à saisir.
+const classes = ref<ClassRow[]>([]);
+const roster = ref<RosterPupil[]>([]);
+const rosterLoaded = ref(false);
+/** Classes des niveaux de l'examen en premier choix ; toutes les classes si aucune ne correspond (candidat d'une autre classe). */
+const examClasses = computed(() => {
+  const levels = detail.value?.level_codes ?? [];
+  const matching = classes.value.filter((c) => c.level_codes.some((l) => levels.includes(l)));
+  return matching.length > 0 ? matching : classes.value;
+});
 
 const canWrite = computed(() => ctx.can('public_primary.exams.write'));
 const canValidate = computed(() => ctx.can('public_primary.exams.validate'));
@@ -57,6 +67,7 @@ onMounted(async () => {
     const year = await currentYear();
     yearId.value = year?.id ?? '';
     yearLabel.value = year?.label ?? '';
+    if (year && canWrite.value) classes.value = await publicSchools.classes(year.id).catch(() => []);
     sessions.value = await publicExams.sessions();
     if (sessions.value.length > 0 && sessionId.value === '') {
       sessionId.value = sessions.value[0]?.id ?? '';
@@ -115,9 +126,22 @@ async function withdraw(c: ExamCandidate): Promise<void> {
   if (reason.trim() !== '') await act(() => publicExams.withdraw(c.id, reason), 'pp.exa.withdrawn');
 }
 
+async function openClass(): Promise<void> {
+  addition.value.person_id = '';
+  roster.value = [];
+  rosterLoaded.value = false;
+  if (!addition.value.structure_id) return;
+  const pupils = await run(() => publicSchools.roster(addition.value.structure_id));
+  roster.value = [...(pupils ?? [])].sort((a, b) => `${a.last_name} ${a.first_name}`.localeCompare(`${b.last_name} ${b.first_name}`, 'fr'));
+  rosterLoaded.value = pupils !== undefined;
+}
+
+const pupilText = (p: RosterPupil): string => `${fullName(p)}${p.learner_number ? ` · ${p.learner_number}` : ''}`;
+
 async function addCandidate(): Promise<void> {
+  if (!addition.value.person_id) return;
   const body = {
-    person_id: addition.value.person_id.trim(),
+    person_id: addition.value.person_id,
     ...(addition.value.structure_id ? { structure_id: addition.value.structure_id } : {}),
     ...(addition.value.reason ? { reason: addition.value.reason } : {}),
   };
@@ -259,12 +283,19 @@ async function transfer(c: ExamCandidate): Promise<void> {
       <form v-if="canWrite && list" class="controls" @submit.prevent="addCandidate">
         <h3>{{ t('pp.exa.add') }}</h3>
         <div class="field">
-          <label for="ex-person">{{ t('pp.exa.personId') }}</label>
-          <input id="ex-person" v-model="addition.person_id" type="text" required maxlength="40" />
+          <label for="ex-class">{{ t('pp.common.class') }}</label>
+          <select id="ex-class" v-model="addition.structure_id" required @change="openClass">
+            <option value="">{{ t('pp.exa.choose') }}</option>
+            <option v-for="c in examClasses" :key="c.structure_id" :value="c.structure_id">{{ c.label }}</option>
+          </select>
         </div>
         <div class="field">
-          <label for="ex-class">{{ t('pp.common.class') }}</label>
-          <input id="ex-class" v-model="addition.structure_id" type="text" maxlength="40" />
+          <label for="ex-person">{{ t('pp.exa.pupil') }}</label>
+          <select id="ex-person" v-model="addition.person_id" required :disabled="roster.length === 0">
+            <option value="">{{ t('pp.exa.choose') }}</option>
+            <option v-for="p in roster" :key="p.person_id" :value="p.person_id">{{ pupilText(p) }}</option>
+          </select>
+          <p v-if="rosterLoaded && roster.length === 0" class="muted">{{ t('pp.exa.noPupils') }}</p>
         </div>
         <div class="field">
           <label for="ex-reason">{{ t('pp.common.reason') }}</label>

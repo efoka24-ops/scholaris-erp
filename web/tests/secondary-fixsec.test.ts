@@ -61,6 +61,7 @@ describe('défaut 1 et 2 : caissier du secondaire et encaissement par élève', 
     signIn({ ...teacherMe, context: { establishment_id: 'E1', role: 'caissier' } }, [tile({ roles: [{ code: 'caissier', label: 'Caissier' }] })], 'caissier');
     const calls = mockApi({
       'GET /cash-sessions': { data: [{ id: 'CS1', register_no: 1, status: 'open', opened_at: '2026-11-11T08:00:00+01:00', float_xaf: 0, cash_collected_xaf: 0 }], meta: { next_cursor: null } },
+      'GET /cash-sessions/CS1': { data: { id: 'CS1', register_no: 1, status: 'open', opened_at: '2026-11-11T08:00:00+01:00', float_xaf: 0, cash_collected_xaf: 0, receipts_count: 0, expected_now_xaf: 0 } },
       'POST /cash/receipts': { data: { id: 'PAY1', receipt_number: 'R-SEC-26-00001', channel: 'cash', amount_xaf: 25000, status: 'confirmed' } },
     });
     const { wrapper } = await mountView(BillingView, {}, '/facturation?tab=cash&learner=P-ISSA&learner_name=Fictif-Lyceen%20Issa');

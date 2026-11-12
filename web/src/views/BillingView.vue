@@ -66,7 +66,9 @@ async function loadJournal(): Promise<void> {
 }
 async function loadSession(): Promise<void> {
   const open = await http.get<{ data: CashSession[] }>('/cash-sessions', { 'filter[status]': 'open', per_page: 1 });
-  session.value = open.data[0] ?? null;
+  const found = open.data[0] ?? null;
+  // La liste ne porte que la ligne de la caisse : les totaux du jour (espèces encaissées, reçus) viennent du détail.
+  session.value = found === null ? null : (await http.get<{ data: CashSession }>(`/cash-sessions/${found.id}`)).data;
 }
 
 async function load(): Promise<void> {

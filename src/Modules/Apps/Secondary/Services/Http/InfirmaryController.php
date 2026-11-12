@@ -109,6 +109,7 @@ final class InfirmaryController extends Controller
     {
         [$principal, $establishmentId] = $this->context($request);
         $this->infirmary->requireAny($principal, $establishmentId, Infirmary::LOG_READERS);
+        $names = [];
 
         return $this->page($this->listing->page(
             $request,
@@ -118,10 +119,9 @@ final class InfirmaryController extends Controller
             ['person_id', 'user_id', 'access_kind'],
             ['created_at'],
             'created_at DESC',
-            static fn (array $row): array => [
-                'id' => (string) $row['id'], 'person_id' => $row['person_id'], 'user_id' => (string) $row['user_id'],
-                'access_kind' => (string) $row['access_kind'], 'object_id' => $row['object_id'], 'created_at' => (string) $row['created_at'],
-            ],
+            function (array $row) use (&$names): array {
+                return $this->infirmary->logView($row, $names);
+            },
         ));
     }
 

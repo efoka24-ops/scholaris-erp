@@ -72,6 +72,7 @@ export const secondaryServicesFr = {
   'secsv.exemptTo': 'jusqu’au {date}',
   'secsv.accessLog': 'Journal des consultations',
   'secsv.noLog': 'Aucune consultation enregistrée.',
+  'secsv.unknownUser': 'Compte sans fiche personne',
   'secsv.access.read_record': 'Lecture du dossier',
   'secsv.access.write_record': 'Mise à jour du dossier',
   'secsv.access.read_visit': 'Lecture d’un passage',

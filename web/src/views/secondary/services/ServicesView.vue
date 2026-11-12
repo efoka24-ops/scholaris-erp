@@ -321,7 +321,7 @@ onMounted(load);
         <h3>{{ t('secsv.accessLog') }}</h3>
         <p v-if="log.length === 0" class="muted">{{ t('secsv.noLog') }}</p>
         <ul v-else class="rows">
-          <li v-for="l in log" :key="l.id">{{ l.created_at.slice(0, 16).replace('T', ' ') }} · {{ l.user_id }} · {{ t(`secsv.access.${l.access_kind}` as 'secsv.access.read_record') }}<template v-if="l.person_id"> · {{ directory.nameOf(l.person_id) }}</template></li>
+          <li v-for="l in log" :key="l.id">{{ l.created_at.slice(0, 16).replace('T', ' ') }} · {{ l.user_name ?? t('secsv.unknownUser') }} · {{ t(`secsv.access.${l.access_kind}` as 'secsv.access.read_record') }}<template v-if="l.person_id"> · {{ l.student_name ?? directory.nameOf(l.person_id) }}</template></li>
         </ul>
       </template>
     </section>

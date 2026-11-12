@@ -6,6 +6,7 @@ import { http } from '@/api/http';
 import type { Consent, Enrollment, Person } from '@/api/types';
 import { useI18n } from '@/i18n';
 import { formatDate } from '@/lib/format';
+import { documentStatusLabel, enrollmentStatusLabel } from '@/lib/peopleStatus';
 
 // Fiche personne : identité, inscriptions (tous établissements du client), pièces et complétude, consentements.
 const props = defineProps<{ id: string }>();
@@ -78,7 +79,7 @@ onMounted(load);
         <ul v-else class="plain">
           <li v-for="e in enrollments" :key="e.id" class="row row--between">
             <span>{{ e.internal_number ?? e.id }}</span>
-            <StatusTag :tone="e.status === 'active' ? 'success' : 'warning'">{{ e.status }}</StatusTag>
+            <StatusTag :tone="e.status === 'active' ? 'success' : 'warning'">{{ enrollmentStatusLabel(e.status, t) }}</StatusTag>
           </li>
         </ul>
       </section>
@@ -92,7 +93,7 @@ onMounted(load);
         <ul class="plain">
           <li v-for="d in documents" :key="d.id" class="row row--between">
             <span>{{ d.kind }}<small v-if="d.expires_on" class="muted"> · {{ t('people.expires', { date: formatDate(d.expires_on, locale) }) }}</small></span>
-            <StatusTag :tone="docTone(d.status)">{{ d.status }}</StatusTag>
+            <StatusTag :tone="docTone(d.status)">{{ documentStatusLabel(d.status, t) }}</StatusTag>
           </li>
         </ul>
       </section>

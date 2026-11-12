@@ -277,6 +277,7 @@ describe('écran Frais et paiements', () => {
     mockApi({
       'GET /payments': { data: [], meta: { next_cursor: null } },
       'GET /cash-sessions': { data: [{ id: 'CS1', register_no: 2, status: 'open', opened_at: '2026-10-09T07:42:00+01:00', float_xaf: 50000, cash_collected_xaf: 0 }], meta: { next_cursor: null } },
+      'GET /cash-sessions/CS1': { data: { id: 'CS1', register_no: 2, status: 'open', opened_at: '2026-10-09T07:42:00+01:00', float_xaf: 50000, cash_collected_xaf: 0, receipts_count: 0, expected_now_xaf: 50000 } },
       'POST /cash/receipts': (c) => {
         keys.push(c.headers['Idempotency-Key'] ?? '');
         return ++attempt === 1 ? jsonResponse({ type: 't', title: 'Service indisponible', status: 503, detail: 'Réessayez.', trace_id: 'x' }, 503) : { data: { id: 'PAY9', receipt_number: 'R-CLP-26-00001', channel: 'cash', amount_xaf: 35000, status: 'confirmed' } };

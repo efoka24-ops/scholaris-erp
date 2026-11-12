@@ -89,6 +89,9 @@ export interface AccessLogEntry {
   id: string;
   person_id: string | null;
   user_id: string;
+  /** Nom de l'auteur de la consultation (compte lié à une personne), null sinon. */
+  user_name?: string | null;
+  student_name?: string | null;
   access_kind: string;
   created_at: string;
 }

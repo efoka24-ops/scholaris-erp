@@ -10,6 +10,7 @@ import { useI18n } from '@/i18n';
 import { formatDate } from '@/lib/format';
 import { useContextStore } from '@/stores/context';
 import { currentYear, useAction } from './usePs';
+import { settingLabel, settingValue } from './settingsDisplay';
 
 const { t, locale } = useI18n();
 const ctx = useContextStore();
@@ -41,7 +42,6 @@ const canManage = computed(() => nationalManager.value || (schoolManager.value &
 const nationalOnly = computed(() => !nationalManager.value && schoolManager.value && !schoolMayManage.value);
 const chosen = computed(() => trimesters.value.filter((x) => x.included));
 const statusLabel = (s: SettingRow['status']): string => t(s === 'official' ? 'pp.ref.official' : s === 'cdc_default' ? 'pp.ref.cdc' : 'pp.ref.toConfirm');
-const show = (v: unknown): string => (typeof v === 'string' ? v : JSON.stringify(v));
 
 onMounted(async () => {
   await run(async () => {
@@ -136,8 +136,8 @@ async function generate(): Promise<void> {
           <thead><tr><th scope="col">{{ t('pp.ref.param') }}</th><th scope="col">{{ t('pp.ref.value') }}</th><th scope="col">{{ t('pp.ref.status') }}</th><th scope="col">{{ t('pp.ref.source') }}</th></tr></thead>
           <tbody>
             <tr v-for="s in settings" :key="s.key">
-              <th scope="row"><code>{{ s.key }}</code></th>
-              <td><code>{{ show(s.value) }}</code></td>
+              <th scope="row">{{ settingLabel(s.key, locale) }}</th>
+              <td><span v-for="(line, i) in settingValue(s.key, s.value, locale)" :key="i" class="rf-line">{{ line }}</span></td>
               <td><span class="tag" :class="s.status === 'to_confirm' ? 'tag--warning' : ''">{{ statusLabel(s.status) }}</span></td>
               <td class="muted">{{ s.source }}</td>
             </tr>
@@ -149,6 +149,7 @@ async function generate(): Promise<void> {
 </template>
 
 <style scoped>
+.rf-line { display: block; }
 .controls { display: grid; gap: 8px; }
 .line { border: 1px solid var(--input-border); padding: 8px; display: grid; gap: 6px; }
 .check { display: inline-flex; gap: 6px; align-items: center; }

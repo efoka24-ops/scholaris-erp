@@ -10,6 +10,7 @@ import { useContextStore } from '@/stores/context';
 import { useI18n } from '@/i18n';
 import { useVocabulary } from '@/composables/useVocabulary';
 import { formatDate } from '@/lib/format';
+import { ENROLLMENT_STATUSES, enrollmentStatusLabel } from '@/lib/peopleStatus';
 
 // Fiches personnes (recherche, création avec détection de doublons) et inscriptions de l'établissement.
 const { t, locale } = useI18n();
@@ -163,7 +164,7 @@ onMounted(() => searchPeople());
         <label for="e-status">{{ t('people.status') }}</label>
         <select id="e-status" v-model="statusFilter" @change="loadEnrollments()">
           <option value="">{{ t('common.all') }}</option>
-          <option v-for="s in ['draft', 'active', 'conditional', 'suspended', 'withdrawn', 'transferred', 'excluded', 'graduated']" :key="s" :value="s">{{ s }}</option>
+          <option v-for="s in ENROLLMENT_STATUSES" :key="s" :value="s">{{ enrollmentStatusLabel(s, t) }}</option>
         </select>
       </div>
       <ExportButton path="/enrollments/export" :query="{ 'filter[status]': statusFilter }" name="inscriptions" />
@@ -174,7 +175,7 @@ onMounted(() => searchPeople());
           <tbody>
             <tr v-for="e in enrollments" :key="e.id">
               <th scope="row">{{ e.internal_number ?? '—' }}</th>
-              <td><StatusTag :tone="e.status === 'active' ? 'success' : e.status === 'draft' || e.status === 'conditional' ? 'warning' : 'neutral'">{{ e.status }}</StatusTag></td>
+              <td><StatusTag :tone="e.status === 'active' ? 'success' : e.status === 'draft' || e.status === 'conditional' ? 'warning' : 'neutral'">{{ enrollmentStatusLabel(e.status, t) }}</StatusTag></td>
               <td>{{ typeof e.completeness === 'number' ? `${e.completeness} %` : '—' }}</td>
               <td>{{ formatDate(e.documents_due_on, locale) }}</td>
               <td><router-link class="btn" :to="{ name: 'person', params: { id: e.person_id } }">{{ t('people.open') }}</router-link></td>

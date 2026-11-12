@@ -225,7 +225,7 @@ paths:
   /api/v1/secondary/services/infirmary/access-log:
     get:
       summary: "[infirmary] Journal des consultations des donnees de sante (qui, quand, quel eleve ; aucune donnee de sante)"
-      description: "Infirmier ou chef d'etablissement (secondary.infirmary.manage ou secondary.settings.manage)."
+      description: "Infirmier ou chef d'etablissement (secondary.infirmary.manage ou secondary.settings.manage). Chaque ligne : id, person_id, student_name, user_id, user_name (nom de la personne liee au compte, null sinon), access_kind, object_id, created_at."
       parameters:
         - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
         - {name: 'filter[person_id]', in: query, required: false, schema: {type: string}}

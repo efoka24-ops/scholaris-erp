@@ -74,6 +74,7 @@ export const secondaryServicesEn: Record<keyof typeof secondaryServicesFr, strin
   'secsv.exemptTo': 'until {date}',
   'secsv.accessLog': 'Access log',
   'secsv.noLog': 'No access recorded.',
+  'secsv.unknownUser': 'Account without a person record',
   'secsv.access.read_record': 'Record read',
   'secsv.access.write_record': 'Record updated',
   'secsv.access.read_visit': 'Visit read',
