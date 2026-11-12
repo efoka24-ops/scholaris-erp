@@ -286,7 +286,7 @@ onMounted(load);
         </ul>
         <h4 id="se-guarantor">{{ t('sece.guarantors') }}</h4>
         <ul v-if="(dossier.financial_guarantors ?? []).length > 0" class="rows small">
-          <li v-for="g in dossier.financial_guarantors" :key="g.person_id">{{ g.last_name }} {{ g.first_name }}<template v-if="g.phone"> · {{ g.phone }}</template></li>
+          <li v-for="g in dossier.financial_guarantors" :key="g.person_id">{{ g.last_name }} {{ g.first_name }}<template v-if="g.phone"> · {{ g.phone }}</template><template v-if="g.payment_reference"> · {{ t('sece.paymentReference', { reference: g.payment_reference }) }}</template></li>
         </ul>
         <p v-else class="muted">{{ t('sece.noGuarantor') }}</p>
         <form v-if="canManage" class="grid" aria-labelledby="se-guarantor" @submit.prevent="attachGuarantor">

@@ -108,7 +108,7 @@ export interface Dossier {
   enrollments: { id: string; structure_id: string | null; academic_year_id: string; status: string; internal_number: string | null }[];
   records: EnrolmentRecord[];
   transfers: Transfer[];
-  financial_guarantors?: { person_id: string; last_name: string | null; first_name: string | null; phone: string | null }[];
+  financial_guarantors?: { person_id: string; last_name: string | null; first_name: string | null; phone: string | null; payment_reference?: string | null }[];
 }
 export interface Preregistration {
   id: string;

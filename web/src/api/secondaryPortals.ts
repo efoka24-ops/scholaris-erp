@@ -35,6 +35,8 @@ export interface FamilyPortal {
   guardian_id: string;
   can_pay: boolean;
   family_balance_xaf: number;
+  /** D-BUL : référence de paiement famille du parent connecté (null tant qu’elle n’est pas émise). */
+  payment_reference?: string | null;
   children: StudentCard[];
 }
 export type PortalChannel = 'orange_money' | 'mtn_momo';

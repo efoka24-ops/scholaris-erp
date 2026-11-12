@@ -76,6 +76,8 @@ onMounted(() => void load());
     <template v-if="portal">
       <p v-if="portal.children.length === 0" class="muted">{{ t('sec.portal.noChild') }}</p>
       <p v-else>{{ t('sec.portal.familyBalance') }} : <strong>{{ formatXaf(portal.family_balance_xaf, locale) }}</strong></p>
+      <p v-if="portal.payment_reference" data-test="family-reference">{{ t('sec.portal.paymentReference') }} : <strong>{{ portal.payment_reference }}</strong> <span class="muted">{{ t('sec.portal.paymentReferenceHelp') }}</span></p>
+      <p v-else-if="portal.children.length > 0" class="muted" data-test="family-reference-none">{{ t('sec.portal.paymentReferenceNone') }}</p>
       <template v-for="child in portal.children" :key="child.person.id">
       <StudentCardView :card="child">
         <template v-if="portal.can_pay && child.invoices && child.invoices.length > 0">

@@ -308,6 +308,7 @@ export const primaryFr = {
   'pri.cards.notNotified': 'Non prévenue(s) par SMS : {details}.',
   'pri.cards.noGuarantor': 'Aucun garant n’est enregistré pour ces élèves : ajoutez le garant financier sur la fiche de l’élève pour que la famille soit prévenue.',
   'pri.cards.reason.consent_missing': '{n} sans consentement aux communications (à recueillir sur la fiche du parent)',
+  'pri.cards.reason.consent_revoked': '{n} ayant retiré leur consentement aux communications',
   'pri.cards.reason.no_contact': '{n} sans numéro de téléphone',
   'pri.cards.reason.opted_out': '{n} désinscrite(s) des SMS',
   'pri.cards.reason.sms_cap_reached': '{n} au plafond annuel de SMS',

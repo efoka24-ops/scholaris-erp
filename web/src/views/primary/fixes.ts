@@ -28,7 +28,7 @@ export interface PublishOutcome {
   not_notified?: Record<string, number>;
 }
 
-const KNOWN_REASONS = ['consent_missing', 'no_contact', 'opted_out', 'sms_cap_reached'];
+const KNOWN_REASONS = ['consent_missing', 'consent_revoked', 'no_contact', 'opted_out', 'sms_cap_reached'];
 
 /** Résumé de la publication : bulletins visibles, familles prévenues par SMS, et pourquoi les autres ne l'ont pas été. */
 export function publishSummary(t: Translate, done: PublishOutcome): string {

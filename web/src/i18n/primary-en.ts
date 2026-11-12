@@ -308,6 +308,7 @@ export const primaryEn = {
   'pri.cards.notNotified': 'Not notified by SMS: {details}.',
   'pri.cards.noGuarantor': 'No guarantor is recorded for these pupils: add the financial guarantor on the pupil’s record so that the family is notified.',
   'pri.cards.reason.consent_missing': '{n} without consent to communications (to be collected on the parent’s record)',
+  'pri.cards.reason.consent_revoked': '{n} who withdrew their consent to communications',
   'pri.cards.reason.no_contact': '{n} without a phone number',
   'pri.cards.reason.opted_out': '{n} opted out of SMS',
   'pri.cards.reason.sms_cap_reached': '{n} at the yearly SMS cap',
