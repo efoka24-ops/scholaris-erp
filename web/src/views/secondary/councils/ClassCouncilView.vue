@@ -13,6 +13,7 @@ import {
 import { useI18n, type MessageKey } from '@/i18n';
 import { useAction, usePermissions } from '../useSec';
 import { periodName } from '../periodName';
+import { publicationSummary } from './publication';
 
 const { t } = useI18n();
 const { error, busy, run } = useAction();
@@ -30,10 +31,13 @@ const published = ref(false);
 const settings = ref<ReportCardSettings | null>(null);
 const council = ref<SecondaryCouncil | null>(null);
 const cards = ref<ReportCardRequest[]>([]);
+const publicationText = ref('');
 const edits = ref<Record<string, { decision: string; reason: string }>>({});
 
 const canPrepare = computed(() => can('secondary.council.prepare', 'secondary.council.preside'));
 const canPreset = computed(() => can('secondary.settings.manage', 'secondary.council.preside'));
+const canPublish = computed(() => can('secondary.reportcard.validate', 'secondary.council.preside', 'secondary.council.prepare'));
+const hasIssued = computed(() => cards.value.some((c) => c.status === 'issued'));
 const councilPeriods = computed(() => periods.value.filter((p) => (p.kind as string) !== 'sequence'));
 const periodLabel = computed(() => {
   const period = periods.value.find((p) => p.id === periodId.value);
@@ -66,6 +70,7 @@ async function show(id: string): Promise<void> {
   const loaded = await run(() => secondaryCouncils.find(id));
   if (!loaded) return;
   council.value = loaded;
+  publicationText.value = '';
   edits.value = Object.fromEntries(loaded.lines.map((l) => [l.id, { decision: l.decision ?? '', reason: l.reason ?? '' }]));
   cards.value = loaded.status === 'validated' ? ((await run(() => secondaryCouncils.reportCards(id))) ?? []) : [];
 }
@@ -108,6 +113,12 @@ async function generate(): Promise<void> {
   if (!council.value) return;
   const id = council.value.id;
   cards.value = (await run(() => secondaryCouncils.generateReportCards(id))) ?? cards.value;
+}
+async function publishCards(): Promise<void> {
+  if (!council.value) return;
+  const id = council.value.id;
+  const done = await run(() => secondaryCouncils.publishReportCards(id));
+  if (done) publicationText.value = publicationSummary(t, done);
 }
 async function saveLine(line: SecondaryCouncilLine): Promise<void> {
   if (!council.value) return;
@@ -236,8 +247,11 @@ onMounted(load);
             <button class="btn btn--primary" type="button" :disabled="busy" :title="t('secc.validateHint')" @click="act('validate')">{{ t('secc.validate') }}</button>
           </template>
           <button v-if="!isOpen && canPrepare" class="btn btn--primary" type="button" :disabled="busy" @click="generate">{{ t('secc.generate') }}</button>
+          <button v-if="!isOpen && canPublish && hasIssued" class="btn" type="button" data-test="publish-cards" :disabled="busy" :title="t('secc.publishFamiliesHint')" @click="publishCards">{{ t('secc.publishFamilies') }}</button>
         </div>
         <p v-if="isOpen" class="muted small">{{ t('secc.validateHint') }}</p>
+        <p v-if="!isOpen && canPublish && hasIssued && !publicationText" class="muted small">{{ t('secc.publishFamiliesHint') }}</p>
+        <p v-if="publicationText" class="ok" data-test="publish-summary">{{ publicationText }}</p>
         <ul class="lines">
           <li v-for="line in council.lines" :key="line.id" class="line">
             <div class="who">

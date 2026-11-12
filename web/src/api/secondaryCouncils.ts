@@ -57,6 +57,15 @@ export interface ReportCardRequest {
   document_id: string | null;
   error_message: string | null;
 }
+/** S-NOT05 : résumé de la publication aux familles (SMS NOT-05 une fois par bulletin et par garant). */
+export interface ReportCardPublication {
+  published: number;
+  notified: number;
+  families: number;
+  already_notified: number;
+  /** Motifs du socle (consent_missing, consent_revoked, opted_out, no_contact…) ; tableau vide si aucun. */
+  not_notified: Record<string, number> | [];
+}
 export interface CoefficientDraftLine {
   subject_id: string;
   code: string;
@@ -160,6 +169,7 @@ export const secondaryCouncils = {
   validate: (id: string): Promise<SecondaryCouncil> => post(`/class-councils/${enc(id)}/validate`),
   reportCards: (id: string): Promise<ReportCardRequest[]> => get(`/class-councils/${enc(id)}/report-cards`),
   generateReportCards: (id: string): Promise<ReportCardRequest[]> => post(`/class-councils/${enc(id)}/report-cards`),
+  publishReportCards: (id: string): Promise<ReportCardPublication> => post(`${ROOT}/${enc(id)}/report-cards/publish`),
   ruleDraft: (classId: string, scope: 'level' | 'class'): Promise<RuleDraft> => get(`${ROOT}/rule-draft`, { class_id: classId, scope }),
   publishRules: (rules: { academic_year_id: string; label: string; definition: Record<string, unknown>; structure_id: string }): Promise<unknown> =>
     post('/calculation-rules', { academic_year_id: rules.academic_year_id, label: rules.label, definition: rules.definition, structure_id: rules.structure_id }),

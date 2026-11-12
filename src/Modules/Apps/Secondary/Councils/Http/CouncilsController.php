@@ -9,13 +9,14 @@ use Psr\Http\Message\ServerRequestInterface;
 use Scholaris\Core\Http\HttpException;
 use Scholaris\Core\Http\JsonResponder;
 use Scholaris\Modules\Apps\Secondary\Councils\Application\ReportCardPreview;
+use Scholaris\Modules\Apps\Secondary\Councils\Application\ReportCardPublication;
 use Scholaris\Modules\Apps\Secondary\Councils\Application\ReportCardSettings;
 use Scholaris\Modules\Apps\Secondary\Councils\Application\RuleDraftService;
 use Scholaris\Modules\Apps\Secondary\Support\Access;
 use Scholaris\Modules\Apps\Secondary\Support\Controller;
 use Scholaris\Modules\Apps\Secondary\Support\Store;
 
-/** API du conseil de classe du secondaire (T900, T904) : brouillon de règles du niveau, paramètres et aperçu des bulletins. */
+/** API du conseil de classe du secondaire (T900, T904) : brouillon de règles du niveau, paramètres et aperçu des bulletins, publication aux familles (S-NOT05). */
 final class CouncilsController extends Controller
 {
     public function __construct(
@@ -25,6 +26,7 @@ final class CouncilsController extends Controller
         private readonly RuleDraftService $drafts,
         private readonly ReportCardSettings $settings,
         private readonly ReportCardPreview $preview,
+        private readonly ReportCardPublication $publication,
     ) {
         parent::__construct($responder, $access, $store);
     }
@@ -65,5 +67,13 @@ final class CouncilsController extends Controller
         $locale = $request->getQueryParams()['locale'] ?? null;
 
         return $this->json($this->preview->show($principal, $establishmentId, self::id($request, 'councilId'), self::id($request, 'personId'), in_array($locale, ['fr', 'en'], true) ? $locale : null));
+    }
+
+    /** S-NOT05 : publication des bulletins émis du conseil aux familles (SMS NOT-05 une seule fois par bulletin et par garant). */
+    public function publishReportCards(ServerRequestInterface $request): ResponseInterface
+    {
+        [$principal, $establishmentId] = $this->context($request);
+
+        return $this->json($this->publication->publish($principal, $establishmentId, self::id($request, 'councilId')));
     }
 }

@@ -14,5 +14,6 @@ return static function (SecondaryRoutes $routes): void {
     $routes->get('/councils/report-card-settings', [CouncilsController::class, 'settings']);
     $routes->post('/councils/report-card-settings/preset', [CouncilsController::class, 'presetSettings']);
     $routes->get('/councils/{councilId}/report-cards/{personId}', [CouncilsController::class, 'reportCard']);
+    $routes->post('/councils/{councilId}/report-cards/publish', [CouncilsController::class, 'publishReportCards']);
     (require __DIR__ . '/Orientation/routes.php')($routes);
 };

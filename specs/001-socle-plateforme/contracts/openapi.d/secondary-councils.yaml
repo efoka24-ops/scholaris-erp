@@ -279,3 +279,19 @@ paths:
         '200': {description: "{data: {council_id, person_id, status, variables, snapshot}}"}
         '403': {description: "Permission secondary.reportcard.read, reportcard.validate, council.prepare ou council.preside requise, ou classe hors périmètre"}
         '404': {description: "Conseil, élève ou classe du secondaire introuvable"}
+  /api/v1/secondary/councils/{councilId}/report-cards/publish:
+    post:
+      summary: >-
+        Publication des bulletins émis du conseil aux familles (EX-BUL-06, NOT-05, S-NOT05) : SMS sec.not05.report_card_ready
+        (moyenne, rang, décision) aux garants de chaque élève, une seule fois par bulletin et par garant (republier ne renvoie rien).
+        Message de service essentiel par défaut (décision du 12 novembre 2026) : sans consentement recueilli, mais désinscription
+        (opted_out) et consentement révoqué (consent_revoked) respectés. Paramètre secondary.report_card.sms_essential (false =
+        Messenger ordinaire, consentement exigé).
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: councilId, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "{data: {published, notified, families, already_notified, not_notified: {motif: nombre}}}"}
+        '403': {description: "Permission secondary.reportcard.validate, council.preside ou council.prepare requise, ou classe hors périmètre"}
+        '404': {description: "Conseil introuvable (autre client ou autre établissement compris)"}
+        '409': {description: "Conseil non validé, ou aucun bulletin émis"}
