@@ -33,7 +33,7 @@ Trois principes de l'école publique :
 | N° | Chapitre | Contenu |
 |---|---|---|
 | 00 | [Sommaire](00-sommaire.md) | ce document |
-| 01 | [Premiers pas](01-premiers-pas.md) | se connecter, l'accueil, le code personnel du téléphone |
+| 01 | [Premiers pas](01-premiers-pas.md) | se connecter, l'accueil, le code personnel de l'appareil |
 | 02 | [L'école et son territoire](02-ecole-territoire.md) | fiche de l'école, infrastructure, rattachement à l'arrondissement |
 | 03 | [Classes et titulaires](03-classes-titulaires.md) | créer une classe, autorisation d'ouverture, titulaire, effectifs |
 | 04 | [Élèves et inscriptions](04-eleves-inscriptions.md) | inscription d'un élève, inscription groupée depuis un registre papier, dossier, transferts, abandons |

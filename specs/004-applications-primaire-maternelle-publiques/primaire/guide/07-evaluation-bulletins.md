@@ -6,7 +6,7 @@
 
 | Tâche | Qui |
 |---|---|
-| Référentiel national, unités d'apprentissage | Niveau national (référentiel) ; directeur (génération des unités) |
+| Référentiel, unités d'apprentissage | Niveau national (Inspection générale, administrateur fonctionnel) ; directeur de l'école, si le réglage du ministère le permet |
 | Saisie des critères, remédiation, préparation des bulletins, appréciations | Enseignant titulaire |
 | Publication des bulletins, rectificatif | Directeur seulement |
 
@@ -14,10 +14,24 @@
 
 **Où** : **École publique > Référentiel et paramètres** (`/ecole-publique/referentiel`).
 
-> Point constaté pendant la préparation de ce guide : sur l'école d'essai, le directeur ne voyait pas les boutons **Importer le référentiel d'exemple** et **Générer les unités** ; sans unités, l'écran d'évaluation n'a ni classe ni unité à proposer. Les unités se génèrent alors avec le compte qui gère le référentiel (niveau national). La génération demande aussi l'**identifiant** de chaque trimestre, à recopier depuis l'administration.
+**Qui** : le directeur de l'école (école pilote), ou le niveau national. Le référentiel est en principe réglé **au niveau national**. Dans une école pilote, sans niveau national, le directeur le gère lui-même : c'est un réglage du ministère (« le directeur peut gérer le référentiel », valeur de départ **oui**, statut **à confirmer**). Si ce réglage est désactivé, le directeur lit à la place des boutons : « Le référentiel et le calendrier des unités sont réglés au niveau national : adressez-vous à l'Inspection générale ou à l'administrateur fonctionnel. »
 
-- **Disciplines et critères** : choisissez le **Niveau** puis **Afficher**. Chaque discipline liste ses critères ; une **discipline clé** compte pour le passage. Le référentiel est réglé **au niveau national**. Tant que le référentiel officiel n'est pas chargé, **Importer le référentiel d'exemple (à remplacer par l'officiel)** permet de commencer.
-- **Unités d'apprentissage** : l'année compte plusieurs unités (8 par défaut), réparties sur les trimestres, chacune avec une **semaine d'évaluation**. Le directeur clique sur **Générer les unités**.
+![Référentiel du CM2 et unités générées (directeur)](images/pub-07-referentiel.png)
+
+### Disciplines et critères
+
+1. Choisissez le **Niveau** (exemple : CM2) puis cliquez sur **Afficher**. Chaque discipline liste ses critères ; une **discipline clé** compte pour le passage.
+2. Tant que le référentiel officiel n'est pas chargé, cliquez sur **Importer le référentiel d'exemple (à remplacer par l'officiel)**. Il vaut depuis le début de l'année scolaire en cours : les unités déjà commencées reçoivent leurs disciplines.
+
+### Unités d'apprentissage
+
+L'année compte plusieurs unités (8 par défaut), réparties sur les trimestres, chacune avec une **semaine d'évaluation**.
+
+1. L'année en cours est déjà choisie. Les trimestres de l'année, déclarés dans l'administration, s'affichent **par leur nom** : **Inclure le trimestre 1**, **Inclure le trimestre 2**, **Inclure le trimestre 3**, avec leurs dates **Du** et **Au** préremplies.
+2. Décochez un trimestre à exclure ou corrigez ses dates si besoin. Aucun code n'est à saisir.
+3. Cliquez sur **Générer les unités**. La liste des unités s'affiche (de l'**Unité 1** à l'**Unité 8**), avec la date de leur semaine d'évaluation.
+
+S'il n'y a aucun trimestre pour l'année en cours, l'écran le dit : déclarez d'abord l'année et ses trimestres dans l'administration.
 - **Paramètres en vigueur** : chaque règle (occasions, seuil de maîtrise, remédiation, passage…) affiche sa **Valeur**, son **Statut** et sa **Source** (**texte officiel**, **cahier des charges, à valider**, ou **à confirmer**).
 
 ## 7.2 Saisir l'évaluation par critères
@@ -25,6 +39,8 @@
 **Qui** : enseignant titulaire. **Où** : **École publique > Évaluation par critères** (`/ecole-publique/evaluation`).
 
 ![Évaluation par critères](images/pub-07-evaluation.png)
+
+Sur un appareil neuf, l'écran demande d'abord de créer le **code personnel** de l'appareil (chapitre 01, 1.6) ; les classes s'affichent dès que le code est créé ou saisi.
 
 1. Dans **Choisir la classe, l'unité et la discipline**, choisissez la **Classe**, l'**Unité d'apprentissage** et la **Discipline**.
 2. La **Grille de saisie** affiche une ligne par élève, et pour chaque critère trois **occasions**.

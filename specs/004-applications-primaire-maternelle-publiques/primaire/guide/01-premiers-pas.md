@@ -46,13 +46,15 @@ L'écran **Mon école** présente une carte par rubrique : **Appel**, **Classes*
 
 Chacun ne voit que les cartes de son rôle.
 
-## 1.6 Le code personnel du téléphone (enseignants)
+## 1.6 Le code personnel de l'appareil
 
-Pour faire l'appel sans réseau, la liste des élèves est gardée **chiffrée** sur le téléphone. Elle est protégée par un **code personnel à 6 chiffres**.
+Pour travailler sans réseau, les listes d'élèves (appel, évaluation) et les grilles d'inspection sont gardées **chiffrées** sur l'appareil. Elles sont protégées par un **code personnel à 6 chiffres**.
+
+Le code est **propre à chaque appareil**, téléphone ou ordinateur : « Il est propre à cet appareil : sur un autre téléphone ou un autre ordinateur, vous créez un code pour celui-là. » Il n'est jamais envoyé ni affiché. Un inspecteur ou un enseignant qui ouvre l'**Inspection** ou l'**Évaluation** sur un ordinateur pour la première fois crée donc un code pour cet ordinateur : c'est normal.
 
 ![Création du code personnel](images/pub-05-code-personnel.png)
 
-La première fois que vous ouvrez l'**Appel** :
+La première fois que vous ouvrez l'**Appel** (ou l'**Évaluation**, l'**Inspection**) sur un appareil :
 
 1. Saisissez un **Code personnel à 6 chiffres** de votre choix.
 2. Retapez-le dans **Confirmez le code**.

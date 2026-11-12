@@ -4,6 +4,8 @@
 
 « Planning, grille de visite remplie même sans réseau, comptage sur place, recommandations suivies et rapport DOC-26. »
 
+À la première ouverture sur un appareil, téléphone **ou ordinateur**, l'écran demande de créer le **code personnel** de cet appareil (chapitre 01, 1.6) : les grilles et les rapports y sont gardés chiffrés pour travailler sans réseau. Les visites s'affichent dès que le code est créé ou saisi.
+
 ![Inspection (inspecteur)](images/pub-12-inspection.png)
 
 ## 12.1 Les grilles de visite

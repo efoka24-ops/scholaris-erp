@@ -6,7 +6,7 @@ L'école prépare l'inscription de ses élèves au **CEP** (Certificat d'études
 
 **Qui** : directeur, secrétaire. **Où** : **École primaire > Examen de fin de cycle** (`/primaire/examen`).
 
-Avant de commencer : le niveau d'examen (CM2 ou Class 6) doit être coché **Niveau d'examen** (chapitre 02).
+Avant de commencer : le niveau d'examen (CM2 ou Class 6) doit être coché **Niveau d'examen** dans **École primaire > Niveaux** (chapitre 02). L'écran ne propose que les niveaux ainsi cochés. S'il n'y en a aucun, il affiche « Aucun niveau n'est marqué « niveau d'examen »… », un lien **Ouvrir les niveaux**, et le bouton **Créer la session** reste grisé.
 
 ## 8.1 Créer la session
 
@@ -17,7 +17,7 @@ Avant de commencer : le niveau d'examen (CM2 ou Class 6) doit être coché **Niv
 3. Saisissez la date de **Fin des inscriptions** et la date des **Épreuves le**.
 4. Cliquez sur **Créer la session**. Elle est en **Préparation**.
 
-> Point constaté pendant la préparation de ce guide : sur l'école d'essai, **Créer la session** a été refusé par le serveur (données jugées invalides) sans message clair à l'écran. Si cela vous arrive, vérifiez que la date de fin des inscriptions précède la date des épreuves, puis signalez-le à l'équipe SCHOLARIS. Les étapes suivantes sont décrites d'après l'écran.
+Une saisie refusée est expliquée **sous le formulaire**, champ par champ (par exemple une date de fin des inscriptions postérieure aux épreuves).
 
 ## 8.2 Inscrire les candidats et attribuer les numéros
 
@@ -27,6 +27,8 @@ Avant de commencer : le niveau d'examen (CM2 ou Class 6) doit être coché **Niv
 4. Un élève qui ne se présente pas : **Retirer**. Il reste dans l'historique avec la mention **Retiré**.
 
 L'en-tête de la session compte les inscrits, admis, ajournés et absents, et le taux de réussite.
+
+![Session CEP : candidats inscrits et numéros attribués](images/pri-10-examen-candidats.png)
 
 ## 8.3 La fiche d'inscription
 

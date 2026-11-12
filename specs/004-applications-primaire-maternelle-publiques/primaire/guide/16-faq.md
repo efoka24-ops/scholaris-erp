@@ -5,7 +5,8 @@
 | Problème | Solution |
 |---|---|
 | Je n'ai pas reçu le code d'activation | Vérifiez le numéro enregistré par l'école ; redemandez le code après une minute. |
-| J'ai oublié mon code personnel de l'appel | Après cinq erreurs, le téléphone est effacé. Reconnectez-vous avec le réseau et créez un nouveau code. Les appels non envoyés sont perdus : refaites-les. |
+| L'écran demande un code personnel sur l'ordinateur | Le code est propre à chaque appareil (téléphone ou ordinateur) : créez-en un pour cet ordinateur (chapitre 01, 1.6). |
+| J'ai oublié mon code personnel | Après cinq erreurs, l'appareil est effacé. Reconnectez-vous avec le réseau et créez un nouveau code. Les appels non envoyés sont perdus : refaites-les. |
 | Mon téléphone est perdu ou volé | Prévenez tout de suite le directeur : il révoque le téléphone inscrit. Changez votre mot de passe depuis un autre appareil. |
 | « Accès refusé » | Votre rôle ne permet pas cet écran : vérifiez le rôle choisi en haut. |
 
@@ -14,6 +15,7 @@
 | Problème | Solution |
 |---|---|
 | Aucune inscription n'est possible | Vérifiez la **fiche de l'école** (chapitre 02) et l'**autorisation d'ouverture** de la classe (chapitre 03). |
+| Le directeur ne voit pas **Générer les unités** | Le réglage du ministère réserve le référentiel au niveau national : adressez-vous à l'Inspection générale ou à l'administrateur fonctionnel (chapitre 07). |
 | L'élève n'a pas d'identifiant national | L'école n'est pas rattachée à son territoire : demandez-le à l'administrateur fonctionnel (chapitre 02). |
 | « Un élève semblable existe déjà » | Ouvrez la fiche existante ; si c'est un autre enfant, cochez **C'est un autre enfant** avec un motif. |
 | Une ligne du registre papier est refusée | Les autres lignes sont inscrites. Corrigez la ligne refusée et renvoyez-la seule. |

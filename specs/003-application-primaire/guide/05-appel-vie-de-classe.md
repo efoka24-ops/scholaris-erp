@@ -20,7 +20,7 @@ L'appel se fait **deux fois par jour** : le **Matin** et l'**Après-midi**. Les 
 
 1. Choisissez la **Classe**.
 2. Choisissez le **Moment de la journée** : **Matin** ou **Après-midi**. La date du jour est affichée.
-3. La liste **Élèves** s'affiche. En haut, trois compteurs : **Présents**, **Retards**, **Absents**.
+3. La liste nominative **Élèves (n)** de la classe s'affiche, par ordre alphabétique (élèves inscrits, y compris sous réserve). En haut, trois compteurs : **Présents**, **Retards**, **Absents**.
 4. Cliquez sur **Tous présents** : chaque élève est marqué présent.
 5. Pour chaque élève absent ou en retard, touchez la lettre sur sa ligne : **P** (présent), **R** (retard), **A** (absent).
 6. Quand tous les élèves ont un statut, cliquez sur **Valider l'appel (n/n)**.
@@ -29,7 +29,7 @@ Le message « Appel envoyé. » confirme l'envoi. Les parents des absents sont p
 
 ![Appel sur l'ordinateur](images/pri-06-appel-maitre.png)
 
-> Point constaté pendant la préparation de ce guide : sur l'école d'essai, la liste affichait « Élèves (0) » alors que la classe avait des élèves inscrits. Si la liste de votre classe est vide, prévenez la direction : elle vérifie l'inscription des élèves dans la classe et, si besoin, contacte l'équipe SCHOLARIS.
+Le maître voit la liste de sa classe. La direction (directeur) ouvre aussi l'écran d'appel pour toutes les classes : elle peut faire l'appel d'une classe dont le maître est absent et consulter les appels du jour.
 
 ## 5.2 Faire l'appel sans réseau
 
@@ -40,7 +40,13 @@ L'appel fonctionne **même sans connexion** (zone sans réseau, crédit épuisé
 3. Le message « Appel gardé sur ce téléphone : il partira dès que le réseau reviendra. » s'affiche.
 4. Au retour du réseau, l'appel part tout seul.
 
+![Appel gardé sur le téléphone, sans réseau](images/pri-06-appel-hors-ligne.png)
+
+Le bandeau « Vous êtes hors ligne » ne s'affiche qu'en cas de vraie coupure du réseau ; un serveur momentanément occupé ne le déclenche pas, et il disparaît dès que le serveur répond.
+
 Le menu **File d'envoi** (`/synchronisation`) montre ce qui attend d'être envoyé.
+
+![File d'envoi vide après le retour du réseau : l'appel est parti](images/pri-06-file-envoi.png)
 
 Si un appel de la même classe pour le même moment attend déjà, l'écran prévient : « Un appel de cette classe pour ce moment attend déjà son envoi. » Ne refaites pas l'appel.
 

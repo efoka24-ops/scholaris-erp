@@ -10,9 +10,9 @@ Choisissez votre rôle actif dans la liste **Rôle**, en haut de l'écran.
 |---|---|---|
 | **Super administrateur** (promoteur ou administrateur de l'école) | année et trimestres, classes, autorisations d'ouverture, comptes et rôles, paramètres, frais et paiements | les écrans pédagogiques s'il n'a pas aussi un rôle de l'école primaire |
 | **Promoteur primaire** | consulte le tableau de bord, les compétences, les conseils, les bulletins, l'examen, les services ; exporte pour la tutelle | ne saisit rien |
-| **Directeur primaire** | démarrage, niveaux, conseil des maîtres (présidence), bulletins (émission, publication, rectificatif), verrouillage et publication des feuilles, accord des corrections, examen, exports, sortie sécurisée, clôture | ne tient pas la caisse |
+| **Directeur primaire** | démarrage, niveaux, appel de toutes les classes, conseil des maîtres (présidence), bulletins (émission, publication, rectificatif), verrouillage et publication des feuilles, accord des corrections, examen, exports, sortie sécurisée, clôture | ne tient pas la caisse |
 | **Responsable pédagogique primaire** (adjoint) | référentiel, validation des feuilles de compétences, remédiation, emploi du temps | ne publie pas les bulletins |
-| **Secrétaire primaire** | inscriptions, documents administratifs, examen (inscriptions des candidats), exports pour la tutelle | ne saisit pas les compétences |
+| **Secrétaire primaire** | inscriptions (avec la facture d'inscription), fiches de **Personnes et inscriptions**, documents administratifs, examen (inscriptions des candidats), exports pour la tutelle | ne saisit pas les compétences |
 | **Enseignant** (maître, maîtresse) | appel, feuille de compétences (saisie et import), conduite, cahier de liaison, remédiation ; consulte le conseil et les bulletins | ne verrouille pas, ne publie pas |
 | **Surveillant primaire** | sortie sécurisée (remise et refus), sanctions | ne voit pas les bulletins |
 | **Comptable** | catalogue des frais, échéanciers, factures, remises ; forfaits de services (cantine, garderie, transport) | — |

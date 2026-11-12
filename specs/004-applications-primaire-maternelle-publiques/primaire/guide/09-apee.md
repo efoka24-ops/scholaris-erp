@@ -33,7 +33,7 @@ L'**APEE** (association des parents d'élèves et des enseignants) a ses **compt
 
 ![Reçu APEE émis](images/pub-09-apee-recu.png)
 
-Le message « Reçu n° … émis, SMS envoyé au parent. » s'affiche. Le reçu est au nom du **parent payeur**. Le bouton **Reçu** de l'opération l'affiche pour impression.
+Le message « Reçu n° … émis, SMS envoyé au parent. » s'affiche une fois les comptes relus : l'état financier et la liste des familles non contributrices sont alors à jour ensemble (la famille qui vient de payer n'est plus dans la liste). Le reçu est au nom du **parent payeur**. Le bouton **Reçu** de l'opération l'affiche pour impression.
 
 ## 9.4 Enregistrer une dépense
 

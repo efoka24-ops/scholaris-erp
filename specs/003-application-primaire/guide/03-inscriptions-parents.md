@@ -65,7 +65,7 @@ Une pièce manquante n'empêche pas l'inscription : l'élève est alors inscrit 
 ![Étape 5 : frais et paiement](images/pri-04-inscription-etape5.png)
 
 - Si la grille des frais de la classe existe et que votre rôle gère les frais, l'écran affiche le montant **À payer** et la **Référence de paiement unique de la famille** (valable au guichet, sur Orange Money et MTN MoMo). Cliquez sur **Valider l'inscription** ou **Encaisser au guichet**.
-- Sinon (cas de la secrétaire), le message « Les frais sont gérés par le service financier : validez le dossier, la facture sera établie ensuite. » s'affiche. Cliquez sur **Valider sans paiement (pré-inscription)**.
+- Pour la secrétaire, l'étape annonce : « La facture d'inscription (frais d'inscription et première tranche, selon les grilles de l'école) est émise dès la validation de l'inscription. » Cliquez sur **Valider sans paiement (pré-inscription)** : la facture est émise aussitôt et l'écran final affiche « Facture d'inscription émise : … Le paiement se fait à la caisse. »
 
 **Enregistrer le brouillon et quitter** garde le dossier pour plus tard.
 
@@ -75,7 +75,7 @@ Le message **Inscription validée** (dossier complet) ou **Inscription sous rés
 
 ## 3.2 La fiche de l'élève et ses garants
 
-**Où** : menu **Personnes et inscriptions** (`/personnes`).
+**Qui** : secrétaire, administrateur de l'école. **Où** : menu **Personnes et inscriptions** (`/personnes`).
 
 ![Liste des personnes](images/pri-04-personnes.png)
 
@@ -90,7 +90,7 @@ La fiche regroupe l'identité, l'inscription de l'année, les parents et les **g
 
 ![Guichet des inscriptions](images/pri-04-guichet.png)
 
-L'écran liste les élèves inscrits de l'année.
+L'écran liste les élèves inscrits de l'année, y compris ceux inscrits **sous réserve** : leur ligne porte l'étiquette **Sous réserve des pièces** tant qu'une pièce du dossier manque.
 
 1. Dans **Chercher un élève**, tapez le nom ou le matricule.
 2. Cliquez sur **Ouvrir** sur la ligne de l'élève. Son profil s'affiche : **Redoublant** ou **Non redoublant**, **Niveau d'examen**, **Niveau final**.
@@ -98,4 +98,4 @@ L'écran liste les élèves inscrits de l'année.
 4. **Documents** : cliquez sur le document voulu : **Certificat de scolarité**, **Attestation de fréquentation**, **Carte scolaire**, **Fiche de renseignements**. Chaque document porte un numéro et un **QR de vérification** ; le lien **Vérifier** montre la page de contrôle.
 5. **Transfert sortant** : saisissez l'**École de destination**, le **Motif** et la **Date de départ**, puis **Transférer l'élève**. Un **Certificat de radiation** peut ensuite être délivré.
 
-> Point constaté pendant la préparation de ce guide : sur l'école d'essai, le guichet affichait « Aucune inscription en cours. » alors que des élèves étaient inscrits. Si c'est votre cas, signalez-le à l'équipe SCHOLARIS ; en attendant, la fiche de l'élève reste accessible par **Personnes et inscriptions**.
+![Fiche d'un élève au guichet : facture d'inscription et certificat de scolarité émis](images/pri-04-guichet-facture-documents.png)

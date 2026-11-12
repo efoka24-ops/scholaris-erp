@@ -16,7 +16,7 @@
 |---|---|
 | L'inscription est refusée dans une classe | La classe n'a pas d'autorisation d'ouverture valide aujourd'hui : **Administration > Autorisations d'ouverture** (chapitre 02). |
 | « Une personne existe peut-être déjà » | Un enfant semblable existe : reprenez sa fiche si c'est le même, sinon choisissez **Personne différente**. |
-| L'étape « Frais & paiement » ne montre pas de montant | Votre rôle ne gère pas les frais, ou la grille des frais de la classe n'existe pas. Validez sans paiement ; la comptable établira la facture. |
+| L'étape « Frais & paiement » ne montre pas de montant | Pour la secrétaire, c'est normal : la facture d'inscription est émise dès la validation (chapitre 03). Sinon, la grille des frais de la classe n'existe pas encore : la comptable la crée. |
 | La feuille de compétences n'a aucune compétence | Le référentiel du niveau est vide : **École primaire > Référentiel** (chapitre 02). Vérifiez aussi que la classe est rattachée au bon niveau. |
 
 ## Appel et compétences
@@ -24,7 +24,7 @@
 | Problème | Solution |
 |---|---|
 | Pas de réseau pendant l'appel | Faites l'appel normalement : il est gardé sur le téléphone et part au retour du réseau (chapitre 05). |
-| La liste d'appel est vide | Ouvrez l'écran une fois avec le réseau. Si elle reste vide, prévenez la direction (voir aussi la remarque du chapitre 05). |
+| La liste d'appel est vide | Ouvrez l'écran une fois avec le réseau. Si elle reste vide, la classe n'a aucun élève inscrit : la direction vérifie les inscriptions de la classe. |
 | L'import du fichier de compétences est refusé | Une cellule est fausse : l'écran indique laquelle. Corrigez le fichier et réimportez. Rien n'a été enregistré. |
 | Je ne peux plus modifier la feuille | Elle est verrouillée : utilisez **Corriger** pour envoyer une demande à la direction. |
 
@@ -34,7 +34,7 @@
 |---|---|
 | **Valider le conseil** est refusé | Les feuilles de compétences de la classe ne sont pas verrouillées. |
 | Je dois changer une appréciation après l'émission | Émettez un **rectificatif** (chapitre 07). Le bulletin d'origine reste dans l'historique. |
-| Une famille n'a pas reçu le SMS « bulletin disponible » | Vérifiez que le parent est bien **garant financier** de l'élève et que son téléphone est juste. |
+| Une famille n'a pas reçu le SMS « bulletin disponible » | Lisez le motif dans le résumé de la publication (chapitre 07) : consentement aux communications à recueillir, numéro manquant, ou famille désinscrite des SMS. Le bulletin reste visible dans l'espace des parents. |
 | Le parent ne voit pas le bulletin | Le bulletin doit être **publié**. Le parent doit être garant financier de l'enfant. |
 
 ## Caisse

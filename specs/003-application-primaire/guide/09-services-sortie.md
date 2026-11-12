@@ -10,12 +10,14 @@
 
 1. Dans **Service**, choisissez **Cantine**, **Garderie** ou **Transport**.
 2. Saisissez l'**Intitulé** (exemple : Cantine du midi).
-3. **Code du frais (catalogue de facturation)** : le code du frais correspondant dans le catalogue de la comptabilité (chapitre 04).
+3. **Code du frais (catalogue de facturation)** : choisissez le frais dans la liste **Choisir un frais du catalogue** (frais actifs et codés de la comptabilité, chapitre 04 ; exemple : Cantine, code `cantine`). La facture du forfait reprend ce frais.
 4. **Cycle de facturation** : **Trimestre**, **Mois** ou **Année**.
 5. **Capacité (facultatif)** : le nombre de places ; **Circuit ou lieu (facultatif)** pour le transport.
-6. Cliquez sur **Créer le forfait**. Le message « Forfait créé. » s'affiche.
+6. Cliquez sur **Créer le forfait**. Le message « Forfait créé. » s'affiche et le forfait apparaît dans la liste **Forfaits** (par exemple « Cantine du midi · Cantine · Trimestre · 0 abonné(s) / 40 »).
 
-> Point constaté pendant la préparation de ce guide : sur l'école d'essai, **Créer le forfait** n'a pas abouti avec un code de frais absent du catalogue. Saisissez exactement le code d'un frais existant (demandez-le à la comptable).
+![Forfait créé avec le frais du catalogue](images/pri-10-services-forfait.png)
+
+Si aucun frais du catalogue ne porte de code, l'écran le signale : la comptable crée d'abord le frais du service (par exemple « Cantine », code `cantine`) dans **Frais et paiements**, puis revient créer le forfait.
 
 ### Abonner un élève
 

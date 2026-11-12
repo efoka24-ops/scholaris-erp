@@ -66,7 +66,7 @@ Chacun ne voit que les cartes de son rôle. Un maître, par exemple, voit l'appe
 
 ![Le cadre Démarrage avant les réglages](images/pri-02-demarrage.png)
 
-À la première ouverture, le cadre **Démarrage** liste quelques réglages recommandés pour une école primaire (par exemple l'appel par demi-journée), avec leur valeur **actuel** et **recommandé**.
+À la première ouverture, le cadre **Démarrage** liste quelques réglages recommandés pour une école primaire (par exemple l'appel par demi-journée), avec leur valeur **actuel** et **recommandé**, en clair : par exemple **Mode d'appel** : « par demi-journée (matin et après-midi) ».
 
 1. Lisez la liste.
 2. Cliquez sur **Appliquer les réglages recommandés**.

@@ -23,7 +23,9 @@ L'application prépare les **listes de candidats** au **CEP** (francophone), au 
 2. Saisissez la **Date des épreuves**.
 3. Cliquez sur **Ouvrir la session …** (le bouton indique l'année, par exemple « Ouvrir la session 2026-2027 »).
 
-> Point constaté pendant la préparation de ce guide : sur l'école d'essai, le compte de la direction des examens voyait le message « Vous n'avez pas le droit de consulter l'organisation. » et le bouton restait grisé (l'année scolaire n'était pas lue). Si c'est votre cas, signalez-le à l'équipe SCHOLARIS : la session peut être ouverte par la délégation départementale en attendant.
+**Qui** : la direction des examens (niveau national) ou la délégation départementale. La direction des examens lit l'année scolaire en cours pour la proposer sur le bouton ; elle ne voit aucune donnée nominative d'élève avant la transmission des listes.
+
+Une fois la session ouverte, chaque directeur d'école la retrouve dans son écran **Examens** (11.2).
 
 ## 11.2 La liste de l'école (directeur)
 
@@ -35,6 +37,8 @@ L'application prépare les **listes de candidats** au **CEP** (francophone), au 
 4. **Prévenir les familles sans acte** : un SMS part aux familles concernées (une seule fois par candidat).
 5. **Retirer** un candidat avec un **Motif du retrait** ; **Ajouter un candidat** si besoin.
 6. Cliquez sur **Transmettre à l'inspection**. « Liste transmise. »
+
+![Liste de l'école générée : trois candidats du CM2 en brouillon](images/pub-11-examens-liste.png)
 
 Documents : **Liste DOC-13 (PDF)** (examens) ou **DOC-15** (concours), **Fiche DOC-14** de chaque candidat (avec un cadre « photo à coller »), **Exporter (CSV)**.
 

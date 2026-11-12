@@ -63,7 +63,7 @@ L'arrêté du 14 août 2026 rend obligatoires deux outils : le **registre de rem
 
 Le **Suivi hebdomadaire** compare, semaine par semaine, les minutes faites au temps attendu.
 
-> Point constaté pendant la préparation de ce guide : sur l'école d'essai, l'écran du maître affichait les élèves par un code (suite de lettres et de chiffres) au lieu de leur nom, avec le bandeau « Une erreur inattendue s'est produite ». Si c'est votre cas, cochez les élèves dans l'ordre de la liste de la classe et signalez-le à la direction.
+Les élèves de la classe sont listés par leur nom, avant même la première séance. La séance enregistrée apparaît aussitôt dans le suivi.
 
 ### Fiche de suivi individualisée
 
@@ -98,7 +98,15 @@ Le bulletin est préparé **après la validation du conseil**. Un bulletin émis
 ![Bulletins publiés](images/pri-09-bulletins-publies.png)
 
 1. Cliquez sur **Publier aux familles (n)**.
-2. Le message indique « n publié(s), n famille(s) prévenue(s). » Les familles reçoivent un SMS « bulletin disponible » et voient le bulletin dans leur espace (chapitre 11).
+2. Le résumé de la publication s'affiche, par exemple : « 4 publié(s), visibles dans l'espace des parents. 2 famille(s) prévenue(s) par SMS sur 2. » Si des familles n'ont pas reçu le SMS, une ligne en donne le motif, par exemple : « Non prévenue(s) par SMS : 1 sans consentement aux communications (à recueillir sur la fiche du parent). »
+
+Lisez-le ainsi :
+
+- **publié(s)** : les bulletins sont visibles dans l'espace des parents (chapitre 11), qu'un SMS soit parti ou non ;
+- **famille(s) prévenue(s) par SMS sur n** : n est le nombre de garants des élèves publiés ; chacun reçoit un SMS « bulletin disponible » s'il l'a accepté ;
+- **Non prévenue(s) par SMS** : le motif, famille par famille : **sans consentement aux communications** (recueillez-le sur la fiche du parent), **sans numéro de téléphone**, **désinscrite(s) des SMS**.
+
+Si aucun garant n'est enregistré, l'écran le dit : ajoutez le garant financier sur la fiche de l'élève (chapitre 03).
 
 La liste **Bulletins du conseil** montre, pour chaque élève, l'état (**Émis**, **Publié**, **Remplacé**) et le numéro. **Voir** affiche le bulletin émis.
 

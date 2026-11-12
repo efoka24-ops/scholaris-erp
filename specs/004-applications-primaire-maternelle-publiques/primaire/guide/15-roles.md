@@ -6,7 +6,7 @@ Le rôle décide des menus, des cartes et des boutons. Si vous ne voyez pas un �
 
 | Rôle (nom à l'écran) | Ce qu'il fait | Ce qu'il ne fait pas |
 |---|---|---|
-| **Directeur d'école** | fiche de l'école, classes et titulaires, inscriptions, transferts, abandons, appel, présence des enseignants, messages, publication des bulletins, passage, questionnaire statistique, liste d'examen, paquet minimum ; consulte l'APEE, l'inspection et la cantine | ne tient pas les comptes de l'APEE ; ne modifie pas le référentiel national |
+| **Directeur d'école** | fiche de l'école, classes et titulaires, inscriptions, transferts, abandons, appel, présence des enseignants, messages, publication des bulletins, passage, questionnaire statistique, liste d'examen, paquet minimum ; consulte l'APEE, l'inspection et la cantine ; dans une école pilote, référentiel d'exemple et unités d'apprentissage (si le ministère le permet) | ne tient pas les comptes de l'APEE |
 | **Enseignant titulaire de classe** | appel de sa classe (même sans réseau), évaluation par critères, remédiation, préparation des bulletins, messages aux parents de sa classe ; lit les visites de sa classe | ne publie pas les bulletins ; ne voit jamais les familles non contributrices de l'APEE |
 | **Bureau de l'APEE** | vote, encaissements, reçus, dépenses, état financier, familles non contributrices | ne voit pas les dossiers scolaires |
 | **Membre du conseil d'école** | consultation | — |
@@ -29,7 +29,7 @@ Le rôle décide des menus, des cartes et des boutons. Si vous ne voyez pas un �
 | Rôle | Ce qu'il fait |
 |---|---|
 | **Administrateur fonctionnel** | rattachement territorial des écoles, territoires |
-| **Direction des examens, concours et certification** | sessions d'examen, consolidation, import et publication des résultats |
+| **Direction des examens, concours et certification** | ouverture des sessions d'examen (lit l'année scolaire, sans donnée nominative), consolidation, import et publication des résultats |
 | **Division de la planification** | consolidation du questionnaire statistique, tableau de bord |
 | **Inspection générale des enseignements** | lecture des inspections, modèles de documents |
 | **Cabinet du ministre, secrétariat général** | tableau de bord national (chiffres agrégés seulement) |
