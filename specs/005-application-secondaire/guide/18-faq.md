@@ -59,6 +59,9 @@ Vous ne voyez que les classes et matières de vos **affectations** à l'emploi d
 **« Valider les décisions » est refusé au conseil.**
 Toutes les notes des séquences du trimestre doivent être **verrouillées**.
 
+**Une famille n'a pas reçu le SMS « bulletin disponible ».**
+Lisez le motif dans le résumé de **Publier aux familles** (chapitre 08) : numéro manquant, famille désinscrite des SMS, consentement retiré ou échec d'envoi. Un envoi en échec est retenté à la publication suivante ; une famille déjà prévenue ne reçoit pas de second SMS. Le bulletin reste visible dans l'espace famille.
+
 ## Appel
 
 **Je fais l'appel sans réseau.**

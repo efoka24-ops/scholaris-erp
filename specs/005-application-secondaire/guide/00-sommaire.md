@@ -38,14 +38,14 @@ Dans le menu de gauche, l'application s'appelle **Secondaire**. Son accueil (adr
 | 05 | [Emploi du temps et cahier de textes](05-emploi-du-temps-cahier.md) | affectations, créneaux, génération, remplacements, séances, progressions, couverture, visas |
 | 06 | [Appel et discipline](06-appel-discipline.md) | appel par heure (téléphone), absences, barème, sanctions, conseil de discipline |
 | 07 | [Notes de séquence](07-notes.md) | cycle des notes, saisie, import, validation, verrouillage, relevé, corrections |
-| 08 | [Conseil de classe et bulletins](08-conseil-bulletins.md) | règles, conseil, décisions, émission et aperçu des bulletins |
+| 08 | [Conseil de classe et bulletins](08-conseil-bulletins.md) | règles, conseil, décisions, émission, publication aux familles (SMS « bulletin disponible ») et aperçu des bulletins |
 | 09 | [Orientation](09-orientation.md) | vœux, avis du conseiller, décision, recours |
 | 10 | [Examens officiels](10-examens-officiels.md) | sessions, candidats, pièces, résultats |
 | 11 | [Ateliers et stages](11-ateliers-stages.md) | enseignement technique : ateliers, sécurité, matière d'œuvre, stages |
 | 12 | [Personnel et paie](12-personnel-paie.md) | statuts du personnel, heures, vacations, bulletins de paie |
 | 13 | [Services](13-services.md) | infirmerie, cantine, transport, internat, bibliothèque |
 | 14 | [Tableaux de bord](14-tableaux-de-bord.md) | objectifs O1 à O7, effectifs, pédagogie, finances, rapports |
-| 15 | [Portails parent, élève et enseignant](15-portails.md) | espace famille et paiement mobile, espace élève, espace enseignant |
+| 15 | [Portails parent, élève et enseignant](15-portails.md) | espace famille, référence de paiement famille, SMS « bulletin disponible » et paiement mobile, espace élève, espace enseignant |
 | 16 | [Documents](16-documents.md) | certificats, cartes, exeat, listes, attestations, vérification par QR |
 | 17 | [Rôles : qui fait quoi](17-roles.md) | ce que chaque rôle peut faire |
 | 18 | [Questions fréquentes](18-faq.md) | problèmes courants et solutions |

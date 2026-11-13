@@ -20,11 +20,15 @@ Pour chaque enfant, la carte affiche :
 - les **Documents** émis (certificat de scolarité, carte…) ;
 - la **Vie scolaire** : **Résultats publiés**, **Bulletins**, **Assiduité** (absences, non justifiées, retards), **Devoirs des deux dernières semaines** (cahier de textes) et **Services** (cantine, transport).
 
-En haut : **Total restant pour la famille**.
+En haut : **Total restant pour la famille**, puis **Votre référence de paiement famille** (par exemple **FAM-0587**), « à donner à la caisse ou pour un paiement mobile money ». Le parent ne voit que sa propre référence. Si la caisse ne la lui a pas encore attribuée : « Votre référence de paiement famille n'est pas encore attribuée : demandez-la à la caisse ou au secrétariat. »
 
 ![Espace famille sur téléphone](images/14-famille-mobile.png)
 
 Un élève majeur peut refuser l'accès de ses parents à ses documents : « Élève majeur : il n'a pas autorisé l'accès de ses parents à ses documents. »
+
+### SMS « bulletin disponible »
+
+Quand l'établissement publie les bulletins du conseil de classe (chapitre 08), le parent reçoit **un SMS par bulletin**, une seule fois : nom de l'enfant, période, moyenne, rang, décision et lien vers l'espace famille. Ce message de service lui parvient même sans consentement recueilli, sauf s'il s'est désinscrit des SMS ou a retiré son consentement. Le bulletin reste visible dans la rubrique **Bulletins**, SMS reçu ou non.
 
 ## 15.2 Payer par mobile money
 

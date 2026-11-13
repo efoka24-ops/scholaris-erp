@@ -96,7 +96,7 @@ Le parent se présente au guichet sans référence : retrouvez l'élève par son
 1. Ouvrez **Secondaire > Frais**, bloc **Encaissement au guichet**.
 2. Dans le champ de recherche, tapez une partie du nom ou la classe, puis choisissez l'**Élève** dans la liste (nom et classe).
 3. Cliquez sur **Encaisser pour cet élève**. L'onglet **Caisse** s'ouvre avec la mention « Élève : … Le montant est affecté à ses factures ouvertes. »
-4. Saisissez le **Montant en FCFA**, puis cliquez sur **Encaisser et émettre le reçu**. Message : « Encaissement enregistré. Reçu … ».
+4. Saisissez le **Montant en FCFA**, puis cliquez sur **Encaisser et émettre le reçu**. Message : « Encaissement enregistré. Reçu … ». L'en-tête de la caisse est relu aussitôt : **Espèces encaissées** inclut le paiement que vous venez d'enregistrer.
 
 ![Recherche de l'élève au guichet](images/04-caisse-recherche-eleve.png)
 
@@ -107,6 +107,8 @@ Le parent se présente au guichet sans référence : retrouvez l'élève par son
 Le montant est affecté automatiquement (retards d'abord, puis échéances les plus anciennes) et le reçu numéroté est envoyé par SMS au parent.
 
 Si le parent donne sa **Référence de paiement famille** (par exemple après un paiement mobile money), cliquez sur **Encaisser par référence famille** : le champ de la référence remplace le nom de l'élève.
+
+**La référence de paiement famille** est unique pour chaque garant financier (par exemple « FAM-0587 »). La caisse l'attribue ; elle s'affiche ensuite sur le dossier de l'élève, à côté du garant (chapitre 03), et dans l'espace famille du parent (chapitre 15).
 
 ### Arrêter la caisse (le soir)
 

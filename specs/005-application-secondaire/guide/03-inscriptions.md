@@ -53,7 +53,7 @@ L'écran a six onglets : **Élèves**, **Inscrire**, **Préinscriptions**, **Ré
 
 ![Liste des élèves inscrits](images/03-eleves-liste.png)
 
-Le dossier montre l'identité, l'inscription, le matricule et la rubrique **Garants financiers**.
+Le dossier montre l'identité, l'inscription, le matricule et la rubrique **Garants financiers**. Chaque garant y figure avec son téléphone et, si la caisse la lui a déjà attribuée, sa **référence de paiement** (par exemple « référence de paiement FAM-0587 »). C'est la référence que la famille donne à la caisse ou utilise pour un paiement mobile money (chapitres 04 et 15).
 
 ![Dossier d'un élève avec son garant financier](images/03-eleve-dossier.png)
 

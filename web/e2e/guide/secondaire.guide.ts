@@ -363,11 +363,35 @@ test('03 : inscriptions, garant financier, matricule, préinscription, transfert
       await expect(page.getByText('Élève inscrit.')).toBeVisible();
     });
   }
+  // D-BUL : référence de paiement famille émise à la caisse pour le garant d'Issa ; elle s'affiche sur le dossier et au portail.
+  await soft('référence de paiement famille', async () => {
+    const students = (await apiAs('scol', 'GET', '/secondary/enrolment/students')).data as Array<{ person_id: string }>;
+    const issa = students.find((s) => JSON.stringify(s).includes('Fictif-Lyceen'))!;
+    const dossier = (await apiAs('scol', 'GET', `/secondary/enrolment/students/${issa.person_id}`)).data as { financial_guarantors?: Array<{ person_id: string }> };
+    for (const g of dossier.financial_guarantors ?? []) {
+      let last: unknown = null;
+      for (const who of ['caissier', 'intendant']) {
+        try {
+          await apiAs(who, 'POST', '/payment-references', { guarantor_id: g.person_id });
+          last = null;
+          break;
+        } catch (e) {
+          last = e;
+        }
+      }
+      if (last) throw last;
+    }
+  });
   await nav.getByRole('button', { name: 'Élèves' }).click();
   await shot(page, '03-eleves-liste');
   const row = page.getByRole('listitem').filter({ hasText: 'Fictif-Lyceen Issa' });
   await row.getByRole('button', { name: /Fictif-Lyceen Issa/ }).click();
   await expect(page.getByRole('heading', { name: 'Garants financiers' })).toBeVisible();
+  // Le dossier affiché doit être celui d'Issa (et non le dernier élève inscrit), avec la référence de paiement de son garant.
+  await soft('dossier d’Issa', async () => {
+    await expect(page.getByRole('heading', { name: /^Fictif-Lyceen Issa$/ })).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByText(/référence de paiement/).first()).toBeVisible({ timeout: 20_000 });
+  });
   await shot(page, '03-eleve-dossier', { maxHeight: 2600 });
   await eachTab(page, '03-inscriptions-onglet', [/^Élèves$/, /^Inscrire$/]);
 
@@ -530,6 +554,9 @@ test('04 : catalogue, demande d’ajout, frais, échéancier, facture, caisse, s
     await shot(page, '04-caisse-eleve');
     await page.getByRole('button', { name: 'Encaisser et émettre le reçu' }).click();
     await expect(page.getByText(/Encaissement enregistré/).first()).toBeVisible();
+    // FIX-AFF : le total des espèces est relu sur le détail de la caisse ; attendre la fin du chargement.
+    await expect(page.getByText(/Espèces encaissées\s*:\s*[1-9]/).first()).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText('Chargement en cours…')).toHaveCount(0, { timeout: 30_000 });
     await shot(page, '04-caisse-recu');
   });
 });
@@ -642,6 +669,15 @@ test('08-09 : règles, conseil de classe, bulletins, orientation', async ({ brow
   await page.getByRole('button', { name: 'Émettre les bulletins' }).click();
   await expect(page.getByRole('heading', { name: 'Bulletins émis' })).toBeVisible({ timeout: 180_000 });
   await shot(page, '08-bulletins-emis', { maxHeight: 2600 });
+  // S-NOT05 : publication aux familles, SMS « bulletin disponible » et résumé (familles prévenues, motifs des non-envois).
+  await soft('publication aux familles', async () => {
+    const publish = page.locator('[data-test="publish-cards"]');
+    await expect(publish).toBeVisible({ timeout: 30_000 });
+    await publish.click();
+    await expect(page.locator('[data-test="publish-summary"]')).toBeVisible({ timeout: 60_000 });
+    await page.locator('[data-test="publish-cards"]').evaluate((el) => el.scrollIntoView({ block: 'center' }));
+    await shot(page, '08-conseil-publication', { full: false });
+  });
   await soft('aperçu bulletin', async () => {
     const link = page.locator('main').getByRole('link', { name: 'Aperçu' }).first();
     await link.click();
@@ -742,6 +778,25 @@ test('10-13 : examens officiels, ateliers, stages, personnel, paie, services, ta
     await page.goto('/secondaire/services');
     await shot(page, '12-services-infirmier');
     await eachTab(page, '12-services-infirmier-onglet');
+  });
+  // FIX-AFF : passage à l'infirmerie et dossier de santé ouvert, puis journal des consultations (noms de l'auteur et de l'élève).
+  await soft('infirmerie journal', async () => {
+    await page.goto('/secondaire/services');
+    const section = page.locator('section[aria-labelledby="sv-infirmary"]');
+    await expect(section).toBeVisible();
+    await page.locator('#sv-v-person-search').fill('Lyceen');
+    await selectContaining(page.locator('#sv-v-person'), 'Fictif-Lyceen');
+    await page.locator('#sv-v-notes').fill('Maux de tête, repos de 30 minutes (exemple fictif).');
+    await section.getByRole('button', { name: 'Enregistrer le passage' }).click();
+    await page.waitForTimeout(1200);
+    await page.locator('#sv-r-person-search').fill('Lyceen');
+    await selectContaining(page.locator('#sv-r-person'), 'Fictif-Lyceen');
+    await section.getByRole('button', { name: 'Ouvrir', exact: true }).click();
+    await expect(page.locator('#sv-r-allergies')).toBeVisible();
+    await page.reload();
+    await expect(section).toBeVisible();
+    await expect(section.getByText(/Fictif-Lyceen/).last()).toBeVisible({ timeout: 20_000 });
+    await shot(page, '13-infirmerie-journal', { el: section });
   });
   await soft('services', async () => {
     page = await as(browser, 'services');

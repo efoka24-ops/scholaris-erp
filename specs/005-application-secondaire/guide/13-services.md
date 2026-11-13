@@ -28,9 +28,13 @@ Un module coupé reste consultable : « Ce module a été coupé : ses données 
    - cliquez sur **Enregistrer le passage**.
 3. **Passages récents** : les derniers passages.
 4. **Dossier de santé** : choisissez l'élève par son nom puis cliquez sur **Ouvrir**.
-5. **Journal des consultations** : qui a consulté quoi, et quand.
+5. **Journal des consultations** : qui a consulté quoi, et quand. Chaque ligne donne la date et l'heure, le **nom de la personne** qui a consulté (« Compte sans fiche personne » si son compte n'est rattaché à aucune fiche), la nature de la consultation (par exemple **Lecture du dossier**, **Passage enregistré** ou **Liste des passages**) et le **nom de l'élève** concerné.
 
 ![Infirmerie, vue par l'infirmier](images/12-services-infirmier.png)
+
+Après un passage et l'ouverture d'un dossier de santé, le journal se présente ainsi :
+
+![Infirmerie : passage récent, dossier de santé et journal des consultations avec les noms](images/13-infirmerie-journal.png)
 
 Les dispenses d'EPS affichent le nom des élèves.
 

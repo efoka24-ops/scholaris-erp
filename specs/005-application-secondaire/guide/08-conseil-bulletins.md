@@ -58,9 +58,25 @@ Le bandeau jaune « Valeurs d'exemple à confirmer » rappelle que les seuils pr
 
 Chaque bulletin reçoit un **numéro unique**. Le parent le retrouve sur son portail (chapitre 15).
 
-## 8.5 Consulter un bulletin
+## 8.5 Publier aux familles
 
-Depuis le conseil, cliquez sur **Aperçu** à côté de l'élève : l'écran **Bulletin** affiche les tableaux **Matières**, **Récapitulatif**, **Profil de la classe**, **Discipline** et **Travail**, la **Décision du conseil** et les **Observations**. Choisissez la **Langue** (français ou anglais). Après émission, l'aperçu indique « Instantané enregistré à l'émission le … » : le bulletin émis ne change plus.
+**Qui** : le censeur, le chef d'établissement ou le professeur principal (droit de présider, de préparer le conseil ou de valider les bulletins).
+
+Une fois le conseil validé et au moins un bulletin émis, le bouton **Publier aux familles** apparaît à côté de **Émettre les bulletins**. « Les bulletins émis sont visibles dans l'espace des parents. La publication prévient chaque famille par SMS (moyenne, rang, décision), une seule fois par bulletin : la refaire ne renvoie pas le SMS. »
+
+1. Cliquez sur **Publier aux familles**.
+2. Le résumé s'affiche, par exemple : « 2 bulletin(s) publié(s), visibles dans l'espace des parents. 2 famille(s) prévenue(s) par SMS cette fois, sur 2. »
+3. Si des familles n'ont pas reçu le SMS, le résumé en donne le motif et le nombre : **sans numéro de téléphone**, **désinscrite(s) des SMS**, **ayant retiré leur consentement aux communications**, **au plafond annuel de SMS**, **en échec d'envoi (nouvel essai à la prochaine publication)**, ou **sans consentement aux communications (à recueillir sur la fiche du parent)** si l'établissement a désactivé la règle du message essentiel.
+
+![Publication aux familles : résumé des familles prévenues](images/08-conseil-publication.png)
+
+**Le SMS « bulletin disponible »** donne au parent le nom de l'enfant, la période, la moyenne (par exemple « 14,50 »), le rang, la décision du conseil et le lien vers l'espace famille. Il part **une seule fois par bulletin et par famille** : republier, après un bulletin émis plus tard, ne prévient que les familles qui ne l'ont pas encore été. Un envoi en échec est retenté à la publication suivante.
+
+C'est un **message de service essentiel** : il part même si le consentement du parent aux communications n'a pas encore été recueilli, mais jamais vers un parent **désinscrit des SMS** ou ayant **retiré son consentement**. La règle est réglable par l'établissement : paramètre `secondary.report_card.sms_essential` (**oui** par défaut), modifiable dans **Administration > Paramètres**. S'il est désactivé, seuls les parents dont le consentement est enregistré reçoivent le SMS.
+
+## 8.6 Consulter un bulletin
+
+Depuis le conseil, cliquez sur **Aperçu** à côté de l'élève : l'écran **Bulletin** affiche les tableaux **Matières**, **Récapitulatif**, **Profil de la classe**, **Discipline** et **Travail**, la **Décision du conseil** et les **Observations**. Choisissez la **Langue** (français ou anglais). Après émission, l'aperçu indique « Instantané enregistré à l'émission le … », avec la date et l'heure écrites en clair dans la langue de l'écran (par exemple « 13/11/2026 08:28 ») : le bulletin émis ne change plus.
 
 L'aperçu est calculé à la demande : l'écran affiche « Calcul du bulletin en cours… » pendant quelques secondes, puis le bulletin. « Aucun bulletin à afficher » signale un élève sans bulletin pour cette période.
 
