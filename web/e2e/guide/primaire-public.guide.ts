@@ -225,6 +225,14 @@ test('guide primaire public : captures', async ({ browser }, info) => {
     await expect(director.getByText(/Unité 8/)).toBeVisible();
     await shot(director, DIR, 'pub-07-referentiel', { maxHeight: 2600 });
   });
+  // Bloc « Paramètres en vigueur » : libellés et valeurs lisibles (FIX-AFF 5).
+  await attempt('paramètres en vigueur', async () => {
+    const block = director.locator('section[aria-labelledby="rf-settings"]');
+    await expect(block.locator('tbody tr').first()).toBeVisible({ timeout: 20_000 });
+    await block.scrollIntoViewIfNeeded();
+    await director.evaluate(() => document.getElementById('rf-settings')?.scrollIntoView({ block: 'start' }));
+    await shot(director, DIR, 'pub-07-parametres-en-vigueur', { full: false });
+  });
 
   // --- 5. Instituteur (ordinateur) : évaluation par critères, remédiation, bulletins ---
   const tdesk = await actorPage(browser, stack, info);
@@ -248,13 +256,25 @@ test('guide primaire public : captures', async ({ browser }, info) => {
   await visit(tdesk, '/ecole-publique/remediation', 'pub-07-remediation', 2000);
   await attempt('bulletins (instituteur)', async () => {
     await tdesk.goto('/ecole-publique/bulletins');
-    await selectContaining(tdesk.locator('#rc-class'), 'CM2 A').catch(() => undefined);
-    await tdesk.getByRole('button', { name: 'Préparer les bulletins de la classe' }).click({ timeout: 10_000 }).catch(() => undefined);
-    await tdesk.waitForTimeout(2000);
+    await selectContaining(tdesk.locator('#rc-class'), 'CM2 A');
+    await expect(tdesk.locator('#rc-scope option')).not.toHaveCount(1, { timeout: 20_000 });
+    await tdesk.locator('#rc-scope').selectOption({ index: 1 });
+    await tdesk.getByRole('button', { name: 'Préparer les bulletins de la classe' }).click({ timeout: 10_000 });
+    await expect(tdesk.getByText('brouillon').first()).toBeVisible({ timeout: 30_000 });
     await shot(tdesk, DIR, 'pub-07-bulletins', { maxHeight: 2400 });
   });
   await tdesk.context().close();
-  await visit(director, '/ecole-publique/bulletins', 'pub-07-bulletins-directeur', 2400);
+  await attempt('bulletins (directeur) : publication', async () => {
+    await director.goto('/ecole-publique/bulletins');
+    await selectContaining(director.locator('#rc-class'), 'CM2 A');
+    await expect(director.locator('#rc-scope option')).not.toHaveCount(1, { timeout: 20_000 });
+    await director.locator('#rc-scope').selectOption({ index: 1 });
+    await expect(director.getByRole('button', { name: 'Publier aux parents' }).first()).toBeVisible({ timeout: 30_000 });
+    director.once('dialog', (d) => void d.accept());
+    await director.getByRole('button', { name: 'Publier aux parents' }).first().click();
+    await expect(director.getByText('Bulletin publié, parents prévenus.')).toBeVisible({ timeout: 30_000 });
+    await shot(director, DIR, 'pub-07-bulletins-directeur', { maxHeight: 2400 });
+  });
   await attempt('passage', async () => {
     await director.goto('/ecole-publique/passage');
     await selectContaining(director.locator('#pa-class'), 'CM2 A').catch(() => undefined);
@@ -350,6 +370,17 @@ test('guide primaire public : captures', async ({ browser }, info) => {
     await director.getByRole('button', { name: 'Générer depuis les inscrits' }).click({ timeout: 10_000 });
     await expect(director.getByText('Liste générée.')).toBeVisible();
     await shot(director, DIR, 'pub-11-examens-liste', { maxHeight: 2400 });
+  });
+  await attempt('examens : ajouter un candidat', async () => {
+    const form = director.locator('form').filter({ has: director.getByRole('heading', { name: 'Ajouter un candidat' }) });
+    await expect(form).toBeVisible({ timeout: 20_000 });
+    await selectContaining(form.locator('#ex-class'), 'CM2 A');
+    await expect(form.locator('#ex-person option')).not.toHaveCount(1, { timeout: 20_000 });
+    await form.locator('#ex-person').selectOption({ index: 1 });
+    await form.locator('#ex-reason').fill('Élève arrivé par transfert (exemple fictif)');
+    await form.scrollIntoViewIfNeeded();
+    await director.evaluate(() => window.scrollBy(0, 200));
+    await shot(director, DIR, 'pub-11-examens-ajout-candidat', { full: false });
   });
   await stack.attachRefusals(info);
 });

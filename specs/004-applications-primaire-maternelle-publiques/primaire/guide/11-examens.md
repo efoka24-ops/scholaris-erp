@@ -35,7 +35,17 @@ Une fois la session ouverte, chaque directeur d'école la retrouve dans son écr
 2. Cliquez sur **Générer depuis les inscrits**. « Liste générée. » Les élèves de la classe d'examen deviennent candidats.
 3. Vérifiez chaque candidat : **Acte de naissance vérifié** ou « Acte de naissance non vérifié : l'inspection ne peut pas valider ce candidat. »
 4. **Prévenir les familles sans acte** : un SMS part aux familles concernées (une seule fois par candidat).
-5. **Retirer** un candidat avec un **Motif du retrait** ; **Ajouter un candidat** si besoin.
+5. **Retirer** un candidat avec un **Motif du retrait** ; **Ajouter un candidat** si besoin (voir ci-dessous).
+
+### Ajouter un candidat
+
+Sous la liste, le cadre **Ajouter un candidat** se remplit sans aucun identifiant à saisir :
+
+1. Choisissez la **Classe** : seules les classes des niveaux de l'examen sont proposées (toutes les classes à défaut).
+2. Choisissez l'**Élève** par son nom dans la liste nominative de la classe, triée, avec son numéro d'apprenant. « Aucun élève inscrit dans cette classe. » signale une classe vide.
+3. Indiquez le **Motif** (obligatoire une fois la liste gelée), puis **Ajouter**. « Candidat ajouté. »
+
+![Ajouter un candidat : classe puis élève par son nom](images/pub-11-examens-ajout-candidat.png)
 6. Cliquez sur **Transmettre à l'inspection**. « Liste transmise. »
 
 ![Liste de l'école générée : trois candidats du CM2 en brouillon](images/pub-11-examens-liste.png)

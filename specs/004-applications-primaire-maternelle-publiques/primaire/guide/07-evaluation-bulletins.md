@@ -32,7 +32,14 @@ L'année compte plusieurs unités (8 par défaut), réparties sur les trimestres
 3. Cliquez sur **Générer les unités**. La liste des unités s'affiche (de l'**Unité 1** à l'**Unité 8**), avec la date de leur semaine d'évaluation.
 
 S'il n'y a aucun trimestre pour l'année en cours, l'écran le dit : déclarez d'abord l'année et ses trimestres dans l'administration.
-- **Paramètres en vigueur** : chaque règle (occasions, seuil de maîtrise, remédiation, passage…) affiche sa **Valeur**, son **Statut** et sa **Source** (**texte officiel**, **cahier des charges, à valider**, ou **à confirmer**).
+
+### Paramètres en vigueur
+
+Le bas de l'écran rappelle les règles appliquées par l'application : occasions et seuil de maîtrise, remédiation, passage, en-tête des documents… Chaque ligne donne le **Paramètre** en clair et sa **Valeur**, puis son **Statut** et sa **Source** (**texte officiel**, **cahier des charges, à valider**, ou **à confirmer**) : sur un écran d'ordinateur ordinaire, ces deux dernières colonnes s'affichent en faisant défiler le tableau vers la droite.
+
+Les valeurs sont mises en forme pour être lues sans connaissance technique : **Oui** ou **Non**, durées avec leur unité, mois en toutes lettres, montants en FCFA, barèmes et listes en phrases. Une liste vide s'affiche **Néant**.
+
+![Paramètres en vigueur, lisibles](images/pub-07-parametres-en-vigueur.png)
 
 ## 7.2 Saisir l'évaluation par critères
 
@@ -78,8 +85,8 @@ Trois bulletins : **D'unité**, **Trimestriel** et **Livret annuel**. Ils ne por
 
 ### Préparer (enseignant)
 
-1. Dans **Choisir la classe et le bulletin**, choisissez la **Classe**, le **Bulletin** (d'unité, trimestriel, livret annuel) et la **Période**.
-2. Cliquez sur **Préparer les bulletins de la classe**. Chaque bulletin est en **brouillon**, avec les **Mentions**.
+1. Dans **Choisir la classe et le bulletin**, choisissez la **Classe**, le **Bulletin** (d'unité, trimestriel, livret annuel) et la **Période** (exemple : **Unité 1**).
+2. Cliquez sur **Préparer les bulletins de la classe**. Chaque bulletin est en **brouillon**, avec les **Mentions** par discipline (« Non évalué » tant que rien n'est saisi).
 3. Saisissez l'**Appréciation de l'enseignant**, ou **Reprendre une formulation** de la **Banque d'appréciations** (vous pouvez y ajouter une **Nouvelle formulation**).
 4. Cliquez sur **Enregistrer l'appréciation**.
 
@@ -87,9 +94,14 @@ Trois bulletins : **D'unité**, **Trimestriel** et **Livret annuel**. Ils ne por
 
 ![Bulletins (directeur)](images/pub-07-bulletins-directeur.png)
 
-1. Relisez le bulletin, puis **Publier aux parents**.
-2. Confirmez : « Publier ce bulletin ? Il sera figé et les parents seront prévenus. »
-3. « Bulletin publié, parents prévenus. » Le bulletin est **figé**. **Ouvrir le PDF** pour l'imprimer.
+1. Choisissez la même **Classe**, le même **Bulletin** et la même **Période** : les bulletins préparés par l'enseignant s'affichent.
+2. Relisez le bulletin, puis **Publier aux parents**.
+3. Confirmez : « Publier ce bulletin ? Il sera figé et les parents seront prévenus. »
+4. « Bulletin publié, parents prévenus. » Le bulletin passe à l'état **publié** et il est **figé**. **Ouvrir le PDF** pour l'imprimer.
+
+**Le SMS aux parents.** À la publication, chaque parent de l'élève reçoit un SMS « bulletin disponible ». C'est un **message de service essentiel** : il part **même si le consentement du parent aux communications n'a pas été recueilli**. Il n'est pas envoyé au parent qui s'est **désinscrit des SMS** ni à celui qui a **retiré son consentement**.
+
+Cette règle est **réglable** : le paramètre `public_schools.messages.service_essential_templates` (au niveau national, du client ou de l'école) liste les messages traités comme essentiels ; par défaut, il contient le SMS « bulletin disponible ». Une liste vide désactive la règle : le SMS ne part alors qu'aux parents dont le consentement est enregistré.
 
 ### Rectifier
 
