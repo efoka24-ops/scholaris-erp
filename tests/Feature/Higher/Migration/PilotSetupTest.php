@@ -64,6 +64,22 @@ final class PilotSetupTest extends MigrationTestCase
         self::assertNotNull($this->service(EnrolmentImporter::class)->refusal(self::T, self::E, $first->id, null, self::YEAR), 'Filière non inscriptible sans autorisation réelle.');
     }
 
+    public function testModeleFormationProfessionnelleAgreeeMinefop(): void
+    {
+        $authorizations = $this->rows('hi_authorizations');
+        $this->install([self::T, 'formation-pro', '--year=' . self::YEAR]);
+
+        self::assertSame(19, $this->rows("hi_programs WHERE name LIKE '%[à confirmer]' AND status = 'closed' AND regime = 'certificate'"));
+        self::assertSame(4, $this->rows("hi_schools WHERE code IN ('AGRO', 'ENERGIE', 'NUMBUR', 'MGTDEV')"));
+        self::assertSame(1, $this->rows("hi_programs WHERE name = 'Installation des systèmes photovoltaïques [à confirmer]'"));
+        self::assertSame($authorizations, $this->rows('hi_authorizations'), 'Aucune autorisation inventée.');
+        self::assertSame(4, $this->rows("hi_fee_grids WHERE status = 'draft'"));
+
+        $programs = $this->rows('hi_programs');
+        self::assertStringContainsString('existe déjà', $this->install([self::T, 'formation-pro', '--year=' . self::YEAR]));
+        self::assertSame($programs, $this->rows('hi_programs'), 'Relancer ne crée rien de plus.');
+    }
+
     public function testModeleOuClientInconnus(): void
     {
         $command = $this->kernel->container()->get('console.command.' . PilotSetupCommand::NAME);

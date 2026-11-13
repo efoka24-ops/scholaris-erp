@@ -46,6 +46,52 @@ final class PilotTemplates
                 ],
             ]],
         ],
+        // Centre de formation professionnelle agréé MINEFOP : spécialités d'un agrément public (12 ou 24 mois, alternance obligatoire,
+        // cycle de 24 mois au plus). Durée posée à 2 ans par défaut : à confirmer filière par filière d'après l'agrément.
+        'formation-pro' => [
+            'label' => 'Formation professionnelle : agropastoral, énergie solaire, numérique et gestion',
+            'schools' => [
+                [
+                    'code' => 'AGRO', 'name' => 'Pôle agropastoral et agroécologie', 'department' => ['code' => 'AGROPAST', 'name' => 'Département agropastoral'],
+                    'programs' => [
+                        ['code' => 'AGRI', 'name' => 'Agriculture', 'regime' => 'certificate', 'years' => 2],
+                        ['code' => 'ELEV', 'name' => 'Élevage', 'regime' => 'certificate', 'years' => 2],
+                        ['code' => 'AVIC', 'name' => 'Aviculture', 'regime' => 'certificate', 'years' => 2],
+                        ['code' => 'PISC', 'name' => 'Pisciculture', 'regime' => 'certificate', 'years' => 2],
+                        ['code' => 'TRLAIT', 'name' => 'Transformation du lait', 'regime' => 'certificate', 'years' => 2],
+                        ['code' => 'CEREAL', 'name' => 'Production des céréales', 'regime' => 'certificate', 'years' => 2],
+                        ['code' => 'BOVPR', 'name' => 'Élevage de bovins et petits ruminants', 'regime' => 'certificate', 'years' => 2],
+                    ],
+                ],
+                [
+                    'code' => 'ENERGIE', 'name' => 'Pôle énergie solaire', 'department' => ['code' => 'SOLAIRE', 'name' => 'Département énergie solaire'],
+                    'programs' => [
+                        ['code' => 'MAINTSOL', 'name' => 'Maintenance des systèmes solaires', 'regime' => 'certificate', 'years' => 2],
+                        ['code' => 'INSTPV', 'name' => 'Installation des systèmes photovoltaïques', 'regime' => 'certificate', 'years' => 2],
+                    ],
+                ],
+                [
+                    'code' => 'NUMBUR', 'name' => 'Pôle numérique et bureautique', 'department' => ['code' => 'NUMERIQUE', 'name' => 'Département numérique et bureautique'],
+                    'programs' => [
+                        ['code' => 'SECCPT', 'name' => 'Secrétariat comptable', 'regime' => 'certificate', 'years' => 2],
+                        ['code' => 'CPTINFO', 'name' => 'Comptabilité informatisée et gestion', 'regime' => 'certificate', 'years' => 2],
+                        ['code' => 'DEVWEB', 'name' => 'Développement web', 'regime' => 'certificate', 'years' => 2],
+                        ['code' => 'INFOIND', 'name' => 'Informatique industrielle', 'regime' => 'certificate', 'years' => 2],
+                        ['code' => 'SECDIR', 'name' => 'Secrétariat de direction', 'regime' => 'certificate', 'years' => 2],
+                    ],
+                ],
+                [
+                    'code' => 'MGTDEV', 'name' => 'Pôle management et développement', 'department' => ['code' => 'MANAGEMENT', 'name' => 'Département management et développement'],
+                    'programs' => [
+                        ['code' => 'IDLD', 'name' => 'Ingénierie du développement local et de la décentralisation', 'regime' => 'certificate', 'years' => 2],
+                        ['code' => 'MPP', 'name' => 'Management des projets et programmes', 'regime' => 'certificate', 'years' => 2],
+                        ['code' => 'GONG', 'name' => 'Gestion des ONG', 'regime' => 'certificate', 'years' => 2],
+                        ['code' => 'LOGTR', 'name' => 'Logistique et transport', 'regime' => 'certificate', 'years' => 2],
+                        ['code' => 'GRH', 'name' => 'Gestion des ressources humaines', 'regime' => 'certificate', 'years' => 2],
+                    ],
+                ],
+            ],
+        ],
     ];
 
     private function __construct()
