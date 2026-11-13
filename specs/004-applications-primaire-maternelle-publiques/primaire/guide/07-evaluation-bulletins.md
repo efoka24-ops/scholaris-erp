@@ -35,7 +35,7 @@ S'il n'y a aucun trimestre pour l'année en cours, l'écran le dit : déclarez d
 
 ### Paramètres en vigueur
 
-Le bas de l'écran rappelle les règles appliquées par l'application : occasions et seuil de maîtrise, remédiation, passage, en-tête des documents… Chaque ligne donne le **Paramètre** en clair et sa **Valeur**, puis son **Statut** et sa **Source** (**texte officiel**, **cahier des charges, à valider**, ou **à confirmer**) : sur un écran d'ordinateur ordinaire, ces deux dernières colonnes s'affichent en faisant défiler le tableau vers la droite.
+Le bas de l'écran rappelle les règles appliquées par l'application : occasions et seuil de maîtrise, remédiation, passage, en-tête des documents… Chaque ligne donne le **Paramètre** en clair et sa **Valeur**, puis son **Statut** (**texte officiel**, **cahier des charges, à valider**, ou **à confirmer**) et sa **Source**, c'est-à-dire le texte ou le document d'où vient la règle. Les quatre colonnes tiennent sur un écran d'ordinateur ordinaire : les textes longs passent à la ligne. Sur un téléphone, chaque paramètre s'affiche sous forme de carte, chaque information précédée du nom de sa colonne.
 
 Les valeurs sont mises en forme pour être lues sans connaissance technique : **Oui** ou **Non**, durées avec leur unité, mois en toutes lettres, montants en FCFA, barèmes et listes en phrases. Une liste vide s'affiche **Néant**.
 
