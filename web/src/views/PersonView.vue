@@ -1,14 +1,16 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import ErrorNotice from '@/components/ErrorNotice.vue';
 import StatusTag from '@/components/StatusTag.vue';
 import { http } from '@/api/http';
 import type { Consent, Enrollment, Person } from '@/api/types';
-import { useI18n } from '@/i18n';
+import { useI18n, type MessageKey } from '@/i18n';
 import { formatDate } from '@/lib/format';
 import { documentStatusLabel, enrollmentStatusLabel } from '@/lib/peopleStatus';
+import { childrenOf, guardiansOf, type RelatedPerson, type RelationRow } from '@/lib/personRelations';
 
-// Fiche personne : identité, inscriptions (tous établissements du client), pièces et complétude, consentements.
+// Fiche personne : identité, parents et garants (ou enfants pour un parent), inscriptions (tous établissements du client), pièces et
+// complétude, consentements.
 const props = defineProps<{ id: string }>();
 const { t, locale } = useI18n();
 
@@ -23,10 +25,19 @@ const enrollments = ref<Enrollment[]>([]);
 const documents = ref<DocumentRow[]>([]);
 const completeness = ref<{ required: number; received: number; missing: number } | null>(null);
 const consents = ref<Consent[]>([]);
+// FIX-R32 : liens familiaux lus sur GET /people/{id}/relations (mêmes droits de lecture que la fiche).
+const relations = ref<RelationRow[]>([]);
+const guardians = computed(() => guardiansOf(relations.value));
+const children = computed(() => childrenOf(relations.value));
+const kindsLabel = (p: RelatedPerson): string => {
+  const kinds = p.kinds.length > 0 ? p.kinds : p.financialGuarantor ? ['financial_guarantor'] : [];
+  return kinds.map((k) => (['parent', 'guardian', 'financial_guarantor', 'authorized_pickup', 'emergency'].includes(k) ? t(`people.kind.${k}` as MessageKey) : k)).join(' · ') || '—';
+};
 const error = ref<unknown>(null);
 
 async function load(): Promise<void> {
   error.value = null;
+  relations.value = [];
   try {
     person.value = (await http.get<{ data: Person }>(`/people/${props.id}`)).data;
   } catch (e) {
@@ -38,6 +49,7 @@ async function load(): Promise<void> {
     http.get<{ data: Enrollment[] }>(`/people/${props.id}/enrollments`),
     http.get<{ data: DocumentRow[]; meta?: { completeness?: { required: number; received: number; missing: number } } }>(`/people/${props.id}/documents`),
     http.get<{ data: Consent[] }>('/consents', { 'filter[person_id]': props.id }),
+    http.get<{ data: RelationRow[] }>(`/people/${props.id}/relations`),
   ]);
   if (results[0].status === 'fulfilled') enrollments.value = results[0].value.data;
   if (results[1].status === 'fulfilled') {
@@ -45,11 +57,14 @@ async function load(): Promise<void> {
     completeness.value = results[1].value.meta?.completeness ?? null;
   }
   if (results[2].status === 'fulfilled') consents.value = results[2].value.data;
+  if (results[3].status === 'fulfilled') relations.value = results[3].value.data;
 }
 
 const docTone = (s: string): 'success' | 'warning' | 'neutral' => (s === 'received' ? 'success' : s === 'expiring_soon' || s === 'expired' || s === 'missing' ? 'warning' : 'neutral');
 
 onMounted(load);
+// Le lien vers la fiche d'un parent ou d'un enfant réutilise cette vue : on recharge quand l'identifiant change.
+watch(() => props.id, load);
 </script>
 
 <template>
@@ -71,6 +86,24 @@ onMounted(load);
           <div><dt class="eyebrow">{{ t('people.email') }}</dt><dd>{{ person.email ?? '—' }}</dd></div>
           <div><dt class="eyebrow">{{ t('people.nationalId') }}</dt><dd>{{ person.national_id ?? '—' }}</dd></div>
         </dl>
+      </section>
+
+      <section class="card" aria-labelledby="fam-title">
+        <h2 id="fam-title">{{ t('people.family') }}</h2>
+        <p v-if="guardians.length === 0 && children.length === 0" class="muted">{{ t('people.familyNone') }}</p>
+        <template v-for="block in [{ key: 'guardians', rows: guardians, title: t('people.familyGuardians') }, { key: 'children', rows: children, title: t('people.familyChildren') }]" :key="block.key">
+          <div v-if="block.rows.length > 0" class="family" :data-test="`family-${block.key}`">
+            <h3 class="eyebrow">{{ block.title }}</h3>
+            <ul class="plain">
+              <li v-for="p in block.rows" :key="p.personId" class="family-row">
+                <router-link :to="{ name: 'person', params: { id: p.personId } }" class="family-name">{{ p.name }}</router-link>
+                <span><span class="sr-only">{{ t('people.familyLink') }} : </span>{{ kindsLabel(p) }}</span>
+                <span><span class="sr-only">{{ t('people.phone') }} : </span>{{ p.phone ?? '—' }}</span>
+                <StatusTag :tone="p.financialGuarantor ? 'success' : 'neutral'">{{ t('people.familyGuarantor') }} : {{ p.financialGuarantor ? t('people.familyYes') : t('people.familyNo') }}</StatusTag>
+              </li>
+            </ul>
+          </div>
+        </template>
       </section>
 
       <section class="card" aria-labelledby="enr-title">
@@ -134,6 +167,27 @@ onMounted(load);
 .plain li {
   padding: 0.4rem 0;
   border-bottom: 1px solid var(--border);
+}
+.family + .family {
+  margin-top: 0.75rem;
+}
+.family h3 {
+  margin: 0 0 0.25rem;
+}
+.family-row {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1.4fr) minmax(0, 1.2fr) auto;
+  gap: 0.5rem;
+  align-items: center;
+}
+.family-name {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 600px) {
+  .family-row {
+    grid-template-columns: 1fr auto;
+  }
 }
 progress {
   width: 100%;

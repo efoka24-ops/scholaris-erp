@@ -156,6 +156,7 @@ export const secondarySetupEn: Record<keyof typeof secondarySetupFr, string> = {
   'sece.noFeeCheck': 'No payment is required to enrol.',
   'sece.enrol': 'Enrol',
   'sece.enrolled': 'Student enrolled.',
+  'sece.closeDossier': 'Close the record',
   'sece.parentDefault': 'Parent',
   'sece.accept': 'Accept',
   'sece.refuse': 'Refuse',

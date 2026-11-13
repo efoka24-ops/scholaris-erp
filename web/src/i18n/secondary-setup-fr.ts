@@ -154,6 +154,7 @@ export const secondarySetupFr = {
   'sece.noFeeCheck': 'Aucun paiement n\'est exigé pour inscrire.',
   'sece.enrol': 'Inscrire',
   'sece.enrolled': 'Élève inscrit.',
+  'sece.closeDossier': 'Fermer le dossier',
   'sece.parentDefault': 'Parent',
   'sece.accept': 'Accepter',
   'sece.refuse': 'Refuser',

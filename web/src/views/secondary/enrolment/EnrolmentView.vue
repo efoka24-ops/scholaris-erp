@@ -72,6 +72,12 @@ async function load(): Promise<void> {
   await loadYearData();
 }
 
+// FIX-R32 : le dossier ouvert sous la liste se referme (bouton Fermer) et n'est plus ouvert d'office après une inscription.
+function closeDossier(): void {
+  dossier.value = null;
+  nationalDraft.value = '';
+  Object.assign(guarantorForm, { phone: '', last_name: '', first_name: '' });
+}
 async function openDossier(personId: string): Promise<void> {
   dossier.value = (await run(() => secondaryEnrolment.student(personId))) ?? null;
   nationalDraft.value = '';
@@ -104,10 +110,12 @@ async function attachGuarantor(): Promise<void> {
 
 async function enrol(): Promise<void> {
   decisionNeeded.value = null;
+  // Le message de l'inscription précédente ne doit pas masquer l'échec de celle-ci (FIX-R32).
+  done.value = null;
   const result = await run(() => secondaryEnrolment.enrol(dossierFromForm(form)));
   if (result) {
     Object.assign(form, emptyEnrolForm());
-    dossier.value = result;
+    closeDossier();
     done.value = 'sece.enrolled';
     await loadStudents();
     return;
@@ -142,7 +150,7 @@ async function convert(p: Preregistration): Promise<void> {
   const guardians = p.guardian_name ? [{ kind: 'parent' as const, identity: { last_name: p.guardian_name, first_name: t('sece.parentDefault'), phone: p.guardian_phone ?? undefined } }] : undefined;
   const result = await run(() => secondaryEnrolment.convert(p.id, { class_id: convertClass.value, entry_date: entryDate.value, guardians }));
   if (result) {
-    dossier.value = result;
+    closeDossier();
     done.value = 'sece.enrolled';
     await loadPreregs();
   }
@@ -272,7 +280,10 @@ onMounted(load);
         </li>
       </ul>
       <article v-if="dossier" class="dossier" aria-labelledby="se-dossier">
-        <h3 id="se-dossier">{{ dossier.last_name }} {{ dossier.first_name }}</h3>
+        <div class="dossier-head">
+          <h3 id="se-dossier">{{ dossier.last_name }} {{ dossier.first_name }}</h3>
+          <button type="button" class="btn" @click="closeDossier">{{ t('sece.closeDossier') }}</button>
+        </div>
         <p class="muted">{{ dossier.birth_date ?? '—' }} · {{ t(`sece.nid.${dossier.national_id_status}`) }}<template v-if="dossier.national_id"> · {{ dossier.national_id }}</template></p>
         <p v-if="dossier.final_exclusion_on" class="notice">{{ t('sece.excludedOn', { date: dossier.final_exclusion_on }) }}</p>
         <form v-if="canManage" class="row" @submit.prevent="saveNationalId">
@@ -303,6 +314,8 @@ onMounted(load);
       <h2 id="se-enrol">{{ t('sece.tab.enrol') }}</h2>
       <p class="muted">{{ t('sece.enrolHelp') }}</p>
       <form class="grid" @submit.prevent="enrol">
+        <!-- FIX-R32 : champs inactifs pendant l'envoi, sinon la remise à zéro du formulaire à la réponse effaçait la saisie suivante. -->
+        <fieldset class="grid enrol-fields" :disabled="busy">
         <div class="field"><label for="en-last">{{ t('sece.lastName') }}</label><input id="en-last" v-model="form.last_name" maxlength="120" required autocomplete="off" /></div>
         <div class="field"><label for="en-first">{{ t('sece.firstName') }}</label><input id="en-first" v-model="form.first_name" maxlength="120" required autocomplete="off" /></div>
         <div class="field"><label for="en-birth">{{ t('sece.birthDate') }}</label><input id="en-birth" v-model="form.birth_date" type="date" required /></div>
@@ -336,6 +349,7 @@ onMounted(load);
         </div>
         <p class="muted">{{ t('sece.noFeeCheck') }}</p>
         <button type="submit" class="btn btn--primary" :disabled="busy">{{ t('sece.enrol') }}</button>
+        </fieldset>
       </form>
     </section>
 
@@ -464,6 +478,8 @@ onMounted(load);
 .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
 .check { display: flex; gap: 8px; align-items: center; }
 .small { font-size: 0.875rem; }
+.enrol-fields { margin: 0; min-width: 0; }
+.dossier-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
 .dossier { margin-top: 16px; border-top: 1px solid var(--border, #ddd); padding-top: 12px; }
 .linkish { background: none; border: 0; padding: 0; text-align: left; cursor: pointer; color: inherit; min-height: 44px; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }

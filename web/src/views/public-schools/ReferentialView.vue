@@ -130,16 +130,19 @@ async function generate(): Promise<void> {
 
     <section class="card" aria-labelledby="rf-settings">
       <h2 id="rf-settings">{{ t('pp.ref.settings') }}</h2>
-      <div class="table-wrap">
-        <table>
+      <!-- FIX-R32 : quatre colonnes de largeur fixe et valeurs qui passent à la ligne (lisible à 1280 px sans défilement) ;
+           sur un écran étroit, chaque paramètre devient une carte dont les cellules rappellent l'intitulé de leur colonne. -->
+      <div class="table-wrap rf-settings-wrap">
+        <table class="rf-settings">
           <caption class="sr-only">{{ t('pp.ref.settings') }}</caption>
+          <colgroup><col class="rf-c-param" /><col class="rf-c-value" /><col class="rf-c-status" /><col class="rf-c-source" /></colgroup>
           <thead><tr><th scope="col">{{ t('pp.ref.param') }}</th><th scope="col">{{ t('pp.ref.value') }}</th><th scope="col">{{ t('pp.ref.status') }}</th><th scope="col">{{ t('pp.ref.source') }}</th></tr></thead>
           <tbody>
             <tr v-for="s in settings" :key="s.key">
               <th scope="row">{{ settingLabel(s.key, locale) }}</th>
-              <td><span v-for="(line, i) in settingValue(s.key, s.value, locale)" :key="i" class="rf-line">{{ line }}</span></td>
-              <td><span class="tag" :class="s.status === 'to_confirm' ? 'tag--warning' : ''">{{ statusLabel(s.status) }}</span></td>
-              <td class="muted">{{ s.source }}</td>
+              <td :data-label="t('pp.ref.value')"><span v-for="(line, i) in settingValue(s.key, s.value, locale)" :key="i" class="rf-line">{{ line }}</span></td>
+              <td :data-label="t('pp.ref.status')"><span class="tag" :class="s.status === 'to_confirm' ? 'tag--warning' : ''">{{ statusLabel(s.status) }}</span></td>
+              <td :data-label="t('pp.ref.source')" class="muted">{{ s.source }}</td>
             </tr>
           </tbody>
         </table>
@@ -150,6 +153,22 @@ async function generate(): Promise<void> {
 
 <style scoped>
 .rf-line { display: block; }
+/* FIX-R32 : le style global des tableaux interdit le retour à la ligne ; ici les valeurs et la source (texte long) passent à la ligne. */
+.rf-settings-wrap { overflow-x: visible; }
+.rf-settings { table-layout: fixed; }
+.rf-settings th, .rf-settings td { white-space: normal; overflow-wrap: anywhere; vertical-align: top; }
+.rf-settings .tag { white-space: normal; }
+.rf-c-param { width: 26%; }
+.rf-c-value { width: 34%; }
+.rf-c-status { width: 15%; }
+.rf-c-source { width: 25%; }
+@media (max-width: 720px) {
+  .rf-settings, .rf-settings tbody, .rf-settings tr, .rf-settings th, .rf-settings td { display: block; width: auto; }
+  .rf-settings colgroup, .rf-settings thead { display: none; }
+  .rf-settings tr { border-bottom: 2px solid var(--border); padding: 8px 0; }
+  .rf-settings tbody th, .rf-settings td { border-bottom: 0; padding: 4px 12px; }
+  .rf-settings td::before { content: attr(data-label); display: block; font-size: 12px; font-weight: 700; color: var(--muted); }
+}
 .controls { display: grid; gap: 8px; }
 .line { border: 1px solid var(--input-border); padding: 8px; display: grid; gap: 6px; }
 .check { display: inline-flex; gap: 6px; align-items: center; }
