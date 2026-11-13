@@ -37,6 +37,8 @@ L'écran a six onglets : **Élèves**, **Inscrire**, **Préinscriptions**, **Ré
 7. Notez dans **Pièces vérifiées** les pièces contrôlées (acte de naissance, dernier bulletin…).
 8. Cliquez sur **Inscrire**. Message : « Élève inscrit. »
 
+Pendant l'envoi, les champs du formulaire sont inactifs : attendez le message « Élève inscrit. » avant de saisir l'élève suivant. Le formulaire se vide ensuite pour un nouvel élève, et aucun dossier ne s'ouvre d'office.
+
 ![Formulaire d'inscription avec le parent garant financier et le matricule](images/03-inscrire-formulaire.png)
 
 **Parent déjà connu** : si le téléphone saisi est celui d'un parent déjà enregistré (par exemple un parent qui a déjà un enfant dans l'établissement, ou qui a déjà un compte), l'application le **retrouve** au lieu de créer un doublon. Ses enfants apparaîtront tous sur son portail.
@@ -49,7 +51,8 @@ L'écran a six onglets : **Élèves**, **Inscrire**, **Préinscriptions**, **Ré
 
 1. Onglet **Élèves**. Filtrez par classe ou cochez **Matricule en attente seulement**.
 2. Chaque ligne montre le nom, la classe, la nature de l'inscription (**Nouvelle inscription**, **Réinscription**, **Transfert entrant**, **Import**…) et l'état du matricule (**Matricule enregistré**, **Matricule en attente**, **Matricule à vérifier**).
-3. Cliquez sur le nom pour ouvrir le **dossier** de l'élève.
+3. Cliquez sur le nom pour ouvrir le **dossier** de l'élève, affiché sous la liste.
+4. Cliquez sur **Fermer le dossier** pour le refermer et ne garder que la liste.
 
 ![Liste des élèves inscrits](images/03-eleves-liste.png)
 
