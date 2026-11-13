@@ -82,7 +82,16 @@ Le message **Inscription validée** (dossier complet) ou **Inscription sous rés
 1. Cherchez l'élève par son nom.
 2. Cliquez sur **Ouvrir** sur sa ligne : sa fiche s'ouvre.
 
-La fiche regroupe l'identité, l'inscription de l'année, les parents et les **garants financiers**. Depuis la fiche, vous pouvez ajouter un garant financier oublié.
+![Fiche d'un élève inscrit sous réserve des pièces](images/pri-04-fiche-eleve.png)
+
+La fiche regroupe l'**Identité**, les **Inscriptions** avec leur état, les **Pièces du dossier** (par exemple « Dossier complet : 0 / 7 ») et les **Consentements**. Les garants financiers se gèrent à l'inscription (étape 2) et au guichet des inscriptions.
+
+Les états s'affichent en clair :
+
+- **inscription** : **Brouillon**, **Active**, **Sous réserve** (pièces à fournir), **Suspendue**, **Retirée**, **Transférée**, **Exclue**, **Cursus terminé** ;
+- **pièce du dossier** : **Reçue**, **Expire bientôt**, **Expirée**, **Manquante**.
+
+La liste **Personnes et inscriptions** utilise les mêmes libellés, dans le tableau comme dans le filtre par état.
 
 ## 3.3 Le guichet des inscriptions : facture, documents, transfert
 

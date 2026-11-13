@@ -51,7 +51,7 @@ Le matin, l'écran affiche « Aucune caisse n'est ouverte ».
 
 ![Reçu émis](images/pri-05-caisse-recu.png)
 
-Le message « Encaissement enregistré. Reçu … » donne le numéro du reçu. Le parent reçoit le reçu par SMS. Vous pouvez aussi l'imprimer depuis l'onglet **Reçus**.
+Le message « Encaissement enregistré. Reçu … » donne le numéro du reçu. L'en-tête de la caisse est relu aussitôt : **Espèces encaissées** inclut le paiement que vous venez d'enregistrer. Le parent reçoit le reçu par SMS. Vous pouvez aussi l'imprimer depuis l'onglet **Reçus**.
 
 Attention : un même encaissement envoyé deux fois (double clic, réseau lent) n'est enregistré **qu'une seule fois**.
 

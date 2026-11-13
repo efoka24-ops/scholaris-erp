@@ -173,9 +173,11 @@ test('guide primaire privé : captures', async ({ browser }, info) => {
   const adm2 = await actorPage(browser, stack, info);
   await uiLogin(adm2, ...ctx.logins.admin!);
   await visit(adm2, '/personnes', 'pri-04-personnes', 1400);
+  // Fiche de Daouda, inscrit « sous réserve des pièces » au guichet : états d'inscription et de pièces traduits (FIX-AFF).
   await attempt('dossier de l\'élève (garants)', async () => {
     await adm2.goto('/personnes');
-    await adm2.getByRole('row', { name: /Amina/ }).getByRole('link', { name: 'Ouvrir' }).first().click();
+    await adm2.getByRole('row', { name: /Daouda/ }).getByRole('link', { name: 'Ouvrir' }).first().click();
+    await expect(adm2.getByText(/Sous réserve|Active|Actif/).first()).toBeVisible({ timeout: 20_000 });
     await shot(adm2, DIR, 'pri-04-fiche-eleve', { maxHeight: 2000 });
   });
   await adm2.context().close();

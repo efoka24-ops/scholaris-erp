@@ -34,7 +34,7 @@
 |---|---|
 | **Valider le conseil** est refusé | Les feuilles de compétences de la classe ne sont pas verrouillées. |
 | Je dois changer une appréciation après l'émission | Émettez un **rectificatif** (chapitre 07). Le bulletin d'origine reste dans l'historique. |
-| Une famille n'a pas reçu le SMS « bulletin disponible » | Lisez le motif dans le résumé de la publication (chapitre 07) : consentement aux communications à recueillir, numéro manquant, ou famille désinscrite des SMS. Le bulletin reste visible dans l'espace des parents. |
+| Une famille n'a pas reçu le SMS « bulletin disponible » | Lisez le motif dans le résumé de la publication (chapitre 07) : numéro manquant, famille désinscrite des SMS ou consentement retiré. Le SMS est un message essentiel : il part sans consentement recueilli, sauf si l'école a désactivé cette règle. Le bulletin reste visible dans l'espace des parents. |
 | Le parent ne voit pas le bulletin | Le bulletin doit être **publié**. Le parent doit être garant financier de l'enfant. |
 
 ## Caisse

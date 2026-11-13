@@ -98,13 +98,17 @@ Le bulletin est préparé **après la validation du conseil**. Un bulletin émis
 ![Bulletins publiés](images/pri-09-bulletins-publies.png)
 
 1. Cliquez sur **Publier aux familles (n)**.
-2. Le résumé de la publication s'affiche, par exemple : « 4 publié(s), visibles dans l'espace des parents. 2 famille(s) prévenue(s) par SMS sur 2. » Si des familles n'ont pas reçu le SMS, une ligne en donne le motif, par exemple : « Non prévenue(s) par SMS : 1 sans consentement aux communications (à recueillir sur la fiche du parent). »
+2. Le résumé de la publication s'affiche, par exemple : « 4 publié(s), visibles dans l'espace des parents. 2 famille(s) prévenue(s) par SMS sur 2. » Si des familles n'ont pas reçu le SMS, une ligne en donne le motif, par exemple : « Non prévenue(s) par SMS : 1 sans numéro de téléphone. »
 
 Lisez-le ainsi :
 
 - **publié(s)** : les bulletins sont visibles dans l'espace des parents (chapitre 11), qu'un SMS soit parti ou non ;
-- **famille(s) prévenue(s) par SMS sur n** : n est le nombre de garants des élèves publiés ; chacun reçoit un SMS « bulletin disponible » s'il l'a accepté ;
-- **Non prévenue(s) par SMS** : le motif, famille par famille : **sans consentement aux communications** (recueillez-le sur la fiche du parent), **sans numéro de téléphone**, **désinscrite(s) des SMS**.
+- **famille(s) prévenue(s) par SMS sur n** : n est le nombre de garants des élèves publiés ; chacun reçoit un SMS « bulletin disponible » ;
+- **Non prévenue(s) par SMS** : le motif, famille par famille : **sans numéro de téléphone**, **désinscrite(s) des SMS**, **ayant retiré leur consentement aux communications**, ou **sans consentement aux communications** si l'école a désactivé la règle du message essentiel (voir ci-dessous).
+
+**Le SMS « bulletin disponible » est un message de service essentiel.** Il part vers chaque garant, **même si son consentement aux communications n'a pas encore été recueilli**. Deux refus restent toujours respectés : le parent qui s'est **désinscrit des SMS** et le parent qui a **retiré son consentement**. Ces SMS ne comptent pas dans le plafond annuel des SMS ordinaires.
+
+Cette règle est **réglable par l'établissement** : le paramètre « SMS « bulletin disponible » traité comme message essentiel » (clé `primary.report_card.sms_essential`, **oui** par défaut) se change dans **Administration > Paramètres**. S'il est désactivé, le SMS ne part qu'aux parents dont le consentement est enregistré ; les autres apparaissent dans le résumé comme **sans consentement aux communications**.
 
 Si aucun garant n'est enregistré, l'écran le dit : ajoutez le garant financier sur la fiche de l'élève (chapitre 03).
 

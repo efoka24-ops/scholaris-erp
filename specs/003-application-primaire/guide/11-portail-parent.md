@@ -30,7 +30,7 @@ Après la connexion, touchez le bouton de menu (☰) en haut à gauche pour voir
 
 Le bulletin affiche les compétences par domaine (Acquis, En cours d'acquisition, Non acquis), les absences, la conduite, la remédiation, l'appréciation et la décision du conseil. Le **numéro** du bulletin permet de vérifier son authenticité.
 
-Vous recevez un SMS quand un nouveau bulletin est publié.
+Vous recevez un SMS « bulletin disponible » quand un nouveau bulletin est publié. C'est un message de service : l'école l'envoie à chaque garant, sauf si vous vous êtes désinscrit des SMS ou avez retiré votre consentement aux communications. Même sans SMS, le bulletin publié reste visible ici.
 
 ## 11.3 Les résultats d'examen
 
