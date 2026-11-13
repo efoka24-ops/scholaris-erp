@@ -16,6 +16,7 @@
 |---|---|
 | L'inscription est refusée dans une classe | La classe n'a pas d'autorisation d'ouverture valide aujourd'hui : **Administration > Autorisations d'ouverture** (chapitre 02). |
 | « Une personne existe peut-être déjà » | Un enfant semblable existe : reprenez sa fiche si c'est le même, sinon choisissez **Personne différente**. |
+| Comment changer le garant d'un élève ? | Secrétaire ou administrateur : ouvrez la fiche de l'élève (**Personnes et inscriptions**), section **Parents et garants**. Ajoutez le nouveau **Garant financier** et cochez **Retirer l'ancien garant financier** (chapitre 03, 3.2). Les factures déjà émises ne changent pas ; les relances et les reçus vont au nouveau garant ; s'il n'a pas de référence de paiement famille, la caisse la lui émet. |
 | L'étape « Frais & paiement » ne montre pas de montant | Pour la secrétaire, c'est normal : la facture d'inscription est émise dès la validation (chapitre 03). Sinon, la grille des frais de la classe n'existe pas encore : la comptable la crée. |
 | La feuille de compétences n'a aucune compétence | Le référentiel du niveau est vide : **École primaire > Référentiel** (chapitre 02). Vérifiez aussi que la classe est rattachée au bon niveau. |
 

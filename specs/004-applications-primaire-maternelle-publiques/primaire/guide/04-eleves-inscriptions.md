@@ -56,6 +56,8 @@ Le résultat affiche, ligne par ligne : **inscrit**, **déjà inscrit**, **doubl
 
 Le **Dossier élève** contient l'identité, la scolarité, l'**Acte de naissance et situations particulières** (acte vérifié, langue parlée à la maison, déplacé interne, réfugié, orphelin, type d'hébergement). Modifiez puis **Enregistrer**.
 
+**Changer le parent, le tuteur ou le garant d'un élève** : le directeur n'a pas ce droit. Il transmet la demande à l'administrateur du client (compte « Super administrateur » créé à la mise en service), qui ouvre la fiche de l'élève dans **Personnes et inscriptions** (`/personnes`, bouton **Ouvrir**), section **Parents et garants**. Le cadre **Ajouter un parent, un tuteur, un garant ou un contact** enregistre une personne déjà connue (recherche par nom ou téléphone) ou une nouvelle personne ; pour un **Garant financier**, la case **Retirer l'ancien garant financier** fait le remplacement en une seule action. Le cadre **Changer ou retirer un lien** change le type d'un lien ou le retire, après confirmation. Si des factures ont été émises pour l'élève, elles ne changent pas ; les relances et les reçus vont au garant actuel, et la caisse émet au nouveau garant sa référence de paiement s'il n'en a pas. Les reçus APEE restent au nom du parent payeur choisi à l'encaissement (chapitre 09).
+
 ## 4.4 Transferts
 
 **Où** : **École publique > Transferts** (`/ecole-publique/transferts`).

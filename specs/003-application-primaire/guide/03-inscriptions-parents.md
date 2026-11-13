@@ -75,7 +75,7 @@ Le message **Inscription validée** (dossier complet) ou **Inscription sous rés
 
 ## 3.2 La fiche de l'élève et ses garants
 
-**Qui** : secrétaire, administrateur de l'école. **Où** : menu **Personnes et inscriptions** (`/personnes`).
+**Qui** : secrétaire, administrateur de l'école (la comptable et la caissière consultent). **Où** : menu **Personnes et inscriptions** (`/personnes`).
 
 ![Liste des personnes](images/pri-04-personnes.png)
 
@@ -95,7 +95,40 @@ La section **Parents et garants** liste les **Responsables légaux et garants de
 
 Sur la fiche d'un parent, la même section liste les **Enfants rattachés à cette personne**. Si personne n'est rattaché, la fiche l'indique : « Aucun parent ni garant enregistré pour cette personne. »
 
-La fiche se consulte seulement : les parents et le garant financier s'enregistrent à l'inscription (étape 2) et au guichet des inscriptions.
+Les parents et le garant financier s'enregistrent d'abord à l'inscription (étape 2). Une fois l'élève inscrit, la secrétaire ou l'administrateur les complète ou les corrige sur cette fiche. Les autres rôles voient la section en lecture seule : « Lecture seule : seul un rôle autorisé à gérer les personnes peut modifier ces liens. »
+
+### Ajouter, changer ou retirer un parent ou un garant
+
+Sous la liste, deux cadres permettent de modifier les liens :
+
+- **Changer ou retirer un lien** : une ligne par lien. Choisissez un autre type puis cliquez sur **Changer** (par exemple un **Contact d'urgence** qui devient **Tuteur**), ou cliquez sur **Retirer**. Une confirmation est demandée ; la personne reste enregistrée. Si c'est le dernier parent, tuteur ou garant de l'élève, ou la dernière personne qui reçoit les relances de paiement, la confirmation vous en avertit.
+- **Ajouter un parent, un tuteur, un garant ou un contact** :
+  1. Choisissez le **Type de lien**.
+  2. Choisissez **Personne déjà enregistrée** (cherchez-la par nom ou téléphone, puis cliquez sur **Choisir**) ou **Nouvelle personne** (nom, prénoms, téléphone).
+  3. Cliquez sur **Enregistrer le lien**. Message : « Lien enregistré. »
+
+Si une personne semblable existe déjà, l'écran la propose : cliquez sur **Choisir** si c'est elle, ou sur **C'est une autre personne : créer**.
+
+**Exemple : l'oncle prend en charge les frais.** Le père, Hamidou, était garant financier de Daouda. À partir du deuxième trimestre, c'est l'oncle, Oumarou, qui paie.
+
+1. Type de lien : **Garant financier**.
+2. **Nouvelle personne** : nom, prénoms et téléphone de l'oncle.
+3. Cochez **Retirer l'ancien garant financier (…) : il ne paie plus pour cet élève**.
+4. Cliquez sur **Enregistrer le lien**, puis confirmez.
+
+![Ajout de l'oncle comme garant financier, avec la case « Retirer l'ancien garant financier »](images/pri-04-fiche-garant-ajout.png)
+
+L'oncle devient garant financier et le lien de garant du père est retiré en une seule action. Le père reste parent de l'élève s'il était aussi enregistré comme parent.
+
+![Fiche après le changement : l'oncle est le garant financier](images/pri-04-fiche-garant-remplace.png)
+
+Ce que change un nouveau garant :
+
+- **Les factures déjà émises ne changent pas.** Elles sont au nom de l'élève et restent telles qu'elles ont été émises.
+- **Les relances et les reçus vont au garant actuel** (et au tuteur), ainsi que les factures à venir.
+- **La référence de paiement famille** (FAM-…) est propre à chaque garant. Celle de l'ancien garant ne paie plus pour cet élève. Si le nouveau garant n'en a pas encore, **la caisse la lui émet** depuis la facturation (chapitre 04).
+
+Si l'élève n'a plus aucun parent, tuteur ni garant financier, un avertissement reste affiché sur la fiche : l'inscription d'un élève mineur ne peut pas être validée sans l'un d'eux.
 
 Les états s'affichent en clair :
 

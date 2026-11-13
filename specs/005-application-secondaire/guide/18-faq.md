@@ -28,6 +28,9 @@ Au second cycle, la **série** est obligatoire, et la série doit d'abord être 
 **Un élève n'apparaît pas sur le portail de son parent.**
 Le parent doit être **garant financier** de l'élève. Ouvrez le dossier de l'élève (**Inscriptions > Élèves**) et utilisez **Rattacher le garant** avec le téléphone du compte du parent (chapitre 03, section 3.3).
 
+**Comment changer le garant d'un élève ?**
+Ouvrez la fiche de l'élève dans **Personnes et inscriptions**, section **Parents et garants** (administrateur de l'établissement). Ajoutez le nouveau **Garant financier** et cochez **Retirer l'ancien garant financier** (chapitre 03, section 3.3). Les factures déjà émises ne changent pas ; les relances et les reçus vont au nouveau garant ; s'il n'a pas de référence de paiement famille, la caisse la lui attribue.
+
 **Peut-on refuser une inscription pour impayé ?**
 Non. Aucune inscription, aucun cours ni aucune évaluation ne dépend du paiement.
 

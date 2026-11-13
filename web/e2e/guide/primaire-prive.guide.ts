@@ -1,7 +1,8 @@
 import { test, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { actorPage, closeActors, expect, isoDate, selectContaining, startStack, uiLogin, type Account, type Stack } from '../specs/stack';
-import { attempt, issues, phonePage, PRIVATE_IMAGES as DIR, shot, shots } from './primaire-common';
+import { join } from 'node:path';
+import { attempt, issues, phonePage, PRIVATE_IMAGES as DIR, settle, shot, shots } from './primaire-common';
 
 /**
  * Captures du guide du PRIMAIRE PRIVÉ, sur la pile réelle. Semis « primarySchool » (école fictive, CM2 A, trois élèves
@@ -179,6 +180,26 @@ test('guide primaire privé : captures', async ({ browser }, info) => {
     await adm2.getByRole('row', { name: /Daouda/ }).getByRole('link', { name: 'Ouvrir' }).first().click();
     await expect(adm2.getByText(/Sous réserve|Active|Actif/).first()).toBeVisible({ timeout: 20_000 });
     await shot(adm2, DIR, 'pri-04-fiche-eleve', { maxHeight: 2000 });
+  });
+  // GAR-FORM : un oncle (fictif) devient garant financier de Daouda à la place de Hamidou, depuis la fiche de l'élève.
+  await attempt('fiche de l\'élève : changement de garant', async () => {
+    const family = adm2.locator('section[aria-labelledby="fam-title"]');
+    await family.locator('#rel-kind').selectOption('financial_guarantor');
+    await family.locator('[data-test="mode-new"]').check();
+    await family.locator('#rel-last').fill('Fictif-Oncle');
+    await family.locator('#rel-first').fill('Oumarou');
+    await family.locator('#rel-phone').fill(stack.phone());
+    await family.locator('[data-test="add-replace"]').check();
+    await settle(adm2);
+    await family.screenshot({ path: join(DIR, 'pri-04-fiche-garant-ajout.png'), animations: 'disabled' });
+    shots.push('pri-04-fiche-garant-ajout — section Parents et garants');
+    adm2.once('dialog', (d) => void d.accept());
+    await family.locator('[data-test="add-submit"]').click();
+    await expect(family.getByText('Lien enregistré.')).toBeVisible({ timeout: 20_000 });
+    await expect(family.getByRole('link', { name: /Oumarou/ })).toBeVisible();
+    await settle(adm2);
+    await family.screenshot({ path: join(DIR, 'pri-04-fiche-garant-remplace.png'), animations: 'disabled' });
+    shots.push('pri-04-fiche-garant-remplace — section Parents et garants');
   });
   await adm2.context().close();
 

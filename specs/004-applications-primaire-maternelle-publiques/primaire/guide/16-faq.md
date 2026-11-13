@@ -18,6 +18,7 @@
 | Le directeur ne voit pas **Générer les unités** | Le réglage du ministère réserve le référentiel au niveau national : adressez-vous à l'Inspection générale ou à l'administrateur fonctionnel (chapitre 07). |
 | L'élève n'a pas d'identifiant national | L'école n'est pas rattachée à son territoire : demandez-le à l'administrateur fonctionnel (chapitre 02). |
 | « Un élève semblable existe déjà » | Ouvrez la fiche existante ; si c'est un autre enfant, cochez **C'est un autre enfant** avec un motif. |
+| Comment changer le garant d'un élève ? | Le directeur le demande à l'administrateur du client. Celui-ci ouvre la fiche de l'élève dans **Personnes et inscriptions**, section **Parents et garants** : il ajoute le nouveau **Garant financier** et coche **Retirer l'ancien garant financier** (chapitre 04, section 4.3). Les factures déjà émises ne changent pas ; les relances et les reçus vont au nouveau garant ; s'il n'a pas de référence de paiement, la caisse la lui émet. |
 | Une ligne du registre papier est refusée | Les autres lignes sont inscrites. Corrigez la ligne refusée et renvoyez-la seule. |
 | Je ne peux pas désigner le titulaire | L'enseignant doit figurer dans le **Personnel** de l'école. |
 

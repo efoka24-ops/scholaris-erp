@@ -68,6 +68,19 @@ Dans le dossier, saisissez le **Matricule national** puis cliquez sur **Enregist
 
 Si l'élève n'a pas de garant financier (« Aucun garant financier : le portail famille ne montre cet élève à personne »), saisissez dans le dossier le **Téléphone** du parent (et son nom s'il est nouveau), puis cliquez sur **Rattacher le garant**. Message : « Garant financier rattaché. »
 
+### Changer de garant, ajouter ou retirer un parent
+
+Pour remplacer un garant (par exemple un oncle qui prend en charge les frais à la place du père), ou pour ajouter, changer ou retirer un parent, un tuteur ou un contact, ouvrez la fiche de l'élève dans **Personnes et inscriptions** (`/personnes`, bouton **Ouvrir**), section **Parents et garants**. Seul l'administrateur de l'établissement (« Super administrateur » du client) peut la modifier ; un autre rôle qui ouvre la fiche la voit en lecture seule. Le chef d'établissement ou la scolarité lui transmet donc la demande.
+
+1. Dans **Ajouter un parent, un tuteur, un garant ou un contact**, choisissez **Garant financier**, puis une **Personne déjà enregistrée** (recherche par nom ou téléphone) ou une **Nouvelle personne**.
+2. Cochez **Retirer l'ancien garant financier** et cliquez sur **Enregistrer le lien**, puis confirmez.
+
+Le cadre **Changer ou retirer un lien** permet aussi de changer le type d'un lien ou de le retirer (avec un avertissement s'il s'agit du dernier responsable de l'élève). Ce que change un nouveau garant :
+
+- les **factures déjà émises ne changent pas** ;
+- les **relances et les reçus** vont au garant actuel ;
+- la **référence de paiement famille** de l'ancien garant ne paie plus pour cet élève ; si le nouveau garant n'en a pas, **la caisse la lui attribue** (chapitre 04, section 4.5).
+
 ## 3.4 Préinscriptions
 
 **Où** : onglet **Préinscriptions**.
