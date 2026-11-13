@@ -1,0 +1,16 @@
+<?php
+
+declare(strict_types=1);
+
+/**
+ * Console SCHOLARIS. Le fichier s'appelle « artisan » car le terminal de l'hébergement de recette
+ * (Camoo) n'autorise que les exécutables de ce nom. Aucune dépendance au framework du même nom.
+ *
+ * Usage : artisan <commande>
+ */
+
+use Scholaris\Core\Console\Application;
+
+require __DIR__ . '/vendor/autoload.php';
+
+exit((new Application(__DIR__))->run($argv));

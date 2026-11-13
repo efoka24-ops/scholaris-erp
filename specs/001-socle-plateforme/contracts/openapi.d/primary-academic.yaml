@@ -1,0 +1,261 @@
+# Contrat OpenAPI 3.1 du referentiel de l'application Primaire privee (Academic) : profils de niveau, domaines, matieres par niveau,
+# competences, modeles de referentiel (dont le modele `example`, etiquete exemple), copie d'annee, export CSV/XLSX.
+# Fusionne avec openapi.yaml par le test de contrat. Erreurs au format RFC 9457 (components/schemas/Problem).
+# Toutes les routes : authentification, en-tete X-Establishment-Id ; GET -> 404 si l'application est fermee ; ecritures -> 423 si
+# l'abonnement est suspendu, 403 si l'application n'est pas ouverte (WriteGate, voir primary-core.yaml).
+# Permissions : lecture primary.referential.read, primary.referential.manage ou primary.settings.manage ; ecriture
+# primary.referential.manage ou primary.settings.manage sur tout l'etablissement.
+paths:
+  /api/v1/primary/level-profiles:
+    get:
+      summary: "Profils de niveau de l'ecole"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: 'filter[section_org_unit_id]', in: query, required: false, schema: {type: string}}
+        - {name: 'filter[is_final_level]', in: query, required: false, schema: {type: string}}
+      responses:
+        '200': {description: "Liste paginee {data, meta.next_cursor}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Application fermee"}
+    post:
+      summary: "Creer le profil d'un niveau (niveau existant ou creation du niveau par son nom) ; un seul niveau final par section"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                level_structure_id: {type: string}
+                name: {type: string, maxLength: 160}
+                section_org_unit_id: {type: [string, 'null']}
+                cycle_code: {type: [string, 'null'], maxLength: 20}
+                sort_order: {type: integer, minimum: 0, maximum: 999}
+                is_final_level: {type: boolean}
+                is_exam_level: {type: boolean}
+                language: {type: string, enum: [fr, en]}
+      responses:
+        '201': {description: "Profil cree"}
+        '403': {description: "Permission ou perimetre insuffisant"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Le niveau a deja un profil"}
+        '422': {description: "Donnees invalides (deux niveaux finaux dans une section, niveau inconnu)"}
+        '423': {description: "Abonnement suspendu"}
+  /api/v1/primary/level-profiles/{id}:
+    get:
+      summary: "Un profil de niveau"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Profil"}
+        '404': {description: "Introuvable"}
+    patch:
+      summary: "Modifier un profil de niveau"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Profil modifie"}
+        '403': {description: "Permission insuffisante"}
+        '404': {description: "Introuvable"}
+        '422': {description: "Donnees invalides"}
+        '423': {description: "Abonnement suspendu"}
+  /api/v1/primary/domains:
+    get:
+      summary: "Domaines d'apprentissage"
+      parameters:
+        - {name: 'filter[academic_year_id]', in: query, required: false, schema: {type: string}}
+      responses:
+        '200': {description: "Liste paginee"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Application fermee"}
+    post:
+      summary: "Creer un domaine pour une annee"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [academic_year_id, code, label_fr]
+              properties:
+                academic_year_id: {type: string}
+                code: {type: string, maxLength: 40}
+                label_fr: {type: string, maxLength: 160}
+                label_en: {type: [string, 'null'], maxLength: 160}
+                sort_order: {type: integer, minimum: 0, maximum: 999}
+      responses:
+        '201': {description: "Domaine cree"}
+        '403': {description: "Permission insuffisante"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '422': {description: "Donnees invalides ou code deja pris"}
+        '423': {description: "Abonnement suspendu"}
+  /api/v1/primary/domains/{id}:
+    patch:
+      summary: "Modifier ou desactiver un domaine"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Domaine modifie"}
+        '403': {description: "Permission insuffisante"}
+        '404': {description: "Introuvable"}
+        '423': {description: "Abonnement suspendu"}
+  /api/v1/primary/level-subjects:
+    get:
+      summary: "Matieres par niveau et par annee"
+      parameters:
+        - {name: 'filter[academic_year_id]', in: query, required: false, schema: {type: string}}
+        - {name: 'filter[level_structure_id]', in: query, required: false, schema: {type: string}}
+      responses:
+        '200': {description: "Liste paginee"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Application fermee"}
+    post:
+      summary: "Rattacher une matiere (creee ou mise a jour dans le socle par cle `pri:<code>`) a un niveau et un domaine"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [academic_year_id, level_structure_id, domain_id, subject_code, subject_name]
+              properties:
+                academic_year_id: {type: string}
+                level_structure_id: {type: string}
+                domain_id: {type: string}
+                subject_code: {type: string, maxLength: 40}
+                subject_name: {type: string, maxLength: 160}
+                evaluation_mode: {type: string, enum: [numeric, competency, both]}
+                sort_order: {type: integer, minimum: 0, maximum: 999}
+      responses:
+        '201': {description: "Matiere rattachee"}
+        '403': {description: "Permission insuffisante"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '422': {description: "Matiere deja rattachee a ce niveau, domaine ou niveau inconnu"}
+        '423': {description: "Abonnement suspendu"}
+  /api/v1/primary/level-subjects/{id}:
+    patch:
+      summary: "Modifier, reclasser ou desactiver une matiere d'un niveau"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Matiere modifiee"}
+        '403': {description: "Permission insuffisante"}
+        '404': {description: "Introuvable"}
+        '423': {description: "Abonnement suspendu"}
+  /api/v1/primary/competencies:
+    get:
+      summary: "Competences du referentiel"
+      parameters:
+        - {name: 'filter[academic_year_id]', in: query, required: false, schema: {type: string}}
+        - {name: 'filter[level_structure_id]', in: query, required: false, schema: {type: string}}
+      responses:
+        '200': {description: "Liste paginee"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Application fermee"}
+    post:
+      summary: "Creer une competence pour un niveau et une annee"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [academic_year_id, level_structure_id, domain_id, code, label_fr]
+              properties:
+                academic_year_id: {type: string}
+                level_structure_id: {type: string}
+                domain_id: {type: string}
+                subject_id: {type: string}
+                code: {type: string, maxLength: 40}
+                label_fr: {type: string, maxLength: 255}
+                label_en: {type: [string, 'null'], maxLength: 255}
+                sort_order: {type: integer, minimum: 0, maximum: 999}
+      responses:
+        '201': {description: "Competence creee"}
+        '403': {description: "Permission insuffisante"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '422': {description: "Donnees invalides ou code deja pris"}
+        '423': {description: "Abonnement suspendu"}
+  /api/v1/primary/competencies/{id}:
+    patch:
+      summary: "Modifier ou desactiver une competence"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Competence modifiee"}
+        '403': {description: "Permission insuffisante"}
+        '404': {description: "Introuvable"}
+        '423': {description: "Abonnement suspendu"}
+  /api/v1/primary/referential/export:
+    get:
+      summary: "Export CSV ou XLSX du referentiel (kind = levels, domains, subjects, competencies)"
+      parameters:
+        - {name: kind, in: query, required: false, schema: {type: string}}
+        - {name: academic_year_id, in: query, required: false, schema: {type: string}}
+        - {name: format, in: query, required: false, schema: {type: string, enum: [csv, xlsx]}}
+      responses:
+        '200': {description: "Fichier"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Application fermee"}
+        '422': {description: "Nature inconnue"}
+  /api/v1/primary/referentials:
+    get:
+      summary: "Modeles de referentiel disponibles (plateforme et ecole), dont le modele etiquete exemple"
+      responses:
+        '200': {description: "Liste {data: {items}}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Application fermee"}
+  /api/v1/primary/referentials/copy-year:
+    post:
+      summary: "Copier domaines, matieres par niveau et competences d'une annee vers une autre (sans doublon)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [from_year_id, to_year_id]
+              properties:
+                from_year_id: {type: string}
+                to_year_id: {type: string}
+      responses:
+        '200': {description: "Compteurs crees et existants"}
+        '403': {description: "Permission insuffisante"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '422': {description: "Annees identiques"}
+        '423': {description: "Abonnement suspendu"}
+  /api/v1/primary/referentials/{code}:
+    get:
+      summary: "Un modele de referentiel avec son contenu"
+      parameters:
+        - {name: code, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Modele"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Introuvable"}
+  /api/v1/primary/referentials/{code}/apply:
+    post:
+      summary: "Appliquer un modele a une annee : niveaux, classes, matieres, domaines, competences ; idempotent"
+      parameters:
+        - {name: code, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [academic_year_id]
+              properties:
+                academic_year_id: {type: string}
+                section_org_unit_id: {type: [string, 'null']}
+      responses:
+        '200': {description: "Compteurs crees et existants"}
+        '403': {description: "Permission insuffisante"}
+        '404': {description: "Modele introuvable"}
+        '423': {description: "Abonnement suspendu"}

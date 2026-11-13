@@ -1,0 +1,512 @@
+# Contrat de l'inspection des écoles publiques (grilles, planning, visites hors ligne, DOC-26, recommandations, frais illégaux) (contrat généré à partir des routes, réponses RFC 9457).
+paths:
+  /api/v1/public/inspection/fee-reports:
+    get:
+      summary: InspectionController::feeReports
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: per_page
+          in: query
+          required: false
+          schema: { type: integer }
+        - name: cursor
+          in: query
+          required: false
+          schema: { type: string }
+        - name: format
+          in: query
+          required: false
+          schema: { type: string }
+        - name: purpose
+          in: query
+          required: false
+          schema: { type: string }
+        - name: year_label
+          in: query
+          required: false
+          schema: { type: string }
+        - name: date
+          in: query
+          required: false
+          schema: { type: string }
+        - name: month
+          in: query
+          required: false
+          schema: { type: string }
+        - name: structure_id
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        '200': { description: "Succès" }
+        '201': { description: "Créé" }
+        '400': { description: "Requête invalide" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission ou périmètre insuffisant" }
+        '404': { description: "Introuvable dans le périmètre" }
+        '409': { description: "Conflit : état incompatible ou rejeu différent" }
+        '422': { description: "Données invalides" }
+        '423': { description: "Application en lecture seule" }
+    post:
+      summary: InspectionController::reportFee
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: "Succès" }
+        '201': { description: "Créé" }
+        '400': { description: "Requête invalide" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission ou périmètre insuffisant" }
+        '404': { description: "Introuvable dans le périmètre" }
+        '409': { description: "Conflit : état incompatible ou rejeu différent" }
+        '422': { description: "Données invalides" }
+        '423': { description: "Application en lecture seule" }
+  /api/v1/public/inspection/fee-reports/{id}/handle:
+    post:
+      summary: InspectionController::handleFee
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: "Succès" }
+        '201': { description: "Créé" }
+        '400': { description: "Requête invalide" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission ou périmètre insuffisant" }
+        '404': { description: "Introuvable dans le périmètre" }
+        '409': { description: "Conflit : état incompatible ou rejeu différent" }
+        '422': { description: "Données invalides" }
+        '423': { description: "Application en lecture seule" }
+  /api/v1/public/inspection/grids:
+    get:
+      summary: InspectionController::grids
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: per_page
+          in: query
+          required: false
+          schema: { type: integer }
+        - name: cursor
+          in: query
+          required: false
+          schema: { type: string }
+        - name: format
+          in: query
+          required: false
+          schema: { type: string }
+        - name: purpose
+          in: query
+          required: false
+          schema: { type: string }
+        - name: year_label
+          in: query
+          required: false
+          schema: { type: string }
+        - name: date
+          in: query
+          required: false
+          schema: { type: string }
+        - name: month
+          in: query
+          required: false
+          schema: { type: string }
+        - name: structure_id
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        '200': { description: "Succès" }
+        '201': { description: "Créé" }
+        '400': { description: "Requête invalide" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission ou périmètre insuffisant" }
+        '404': { description: "Introuvable dans le périmètre" }
+        '409': { description: "Conflit : état incompatible ou rejeu différent" }
+        '422': { description: "Données invalides" }
+        '423': { description: "Application en lecture seule" }
+    post:
+      summary: InspectionController::saveGrid
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: "Succès" }
+        '201': { description: "Créé" }
+        '400': { description: "Requête invalide" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission ou périmètre insuffisant" }
+        '404': { description: "Introuvable dans le périmètre" }
+        '409': { description: "Conflit : état incompatible ou rejeu différent" }
+        '422': { description: "Données invalides" }
+        '423': { description: "Application en lecture seule" }
+  /api/v1/public/inspection/grids/import-example:
+    post:
+      summary: InspectionController::importExample
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: "Succès" }
+        '201': { description: "Créé" }
+        '400': { description: "Requête invalide" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission ou périmètre insuffisant" }
+        '404': { description: "Introuvable dans le périmètre" }
+        '409': { description: "Conflit : état incompatible ou rejeu différent" }
+        '422': { description: "Données invalides" }
+        '423': { description: "Application en lecture seule" }
+  /api/v1/public/inspection/planning:
+    get:
+      summary: InspectionController::planning
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: per_page
+          in: query
+          required: false
+          schema: { type: integer }
+        - name: cursor
+          in: query
+          required: false
+          schema: { type: string }
+        - name: format
+          in: query
+          required: false
+          schema: { type: string }
+        - name: purpose
+          in: query
+          required: false
+          schema: { type: string }
+        - name: year_label
+          in: query
+          required: false
+          schema: { type: string }
+        - name: date
+          in: query
+          required: false
+          schema: { type: string }
+        - name: month
+          in: query
+          required: false
+          schema: { type: string }
+        - name: structure_id
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        '200': { description: "Succès" }
+        '201': { description: "Créé" }
+        '400': { description: "Requête invalide" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission ou périmètre insuffisant" }
+        '404': { description: "Introuvable dans le périmètre" }
+        '409': { description: "Conflit : état incompatible ou rejeu différent" }
+        '422': { description: "Données invalides" }
+        '423': { description: "Application en lecture seule" }
+  /api/v1/public/inspection/recommendations:
+    get:
+      summary: InspectionController::recommendations
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: per_page
+          in: query
+          required: false
+          schema: { type: integer }
+        - name: cursor
+          in: query
+          required: false
+          schema: { type: string }
+        - name: format
+          in: query
+          required: false
+          schema: { type: string }
+        - name: purpose
+          in: query
+          required: false
+          schema: { type: string }
+        - name: year_label
+          in: query
+          required: false
+          schema: { type: string }
+        - name: date
+          in: query
+          required: false
+          schema: { type: string }
+        - name: month
+          in: query
+          required: false
+          schema: { type: string }
+        - name: structure_id
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        '200': { description: "Succès" }
+        '201': { description: "Créé" }
+        '400': { description: "Requête invalide" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission ou périmètre insuffisant" }
+        '404': { description: "Introuvable dans le périmètre" }
+        '409': { description: "Conflit : état incompatible ou rejeu différent" }
+        '422': { description: "Données invalides" }
+        '423': { description: "Application en lecture seule" }
+  /api/v1/public/inspection/scale:
+    get:
+      summary: InspectionController::scale
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: per_page
+          in: query
+          required: false
+          schema: { type: integer }
+        - name: cursor
+          in: query
+          required: false
+          schema: { type: string }
+        - name: format
+          in: query
+          required: false
+          schema: { type: string }
+        - name: purpose
+          in: query
+          required: false
+          schema: { type: string }
+        - name: year_label
+          in: query
+          required: false
+          schema: { type: string }
+        - name: date
+          in: query
+          required: false
+          schema: { type: string }
+        - name: month
+          in: query
+          required: false
+          schema: { type: string }
+        - name: structure_id
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        '200': { description: "Succès" }
+        '201': { description: "Créé" }
+        '400': { description: "Requête invalide" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission ou périmètre insuffisant" }
+        '404': { description: "Introuvable dans le périmètre" }
+        '409': { description: "Conflit : état incompatible ou rejeu différent" }
+        '422': { description: "Données invalides" }
+        '423': { description: "Application en lecture seule" }
+  /api/v1/public/inspection/visits:
+    get:
+      summary: InspectionController::visits
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: per_page
+          in: query
+          required: false
+          schema: { type: integer }
+        - name: cursor
+          in: query
+          required: false
+          schema: { type: string }
+        - name: format
+          in: query
+          required: false
+          schema: { type: string }
+        - name: purpose
+          in: query
+          required: false
+          schema: { type: string }
+        - name: year_label
+          in: query
+          required: false
+          schema: { type: string }
+        - name: date
+          in: query
+          required: false
+          schema: { type: string }
+        - name: month
+          in: query
+          required: false
+          schema: { type: string }
+        - name: structure_id
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        '200': { description: "Succès" }
+        '201': { description: "Créé" }
+        '400': { description: "Requête invalide" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission ou périmètre insuffisant" }
+        '404': { description: "Introuvable dans le périmètre" }
+        '409': { description: "Conflit : état incompatible ou rejeu différent" }
+        '422': { description: "Données invalides" }
+        '423': { description: "Application en lecture seule" }
+    post:
+      summary: InspectionController::plan
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: "Succès" }
+        '201': { description: "Créé" }
+        '400': { description: "Requête invalide" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission ou périmètre insuffisant" }
+        '404': { description: "Introuvable dans le périmètre" }
+        '409': { description: "Conflit : état incompatible ou rejeu différent" }
+        '422': { description: "Données invalides" }
+        '423': { description: "Application en lecture seule" }
+  /api/v1/public/inspection/visits/{id}:
+    get:
+      summary: InspectionController::show
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: per_page
+          in: query
+          required: false
+          schema: { type: integer }
+        - name: cursor
+          in: query
+          required: false
+          schema: { type: string }
+        - name: format
+          in: query
+          required: false
+          schema: { type: string }
+        - name: purpose
+          in: query
+          required: false
+          schema: { type: string }
+        - name: year_label
+          in: query
+          required: false
+          schema: { type: string }
+        - name: date
+          in: query
+          required: false
+          schema: { type: string }
+        - name: month
+          in: query
+          required: false
+          schema: { type: string }
+        - name: structure_id
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        '200': { description: "Succès" }
+        '201': { description: "Créé" }
+        '400': { description: "Requête invalide" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission ou périmètre insuffisant" }
+        '404': { description: "Introuvable dans le périmètre" }
+        '409': { description: "Conflit : état incompatible ou rejeu différent" }
+        '422': { description: "Données invalides" }
+        '423': { description: "Application en lecture seule" }
+  /api/v1/public/inspection/visits/{id}/document:
+    post:
+      summary: InspectionController::document
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: "Succès" }
+        '201': { description: "Créé" }
+        '400': { description: "Requête invalide" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission ou périmètre insuffisant" }
+        '404': { description: "Introuvable dans le périmètre" }
+        '409': { description: "Conflit : état incompatible ou rejeu différent" }
+        '422': { description: "Données invalides" }
+        '423': { description: "Application en lecture seule" }
+  /api/v1/public/inspection/visits/{id}/report:
+    put:
+      summary: InspectionController::report
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: "Succès" }
+        '201': { description: "Créé" }
+        '400': { description: "Requête invalide" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission ou périmètre insuffisant" }
+        '404': { description: "Introuvable dans le périmètre" }
+        '409': { description: "Conflit : état incompatible ou rejeu différent" }
+        '422': { description: "Données invalides" }
+        '423': { description: "Application en lecture seule" }

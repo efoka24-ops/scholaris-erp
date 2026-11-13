@@ -1,0 +1,234 @@
+# Contrat OpenAPI 3.1 de la messagerie interne pour tous (C-113) : compteur de non-lus, apprenants proposés, conversations
+# « Support SCHOLARIS » côté établissement et boîte du support côté plateforme (conversations de nature « support » seulement).
+paths:
+  /api/v1/conversation-unread:
+    get:
+      summary: "Nombre de messages non lus de l’appelant dans ses conversations ouvertes de l’établissement actif (compteur de la barre du haut)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Objet data.unread"
+        '403':
+          description: "Accès refusé ou compte sans personne"
+  /api/v1/conversation-learners:
+    get:
+      summary: "Apprenants au sujet desquels l’appelant peut ouvrir une conversation : ses enfants inscrits, les élèves qu’il suit, ou les inscrits de l’établissement pour la direction"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Liste learner_id, name"
+        '403':
+          description: "Accès refusé ou compte sans personne"
+  /api/v1/support-conversations:
+    post:
+      summary: "Ouvre une conversation avec le support SCHOLARIS (administrateur de l’établissement, permission messaging.support) : objet et premier message ; la suite passe par /conversations/{id}/messages"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [subject, body]
+              properties:
+                subject: {type: string, maxLength: 160}
+                body: {type: string, maxLength: 5000}
+      responses:
+        '201':
+          description: "Conversation de support créée (kind support, support_status open)"
+        '400':
+          description: "Corps absent ou illisible"
+        '403':
+          description: "Accès refusé"
+        '422':
+          description: "Donnée invalide ou champ non autorisé"
+  /api/v1/platform/support/agents:
+    get:
+      summary: "Membres actifs de la plateforme à qui assigner une conversation de support (platform_admin, platform_support) : identifiant, nom, rôle"
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: "Liste des membres"
+        '403':
+          description: "Réservé au support de la plateforme (platform.support.manage)"
+  /api/v1/platform/support/conversations:
+    get:
+      summary: "Boîte du support : conversations de nature support seulement, de la dernière activité à la plus ancienne (filter[status] open, pending, resolved ; filter[tenant_id] ; filter[assignee], none = non assignées ; curseur), avec client, établissement et non-lus"
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: "Page de conversations de support"
+        '403':
+          description: "Réservé au support de la plateforme (platform.support.manage)"
+        '422':
+          description: "Filtre invalide"
+    post:
+      summary: "Le super administrateur de la plateforme ouvre une conversation vers les super administrateurs actifs d’un client, dans un de ses établissements (platform.support.open) ; journalisé"
+      security:
+        - bearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [tenant_id, establishment_id, subject, body]
+              properties:
+                tenant_id: {type: string}
+                establishment_id: {type: string}
+                subject: {type: string, maxLength: 160}
+                body: {type: string, maxLength: 5000}
+      responses:
+        '201':
+          description: "Conversation ouverte (support_status pending)"
+        '400':
+          description: "Corps illisible"
+        '403':
+          description: "Réservé à l’administrateur de plateforme"
+        '422':
+          description: "Client ou établissement inconnu, aucun administrateur actif, donnée invalide"
+  /api/v1/platform/support/conversations/{id}:
+    get:
+      summary: "Conversation de support et ses participants côté client (404 pour toute conversation interne d’un établissement)"
+      security:
+        - bearer: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Conversation de support"
+        '403':
+          description: "Réservé au support de la plateforme"
+        '404':
+          description: "Introuvable ou d’une autre nature"
+  /api/v1/platform/support/conversations/{id}/messages:
+    get:
+      summary: "Messages de la conversation de support, du plus récent au plus ancien (sender_side client ou platform) ; marque la conversation lue par le support"
+      security:
+        - bearer: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Page de messages"
+        '403':
+          description: "Réservé au support de la plateforme"
+        '404':
+          description: "Introuvable ou d’une autre nature"
+    post:
+      summary: "Réponse du support (statut passé à pending) ; les administrateurs participants sont notifiés sans le texte ; journalisé"
+      security:
+        - bearer: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [body]
+              properties:
+                body: {type: string, maxLength: 5000}
+      responses:
+        '201':
+          description: "Message posté"
+        '400':
+          description: "Corps illisible"
+        '403':
+          description: "Réservé au support de la plateforme"
+        '404':
+          description: "Introuvable ou d’une autre nature"
+        '409':
+          description: "Conversation archivée"
+        '422':
+          description: "Texte invalide"
+  /api/v1/platform/support/conversations/{id}/status:
+    post:
+      summary: "Change le statut de support : open, pending ou resolved ; journalisé"
+      security:
+        - bearer: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [status]
+              properties:
+                status: {type: string, enum: [open, pending, resolved]}
+      responses:
+        '200':
+          description: "Conversation mise à jour"
+        '400':
+          description: "Corps illisible"
+        '403':
+          description: "Réservé au support de la plateforme"
+        '404':
+          description: "Introuvable ou d’une autre nature"
+        '422':
+          description: "Statut invalide"
+  /api/v1/platform/support/conversations/{id}/assign:
+    post:
+      summary: "Assigne la conversation à un membre actif du support (user_id) ou la désassigne (null) ; journalisé"
+      security:
+        - bearer: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                user_id: {type: [string, "null"]}
+      responses:
+        '200':
+          description: "Conversation mise à jour"
+        '400':
+          description: "Corps illisible"
+        '403':
+          description: "Réservé au support de la plateforme"
+        '404':
+          description: "Introuvable ou d’une autre nature"
+        '422':
+          description: "Membre du support inconnu ou inactif"

@@ -1,0 +1,337 @@
+openapi: 3.1.0
+info:
+  title: Secondary workshops and internships
+  version: 1.0.0
+  description: >-
+    E3-C ateliers et stages. Every operation requires authentication and X-Establishment-Id.
+    All thresholds, grid scales, caps, costs and evaluation coefficients are establishment-configurable;
+    no official values are embedded. A learner without all required PPE is recorded only as an observer
+    and receives no machine workstation assignment (RG-ATL-1). Modules are guarded independently.
+paths:
+  /api/v1/secondary/workshops:
+    get:
+      summary: List workshops (workshops module)
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Workshop list}
+        '403': {description: Permission absent}
+        '404': {description: Application unavailable}
+        '409': {description: workshops module not enabled}
+    post:
+      summary: Create workshop {label, stream_id?, room_id?, capacity?, chief_person_id?}
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '201': {description: Created}
+        '404': {description: Application non ouverte au client ou ressource introuvable}
+        '403': {description: Permission or establishment scope absent}
+        '409': {description: Module disabled or duplicate}
+        '422': {description: Invalid input}
+  /api/v1/secondary/workshops/{id}:
+    patch:
+      summary: Update workshop metadata
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Updated}
+        '403': {description: Permission absent}
+        '404': {description: Workshop not found in tenant and establishment}
+        '409': {description: Module disabled}
+        '422': {description: Invalid input}
+  /api/v1/secondary/workshops/workstations:
+    get:
+      summary: List workstations for workshop_id
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: workshop_id, in: query, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Workstation list}
+        '404': {description: Application non ouverte au client ou ressource introuvable}
+        '403': {description: Permission absent}
+        '409': {description: Module disabled}
+    post:
+      summary: Create workstation {workshop_id, label, machine, ppe_required[]}
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '201': {description: Created}
+        '404': {description: Application non ouverte au client ou ressource introuvable}
+        '403': {description: Permission absent}
+        '409': {description: Module disabled or duplicate}
+        '422': {description: Invalid input}
+  /api/v1/secondary/workshops/workstations/{id}:
+    patch:
+      summary: Update workstation or deactivate it
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Updated}
+        '403': {description: Permission absent}
+        '404': {description: Workstation not found}
+        '409': {description: Module disabled}
+        '422': {description: Invalid input}
+  /api/v1/secondary/workshops/sheets:
+    get:
+      summary: List practical sheets for workshop_id
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: workshop_id, in: query, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Practical-sheet list}
+        '404': {description: Application non ouverte au client ou ressource introuvable}
+        '403': {description: Permission absent}
+        '409': {description: Module disabled}
+    post:
+      summary: Create versioned practical sheet {workshop_id,title,objective,materials[],tools[],safety_rules[],criteria[],base_score,safety_cap?}
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '201': {description: Created}
+        '404': {description: Application non ouverte au client ou ressource introuvable}
+        '403': {description: Permission absent}
+        '409': {description: Module disabled}
+        '422': {description: Invalid criteria or scale}
+  /api/v1/secondary/workshops/sheets/{id}:
+    patch:
+      summary: Revise sheet, creating a new version
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Updated version}
+        '403': {description: Permission absent}
+        '404': {description: Sheet not found}
+        '409': {description: Module disabled}
+        '422': {description: Invalid criteria or scale}
+  /api/v1/secondary/workshops/sessions:
+    get:
+      summary: List sessions for workshop_id
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: workshop_id, in: query, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Sessions of the reader class scope with per-learner workstation or observation status}
+        '404': {description: Application non ouverte au client ou ressource introuvable}
+        '403': {description: Permission absent or class out of scope}
+        '409': {description: Module disabled}
+  /api/v1/secondary/workshops/{workshop_id}/sessions:
+    post:
+      summary: >-
+        API-14 create session {workshop_id, structure_id, sheet_id, session_date, teacher_person_id,
+        client_uuid, learners:[{person_id,workstation_id?,ppe_items?}]}; idempotent on client_uuid.
+        Missing required PPE records observation only, never a machine workstation post (RG-ATL-1).
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: workshop_id, in: path, required: true, schema: {type: string}}
+      responses:
+        '201': {description: Session created}
+        '200': {description: Idempotent replay}
+        '403': {description: Permission absent or class out of scope}
+        '404': {description: 'Class, workshop, sheet or workstation not found'}
+        '409': {description: Module disabled or duplicate client_uuid}
+        '422': {description: Invalid input}
+  /api/v1/secondary/workshops/materials:
+    get:
+      summary: List material items for workshop_id (cost access)
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: workshop_id, in: query, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Items with configurable unit_cost XAF and stock quantity}
+        '404': {description: Application non ouverte au client ou ressource introuvable}
+        '403': {description: Permission absent}
+        '409': {description: Module disabled}
+    post:
+      summary: Create item {workshop_id,label,unit_label,unit_cost XAF,stock_qty}
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '201': {description: Created}
+        '404': {description: Application non ouverte au client ou ressource introuvable}
+        '403': {description: Permission absent}
+        '409': {description: Module disabled or duplicate}
+        '422': {description: Invalid input}
+  /api/v1/secondary/workshops/materials/{id}/moves:
+    post:
+      summary: Record stock in/out {move_kind,quantity,session_id?}; rejects negative stock and returns XAF cost
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '201': {description: 'Movement, total cost XAF and, with session_id, cost per learner XAF'}
+        '403': {description: Permission absent}
+        '404': {description: Item or session not found}
+        '409': {description: Module disabled}
+        '422': {description: Invalid quantity or insufficient stock}
+  /api/v1/secondary/workshops/safety-events:
+    get:
+      summary: List workshop safety register entries for workshop_id
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: workshop_id, in: query, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Safety register}
+        '404': {description: Application non ouverte au client ou ressource introuvable}
+        '403': {description: Permission absent}
+        '409': {description: Module disabled}
+    post:
+      summary: Record safety event; workshop_id query; event_kind incident, ppe_check or machine_check
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: workshop_id, in: query, required: true, schema: {type: string}}
+      responses:
+        '201': {description: Recorded and audited}
+        '403': {description: Permission absent}
+        '404': {description: Workshop or workstation not found}
+        '409': {description: Module disabled}
+        '422': {description: Invalid input}
+  /api/v1/secondary/workshops/sessions/{session_id}/evaluations:
+    post:
+      summary: Evaluate assigned learner {person_id,observed:{criterion_code:points},serious_safety_breach}; configurable base and cap
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: session_id, in: path, required: true, schema: {type: string}}
+      responses:
+        '201': {description: 'Practical score; remains local until an Assessment writer Contract is available'}
+        '403': {description: Permission absent}
+        '404': {description: Session not found}
+        '409': {description: Module disabled or evaluation already exists}
+        '422': {description: Learner not eligible or score outside configured criterion limits}
+  /api/v1/secondary/internships/companies:
+    get:
+      summary: List internship companies
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Companies}
+        '404': {description: Application non ouverte au client ou ressource introuvable}
+        '403': {description: Permission absent}
+        '409': {description: internships module disabled}
+    post:
+      summary: Create company {label,sector?,address?,contact_name?,contact_phone?}
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '201': {description: Created}
+        '404': {description: Application non ouverte au client ou ressource introuvable}
+        '403': {description: Permission absent}
+        '409': {description: Module disabled or duplicate}
+        '422': {description: Invalid input}
+  /api/v1/secondary/internships/companies/{id}:
+    patch:
+      summary: Update company metadata or mark inactive
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Updated}
+        '403': {description: Permission absent}
+        '404': {description: Company not found}
+        '409': {description: Module disabled}
+        '422': {description: Invalid input}
+  /api/v1/secondary/internships:
+    get:
+      summary: List placements with company, agreement and evaluation details
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Placements}
+        '404': {description: Application non ouverte au client ou ressource introuvable}
+        '403': {description: Permission absent}
+        '409': {description: Module disabled}
+    post:
+      summary: Create placement {person_id,structure_id,company_id,tutor_name,starts_on,ends_on,agreement_document_id?,score_coefficient?}
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '201': {description: Created}
+        '403': {description: Permission absent}
+        '404': {description: Company or class not found}
+        '409': {description: Module disabled or duplicate}
+        '422': {description: 'Invalid dates, inactive company or learner not enrolled in the class'}
+  /api/v1/secondary/internships/{id}:
+    patch:
+      summary: Record agreement reference, tutor/report evaluation, score, coefficient and status
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: 'Updated; score and coefficient are establishment-entered, no official rate is assumed'}
+        '403': {description: Permission absent}
+        '404': {description: Placement not found}
+        '409': {description: Module disabled}
+        '422': {description: Invalid dates or evaluation}
+  /api/v1/secondary/internships/visits:
+    get:
+      summary: List visits for internship_id
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: internship_id, in: query, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Visits}
+        '404': {description: Application non ouverte au client ou ressource introuvable}
+        '403': {description: Permission absent}
+        '409': {description: Module disabled}
+  /api/v1/secondary/internships/{internship_id}/visits:
+    post:
+      summary: Record visit {visitor_person_id,visited_on,notes}
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: internship_id, in: path, required: true, schema: {type: string}}
+      responses:
+        '201': {description: Visit recorded}
+        '403': {description: Permission absent}
+        '404': {description: Placement not found}
+        '409': {description: Module disabled}
+        '422': {description: Invalid input}
+  /api/v1/secondary/workshops/sheets/{id}/documents:
+    post:
+      summary: DOC-23 practical sheet and assessment grid issued to a learner of the class {structure_id, person_id, locale?} (SecondaryDocuments, technical teaching required)
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '201': {description: 'Issued document id, number and type'}
+        '403': {description: Permission absent or class out of scope}
+        '404': {description: 'Application not open, sheet or class not found'}
+        '409': {description: 'module_not_enabled or profile_capability_not_offered'}
+        '422': {description: Learner not enrolled in the class or invalid input}
+  /api/v1/secondary/workshops/{workshop_id}/stock-report:
+    post:
+      summary: DOC-24 materials stock report drawn up by the head of workshops {person_id?, locale?}, with cost per learner
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: workshop_id, in: path, required: true, schema: {type: string}}
+      responses:
+        '201': {description: 'Issued document and cost_per_learner_xaf'}
+        '403': {description: Permission or establishment scope absent}
+        '404': {description: Application not open or workshop not found}
+        '409': {description: 'module_not_enabled or profile_capability_not_offered'}
+        '422': {description: No head of workshops given}
+  /api/v1/secondary/internships/{id}/agreement:
+    post:
+      summary: DOC-21 internship agreement issued for a prepared placement {locale?}; links agreement_document_id
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '201': {description: 'Issued document id, number and type'}
+        '403': {description: Permission absent or class out of scope}
+        '404': {description: Application not open or placement not found}
+        '409': {description: 'Placement completed or cancelled, module_not_enabled or profile_capability_not_offered'}
+        '422': {description: Invalid input}
+  /api/v1/secondary/internships/{id}/appraisal:
+    post:
+      summary: DOC-22 trainee appraisal form issued once the tutor appraisal is recorded {locale?}
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '201': {description: 'Issued document id, number and type'}
+        '403': {description: Permission absent or class out of scope}
+        '404': {description: Application not open or placement not found}
+        '409': {description: 'module_not_enabled or profile_capability_not_offered'}
+        '422': {description: Tutor appraisal missing}

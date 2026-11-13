@@ -1,0 +1,111 @@
+# Contrat OpenAPI 3.1 de la remediation (application Primaire privee ; arrete conjoint du 14 aout 2026 : registre de remediation et
+# fiche de suivi individualisee obligatoires). Minutes attendues par semaine et disciplines fondamentales : parametres
+# primary.remediation.weekly_minutes (60 par defaut, a confirmer) et primary.remediation.fundamental_subjects ; formes :
+# primary.remediation.forms. Perimetre classe (lecture 404, ecriture 403). WriteGate sur les ecritures.
+paths:
+  /api/v1/primary/classes/{id}/remediation:
+    get:
+      summary: "Registre de remediation de la classe et suivi hebdomadaire des minutes par discipline (primary.remediation.read ou .write)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+        - {name: from, in: query, required: false, schema: {type: string, format: date}}
+        - {name: to, in: query, required: false, schema: {type: string, format: date}}
+      responses:
+        '200': {description: "Reponse {data: {class, weekly_minutes_target, fundamental_subjects, forms, learners, sessions[], weekly[{week, subjects[{subject, minutes, fundamental, meets_target}]}]}}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Classe introuvable ou hors perimetre"}
+    post:
+      summary: "Enregistrer une seance de remediation (forme, discipline, duree, eleves presents)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [held_on, duration_minutes, remediation_form, subject_label, objective, person_ids]
+              properties:
+                held_on: {type: string, format: date}
+                duration_minutes: {type: integer, minimum: 1, maximum: 600}
+                remediation_form: {type: string, maxLength: 30}
+                subject_code: {type: string, maxLength: 40}
+                subject_label: {type: string, maxLength: 160}
+                objective: {type: string, maxLength: 255}
+                notes: {type: [string, 'null'], maxLength: 2000}
+                period_id: {type: [string, 'null']}
+                person_ids: {type: array, maxItems: 80, items: {type: string}}
+      responses:
+        '201': {description: "Seance enregistree"}
+        '403': {description: "Permission absente ou classe hors perimetre"}
+        '404': {description: "Classe introuvable"}
+        '422': {description: "Forme inconnue, eleve hors classe"}
+  /api/v1/primary/remediation-plans:
+    get:
+      summary: "Fiches de suivi individualisees d'une classe ou d'un eleve"
+      parameters:
+        - {name: class_id, in: query, required: false, schema: {type: string}}
+        - {name: person_id, in: query, required: false, schema: {type: string}}
+      responses:
+        '200': {description: "Reponse {data: {items[]}}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Classe hors perimetre"}
+        '422': {description: "Ni classe ni eleve"}
+    post:
+      summary: "Ouvrir une fiche de suivi individualisee (difficultes, actions)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [person_id, class_id, subject_label, difficulties, actions]
+              properties:
+                person_id: {type: string}
+                class_id: {type: string}
+                subject_code: {type: string, maxLength: 40}
+                subject_label: {type: string, maxLength: 160}
+                difficulties: {type: string, maxLength: 2000}
+                actions: {type: string, maxLength: 2000}
+                period_id: {type: [string, 'null']}
+                opened_on: {type: string, format: date}
+      responses:
+        '201': {description: "Fiche ouverte"}
+        '403': {description: "Permission absente ou hors perimetre"}
+        '404': {description: "Classe introuvable"}
+        '422': {description: "Eleve hors classe"}
+  /api/v1/primary/remediation-plans/{id}:
+    get:
+      summary: "Fiche de suivi, revues, seances suivies"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Fiche"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Fiche introuvable ou hors perimetre"}
+  /api/v1/primary/remediation-plans/{id}/reviews:
+    post:
+      summary: "Revue datee de la fiche (open, in_progress, resolved)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [progress_note, status_after]
+              properties:
+                reviewed_on: {type: string, format: date}
+                progress_note: {type: string, maxLength: 500}
+                status_after: {type: string, enum: [open, in_progress, resolved]}
+                actions: {type: string, maxLength: 2000}
+      responses:
+        '201': {description: "Fiche mise a jour"}
+        '403': {description: "Permission absente ou hors perimetre"}
+        '404': {description: "Fiche introuvable"}
+        '409': {description: "Fiche close"}
+        '422': {description: "Donnees invalides"}

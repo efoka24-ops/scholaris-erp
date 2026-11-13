@@ -1,0 +1,174 @@
+# Contrat OpenAPI 3.1 du personnel du secondaire (spec 005, T911, T912, T955, lot E3-E). Les identites viennent du socle Staff (membres
+# actifs affectes a l'etablissement) ; les heures du mois du socle (declarees par l'appel valide, validees, rejetees) et du cahier de
+# textes (seances signees). Une heure n'est payable qu'avec appel valide et seance signee (controle staff.vacation.payability_checks).
+# Paie simplifiee (module payroll_simple) : brut et retenues saisis, net = brut - retenues, aucun taux legal, jamais un fonctionnaire ;
+# DOC-30 emis au paiement. Routes /secondary/** : authentification, droit d'usage (WriteGate), permissions secondary.*.
+paths:
+  /api/v1/secondary/staff/profiles:
+    get:
+      summary: "Tout le personnel actif de l'etablissement (enseignant ou non, contrat EstablishmentStaffRoster) avec fonction, categorie et statut d'emploi (null tant qu'il n'est pas renseigne)"
+      description: "Permission secondary.settings.read, secondary.settings.manage, secondary.syllabus.visa, secondary.timetable.manage, secondary.billing.manage ou secondary.finance.read. Filtre category facultatif."
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: category, in: query, required: false, schema: {type: string, enum: [teaching, administrative, service, maintenance]}}
+      responses:
+        '200': {description: "{data: {items: [{id, staff_id, person_id, full_name, function, staff_category, teaches, socle_kind, socle_category, employment_status, grade_label, payroll_ref, updated_at}]}}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Application fermee ou etablissement inconnu"}
+        '422': {description: "Categorie inconnue"}
+    put:
+      summary: "Creer ou mettre a jour le statut d'un membre actif (person_id, employment_status civil_servant|state_contract|private_employee|hourly, staff_category? teaching|administrative|service|maintenance, grade_label?, payroll_ref?)"
+      description: "Permission secondary.settings.manage sur tout l'etablissement. Audit secondary.staff.profile_saved."
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Profil enregistre"}
+        '403': {description: "Permission absente ou perimetre partiel (journalise)"}
+        '404': {description: "Membre actif introuvable dans cet etablissement (autre client, autre etablissement ou parti)"}
+        '422': {description: "Champ invalide"}
+  /api/v1/secondary/staff/hours:
+    get:
+      summary: "Heures du mois par membre : declarees par l'appel, validees et rejetees (socle), minutes signees au cahier de textes"
+      description: "Permission secondary.settings.read, secondary.settings.manage, secondary.syllabus.visa, secondary.timetable.manage, secondary.billing.manage ou secondary.finance.read."
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: month, in: query, required: true, schema: {type: string, pattern: '^\d{4}-(0[1-9]|1[0-2])$'}}
+      responses:
+        '200': {description: "{data: {items: [{staff_profile_id, staff_id, person_id, full_name, employment_status, declared_minutes, validated_minutes, rejected_minutes, logged_minutes}]}}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Application fermee ou etablissement inconnu"}
+        '422': {description: "Mois absent ou invalide"}
+  /api/v1/secondary/staff/payroll/rules:
+    get:
+      summary: "Statuts eligibles a la paie simplifiee (depart : private_employee, hourly ; jamais civil_servant)"
+      description: "Permission secondary.finance.read, secondary.billing.manage ou secondary.settings.manage. Module payroll_simple (actif, ou coupe avec donnees en lecture)."
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "{data: {eligible_statuses}}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Application fermee ou etablissement inconnu"}
+        '409': {description: "Module payroll_simple non active (module_not_enabled)"}
+    put:
+      summary: "Fixer les statuts eligibles (eligible_statuses parmi private_employee, hourly, state_contract)"
+      description: "Permission secondary.settings.manage (chef d'etablissement) sur tout l'etablissement. Audit secondary.staff.payroll_rules_saved."
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "{data: {eligible_statuses}}"}
+        '403': {description: "Permission absente ou perimetre partiel"}
+        '404': {description: "Application fermee ou etablissement inconnu"}
+        '409': {description: "Module payroll_simple non actif"}
+        '422': {description: "Liste vide ou statut non permis (dont civil_servant)"}
+  /api/v1/secondary/staff/payroll/payslips:
+    get:
+      summary: "Bulletins de paie de l'etablissement, du plus recent (filtre month=AAAA-MM facultatif)"
+      description: "Permission secondary.finance.read, secondary.billing.manage ou secondary.settings.manage."
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: month, in: query, required: false, schema: {type: string}}
+      responses:
+        '200': {description: "{data: {items: [{id, staff_profile_id, person_id, month_ref, gross_amount, deductions, deductions_amount, net_amount, status, created_by, validated_by, validated_at, paid_on, document_id, document_number}]}}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Application fermee ou etablissement inconnu"}
+        '409': {description: "Module payroll_simple non active"}
+        '422': {description: "Mois invalide"}
+    post:
+      summary: "Preparer un bulletin en brouillon (staff_profile_id, month_ref, gross_amount, deductions? [{label, amount}]) : net = brut - retenues"
+      description: "Permission secondary.billing.manage (intendant). Montants entiers en XAF. Audit secondary.staff.payslip_created."
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '201': {description: "{data: bulletin}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Application fermee, profil introuvable ou membre plus actif"}
+        '409': {description: "Module non actif, statut non eligible (fonctionnaire toujours) ou bulletin deja present pour ce mois"}
+        '422': {description: "Champ invalide ou retenues superieures au brut"}
+  /api/v1/secondary/staff/payroll/payslips/{id}:
+    get:
+      summary: "Detail d'un bulletin de paie"
+      description: "Permission secondary.finance.read, secondary.billing.manage ou secondary.settings.manage."
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "{data: bulletin}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Bulletin absent de cet etablissement"}
+        '409': {description: "Module payroll_simple non active"}
+  /api/v1/secondary/staff/payroll/payslips/{id}/validate:
+    post:
+      summary: "Valider un bulletin en brouillon (statut eligible controle a nouveau)"
+      description: "Permission secondary.settings.manage (chef d'etablissement), par une autre personne que celle qui l'a prepare. Audit secondary.staff.payslip_validated."
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "{data: bulletin valide}"}
+        '403': {description: "Permission absente ou validation par l'auteur du bulletin"}
+        '404': {description: "Bulletin absent de cet etablissement"}
+        '409': {description: "Module non actif, bulletin pas en brouillon ou statut devenu non eligible"}
+  /api/v1/secondary/staff/payroll/payslips/{id}/pay:
+    post:
+      summary: "Marquer paye un bulletin valide et emettre DOC-30 par le socle Documents (locale? fr|en)"
+      description: "Permission secondary.billing.manage. Audit secondary.staff.payslip_paid."
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "{data: bulletin paye avec document_id et document_number}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Bulletin absent de cet etablissement"}
+        '409': {description: "Module non actif, bulletin non valide ou statut non eligible"}
+        '422': {description: "Langue invalide ou modele DOC-30 absent"}
+  /api/v1/secondary/staff/payroll/hours:
+    get:
+      summary: "Heures mensuelles saisies du personnel non enseignant pour un mois (month=AAAA-MM)"
+      description: "Permission secondary.finance.read, secondary.billing.manage ou secondary.settings.manage. Module payroll_simple."
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: month, in: query, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "{data: {items: [{id, staff_profile_id, month_ref, minutes, note, status, declared_by, validated_by, validated_at}]}}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Application fermee ou etablissement inconnu"}
+        '409': {description: "Module payroll_simple non active"}
+        '422': {description: "Mois absent ou invalide"}
+    put:
+      summary: "Saisir le total d'heures d'un mois d'un membre non enseignant (staff_profile_id, month_ref, minutes, note?) ; statut declared"
+      description: "Permission secondary.billing.manage (intendant). Un enseignant est refuse (ses heures viennent de l'appel). Audit secondary.staff.monthly_hours_declared."
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "{data: heures du mois}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Profil introuvable ou membre plus actif"}
+        '409': {description: "Module non actif, membre enseignant ou heures deja validees"}
+        '422': {description: "Champ invalide"}
+  /api/v1/secondary/staff/payroll/hours/{id}/validate:
+    post:
+      summary: "Valider les heures mensuelles d'un membre non enseignant"
+      description: "Permission secondary.settings.manage (chef d'etablissement), jamais celui qui les a saisies. Audit secondary.staff.monthly_hours_validated."
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "{data: heures validees}"}
+        '403': {description: "Permission absente ou validation par l'auteur de la saisie"}
+        '404': {description: "Heures absentes de cet etablissement"}
+        '409': {description: "Module non actif ou heures deja validees"}
+  /api/v1/secondary/payroll/{id}/pdf:
+    get:
+      summary: "PDF du DOC-30 d'un bulletin de paie paye de cet etablissement"
+      description: "Permission secondary.billing.manage (intendant) ou secondary.settings.manage (chef d'etablissement). Seul le document du bulletin est lu (contrat DocumentPdfReader). Module payroll_simple."
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: "PDF (Content-Disposition inline, Cache-Control private, no-store)"
+          content:
+            application/pdf: {schema: {type: string, format: binary}}
+        '403': {description: "Permission absente"}
+        '404': {description: "Bulletin absent de cet etablissement, pas encore paye, ou document revoque"}
+        '409': {description: "Module payroll_simple non active"}

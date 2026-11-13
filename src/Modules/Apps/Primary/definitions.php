@@ -1,0 +1,14 @@
+<?php
+
+declare(strict_types=1);
+
+use Scholaris\Modules\Apps\Primary\PrimaryApplication;
+
+return (static function (): array {
+    $definitions = [PrimaryApplication::CONTAINER_KEY => PrimaryApplication::manifest()];
+    foreach (glob(__DIR__ . '/*/definitions.php') ?: [] as $file) {
+        $definitions = array_merge($definitions, (array) require $file);
+    }
+
+    return $definitions;
+})();

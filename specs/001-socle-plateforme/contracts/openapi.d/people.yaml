@@ -1,0 +1,668 @@
+# Contrat OpenAPI 3.1 du service S03 Personnes (fusionné avec openapi.yaml par le test de contrat).
+paths:
+  /api/v1/people:
+    get:
+      summary: "Recherche de personnes (filter[q|phone|email|national_id|last_name|birth_date], pagination par curseur). Un parent ne voit que ses apprenants, un enseignant que ses classes"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Page de personnes"
+    post:
+      summary: "Crée une personne. Détection de doublons nom + date de naissance + téléphone : 409 avec la fiche existante (duplicates, « N critères sur 3 »), sauf confirm_different=true (journalisé)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [first_name, last_name]
+              properties:
+                first_name: {}
+                last_name: {}
+                birth_date: {}
+                birth_place: {}
+                gender: {}
+                nationality: {}
+                phone: {}
+                email: {}
+                locale: {}
+                national_id: {}
+                confirm_different: {}
+      responses:
+        '201':
+          description: "Personne créée"
+        '409':
+          description: "Doublon probable ou matricule national déjà utilisé"
+        '422':
+          description: "Champs invalides"
+  /api/v1/people/duplicates:
+    get:
+      summary: "Candidats doublons pour une identité saisie (first_name, last_name, birth_date, phone en paramètres de requête)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Candidats avec critères concordants et historique résumé"
+        '422':
+          description: "Paramètres invalides"
+  /api/v1/people/import:
+    post:
+      summary: "Import CSV de personnes (multipart « file » ou JSON {csv}) avec rapport d’erreurs ligne par ligne ; rien n’est enregistré s’il reste une erreur bloquante ; validate_only ne crée rien"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: "Rapport de validation"
+        '201':
+          description: "Personnes créées"
+        '422':
+          description: "Import refusé, rapport d’erreurs"
+  /api/v1/people/{id}:
+    get:
+      summary: "Fiche d’une personne"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: "Personne"
+        '404':
+          description: "Introuvable ou non visible par l’appelant"
+    patch:
+      summary: "Modifie une personne (champs partiels)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                first_name: {}
+                last_name: {}
+                birth_date: {}
+                birth_place: {}
+                gender: {}
+                nationality: {}
+                phone: {}
+                email: {}
+                locale: {}
+                national_id: {}
+      responses:
+        '200':
+          description: "Personne modifiée"
+        '404':
+          description: "Introuvable"
+        '409':
+          description: "Matricule national déjà utilisé"
+        '422':
+          description: "Champs invalides"
+    delete:
+      summary: "Supprime une personne sans inscription, consentement ni compte"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '204':
+          description: "Supprimée"
+        '404':
+          description: "Introuvable"
+        '409':
+          description: "Personne liée à des inscriptions, consentements ou un compte"
+  /api/v1/people/{id}/contacts:
+    get:
+      summary: "Contacts supplémentaires de la personne"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: "Contacts"
+        '404':
+          description: "Introuvable"
+    post:
+      summary: "Ajoute un contact (phone, email, address)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [kind, value]
+              properties:
+                kind: {}
+                value: {}
+                label: {}
+      responses:
+        '201':
+          description: "Contact ajouté"
+        '422':
+          description: "Champs invalides"
+  /api/v1/people/{id}/contacts/{contactId}:
+    delete:
+      summary: "Supprime un contact"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - {name: id, in: path, required: true, schema: {type: string}}
+        - {name: contactId, in: path, required: true, schema: {type: string}}
+      responses:
+        '204':
+          description: "Supprimé"
+        '404':
+          description: "Introuvable"
+  /api/v1/people/{id}/identifiers:
+    get:
+      summary: "Identifiants internes (par établissement) et national"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: "Identifiants"
+        '404':
+          description: "Introuvable"
+    post:
+      summary: "Ajoute un identifiant interne (establishment_id requis) ou le matricule national"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [kind, value]
+              properties:
+                kind: {}
+                value: {}
+                establishment_id: {}
+      responses:
+        '201':
+          description: "Identifiant ajouté"
+        '409':
+          description: "Identifiant déjà utilisé"
+        '422':
+          description: "Champs invalides"
+  /api/v1/people/{id}/identifiers/{identifierId}:
+    delete:
+      summary: "Supprime un identifiant"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - {name: id, in: path, required: true, schema: {type: string}}
+        - {name: identifierId, in: path, required: true, schema: {type: string}}
+      responses:
+        '204':
+          description: "Supprimé"
+        '404':
+          description: "Introuvable"
+  /api/v1/people/{id}/schooling-history:
+    get:
+      summary: "Historique de scolarité (inscriptions validées et scolarités déclarées)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: "Historique"
+        '404':
+          description: "Introuvable"
+    post:
+      summary: "Ajoute une scolarité antérieure déclarée"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [school_name]
+              properties:
+                school_name: {}
+                level_label: {}
+                year_label: {}
+                outcome: {}
+      responses:
+        '201':
+          description: "Entrée ajoutée"
+        '422':
+          description: "Champs invalides"
+  /api/v1/people/{id}/enrollments:
+    get:
+      summary: "Inscriptions de la personne dans tous les établissements du client"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: "Inscriptions"
+        '404':
+          description: "Introuvable"
+  /api/v1/people/{id}/health:
+    get:
+      summary: "Dossier de santé déchiffré (permission people.health.read, lecture journalisée)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: "Dossier de santé"
+        '403':
+          description: "Permission manquante"
+    put:
+      summary: "Met à jour le dossier de santé (chiffré en base)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                blood_group: {}
+                allergies: {}
+                conditions: {}
+                medications: {}
+                doctor_name: {}
+                doctor_phone: {}
+                notes: {}
+      responses:
+        '200':
+          description: "Dossier de santé"
+        '403':
+          description: "Permission manquante"
+        '422':
+          description: "Champs invalides"
+  /api/v1/people/{id}/relations:
+    get:
+      summary: "Relations de la personne dans les deux sens (as = subject ou related)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: "Relations"
+        '404':
+          description: "Introuvable"
+    post:
+      summary: "Lie related_person_id à la personne (parent, guardian, financial_guarantor, authorized_pickup, emergency)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [related_person_id, kind]
+              properties:
+                related_person_id: {}
+                kind: {}
+      responses:
+        '201':
+          description: "Lien créé"
+        '409':
+          description: "Lien existant ou incohérent"
+        '422':
+          description: "Champs invalides"
+  /api/v1/people/{id}/relations/{relationId}:
+    delete:
+      summary: "Supprime un lien"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - {name: id, in: path, required: true, schema: {type: string}}
+        - {name: relationId, in: path, required: true, schema: {type: string}}
+      responses:
+        '204':
+          description: "Supprimé"
+        '404':
+          description: "Introuvable"
+  /api/v1/people/{id}/documents:
+    get:
+      summary: "Pièces du dossier avec état (received, expiring_soon, expired) et complétude (meta.completeness : required, received, missing)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: "Pièces"
+        '404':
+          description: "Introuvable"
+    post:
+      summary: "Téléverse une pièce (multipart : kind, expires_on, file). PDF, JPG ou PNG, 5 Mo maximum, stockée hors racine web sous un nom généré"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: "Pièce enregistrée"
+        '422':
+          description: "Type, taille ou contenu refusé"
+  /api/v1/people/{id}/documents/{docId}:
+    delete:
+      summary: "Supprime une pièce"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - {name: id, in: path, required: true, schema: {type: string}}
+        - {name: docId, in: path, required: true, schema: {type: string}}
+      responses:
+        '204':
+          description: "Supprimée"
+        '404':
+          description: "Introuvable"
+  /api/v1/people/{id}/documents/{docId}/link:
+    get:
+      summary: "Lien de téléchargement signé (HMAC) et temporaire"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - {name: id, in: path, required: true, schema: {type: string}}
+        - {name: docId, in: path, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: "url et expires_at"
+        '404':
+          description: "Introuvable"
+  /api/v1/people/{id}/documents/{docId}/download:
+    get:
+      summary: "Télécharge la pièce avec expires et signature ; 403 si le lien est expiré ou falsifié"
+      security: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+        - {name: docId, in: path, required: true, schema: {type: string}}
+        - {name: expires, in: query, required: true, schema: {type: integer}}
+        - {name: signature, in: query, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: "Contenu de la pièce"
+        '403':
+          description: "Lien invalide ou expiré"
+        '404':
+          description: "Introuvable"
+  /api/v1/consents:
+    get:
+      summary: "Consentements d’une personne (filter[person_id] obligatoire, filter[purpose])"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Consentements"
+        '422':
+          description: "filter[person_id] manquant"
+    post:
+      summary: "Donne un consentement horodaté (communication, photo, parent_access)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [person_id, purpose]
+              properties:
+                person_id: {}
+                purpose: {}
+      responses:
+        '201':
+          description: "Consentement donné"
+        '409':
+          description: "Déjà donné"
+        '422':
+          description: "Champs invalides"
+  /api/v1/consents/{id}/revoke:
+    post:
+      summary: "Révoque un consentement (horodaté, jamais supprimé)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: "Consentement révoqué"
+        '404':
+          description: "Introuvable"
+        '409':
+          description: "Déjà révoqué"
+  /api/v1/enrollments:
+    get:
+      summary: "Inscriptions de l’établissement actif (filter[person_id|status|structure_id|academic_year_id])"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Page d’inscriptions"
+    post:
+      summary: "Crée un brouillon d’inscription (structure refusée si son autorisation n’est pas valide)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [person_id]
+              properties:
+                person_id: {}
+                structure_id: {}
+                academic_year_id: {}
+      responses:
+        '201':
+          description: "Brouillon créé"
+        '409':
+          description: "Inscription déjà en cours"
+        '422':
+          description: "Structure sans autorisation valide"
+  /api/v1/enrollments/{id}:
+    get:
+      summary: "Inscription avec taux de complétude"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: "Inscription"
+        '404':
+          description: "Introuvable"
+    patch:
+      summary: "Enregistre le brouillon (filière, année)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                structure_id: {}
+                academic_year_id: {}
+      responses:
+        '200':
+          description: "Brouillon enregistré"
+        '409':
+          description: "Inscription non modifiable"
+        '422':
+          description: "Structure sans autorisation valide"
+    delete:
+      summary: "Supprime un brouillon"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '204':
+          description: "Supprimé"
+        '409':
+          description: "Inscription validée"
+  /api/v1/enrollments/{id}/validate:
+    post:
+      summary: "Valide l’inscription : autorisation de la structure, garant, pièces (active ou conditional si des pièces manquent), numéro interne continu"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: "Inscription validée"
+        '409':
+          description: "Déjà validée ou doublon"
+        '422':
+          description: "Dossier incomplet ou structure sans autorisation"
+  /api/v1/enrollments/{id}/status:
+    post:
+      summary: "Change le statut (suspended, withdrawn, excluded, transferred, graduated, active)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: {}
+      responses:
+        '404':
+          description: "Inscription introuvable"
+        '422':
+          description: "Statut absent ou invalide"
+        '200':
+          description: "Statut modifié"
+        '409':
+          description: "Transition impossible"
+  /api/v1/people/export:
+    get:
+      summary: "Export CSV (UTF-8 avec BOM, séparateur « ; ») de la liste des personnes : mêmes filtres et mêmes personnes visibles que GET /people, plafonné à 5 000 lignes"
+      security:
+        - bearer: []
+      parameters:
+        - name: format
+          in: query
+          required: false
+          description: "Format du fichier : csv (défaut ; UTF-8 avec BOM, séparateur « ; ») ou xlsx (Excel)"
+          schema: {type: string, enum: [csv, xlsx], default: csv}
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Fichier CSV"
+          content:
+            text/csv:
+              schema: {type: string}
+        '422':
+          description: "Filtre non autorisé"
+  /api/v1/enrollments/export:
+    get:
+      summary: "Export CSV (UTF-8 avec BOM, séparateur « ; ») des inscriptions de l’établissement actif : mêmes filtres que GET /enrollments, plafonné à 5 000 lignes"
+      security:
+        - bearer: []
+      parameters:
+        - name: format
+          in: query
+          required: false
+          description: "Format du fichier : csv (défaut ; UTF-8 avec BOM, séparateur « ; ») ou xlsx (Excel)"
+          schema: {type: string, enum: [csv, xlsx], default: csv}
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Fichier CSV"
+          content:
+            text/csv:
+              schema: {type: string}
+        '422':
+          description: "Filtre non autorisé"

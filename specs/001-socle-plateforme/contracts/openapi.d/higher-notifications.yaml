@@ -1,0 +1,38 @@
+# Contrat OpenAPI 3.1 des notifications de l'application Supérieur (IPES) : NOT-01 à NOT-11 (NOT-12 et suivantes non reçues),
+# envoyées par le Messenger du socle (modèles higher.notNN.*, FR/EN, variables de la liste blanche de la messagerie).
+# Déclencheurs branchés : NOT-08 (J-7), NOT-09 (J+1, J+15), NOT-10 (paiement reçu) ; les autres sont des gabarits prêts.
+# Tâche planifiée : php bin/console higher:reminders [AAAA-MM-JJ] (clients suspendus sautés).
+paths:
+  /api/v1/higher/notifications/catalog:
+    get:
+      summary: "Catalogue NOT-01 à NOT-11 : clé de modèle, destinataires, canaux, déclencheur, modèles à installer (POST /message-templates)"
+      responses:
+        '200': {description: "Catalogue"}
+        '403': {description: "Permission higher.access absente"}
+        '404': {description: "Application fermée"}
+  /api/v1/higher/notifications/log:
+    get:
+      summary: "Journal des notifications envoyées (filtre person_id)"
+      parameters:
+        - {name: person_id, in: query, required: false, schema: {type: string}}
+      responses:
+        '404': {description: "Application fermée, ressource introuvable ou hors périmètre"}
+        '200': {description: "Envois (statut sent, queued, blocked, duplicate, failed)"}
+        '403': {description: "Permission absente"}
+  /api/v1/higher/notifications/reminders/run:
+    post:
+      summary: "Relances de l'échéancier du jour (ou d'une date) pour l'établissement : NOT-08 à J-7, NOT-09 à J+1 et J+15, une seule fois par tranche"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                date: {type: string, format: date}
+      responses:
+        '404': {description: "Application fermée, ressource introuvable ou hors périmètre"}
+        '200': {description: "Bilan (sent, duplicates, blocked, reminders)"}
+        '403': {description: "Permission billing.manage absente"}
+        '422': {description: "Date invalide"}
+        '423': {description: "Abonnement suspendu"}

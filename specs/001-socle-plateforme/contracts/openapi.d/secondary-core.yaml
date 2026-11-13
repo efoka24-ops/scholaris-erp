@@ -1,0 +1,175 @@
+# Contrat OpenAPI 3.1 du squelette de l'application Enseignement secondaire (spec 005, vague 0 : T810, T813, T814) : profil
+# d'etablissement (profil de type ou copie d'ouverture, etat des modules activables) et table de reference des series et
+# specialites (catalogue MINESEC amorce, a confirmer). Fusionne avec openapi.yaml par le test de contrat. Erreurs RFC 9457.
+# Routes /secondary/** : authentification, en-tete X-Establishment-Id ; GET -> 404 si l'application est fermee ; ecritures -> 423
+# si l'abonnement est suspendu, 403 si l'application n'est pas ouverte (WriteGate). Route d'un module activable : 409
+# `module_not_enabled` (membre `code`) si le module est inactif ; lecture seule s'il a ete coupe apres usage (ModuleGate).
+# Routes /platform/secondary/** : administrateur de plateforme seulement (client `platform`, platform.access et
+# platform.applications.manage), sans en-tete d'etablissement.
+paths:
+  /api/v1/secondary/setup/profile:
+    get:
+      summary: "Profil effectif de l'etablissement : type, cycles, enseignements, propriete, sections, vocabulaire, etat de chaque module"
+      description: "stored=false : valeurs de depart du profil de type (parametre secondary.type_profiles.<code>, a confirmer) ; stored=true : copie faite a l'ouverture. Permission secondary.profile.read, secondary.profile.manage ou secondary.settings.manage."
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Profil {data: {subtype, stored, profile_version, confirmation, ownership, ownership_options, cycles, teaching_kinds, sections, head_title, modules: [{code, state, default_for_type}]}}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Application fermee ou etablissement introuvable"}
+        '422': {description: "Type d'etablissement absent ou hors de la liste fermee des 7 types"}
+  /api/v1/secondary/catalogue/streams:
+    get:
+      summary: "Series et specialites proposees a l'etablissement (liste de la plateforme non retiree et ajouts propres, renommages et masquages de l'etablissement appliques)"
+      description: "Filtrees par les cycles et enseignements du profil (scope=all pour tout voir) ; lignes masquees exclues sauf include_hidden=1. Permission secondary.catalogue.read ou droits de parametrage."
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: scope, in: query, required: false, schema: {type: string, enum: [profile, all]}}
+        - {name: include_hidden, in: query, required: false, schema: {type: string, enum: ['0', '1']}}
+        - {name: 'filter[code]', in: query, required: false, schema: {type: string}}
+        - {name: 'filter[cycle_code]', in: query, required: false, schema: {type: string, enum: [first, second]}}
+        - {name: 'filter[teaching_kind]', in: query, required: false, schema: {type: string, enum: [general, technical]}}
+        - {name: 'filter[track_code]', in: query, required: false, schema: {type: string, enum: [GEN, STT, IND]}}
+        - {name: 'filter[stream_kind]', in: query, required: false, schema: {type: string, enum: [series, specialty]}}
+        - {name: sort, in: query, required: false, schema: {type: string}}
+        - {name: per_page, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 200}}
+        - {name: cursor, in: query, required: false, schema: {type: string}}
+      responses:
+        '200': {description: "Liste paginee {data, meta.next_cursor, meta.per_page}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Application fermee ou etablissement introuvable"}
+        '422': {description: "Filtre, tri ou pagination invalide ; type d'etablissement invalide"}
+    post:
+      summary: "Ajouter une serie ou specialite propre a l'etablissement (source obligatoire, cycle offert par le profil)"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [code, cycle_code, teaching_kind, label_fr, source_ref]
+              properties:
+                code: {type: string, maxLength: 20}
+                cycle_code: {type: string, enum: [first, second]}
+                teaching_kind: {type: string, enum: [general, technical]}
+                track_code: {type: string, enum: [GEN, STT, IND]}
+                section_code: {type: string, enum: [fr, en]}
+                field_label: {type: [string, 'null'], maxLength: 120}
+                label_fr: {type: string, maxLength: 160}
+                label_en: {type: [string, 'null'], maxLength: 160}
+                source_ref: {type: string, maxLength: 255}
+      responses:
+        '201': {description: "Ligne creee (origine establishment, avec son historique)"}
+        '403': {description: "Permission absente, affectation hors etablissement entier, ou application non ouverte"}
+        '404': {description: "Etablissement introuvable"}
+        '422': {description: "Donnees invalides, code deja dans la liste de la plateforme, cycle absent du profil"}
+        '423': {description: "Abonnement suspendu"}
+  /api/v1/secondary/catalogue/streams/{id}:
+    get:
+      summary: "Une serie ou specialite vue par l'etablissement, avec son historique (plateforme et etablissement)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Ligne et historique"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Introuvable, retiree par la plateforme ou application fermee"}
+    patch:
+      summary: "Masquer, afficher ou renommer pour CET etablissement (ligne de la plateforme : surcharge propre ; ligne propre : modification), motif obligatoire"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [reason]
+              properties:
+                label_fr: {type: [string, 'null'], maxLength: 160}
+                label_en: {type: [string, 'null'], maxLength: 160}
+                hidden: {type: boolean}
+                reason: {type: string, maxLength: 255}
+      responses:
+        '200': {description: "Ligne modifiee avec son historique"}
+        '403': {description: "Permission absente ou application non ouverte"}
+        '404': {description: "Introuvable"}
+        '422': {description: "Motif absent ou aucun changement"}
+        '423': {description: "Abonnement suspendu"}
+  /api/v1/platform/secondary/streams:
+    get:
+      summary: "Liste de reference de la plateforme (retirees comprises)"
+      parameters:
+        - {name: 'filter[code]', in: query, required: false, schema: {type: string}}
+        - {name: 'filter[cycle_code]', in: query, required: false, schema: {type: string}}
+        - {name: 'filter[teaching_kind]', in: query, required: false, schema: {type: string}}
+        - {name: 'filter[track_code]', in: query, required: false, schema: {type: string}}
+        - {name: 'filter[origin]', in: query, required: false, schema: {type: string}}
+        - {name: 'filter[confirmation]', in: query, required: false, schema: {type: string}}
+        - {name: per_page, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 200}}
+        - {name: cursor, in: query, required: false, schema: {type: string}}
+      responses:
+        '200': {description: "Liste paginee"}
+        '403': {description: "Reserve a l'administrateur de plateforme"}
+        '422': {description: "Filtre ou pagination invalide"}
+    post:
+      summary: "Ajouter une ligne a la liste de la plateforme (source obligatoire)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [code, cycle_code, teaching_kind, label_fr, source_ref]
+              properties:
+                code: {type: string, maxLength: 20}
+                cycle_code: {type: string, enum: [first, second]}
+                teaching_kind: {type: string, enum: [general, technical]}
+                track_code: {type: string, enum: [GEN, STT, IND]}
+                section_code: {type: string, enum: [fr, en]}
+                field_label: {type: [string, 'null'], maxLength: 120}
+                label_fr: {type: string, maxLength: 160}
+                label_en: {type: [string, 'null'], maxLength: 160}
+                source_ref: {type: string, maxLength: 255}
+      responses:
+        '201': {description: "Ligne creee (origine platform)"}
+        '403': {description: "Reserve a l'administrateur de plateforme"}
+        '422': {description: "Donnees invalides ou cle (code, cycle) deja presente"}
+  /api/v1/platform/secondary/streams/{id}:
+    get:
+      summary: "Une ligne de la plateforme et son historique"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Ligne et historique"}
+        '403': {description: "Reserve a l'administrateur de plateforme"}
+        '404': {description: "Introuvable"}
+    patch:
+      summary: "Renommer, retirer ou remettre, marquer confirmee une ligne de la plateforme (version incrementee, motif obligatoire)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [reason]
+              properties:
+                label_fr: {type: string, maxLength: 160}
+                label_en: {type: [string, 'null'], maxLength: 160}
+                hidden: {type: boolean}
+                confirmation: {type: string, enum: [to_confirm, confirmed, custom]}
+                reason: {type: string, maxLength: 255}
+      responses:
+        '200': {description: "Ligne modifiee"}
+        '403': {description: "Reserve a l'administrateur de plateforme"}
+        '404': {description: "Introuvable"}
+        '422': {description: "Motif absent ou aucun changement"}

@@ -1,0 +1,37 @@
+<?php
+
+declare(strict_types=1);
+
+use function DI\autowire;
+use function DI\get;
+
+use Scholaris\Core\Http\TenantRestriction;
+use Scholaris\Modules\Socle\Platform\Console\AdminCreateCommand;
+use Scholaris\Modules\Socle\Platform\Console\BillingRunCommand;
+use Scholaris\Modules\Socle\Platform\Console\ClientCreateCommand;
+use Scholaris\Modules\Socle\Platform\Contracts\ApplicationAccess;
+use Scholaris\Modules\Socle\Platform\Contracts\RegularisationStatus;
+use Scholaris\Modules\Socle\Platform\Infrastructure\PdoApplicationAccess;
+use Scholaris\Modules\Socle\Platform\Infrastructure\PdoTenantRestriction;
+
+/**
+ * Liaisons du module Platform. Les manifestes d'applications ne sont PAS déclarés ici : chaque application déclare le sien
+ * dans son propre definitions.php sous `platform.applications.<clé>` (voir Contracts\ApplicationManifest) ; le catalogue
+ * initial est amorcé par migration (table platform_applications).
+ */
+return [
+    ApplicationAccess::class => autowire(PdoApplicationAccess::class),
+    RegularisationStatus::class => get(ApplicationAccess::class),
+    // Blocage central des routes d'un client en régularisation de paiement (middleware du noyau EnforceTenantRestriction).
+    TenantRestriction::class => autowire(PdoTenantRestriction::class),
+    // C-112 : emplacements lus par les sondes de santé (planificateur, journaux, fichiers, sauvegardes).
+    \Scholaris\Modules\Socle\Platform\Infrastructure\HealthPaths::class => \DI\factory(static fn (\Scholaris\Core\Config\Config $config): \Scholaris\Modules\Socle\Platform\Infrastructure\HealthPaths => \Scholaris\Modules\Socle\Platform\Infrastructure\HealthPaths::fromConfig($config, dirname(__DIR__, 4))),
+
+    'console.command.platform:admin-create' => autowire(AdminCreateCommand::class),
+    'console.command.platform:billing-run' => autowire(BillingRunCommand::class),
+    'console.command.platform:daily-digest' => autowire(\Scholaris\Modules\Socle\Platform\Console\DailyDigestCommand::class),
+    // C-112 point 6 (raccord C-113) : canaux de notification de la messagerie choisis dans « Mon profil » ; remplace la liaison
+    // par défaut de Messaging (application seulement), les définitions de Platform étant chargées après celles de Messaging.
+    \Scholaris\Modules\Socle\Messaging\Contracts\NotificationChannelPreferences::class => autowire(\Scholaris\Modules\Socle\Platform\Infrastructure\PreferenceChannels::class),
+    'console.command.' . ClientCreateCommand::NAME => autowire(ClientCreateCommand::class),
+];

@@ -1,0 +1,83 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Scholaris\Modules\Apps\Primary\Policies;
+
+final class RoleMatrix
+{
+    /** @var array<string, array{code: string, permissions: list<string>}> */
+    public const ROLES = [
+        'P01' => ['code' => 'primary_promoteur', 'permissions' => ['primary.dashboard.read', 'reporting.read']],
+        'P02' => ['code' => 'primary_directeur', 'permissions' => ['primary.settings.manage', 'primary.council.preside', 'primary.report_card.sign', 'assessment.correction.approve', 'primary.promotion.decide', 'primary.dashboard.read']],
+        'P03' => ['code' => 'primary_adjoint', 'permissions' => ['primary.referential.manage', 'assessment.validate', 'scheduling.manage']],
+        'P04' => ['code' => 'enseignant', 'permissions' => ['grades.enter', 'assessment.submit', 'attendance.take', 'primary.competency.enter', 'primary.journal.write', 'primary.conduct.enter']],
+        'P05' => ['code' => 'enseignant', 'permissions' => ['grades.enter', 'attendance.take']],
+        'P06' => ['code' => 'primary_secretaire', 'permissions' => ['people.manage', 'primary.enrol', 'documents.issue', 'primary.exam.manage']],
+        'P09' => ['code' => 'primary_surveillant', 'permissions' => ['attendance.sanction.manage', 'primary.pickup.handover']],
+    ];
+
+    /**
+     * Permissions ajoutées par la migration 202610211303 (lecture du référentiel, du profil d'élève, des compétences, de la conduite et du
+     * cahier de liaison ; validation des feuilles de compétences). Elles complètent ROLES : mêmes rôles, mêmes codes.
+     *
+     * @var array<string, list<string>>
+     */
+    public const EXTRA = [
+        'primary_directeur' => ['primary.referential.read', 'primary.learner.read', 'primary.competency.read', 'primary.competency.validate', 'primary.conduct.read', 'primary.journal.read'],
+        'primary_adjoint' => ['primary.referential.read', 'primary.learner.read', 'primary.competency.read', 'primary.competency.validate', 'primary.conduct.read', 'primary.journal.read'],
+        'primary_promoteur' => ['primary.referential.read', 'primary.learner.read', 'primary.competency.read', 'primary.conduct.read', 'primary.journal.read'],
+        'primary_secretaire' => ['primary.referential.read', 'primary.learner.read'],
+        'enseignant' => ['primary.referential.read', 'primary.learner.read', 'primary.competency.enter', 'primary.competency.read', 'primary.conduct.enter', 'primary.conduct.read', 'primary.journal.write', 'primary.journal.read'],
+    ];
+
+    /**
+     * Permissions ajoutées par la migration 202610231411 (P-002 : conseil, bulletins, remédiation, examen, tutelle, services, sortie).
+     *
+     * @var array<string, list<string>>
+     */
+    public const EXTRA_P002 = [
+        'primary_directeur' => ['primary.council.read', 'primary.report_card.read', 'primary.remediation.read', 'primary.remediation.write', 'primary.exam.read', 'primary.exam.manage', 'primary.tutelage.export', 'primary.services.read', 'primary.pickup.read', 'primary.pickup.handover'],
+        'primary_adjoint' => ['primary.council.read', 'primary.report_card.read', 'primary.remediation.read', 'primary.remediation.write', 'primary.exam.read'],
+        'primary_promoteur' => ['primary.council.read', 'primary.report_card.read', 'primary.remediation.read', 'primary.exam.read', 'primary.tutelage.export', 'primary.services.read'],
+        'primary_secretaire' => ['primary.report_card.read', 'primary.exam.read', 'primary.tutelage.export', 'primary.services.read'],
+        'primary_surveillant' => ['primary.pickup.read'],
+        'enseignant' => ['primary.council.read', 'primary.report_card.read', 'primary.remediation.read', 'primary.remediation.write'],
+        'comptable' => ['primary.services.read', 'primary.services.manage'],
+    ];
+
+    /**
+     * Lecture de l'organisation (classes, niveaux, années, périodes du socle) ajoutée par la migration 202611080101 (C-115, défaut
+     * C110-PR1) : les écrans du primaire lisent GET /structures et /academic-years. Lecture seulement.
+     *
+     * @var array<string, list<string>>
+     */
+    public const EXTRA_ORGANISATION = [
+        'primary_promoteur' => ['organisation.read'],
+        'primary_directeur' => ['organisation.read'],
+        'primary_adjoint' => ['organisation.read'],
+        'primary_secretaire' => ['organisation.read'],
+        'primary_surveillant' => ['organisation.read'],
+    ];
+
+    /**
+     * Appel par demi-journée ouvert à la direction (lecture de la liste et appel d'une classe), migration 202611110745 (FIX-PRI 1).
+     *
+     * @var array<string, list<string>>
+     */
+    public const EXTRA_FIX_PRI = [
+        'primary_directeur' => ['attendance.read', 'attendance.take'],
+    ];
+
+    /** @var array<string, array<string, array{0: string, 1: string}>> */
+    public const MATRIX = [
+        'parametrage' => ['P02' => ['V', 'primary.settings.manage'], 'P03' => ['E', 'primary.referential.manage']],
+        'inscriptions' => ['P02' => ['V', 'primary.enrol'], 'P06' => ['E', 'primary.enrol']],
+        'presence' => ['P04' => ['E', 'attendance.take'], 'P09' => ['E', 'attendance.sanction.manage']],
+        'conseil' => ['P02' => ['V', 'primary.council.preside'], 'P03' => ['E', 'assessment.validate']],
+    ];
+
+    private function __construct()
+    {
+    }
+}

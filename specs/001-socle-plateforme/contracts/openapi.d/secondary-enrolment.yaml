@@ -1,0 +1,276 @@
+# Contrat OpenAPI 3.1 des inscriptions de l'application Enseignement secondaire (spec 005, lot E1 : T823 a T827, API-01, API-02).
+# Inscription (fiche et garants du socle, inscription du socle dans une classe parametree, garde organisation.enrolment.guards.secondary :
+# classe parametree, cycle du profil RG-ORG-1, autorisation valide RG-ORG-3 si le module authorizations est actif, exclu definitif
+# RG-INS-3), alerte d'age RG-INS-2 (422 admission-age-alert ; decision motivee du chef, secondary.enrol.validate), aucun controle de
+# paiement (RG-INS-4). Matricule national : tenu par CarteScolaire (contrat NationalIds), jamais dans une adresse (l'adresse porte
+# l'identifiant interne de la personne). Preinscriptions, fichier d'echange du primaire signe (HMAC-SHA256, idempotent), reinscription
+# des eleves autorises par le conseil, transferts sortant et entrant, import des eleves (CSV ou XLSX, simulation puis application).
+# Routes /secondary/** : authentification, en-tete X-Establishment-Id ; ecritures -> 423 si l'abonnement est suspendu, 403 si
+# l'application n'est pas ouverte (WriteGate). Listes paginees par curseur. Erreurs RFC 9457.
+paths:
+  /api/v1/secondary/enrolments:
+    post:
+      summary: "API-01 : inscrire un eleve {person_id | identity, guardians?, class_id, entry_date, national_id?, repeater?, entry_kind?, age_decision_reason?, exclusion_decision_reason?, documents_checked?, confirm_different?, special_situation?, guardian_financial? (le premier parent ou tuteur, avec son telephone, devient garant financier ; fiche reprise si ce telephone est deja connu)}"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '201': {description: "Succes {data}"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, classe hors perimetre, decision reservee au chef ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert, matricule deja attribue, inscription en cours ailleurs, etat incompatible"}
+        '422': {description: "Validation (errors par champ), refus de la garde d'inscription, alerte d'age, exclu definitif"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+  /api/v1/secondary/enrolment/students:
+    get:
+      summary: "Eleves inscrits (annee, classe, statut du matricule ; pending=1 : liste a regulariser RG-INS-1), perimetre classe applique"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: per_page, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 200}}
+        - {name: cursor, in: query, required: false, schema: {type: string}}
+        - {name: academic_year_id, in: query, required: false, schema: {type: string}}
+        - {name: class_structure_id, in: query, required: false, schema: {type: string}}
+        - {name: pending, in: query, required: false, schema: {type: string, enum: ['0', '1']}}
+      responses:
+        '200': {description: "Succes {data}"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, classe hors perimetre, decision reservee au chef ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert, matricule deja attribue, inscription en cours ailleurs, etat incompatible"}
+        '422': {description: "Validation (errors par champ), refus de la garde d'inscription, alerte d'age, exclu definitif"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+  /api/v1/secondary/enrolment/directory:
+    get:
+      summary: "Annuaire des eleves (nom, prenom, classe de la derniere inscription) pour choisir un eleve par son nom : caisse, infirmerie, services, ateliers, stages ; perimetre classe applique"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: academic_year_id, in: query, required: false, schema: {type: string}}
+        - {name: class_structure_id, in: query, required: false, schema: {type: string}}
+      responses:
+        '200': {description: "Succes {data: {items: [{person_id, last_name, first_name, full_name, class_structure_id, class_label, academic_year_id}]}}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Application fermee"}
+  /api/v1/secondary/enrolment/students/{id}:
+    get:
+      summary: "Dossier de l'eleve (identite courte, statut du matricule, redoublement, exclusion, inscriptions, transferts, garants financiers avec leur reference de paiement famille payment_reference, D-BUL)"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Succes {data}"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, classe hors perimetre, decision reservee au chef ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert, matricule deja attribue, inscription en cours ailleurs, etat incompatible"}
+        '422': {description: "Validation (errors par champ), refus de la garde d'inscription, alerte d'age, exclu definitif"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+  /api/v1/secondary/enrolment/students/{id}/guarantors:
+    post:
+      summary: "C-118 : rattacher un garant financier {phone, last_name?, first_name?} : la personne du client qui porte ce telephone (parent deja connu), sinon une nouvelle personne (nom exige) ; dossier mis a jour avec financial_guarantors"
+      description: "Permission secondary.enrol.manage, classe de l eleve dans le perimetre. Le portail famille liste les enfants dont la personne connectee est garant financier."
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Succes {data} (dossier de l eleve)"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, classe hors perimetre ou application non ouverte"}
+        '404': {description: "Eleve introuvable dans l etablissement"}
+        '409': {description: "Plusieurs personnes portent ce telephone"}
+        '422': {description: "Telephone invalide, nom exige pour un nouveau garant, champ non reconnu"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+  /api/v1/secondary/students/{id}/national-id:
+    put:
+      summary: "API-02 : enregistrer le matricule national {national_id} (format parametre, unicite 409)"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Succes {data}"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, classe hors perimetre, decision reservee au chef ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert, matricule deja attribue, inscription en cours ailleurs, etat incompatible"}
+        '422': {description: "Validation (errors par champ), refus de la garde d'inscription, alerte d'age, exclu definitif"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+  /api/v1/secondary/enrolment/preregistrations:
+    get:
+      summary: "Preinscriptions (filtres status, channel, target_level_code)"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: per_page, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 200}}
+        - {name: cursor, in: query, required: false, schema: {type: string}}
+      responses:
+        '200': {description: "Succes {data}"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, classe hors perimetre, decision reservee au chef ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert, matricule deja attribue, inscription en cours ailleurs, etat incompatible"}
+        '422': {description: "Validation (errors par champ), refus de la garde d'inscription, alerte d'age, exclu definitif"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+    post:
+      summary: "Preinscription au guichet ou en ligne {last_name, first_name, birth_date?, gender?, guardian_name?, guardian_phone?, target_level_code, stream_id?, channel, documents_checked?}"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '201': {description: "Succes {data}"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, classe hors perimetre, decision reservee au chef ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert, matricule deja attribue, inscription en cours ailleurs, etat incompatible"}
+        '422': {description: "Validation (errors par champ), refus de la garde d'inscription, alerte d'age, exclu definitif"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+  /api/v1/secondary/enrolment/preregistrations/{id}:
+    patch:
+      summary: "Decision ou test d'entree (prive seulement) {status?, entry_test_score?, decision_reason?, documents_checked?}"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Succes {data}"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, classe hors perimetre, decision reservee au chef ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert, matricule deja attribue, inscription en cours ailleurs, etat incompatible"}
+        '422': {description: "Validation (errors par champ), refus de la garde d'inscription, alerte d'age, exclu definitif"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+  /api/v1/secondary/enrolment/preregistrations/{id}/convert:
+    post:
+      summary: "Convertir une preinscription acceptee en inscription {class_id, entry_date, guardians?, national_id?, age_decision_reason?}"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '201': {description: "Succes {data}"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, classe hors perimetre, decision reservee au chef ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert, matricule deja attribue, inscription en cours ailleurs, etat incompatible"}
+        '422': {description: "Validation (errors par champ), refus de la garde d'inscription, alerte d'age, exclu definitif"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+  /api/v1/secondary/enrolment/preregistrations/{id}/slip:
+    post:
+      summary: "DOC-01 : fiche de preinscription et resultat du test d'entree {academic_year_label?, confirm_different?, locale?} (cree la fiche de l'eleve si besoin, sans inscription)"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '201': {description: "Document emis {data: {preregistration, document}}"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente ou application non ouverte"}
+        '404': {description: "Application fermee ou preinscription introuvable"}
+        '409': {description: "Profil non ouvert, doublon probable de personne, module inactif"}
+        '422': {description: "Validation, modele de document absent"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+  /api/v1/secondary/enrolment/primary-files:
+    post:
+      summary: "Fichier d'echange du primaire (scholaris.public_primary.secondary_transfer.v1) {dossier_json, signature, target_level_code} : preinscription ; deja importe : 200 duplicate"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '201': {description: "Succes {data}"}
+        '200': {description: "Dossier deja importe (duplicate=true)"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, classe hors perimetre, decision reservee au chef ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert, matricule deja attribue, inscription en cours ailleurs, etat incompatible"}
+        '422': {description: "Validation (errors par champ), refus de la garde d'inscription, alerte d'age, exclu definitif"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+  /api/v1/secondary/enrolment/reenrolments/candidates:
+    get:
+      summary: "Eleves de l'annee source avec la decision du conseil (admitted) et la reinscription deja faite"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: per_page, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 200}}
+        - {name: cursor, in: query, required: false, schema: {type: string}}
+        - {name: from_academic_year_id, in: query, required: true, schema: {type: string}}
+        - {name: academic_year_id, in: query, required: false, schema: {type: string}}
+      responses:
+        '200': {description: "Succes {data}"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, classe hors perimetre, decision reservee au chef ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert, matricule deja attribue, inscription en cours ailleurs, etat incompatible"}
+        '422': {description: "Validation (errors par champ), refus de la garde d'inscription, alerte d'age, exclu definitif"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+  /api/v1/secondary/enrolment/reenrolments:
+    post:
+      summary: "Reinscription {from_academic_year_id, class_id, entry_date, students: [{person_id, repeat?, exclusion_decision_reason?}]} : rapport enrolled / refused par eleve"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '201': {description: "Succes {data}"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, classe hors perimetre, decision reservee au chef ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert, matricule deja attribue, inscription en cours ailleurs, etat incompatible"}
+        '422': {description: "Validation (errors par champ), refus de la garde d'inscription, alerte d'age, exclu definitif"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+  /api/v1/secondary/enrolment/transfers:
+    get:
+      summary: "Transferts (filtres direction, status, person_id)"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: per_page, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 200}}
+        - {name: cursor, in: query, required: false, schema: {type: string}}
+      responses:
+        '200': {description: "Succes {data}"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, classe hors perimetre, decision reservee au chef ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert, matricule deja attribue, inscription en cours ailleurs, etat incompatible"}
+        '422': {description: "Validation (errors par champ), refus de la garde d'inscription, alerte d'age, exclu definitif"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+  /api/v1/secondary/enrolment/transfers/out:
+    post:
+      summary: "Transfert sortant {person_id, other_school_label, transfer_date, exeat_document_id?, file_ref?, reason?, issue_exeat?, academic_year_label?} : inscription close puis exeat DOC-05 emis (exeat_error si refus) : inscription close (transferred)"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '201': {description: "Succes {data}"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, classe hors perimetre, decision reservee au chef ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert, matricule deja attribue, inscription en cours ailleurs, etat incompatible"}
+        '422': {description: "Validation (errors par champ), refus de la garde d'inscription, alerte d'age, exclu definitif"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+  /api/v1/secondary/enrolment/transfers/in:
+    post:
+      summary: "Transfert entrant : champs d'API-01 + {other_school_label, transfer_date, declared_national_id?, file_ref?, exeat_document_id?} ; controle du matricule (match, recorded, mismatch)"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '201': {description: "Succes {data}"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, classe hors perimetre, decision reservee au chef ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert, matricule deja attribue, inscription en cours ailleurs, etat incompatible"}
+        '422': {description: "Validation (errors par champ), refus de la garde d'inscription, alerte d'age, exclu definitif"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+  /api/v1/secondary/enrolment/imports/template:
+    get:
+      summary: "Modele du fichier d'import des eleves (colonnes, obligatoires, lignes d'exemple)"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Succes {data}"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, classe hors perimetre, decision reservee au chef ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert, matricule deja attribue, inscription en cours ailleurs, etat incompatible"}
+        '422': {description: "Validation (errors par champ), refus de la garde d'inscription, alerte d'age, exclu definitif"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+  /api/v1/secondary/enrolment/imports:
+    post:
+      summary: "Import des eleves {format csv|xlsx, content | content_base64, academic_year_id, entry_date, dry_run} : simulation (200) puis application (201) ; fichier avec erreurs : 422, rien n'est enregistre"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '201': {description: "Succes {data}"}
+        '200': {description: "Simulation (dry_run=true) : rapport par ligne"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, classe hors perimetre, decision reservee au chef ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert, matricule deja attribue, inscription en cours ailleurs, etat incompatible"}
+        '422': {description: "Validation (errors par champ), refus de la garde d'inscription, alerte d'age, exclu definitif"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}

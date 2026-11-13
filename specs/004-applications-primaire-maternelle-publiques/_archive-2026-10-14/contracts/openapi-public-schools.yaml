@@ -1,0 +1,596 @@
+openapi: 3.1.0
+info:
+  title: Scholaris Public Primary and Nursery API (candidate)
+  version: 0.1.0-draft
+  description: >-
+    Draft contract for the locally implemented US1 territory and public-primary registry
+    routes only. It is not approved for institutional use, does not establish official
+    MINEDUB data, and does not describe routes for US2-US8. All operations require an
+    authenticated bearer principal and an accessible tenant/establishment context.
+    Territory reads require organisation.read or organisation.manage; territory writes
+    require organisation.manage. Registry reads require public_primary.registry.read or
+    public_primary.registry.manage; registry writes require public_primary.registry.manage.
+    These routes are not configured for Idempotency-Key middleware. Collection responses
+    reflect the current unpaginated implementation; no pagination parameters are supported.
+x-contract-status: draft
+servers:
+  - url: /api/v1
+    description: Local API base path
+security:
+  - bearerAuth: []
+tags:
+  - name: Territorial administration
+  - name: Public primary registry
+paths:
+  /territories:
+    parameters:
+      - $ref: '#/components/parameters/EstablishmentId'
+    get:
+      tags: [Territorial administration]
+      operationId: listTerritories
+      summary: List the caller's tenant territory nodes at a point in time
+      description: Requires organisation.read or organisation.manage; the tenant comes from the authenticated principal.
+      x-required-permissions: [organisation.read, organisation.manage]
+      parameters:
+        - $ref: '#/components/parameters/At'
+      responses:
+        '200':
+          description: Complete, unpaginated territory list
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TerritoryListResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      tags: [Territorial administration]
+      operationId: createTerritory
+      summary: Create a synthetic tenant-scoped territory node
+      description: Requires organisation.manage. No Idempotency-Key is required or processed.
+      x-required-permissions: [organisation.manage]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TerritoryInput' }
+      responses:
+        '201':
+          description: Territory created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TerritoryResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationProblem' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /territories/{id}:
+    parameters:
+      - $ref: '#/components/parameters/EstablishmentId'
+      - $ref: '#/components/parameters/TerritoryId'
+    get:
+      tags: [Territorial administration]
+      operationId: getTerritory
+      summary: Read a territory version in the caller's tenant
+      description: Requires organisation.read or organisation.manage.
+      x-required-permissions: [organisation.read, organisation.manage]
+      parameters:
+        - $ref: '#/components/parameters/At'
+      responses:
+        '200':
+          description: Territory at the requested instant
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TerritoryResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /territories/{id}/versions:
+    parameters:
+      - $ref: '#/components/parameters/EstablishmentId'
+      - $ref: '#/components/parameters/TerritoryId'
+    post:
+      tags: [Territorial administration]
+      operationId: createTerritoryVersion
+      summary: Add a later effective version to a territory
+      description: Requires organisation.manage. Effective dates must follow the previous version; no Idempotency-Key is configured.
+      x-required-permissions: [organisation.manage]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TerritoryInput' }
+      responses:
+        '201':
+          description: New territory version created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TerritoryResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationProblem' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /territories/{id}/lineage:
+    parameters:
+      - $ref: '#/components/parameters/EstablishmentId'
+      - $ref: '#/components/parameters/TerritoryId'
+    get:
+      tags: [Territorial administration]
+      operationId: getTerritoryLineage
+      summary: Read the territory lineage from leaf to root
+      description: Requires organisation.read or organisation.manage; returns the complete unpaginated lineage.
+      x-required-permissions: [organisation.read, organisation.manage]
+      parameters:
+        - $ref: '#/components/parameters/At'
+      responses:
+        '200':
+          description: Leaf-to-root lineage
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TerritoryListResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /territories/{id}/descendants:
+    parameters:
+      - $ref: '#/components/parameters/EstablishmentId'
+      - $ref: '#/components/parameters/TerritoryId'
+    get:
+      tags: [Territorial administration]
+      operationId: listTerritoryDescendants
+      summary: Read a territory and all descendants at a point in time
+      description: Requires organisation.read or organisation.manage; returns the complete unpaginated result.
+      x-required-permissions: [organisation.read, organisation.manage]
+      parameters:
+        - $ref: '#/components/parameters/At'
+      responses:
+        '200':
+          description: Territory and descendant nodes
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TerritoryListResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /public-primary/registry/profile:
+    parameters:
+      - $ref: '#/components/parameters/EstablishmentId'
+    get:
+      tags: [Public primary registry]
+      operationId: getPublicPrimaryProfile
+      summary: Read the public-primary profile for the current establishment
+      description: Requires public_primary.registry.read or public_primary.registry.manage.
+      x-required-permissions: [public_primary.registry.read, public_primary.registry.manage]
+      responses:
+        '200':
+          description: Whitelisted school profile fields
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProfileResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        default: { $ref: '#/components/responses/Problem' }
+    put:
+      tags: [Public primary registry]
+      operationId: savePublicPrimaryProfile
+      summary: Create or update the current establishment's registry profile
+      description: Requires public_primary.registry.manage. The implementation consumes the listed fields; extra input fields are ignored.
+      x-required-permissions: [public_primary.registry.manage]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProfileInput' }
+      responses:
+        '200':
+          description: Saved whitelisted school profile
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProfileResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationProblem' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /public-primary/registry/territories/{id}/lineage:
+    parameters:
+      - $ref: '#/components/parameters/EstablishmentId'
+      - $ref: '#/components/parameters/TerritoryId'
+    get:
+      tags: [Public primary registry]
+      operationId: getRegistryTerritoryLineage
+      summary: Read the current lineage of the profile's territory
+      description: Requires public_primary.registry.read or public_primary.registry.manage; tenant-scoped and unpaginated.
+      x-required-permissions: [public_primary.registry.read, public_primary.registry.manage]
+      responses:
+        '200':
+          description: Leaf-to-root territory lineage (registry representation)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RegistryTerritoryListResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /public-primary/registry/infrastructure:
+    parameters:
+      - $ref: '#/components/parameters/EstablishmentId'
+    get:
+      tags: [Public primary registry]
+      operationId: getLatestInfrastructureSnapshot
+      summary: Read the latest snapshot for a school year
+      description: Requires public_primary.registry.read or public_primary.registry.manage. The data value is null when no snapshot exists.
+      x-required-permissions: [public_primary.registry.read, public_primary.registry.manage]
+      parameters:
+        - in: query
+          name: school_year
+          required: true
+          schema: { type: string, pattern: '^\d{4}-\d{4}$' }
+      responses:
+        '200':
+          description: Latest snapshot, or null if the year has none
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NullableSnapshotResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationProblem' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      tags: [Public primary registry]
+      operationId: createInfrastructureSnapshot
+      summary: Create an annual infrastructure draft snapshot
+      description: Requires public_primary.registry.manage and an existing profile. Duplicate school-year creation conflicts; no Idempotency-Key is configured.
+      x-required-permissions: [public_primary.registry.manage]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/InfrastructureInput' }
+      responses:
+        '201':
+          description: Draft snapshot created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SnapshotResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationProblem' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /public-primary/registry/infrastructure/{id}:
+    parameters:
+      - $ref: '#/components/parameters/EstablishmentId'
+      - $ref: '#/components/parameters/SnapshotId'
+    get:
+      tags: [Public primary registry]
+      operationId: getInfrastructureSnapshot
+      summary: Read one snapshot belonging to the current establishment
+      description: Requires public_primary.registry.read or public_primary.registry.manage.
+      x-required-permissions: [public_primary.registry.read, public_primary.registry.manage]
+      responses:
+        '200':
+          description: Whitelisted infrastructure snapshot
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SnapshotResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      tags: [Public primary registry]
+      operationId: updateInfrastructureDraft
+      summary: Update an open draft snapshot
+      description: Requires public_primary.registry.manage. A closed snapshot is immutable; the school_year cannot be changed. Extra input fields are ignored.
+      x-required-permissions: [public_primary.registry.manage]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/InfrastructureInput' }
+      responses:
+        '200':
+          description: Updated snapshot
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SnapshotResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationProblem' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /public-primary/registry/infrastructure/{id}/corrections:
+    parameters:
+      - $ref: '#/components/parameters/EstablishmentId'
+      - $ref: '#/components/parameters/SnapshotId'
+    post:
+      tags: [Public primary registry]
+      operationId: correctClosedInfrastructureSnapshot
+      summary: Create a new draft version correcting a closed snapshot
+      description: Requires public_primary.registry.manage and a closed source snapshot. The original is preserved; no Idempotency-Key is configured.
+      x-required-permissions: [public_primary.registry.manage]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/InfrastructureCorrectionInput' }
+      responses:
+        '201':
+          description: Corrective draft created as the next version
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SnapshotResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationProblem' }
+        default: { $ref: '#/components/responses/Problem' }
+
+  /public-primary/registry/infrastructure/{id}/close:
+    parameters:
+      - $ref: '#/components/parameters/EstablishmentId'
+      - $ref: '#/components/parameters/SnapshotId'
+    post:
+      tags: [Public primary registry]
+      operationId: closeInfrastructureSnapshot
+      summary: Close a draft snapshot and freeze its contents
+      description: Requires public_primary.registry.manage. Repeating close on an already closed snapshot returns that snapshot unchanged.
+      x-required-permissions: [public_primary.registry.manage]
+      responses:
+        '200':
+          description: Closed snapshot
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SnapshotResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        default: { $ref: '#/components/responses/Problem' }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  parameters:
+    EstablishmentId:
+      in: header
+      name: X-Establishment-Id
+      required: true
+      description: Establishment must be accessible to the authenticated principal; tenant is resolved from that principal.
+      schema: { type: string, minLength: 1, maxLength: 40 }
+    TerritoryId:
+      in: path
+      name: id
+      required: true
+      schema: { type: string, format: ulid, pattern: '^[0-9A-HJKMNP-TV-Z]{26}$' }
+    SnapshotId:
+      in: path
+      name: id
+      required: true
+      schema: { type: string, format: ulid, pattern: '^[0-9A-HJKMNP-TV-Z]{26}$' }
+    At:
+      in: query
+      name: at
+      required: false
+      description: ISO 8601 instant; defaults to the current time.
+      schema: { type: string, format: date-time }
+  responses:
+    BadRequest:
+      description: Malformed JSON, invalid query value, or missing required context header
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ProblemDetails' }
+    Unauthorized:
+      description: Authentication required
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ProblemDetails' }
+    Forbidden:
+      description: Establishment access or required permission denied
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ProblemDetails' }
+    NotFound:
+      description: Resource absent from the caller's tenant/establishment scope
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ProblemDetails' }
+    Conflict:
+      description: Current state does not permit the requested mutation
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ProblemDetails' }
+    ValidationProblem:
+      description: Request fields failed validation
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ProblemDetails' }
+    Problem:
+      description: RFC 9457 Problem Details response for other errors
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ProblemDetails' }
+  schemas:
+    ProblemDetails:
+      type: object
+      required: [type, title, status, detail, trace_id]
+      properties:
+        type: { type: string, format: uri-reference }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance: { type: string, format: uri-reference }
+        trace_id: { type: string, description: Application trace identifier extension. }
+        errors:
+          type: object
+          description: Field validation details when supplied.
+          additionalProperties:
+            type: array
+            items: { type: string }
+    TerritoryInput:
+      type: object
+      required: [type, code, label_fr, label_en, valid_from]
+      properties:
+        type: { type: string, enum: [region, departement, arrondissement] }
+        code: { type: string, minLength: 1, maxLength: 80 }
+        label_fr: { type: string, minLength: 1, maxLength: 160 }
+        label_en: { type: string, minLength: 1, maxLength: 160 }
+        parent_id: { type: [string, 'null'], format: ulid }
+        valid_from: { type: string, format: date-time }
+    Territory:
+      type: object
+      required: [id, tenant_id, type, code, label_fr, label_en, parent_id, valid_from, valid_to, version]
+      properties:
+        id: { type: string, format: ulid }
+        tenant_id: { type: string }
+        type: { type: string, enum: [region, departement, arrondissement] }
+        code: { type: string }
+        label_fr: { type: string }
+        label_en: { type: string }
+        parent_id: { type: [string, 'null'], format: ulid }
+        valid_from: { type: string, format: date-time }
+        valid_to: { type: [string, 'null'], format: date-time }
+        version: { type: string }
+    TerritoryResponse:
+      type: object
+      required: [data]
+      properties:
+        data: { $ref: '#/components/schemas/Territory' }
+    TerritoryListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Territory' }
+        meta:
+          type: object
+          properties:
+            at: { type: string, format: date-time }
+    ProfileInput:
+      type: object
+      required: [name, school_code, territory_id]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 160 }
+        school_code: { type: string, minLength: 1, maxLength: 80 }
+        territory_id: { type: string, format: ulid, pattern: '^[0-9A-HJKMNP-TV-Z]{26}$' }
+    SchoolProfile:
+      type: object
+      required: [id, tenant_id, establishment_id, name, school_code, territory_id, created_at, updated_at]
+      properties:
+        id: { type: string, format: ulid }
+        tenant_id: { type: string }
+        establishment_id: { type: string }
+        name: { type: string }
+        school_code: { type: string }
+        territory_id: { type: string, format: ulid }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    ProfileResponse:
+      type: object
+      required: [data]
+      properties:
+        data: { $ref: '#/components/schemas/SchoolProfile' }
+    RegistryTerritory:
+      type: object
+      required: [id, type, code, label_fr, label_en, parent_id, version]
+      properties:
+        id: { type: string, format: ulid }
+        type: { type: string, enum: [region, departement, arrondissement] }
+        code: { type: string }
+        label_fr: { type: string }
+        label_en: { type: string }
+        parent_id: { type: [string, 'null'], format: ulid }
+        version: { type: string }
+    RegistryTerritoryListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/RegistryTerritory' }
+    InfrastructureInput:
+      type: object
+      required: [school_year, classrooms_count, classroom_condition_fr, classroom_condition_en, water_access, latrines_count, electricity, connectivity, equipment_fr, equipment_en]
+      properties:
+        school_year: { type: string, pattern: '^\d{4}-\d{4}$' }
+        classrooms_count: { type: integer, minimum: 0 }
+        classroom_condition_fr: { type: string, minLength: 1, maxLength: 500 }
+        classroom_condition_en: { type: string, minLength: 1, maxLength: 500 }
+        water_access: { type: boolean }
+        latrines_count: { type: integer, minimum: 0 }
+        electricity: { type: boolean }
+        connectivity: { type: string, enum: [unknown, none, limited, available] }
+        equipment_fr: { type: string, minLength: 1, maxLength: 1000 }
+        equipment_en: { type: string, minLength: 1, maxLength: 1000 }
+    InfrastructureCorrectionInput:
+      allOf:
+        - $ref: '#/components/schemas/InfrastructureInput'
+        - type: object
+          required: [reason]
+          properties:
+            reason: { type: string, minLength: 1, maxLength: 500 }
+    InfrastructureSnapshot:
+      type: object
+      required: [id, tenant_id, establishment_id, territory_snapshot, school_year, version, classrooms_count, classroom_condition_fr, classroom_condition_en, water_access, latrines_count, electricity, connectivity, equipment_fr, equipment_en, status, correction_reason, closed_by, closed_at, created_at, updated_at]
+      properties:
+        id: { type: string, format: ulid }
+        tenant_id: { type: string }
+        establishment_id: { type: string }
+        territory_snapshot: { type: string, description: JSON-encoded frozen territory lineage as returned by the current persistence model. }
+        school_year: { type: string, pattern: '^\d{4}-\d{4}$' }
+        version: { type: integer, minimum: 1 }
+        classrooms_count: { type: integer, minimum: 0 }
+        classroom_condition_fr: { type: string }
+        classroom_condition_en: { type: string }
+        water_access: { type: boolean }
+        latrines_count: { type: integer, minimum: 0 }
+        electricity: { type: boolean }
+        connectivity: { type: string, enum: [unknown, none, limited, available] }
+        equipment_fr: { type: string }
+        equipment_en: { type: string }
+        status: { type: string, enum: [draft, closed] }
+        correction_reason: { type: [string, 'null'] }
+        closed_by: { type: [string, 'null'] }
+        closed_at: { type: [string, 'null'], format: date-time }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    SnapshotResponse:
+      type: object
+      required: [data]
+      properties:
+        data: { $ref: '#/components/schemas/InfrastructureSnapshot' }
+    NullableSnapshotResponse:
+      type: object
+      required: [data]
+      properties:
+        data: { oneOf: [{ $ref: '#/components/schemas/InfrastructureSnapshot' }, { type: 'null' }] }

@@ -1,0 +1,135 @@
+# Contrat OpenAPI 3.1 du pilotage du secondaire (spec 005, T970, T971, lot E4-A). Objectifs O1 a O7 du CDC calcules par les contrats
+# des sous-modules et du socle (jamais leurs tables) ; cibles du CDC a confirmer (parametre secondary.dashboards.targets). Aucune
+# donnee nominative dans les tableaux de bord ; vue reseau en agregats seulement, petites cases masquees (seuil
+# reporting.disclosure.minimum_cell_size, masquage secondaire). Routes /secondary/** : authentification, droit d'usage (WriteGate),
+# permissions secondary.*. Parametres communs : academic_year_id (sinon annee de la periode en cours), period_id (trimestre ou
+# semestre, sinon celui en cours ou le dernier commence).
+paths:
+  /api/v1/secondary/dashboards/head:
+    get:
+      summary: "Tableau de bord du chef d'etablissement : objectifs O1 a O7, effectifs par sexe, personnel par statut, examens officiels, alerte RG-BUL-4"
+      description: "Permission secondary.dashboard.read sur tout l'etablissement. O4 (recouvrement, prive) et O5 (frais hors catalogue, public) seulement avec secondary.finance.read, secondary.fees.read ou secondary.billing.manage (sinon listes dans restricted). Chaque objectif : code, label, available, value, unit, target, direction (max, min, drop), met, reason (not_applicable, no_term, not_due, no_students, no_invoices, no_classes, no_calendar), detail, source, confirmation."
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: academic_year_id, in: query, required: false, schema: {type: string}}
+        - {name: period_id, in: query, required: false, schema: {type: string}}
+      responses:
+        '200': {description: "{data: {kind: head, head_title, period, objectives, restricted, figures: {classes, students, female, male, gender_unknown, staff: {total, teaching, by_kind}, exams}, alerts, generated_at, nominative: false}}"}
+        '403': {description: "Permission absente ou perimetre partiel (journalise)"}
+        '404': {description: "Application fermee ou etablissement inconnu"}
+        '422': {description: "Etablissement sans type secondaire, identifiant invalide, trimestre inconnu ou aucune annee en cours"}
+  /api/v1/secondary/dashboards/pedagogy:
+    get:
+      summary: "Tableau de bord du censeur : O1, O2, O6, O7 et tableau des classes (effectif, bulletins remis et dans le delai, couverture, heures injustifiees par eleve)"
+      description: "Permission secondary.dashboard.read. Un perimetre de classes (professeur principal, enseignant) limite objectifs et classes a ces classes (scope classes)."
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: academic_year_id, in: query, required: false, schema: {type: string}}
+        - {name: period_id, in: query, required: false, schema: {type: string}}
+      responses:
+        '200': {description: "{data: {kind: pedagogy, scope, period, objectives, classes: [{class_id, label, level_code, students, report_cards_issued_on, report_cards_on_time, coverage_percent, unjustified_hours_per_student}]}}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Application fermee ou etablissement inconnu"}
+        '422': {description: "Etablissement sans type secondaire, identifiant invalide, trimestre inconnu ou aucune annee en cours"}
+  /api/v1/secondary/dashboards/finance:
+    get:
+      summary: "Tableau de bord de l'intendant : O4, O5, totaux factures (net, paye, reste du, echu) et recouvrement par classe"
+      description: "Permission secondary.finance.read, secondary.fees.read ou secondary.billing.manage sur tout l'etablissement. Montants entiers en XAF, par classe, jamais par eleve."
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: academic_year_id, in: query, required: false, schema: {type: string}}
+        - {name: period_id, in: query, required: false, schema: {type: string}}
+      responses:
+        '200': {description: "{data: {kind: finance, fees_mode, period, objectives, totals: {net_xaf, paid_xaf, balance_xaf, overdue_xaf, invoices, students_invoiced, recovery_percent}, classes}}"}
+        '403': {description: "Permission absente ou perimetre partiel (journalise)"}
+        '404': {description: "Application fermee ou etablissement inconnu"}
+        '422': {description: "Etablissement sans type secondaire, identifiant invalide, trimestre inconnu ou aucune annee en cours"}
+  /api/v1/secondary/dashboards/network:
+    get:
+      summary: "Vue reseau (R02) : effectifs, filles, garcons, taux de reussite aux examens et taux de recouvrement des etablissements du reseau, agreges et masques"
+      description: "Permission secondary.network.read dans l'etablissement de l'en-tete. Etablissements retenus : ceux du client ou la personne a ce droit et dont le profil a le module network_indicators. Jamais de nom ni d'identifiant de personne. Effectif sous le seuil masque (null, liste masked), masquage secondaire, taux masque si sa base est sous le seuil."
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: academic_year_id, in: query, required: false, schema: {type: string}}
+      responses:
+        '200': {description: "{data: {kind: network, nominative: false, minimum_cell_size, establishments: [{establishment, academic_year_id, students, female, male, exam_pass_rate, recovery_rate, recovery_applicable, masked}], consolidated}}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Application fermee ou etablissement inconnu"}
+        '422': {description: "Identifiant invalide"}
+  /api/v1/secondary/dashboards/claims:
+    get:
+      summary: "Registre des reclamations sur les resultats (source de O1), pagine par curseur"
+      description: "Permission secondary.dashboard.read, secondary.grades.validate ou secondary.settings.manage ; filtre par perimetre de classes. Filtres filter[academic_year_id], filter[class_id], filter[status], filter[outcome]."
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "{data: [{id, academic_year_id, period_id, class_id, person_id, subject_label, claim_text, received_on, status, outcome, outcome_note, recorded_by, closed_by, closed_at, created_at}], meta: {next_cursor, per_page}}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Application fermee ou etablissement inconnu"}
+        '422': {description: "Filtre, tri ou pagination invalide"}
+    post:
+      summary: "Enregistrer la reclamation d'un eleve inscrit dans une classe de l'annee"
+      description: "Permission secondary.grades.validate (censeur) ou secondary.settings.manage (chef) sur la classe. Audit secondary.result_claim.recorded."
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [academic_year_id, class_id, person_id, claim_text]
+              properties:
+                academic_year_id: {type: string}
+                period_id: {type: [string, 'null']}
+                class_id: {type: string}
+                person_id: {type: string}
+                subject_label: {type: [string, 'null'], maxLength: 160}
+                claim_text: {type: string, maxLength: 500}
+                received_on: {type: string, format: date}
+      responses:
+        '201': {description: "Reclamation ouverte"}
+        '403': {description: "Permission absente ou classe hors perimetre (journalise)"}
+        '404': {description: "Application fermee ou etablissement inconnu"}
+        '422': {description: "Champ invalide, classe inconnue pour l'annee ou eleve non inscrit"}
+  /api/v1/secondary/dashboards/claims/{id}/close:
+    post:
+      summary: "Clore une reclamation avec son issue : calculation_error (fondee, erreur de calcul, compte dans O1), other_error ou unfounded"
+      description: "Permission secondary.grades.validate ou secondary.settings.manage sur la classe. Audit secondary.result_claim.closed. Rien n'est supprime."
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [outcome, outcome_note]
+              properties:
+                outcome: {type: string, enum: [calculation_error, other_error, unfounded]}
+                outcome_note: {type: string, maxLength: 500}
+      responses:
+        '200': {description: "Reclamation close"}
+        '403': {description: "Permission absente ou classe hors perimetre"}
+        '404': {description: "Reclamation introuvable (autre client, autre etablissement ou hors perimetre)"}
+        '409': {description: "Reclamation deja close"}
+        '422': {description: "Issue inconnue ou note absente"}
+  /api/v1/secondary/dashboards/reports/{report}:
+    get:
+      summary: "Rapport exportable en fichier joint (format csv ou xlsx) : objectives, rentree-classes, rentree-census, rentree-staff (DOC-32), annual-levels, annual-exams (DOC-34, comparaison previous_year_id), network"
+      description: "Rapports d'etablissement : permission secondary.dashboard.read sur tout l'etablissement (objectives : memes regles que le tableau de bord du chef). network : secondary.network.read, memes masques que la vue reseau. Colonnes reglables par secondary.dashboards.<rapport>.columns. Audit secondary.dashboard.report_exported."
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: report, in: path, required: true, schema: {type: string, enum: [objectives, rentree-classes, rentree-census, rentree-staff, annual-levels, annual-exams, network]}}
+        - {name: format, in: query, required: false, schema: {type: string, enum: [csv, xlsx]}}
+        - {name: academic_year_id, in: query, required: false, schema: {type: string}}
+        - {name: period_id, in: query, required: false, schema: {type: string}}
+        - {name: previous_year_id, in: query, required: false, schema: {type: string}}
+      responses:
+        '200': {description: "Fichier joint (Content-Disposition attachment) : text/csv (separateur point-virgule, UTF-8 avec BOM) ou classeur xlsx"}
+        '403': {description: "Permission absente ou perimetre partiel (journalise)"}
+        '404': {description: "Rapport inconnu, application fermee ou etablissement inconnu"}
+        '422': {description: "Format inconnu, etablissement sans type secondaire, identifiant invalide ou aucune annee en cours"}

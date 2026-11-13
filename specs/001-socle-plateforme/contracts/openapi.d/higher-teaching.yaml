@@ -1,0 +1,349 @@
+# Contrat OpenAPI 3.1 de l'enseignement de l'application Supérieur (EDT EX-EDT-01 à 06, ENS EX-ENS-01 à 06 hors paiement des vacations) :
+# dossiers enseignants, salles, affectations par le chef de département (limitées à son département), emploi du temps posé au socle
+# (TimetableWriter, conflits enseignant/salle/groupe/capacité, soir, samedi, cours mutualisés), reports et remplacements notifiés (NOT-05),
+# consommation des volumes CM/TD/TP par EC, cahier de textes (API-08) avec signature, contre-signature du délégué ou du surveillant,
+# validation mensuelle des heures, accords de dépassement (RG-ENS-4), planning des examens (Should), DOC-07, DOC-08, DOC-13.
+# Erreurs RFC 9457 ; WriteGate (423 suspendue) et périmètre école/département/filière/niveau/groupe comme toutes les routes Higher.
+# Permissions : higher.timetable.read, scheduling.manage, higher.assignment.manage, staff.manage, staff.read, higher.session_log.write,
+# higher.session_log.read, higher.session_log.validate, higher.hours.validate, higher.vacation.validate_school, higher.exam.manage.
+paths:
+  /api/v1/higher/teaching/teachers:
+    get:
+      summary: "Dossiers enseignants du périmètre : filter[teacher_status|department_id|school_id|person_id]"
+      responses:
+        '404': {description: "Introuvable, hors périmètre ou application non ouverte au client"}
+        '200': {description: "Liste paginée"}
+        '403': {description: "Permission absente"}
+    post:
+      summary: "Créer ou compléter le dossier IPES d'un enseignant (fiche du personnel du socle exigée)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [person_id]
+              properties:
+                person_id: {type: string}
+                department_id: {type: string}
+                teacher_status: {type: string, enum: [permanent, vacataire, invite]}
+                grade: {type: string}
+                diplomas: {type: array, items: {type: string}}
+                origin_establishment: {type: string}
+                public_servant: {type: boolean}
+                employer_authorization_ref: {type: string}
+                employer_authorization_document: {type: string}
+                employer_authorization_until: {type: string, format: date}
+      responses:
+        '404': {description: "Introuvable, hors périmètre ou application non ouverte au client"}
+        '201': {description: "Dossier enregistré"}
+        '403': {description: "Hors périmètre (journalisé)"}
+        '422': {description: "Fiche du personnel absente ; vacataire fonctionnaire sans autorisation de l'employeur"}
+  /api/v1/higher/teaching/teachers/{personId}:
+    get:
+      summary: "Dossier enseignant et affectations actives"
+      parameters:
+        - {name: personId, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Dossier"}
+        '404': {description: "Introuvable ou hors périmètre"}
+    patch:
+      summary: "Modifier le dossier enseignant (mêmes champs que la création)"
+      parameters:
+        - {name: personId, in: path, required: true, schema: {type: string}}
+      responses:
+        '404': {description: "Introuvable, hors périmètre ou application non ouverte au client"}
+        '200': {description: "Dossier modifié"}
+        '422': {description: "Données invalides"}
+  /api/v1/higher/teaching/rooms:
+    get:
+      summary: "Salles et capacités : filter[school_id|active]"
+      responses:
+        '404': {description: "Introuvable, hors périmètre ou application non ouverte au client"}
+        '200': {description: "Liste paginée"}
+    post:
+      summary: "Créer une salle (school_id, code, name, capacity)"
+      responses:
+        '404': {description: "Introuvable, hors périmètre ou application non ouverte au client"}
+        '201': {description: "Salle créée"}
+        '409': {description: "Code déjà utilisé"}
+  /api/v1/higher/teaching/rooms/{id}:
+    patch:
+      summary: "Modifier une salle (nom, capacité, active)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '404': {description: "Introuvable, hors périmètre ou application non ouverte au client"}
+        '200': {description: "Salle modifiée"}
+  /api/v1/higher/teaching/assignments:
+    get:
+      summary: "Affectations : filter[curriculum_id|element_id|group_id|person_id|session_kind|status|academic_year_id|department_id] ; mine=1 pour les siennes (enseignant)"
+      responses:
+        '404': {description: "Introuvable, hors périmètre ou application non ouverte au client"}
+        '200': {description: "Liste paginée"}
+    post:
+      summary: "Affecter un enseignant à un EC, un groupe, une nature (cm, td, tp, other) et un volume en minutes (chef de département, son département seulement)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [person_id, curriculum_id, element_id, group_id, session_kind, planned_minutes]
+              properties:
+                person_id: {type: string}
+                curriculum_id: {type: string}
+                element_id: {type: string}
+                group_id: {type: string}
+                session_kind: {type: string, enum: [cm, td, tp, other]}
+                planned_minutes: {type: integer}
+      responses:
+        '404': {description: "Introuvable, hors périmètre ou application non ouverte au client"}
+        '201': {description: "Affectation créée (et écrite au socle, AssignmentWriter)"}
+        '403': {description: "Département hors périmètre (journalisé)"}
+        '409': {description: "Affectation identique déjà active"}
+        '422': {description: "Enseignant inconnu ou inactif ; groupe d'un autre niveau"}
+  /api/v1/higher/teaching/assignments/{id}:
+    get:
+      summary: "Affectation et accords de dépassement"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Affectation"}
+        '404': {description: "Introuvable ou hors périmètre"}
+    patch:
+      summary: "Modifier le volume prévu"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '404': {description: "Introuvable, hors périmètre ou application non ouverte au client"}
+        '200': {description: "Affectation modifiée"}
+  /api/v1/higher/teaching/assignments/{id}/end:
+    post:
+      summary: "Terminer l'affectation (les heures restent rattachées)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '404': {description: "Introuvable, hors périmètre ou application non ouverte au client"}
+        '200': {description: "Affectation terminée"}
+  /api/v1/higher/teaching/assignments/{id}/overrun-approvals:
+    post:
+      summary: "Accord écrit du directeur d'école pour des heures au-delà du volume (RG-ENS-4) : extra_minutes, document_ref, reason"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '404': {description: "Introuvable, hors périmètre ou application non ouverte au client"}
+        '201': {description: "Accord enregistré"}
+  /api/v1/higher/teaching/group-delegates:
+    get:
+      summary: "Délégués de groupe : filter[group_id|person_id]"
+      responses:
+        '404': {description: "Introuvable, hors périmètre ou application non ouverte au client"}
+        '200': {description: "Liste paginée"}
+    post:
+      summary: "Désigner un délégué de groupe (group_id, person_id)"
+      responses:
+        '404': {description: "Introuvable, hors périmètre ou application non ouverte au client"}
+        '201': {description: "Délégué désigné"}
+  /api/v1/higher/teaching/group-delegates/{id}:
+    delete:
+      summary: "Retirer un délégué"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '404': {description: "Introuvable, hors périmètre ou application non ouverte au client"}
+        '200': {description: "Retiré"}
+  /api/v1/higher/timetable:
+    get:
+      summary: "Emploi du temps par groupe (group_id), enseignant (person_id) ou salle (room_id), semaine optionnelle (week=AAAA-MM-JJ) avec ses modifications"
+      responses:
+        '404': {description: "Introuvable, hors périmètre ou application non ouverte au client"}
+        '200': {description: "Créneaux et modifications ponctuelles"}
+  /api/v1/higher/timetable/check:
+    post:
+      summary: "Contrôle à blanc d'un créneau (conflits enseignant, salle, groupe, capacité)"
+      responses:
+        '404': {description: "Introuvable, hors périmètre ou application non ouverte au client"}
+        '200': {description: "Conflits détectés (liste vide = posable)"}
+  /api/v1/higher/timetable/entries:
+    post:
+      summary: "Poser un créneau depuis une affectation : weekday (1-7), start_time, end_time, valid_from, valid_to, room_id, extra_group_ids (cours mutualisé)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [assignment_id, weekday, start_time, end_time, valid_from]
+              properties:
+                assignment_id: {type: string}
+                weekday: {type: integer, minimum: 1, maximum: 7}
+                start_time: {type: string, example: "18:00"}
+                end_time: {type: string, example: "20:00"}
+                valid_from: {type: string, format: date}
+                valid_to: {type: string, format: date}
+                room_id: {type: string}
+                extra_group_ids: {type: array, items: {type: string}}
+      responses:
+        '404': {description: "Introuvable, hors périmètre ou application non ouverte au client"}
+        '201': {description: "Créneau posé (socle) et enregistré"}
+        '409': {description: "Conflit d'emploi du temps : errors.teacher|room|group|capacity"}
+        '422': {description: "Affectation terminée, heures incohérentes, salle inconnue"}
+  /api/v1/higher/timetable/entries/{id}:
+    get:
+      summary: "Créneau"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '404': {description: "Introuvable, hors périmètre ou application non ouverte au client"}
+        '200': {description: "Créneau"}
+    delete:
+      summary: "Retirer un créneau (et celui du socle)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '404': {description: "Introuvable, hors périmètre ou application non ouverte au client"}
+        '200': {description: "Retiré"}
+  /api/v1/higher/timetable/conflicts:
+    get:
+      summary: "Conflits de l'emploi du temps posé dans le périmètre"
+      responses:
+        '404': {description: "Introuvable, hors périmètre ou application non ouverte au client"}
+        '200': {description: "Conflits"}
+  /api/v1/higher/timetable/changes:
+    post:
+      summary: "Report, annulation, remplacement d'enseignant ou changement de salle d'une séance, notifié (NOT-05)"
+      responses:
+        '404': {description: "Introuvable, hors périmètre ou application non ouverte au client"}
+        '201': {description: "Modification enregistrée, notified_count"}
+        '422': {description: "Champs manquants selon la nature ; date hors du jour du créneau"}
+  /api/v1/higher/timetable/consumption:
+    get:
+      summary: "Consommation des volumes par EC et groupe (minutes prévues, programmées, réalisées, consignées, restantes) : curriculum_id, element_id, group_id, from, to"
+      responses:
+        '404': {description: "Introuvable, hors périmètre ou application non ouverte au client"}
+        '200': {description: "Consommation par nature CM/TD/TP"}
+  /api/v1/higher/timetable/document:
+    post:
+      summary: "Émettre l'emploi du temps d'une semaine (DOC-07) : person_id, group_id, week"
+      responses:
+        '404': {description: "Introuvable, hors périmètre ou application non ouverte au client"}
+        '201': {description: "Document émis"}
+        '409': {description: "Aucun créneau"}
+  /api/v1/higher/session-logs:
+    get:
+      summary: "Cahier de textes : filter[assignment_id|element_id|group_id|person_id|status|held_on] ; mine=1 (enseignant ou délégué)"
+      responses:
+        '404': {description: "Introuvable, hors périmètre ou application non ouverte au client"}
+        '200': {description: "Liste paginée"}
+    post:
+      summary: "Consigner une séance (API-08) : assignment_id, entry_id, held_on, start_time, end_time, content, homework, attendance_session_id"
+      responses:
+        '404': {description: "Introuvable, hors périmètre ou application non ouverte au client"}
+        '201': {description: "Séance en brouillon"}
+        '403': {description: "Enseignant non affecté à cet EC et ce groupe (TST-03, journalisé)"}
+  /api/v1/higher/session-logs/{id}:
+    get:
+      summary: "Séance du cahier de textes"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '404': {description: "Introuvable, hors périmètre ou application non ouverte au client"}
+        '200': {description: "Séance"}
+    patch:
+      summary: "Modifier contenu et travaux donnés (brouillon seulement)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '404': {description: "Introuvable, hors périmètre ou application non ouverte au client"}
+        '200': {description: "Séance modifiée"}
+        '409': {description: "Déjà signée"}
+  /api/v1/higher/session-logs/{id}/sign:
+    post:
+      summary: "Signature électronique de l'enseignant (empreinte SHA-256) ; l'heure est déclarée au socle"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '404': {description: "Introuvable, hors périmètre ou application non ouverte au client"}
+        '200': {description: "Séance signée"}
+        '422': {description: "Contenu vide"}
+  /api/v1/higher/session-logs/{id}/countersign:
+    post:
+      summary: "Contre-signature par le délégué du groupe ou un surveillant (jamais l'enseignant)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '404': {description: "Introuvable, hors périmètre ou application non ouverte au client"}
+        '200': {description: "Séance contre-signée"}
+        '409': {description: "Séance non signée"}
+  /api/v1/higher/teaching/hours:
+    get:
+      summary: "Heures du mois par enseignant (month=AAAA-MM), minutes par nature et HETD"
+      responses:
+        '404': {description: "Introuvable, hors périmètre ou application non ouverte au client"}
+        '200': {description: "Synthèse"}
+  /api/v1/higher/teaching/hours-validations:
+    get:
+      summary: "Validations mensuelles : filter[person_id|period_month|department_id]"
+      responses:
+        '404': {description: "Introuvable, hors périmètre ou application non ouverte au client"}
+        '200': {description: "Liste paginée"}
+    post:
+      summary: "Valider les heures contre-signées d'un enseignant pour un mois (chef de département, son département)"
+      responses:
+        '404': {description: "Introuvable, hors périmètre ou application non ouverte au client"}
+        '201': {description: "Validations et séances encore en attente"}
+        '409': {description: "Rien à valider ou déjà validé"}
+  /api/v1/higher/exam-schedules:
+    get:
+      summary: "Planning des examens : filter[group_id|element_id|exam_date|status|exam_session|academic_year_id]"
+      responses:
+        '404': {description: "Introuvable, hors périmètre ou application non ouverte au client"}
+        '200': {description: "Liste paginée"}
+    post:
+      summary: "Planifier une épreuve : curriculum_id, element_id, group_id, exam_session, exam_date, start_time, end_time, room_id, supervisors, paper_ref"
+      responses:
+        '404': {description: "Introuvable, hors périmètre ou application non ouverte au client"}
+        '201': {description: "Épreuve planifiée"}
+        '409': {description: "Conflit de salle, de groupe ou de surveillant"}
+  /api/v1/higher/exam-schedules/{id}:
+    get:
+      summary: "Épreuve"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '404': {description: "Introuvable, hors périmètre ou application non ouverte au client"}
+        '200': {description: "Épreuve"}
+  /api/v1/higher/exam-schedules/{id}/publish:
+    post:
+      summary: "Publier l'épreuve"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '404': {description: "Introuvable, hors périmètre ou application non ouverte au client"}
+        '200': {description: "Publiée"}
+  /api/v1/higher/exam-schedules/{id}/cancel:
+    post:
+      summary: "Annuler l'épreuve"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '404': {description: "Introuvable, hors périmètre ou application non ouverte au client"}
+        '200': {description: "Annulée"}
+  /api/v1/higher/exam-schedules/{id}/convocations:
+    post:
+      summary: "Émettre les convocations DOC-13 des étudiants autorisés à composer (non-autorisés listés, RG-PRE-1)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '404': {description: "Introuvable, hors périmètre ou application non ouverte au client"}
+        '201': {description: "Convocations émises"}
+        '409': {description: "Épreuve non publiée"}
+  /api/v1/higher/exam-schedules/{id}/attendance-sheet:
+    post:
+      summary: "Émettre la liste d'émargement d'examen (DOC-08)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '404': {description: "Introuvable, hors périmètre ou application non ouverte au client"}
+        '201': {description: "Document émis"}

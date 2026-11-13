@@ -1,0 +1,246 @@
+# Contrat OpenAPI 3.1 des examens nationaux BTS et HND de l'application Supérieur (EXN, EX-EXN-01 à 07, RG-EXN-1 à 3, API-17).
+# Permissions : gestion higher.national_list.manage (R07) ; export higher.national_list.export (R07, R02) avec 2FA récente.
+# Cycle du candidat : eligible -> complete -> exported -> convened -> resulted (ou withdrawn). Toute modification de la liste
+# après export est tracée et signalée au directeur général (RG-EXN-2). Erreurs RFC 9457 ; WriteGate (423 suspendue).
+paths:
+  /api/v1/higher/national-sessions:
+    get:
+      summary: "Sessions du périmètre : filter[program_id|academic_year_id|exam_type|status]"
+      responses:
+        '200': {description: "Succès"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Application fermée ou école hors périmètre"}
+        '422': {description: "Filtre invalide"}
+    post:
+      summary: "Créer une session (type BTS/HND du régime de la filière, niveau de sortie, assiduité, frais, pièces)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [program_id, academic_year_id, exam_type, attendance_from, attendance_to]
+              properties:
+                program_id: {type: string}
+                academic_year_id: {type: string}
+                exam_type: {type: string, enum: [bts, hnd]}
+                attendance_from: {type: string, format: date}
+                attendance_to: {type: string, format: date}
+                specialty_label: {type: string}
+                calendar_ref: {type: string}
+                registration_deadline: {type: string, format: date}
+                exam_starts_on: {type: string, format: date}
+                fee_xaf: {type: integer, minimum: 0}
+                required_pieces: {type: array, items: {type: string}}
+      responses:
+        '201': {description: "Session créée"}
+        '403': {description: "Permission absente ou hors périmètre (journalisé)"}
+        '404': {description: "Introuvable ou hors périmètre"}
+        '409': {description: "Session déjà ouverte pour cette filière, cette année et ce type"}
+        '422': {description: "Données invalides (régime, niveau de sortie absent)"}
+        '423': {description: "Application suspendue (écriture refusée)"}
+  /api/v1/higher/national-sessions/{id}:
+    get:
+      summary: "Session"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Succès"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Introuvable ou hors périmètre"}
+    patch:
+      summary: "Modifier une session (calendrier, frais, pièces) ou la clore (status closed, après export)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Succès"}
+        '403': {description: "Permission absente ou hors périmètre (journalisé)"}
+        '404': {description: "Introuvable ou hors périmètre"}
+        '409': {description: "Session close ou clôture avant export"}
+        '422': {description: "Données invalides"}
+        '423': {description: "Application suspendue (écriture refusée)"}
+  /api/v1/higher/national-sessions/{id}/eligibility:
+    get:
+      summary: "Bilan d'éligibilité d'un étudiant (person_id) : RG-EXN-1, assiduité ≥ 70 %"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+        - {name: person_id, in: query, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Succès"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Introuvable ou hors périmètre"}
+        '422': {description: "person_id manquant"}
+  /api/v1/higher/national-sessions/{id}/events:
+    get:
+      summary: "Journal de la liste (ajouts, modifications, retraits, exports, convocations, résultats ; after_export, alertes DG)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Succès"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Introuvable ou hors périmètre"}
+        '422': {description: "Filtre invalide"}
+  /api/v1/higher/national-sessions/{id}/statistics:
+    get:
+      summary: "Effectifs par statut, résultats et taux de réussite de la session"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Succès"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Introuvable ou hors périmètre"}
+  /api/v1/higher/national-exams/success-rates:
+    get:
+      summary: "Taux de réussite par spécialité et année (academic_year_id facultatif)"
+      responses:
+        '200': {description: "Succès"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Application fermée"}
+  /api/v1/higher/national-sessions/{id}/candidates:
+    get:
+      summary: "Candidats de la session : filter[status|group_id]"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Succès"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Introuvable ou hors périmètre"}
+        '422': {description: "Filtre invalide"}
+    post:
+      summary: "Ajouter un étudiant (RG-EXN-1 : inscrit en année de sortie dans la spécialité, sinon 422)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [person_id]
+              properties:
+                person_id: {type: string}
+      responses:
+        '201': {description: "Candidat ajouté"}
+        '403': {description: "Permission absente ou hors périmètre (journalisé)"}
+        '404': {description: "Introuvable ou hors périmètre"}
+        '409': {description: "Déjà sur la liste ou session close"}
+        '422': {description: "Non admissible (RG-EXN-1) ou données invalides"}
+        '423': {description: "Application suspendue (écriture refusée)"}
+  /api/v1/higher/national-sessions/{id}/candidates/generate:
+    post:
+      summary: "Constituer la liste depuis les inscriptions validées du niveau de sortie"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Nombre d'ajouts"}
+        '403': {description: "Permission absente ou hors périmètre (journalisé)"}
+        '404': {description: "Introuvable ou hors périmètre"}
+        '409': {description: "Session close"}
+        '422': {description: "Données invalides"}
+        '423': {description: "Application suspendue (écriture refusée)"}
+  /api/v1/higher/national-sessions/{id}/candidates/export:
+    post:
+      summary: "API-17 : exporter la liste (dossiers complets) au format MINESUP par modèle (csv ou xlsx), 2FA récente, filigrane, alerte DG"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Fichier encodé en base64, empreinte SHA-256 et filigrane"}
+        '403': {description: "Permission absente, 2FA récente requise ou hors périmètre (journalisé)"}
+        '404': {description: "Introuvable ou hors périmètre"}
+        '409': {description: "Aucun dossier complet"}
+        '422': {description: "Format invalide ou colonnes paramétrées invalides"}
+        '423': {description: "Application suspendue (écriture refusée)"}
+  /api/v1/higher/national-sessions/{id}/convocations:
+    post:
+      summary: "Convoquer les candidats exportés : centre et numéros (EX-EXN-05)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [exam_centre]
+              properties:
+                exam_centre: {type: string}
+                number_prefix: {type: string}
+      responses:
+        '200': {description: "Nombre de convocations"}
+        '403': {description: "Permission absente ou hors périmètre (journalisé)"}
+        '404': {description: "Introuvable ou hors périmètre"}
+        '409': {description: "Liste non exportée"}
+        '422': {description: "Données invalides"}
+        '423': {description: "Application suspendue (écriture refusée)"}
+  /api/v1/higher/national-sessions/{id}/results/import:
+    post:
+      summary: "Importer les résultats publiés (rows JSON ou csv : candidate_number|matricule ; result ; mark)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Lignes importées et rejetées"}
+        '403': {description: "Permission absente ou hors périmètre (journalisé)"}
+        '404': {description: "Introuvable ou hors périmètre"}
+        '409': {description: "Liste non exportée"}
+        '422': {description: "Données invalides"}
+        '423': {description: "Application suspendue (écriture refusée)"}
+  /api/v1/higher/national-candidates/{id}:
+    patch:
+      summary: "Dossier du candidat : pièces reçues, reçu des frais, centre, numéro (statut recalculé ; tracé après export)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Succès"}
+        '403': {description: "Permission absente ou hors périmètre (journalisé)"}
+        '404': {description: "Introuvable ou hors périmètre"}
+        '409': {description: "Session close"}
+        '422': {description: "Données invalides"}
+        '423': {description: "Application suspendue (écriture refusée)"}
+  /api/v1/higher/national-candidates/{id}/withdraw:
+    post:
+      summary: "Retirer un candidat (motif obligatoire ; tracé et signalé au DG après export)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [reason]
+              properties:
+                reason: {type: string}
+      responses:
+        '200': {description: "Succès"}
+        '403': {description: "Permission absente ou hors périmètre (journalisé)"}
+        '404': {description: "Introuvable ou hors périmètre"}
+        '409': {description: "Déjà retiré, résultat importé ou session close"}
+        '422': {description: "Données invalides"}
+        '423': {description: "Application suspendue (écriture refusée)"}
+  /api/v1/higher/national-candidates/{id}/documents:
+    post:
+      summary: "Émettre DOC-12 (attestation de fin de formation) ou DOC-17 (fiche de candidature)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [code]
+              properties:
+                code: {type: string, enum: [DOC-12, DOC-17]}
+                locale: {type: string, enum: [fr, en]}
+      responses:
+        '201': {description: "Document émis"}
+        '403': {description: "Permission absente ou hors périmètre (journalisé)"}
+        '404': {description: "Introuvable ou hors périmètre"}
+        '409': {description: "Candidat retiré ou dossier incomplet"}
+        '422': {description: "Données invalides ou garde d'émission (délibération annuelle non signée)"}
+        '423': {description: "Application suspendue (écriture refusée)"}

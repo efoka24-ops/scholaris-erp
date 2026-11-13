@@ -1,0 +1,143 @@
+# Contrat OpenAPI 3.1 des relations avec l'université de tutelle de l'application Supérieur (TUT, EX-TUT-01 à 04, RG-TUT-2, DOC-18).
+# Permissions : higher.tutelage.manage (R03) ou higher.tutelage.transmit (R07, R03) ; accès direct de la tutelle
+# higher.tutelage.read (R22), désactivé tant que higher.tutelage.portal_enabled est faux (404). Alertes d'expiration NOT-15 :
+# Academic. Erreurs RFC 9457 ; WriteGate (423 suspendue).
+paths:
+  /api/v1/higher/tutelage/convention:
+    get:
+      summary: "Tutelle et convention de la filière pour l'année (program_id, academic_year_id) : échéance, jours restants"
+      parameters:
+        - {name: program_id, in: query, required: true, schema: {type: string}}
+        - {name: academic_year_id, in: query, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Succès"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Filière introuvable ou hors périmètre"}
+        '422': {description: "Paramètre manquant ou filière sans tutelle"}
+  /api/v1/higher/tutelage/transmissions:
+    get:
+      summary: "Transmissions du périmètre : filter[program_id|academic_year_id|transmission_kind|status]"
+      responses:
+        '200': {description: "Succès"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Application fermée ou école hors périmètre"}
+        '422': {description: "Filtre invalide"}
+    post:
+      summary: "Transmettre à la tutelle : liste des inscrits (DOC-18, fichier csv/xlsx), notes, relevés ou PV (PV signé exigé)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [kind, program_id, academic_year_id]
+              properties:
+                kind: {type: string, enum: [lists, marks, transcripts, minutes]}
+                program_id: {type: string}
+                academic_year_id: {type: string}
+                level_id: {type: string}
+                period_id: {type: string}
+                format: {type: string, enum: [csv, xlsx]}
+                note: {type: string}
+      responses:
+        '201': {description: "Transmission enregistrée (empreinte SHA-256, fichier pour les listes)"}
+        '403': {description: "Permission absente ou hors périmètre (journalisé)"}
+        '404': {description: "Introuvable ou hors périmètre"}
+        '409': {description: "Aucun inscrit ou PV de la période non signé"}
+        '422': {description: "Données invalides ou filière sans tutelle"}
+        '423': {description: "Application suspendue (écriture refusée)"}
+  /api/v1/higher/tutelage/transmissions/{id}/answer:
+    post:
+      summary: "Enregistrer la réponse de la tutelle (acknowledged ou rejected)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [status]
+              properties:
+                status: {type: string, enum: [acknowledged, rejected]}
+                note: {type: string}
+      responses:
+        '200': {description: "Succès"}
+        '403': {description: "Permission absente ou hors périmètre (journalisé)"}
+        '404': {description: "Introuvable ou hors périmètre"}
+        '409': {description: "Réponse déjà enregistrée"}
+        '422': {description: "Données invalides"}
+        '423': {description: "Application suspendue (écriture refusée)"}
+  /api/v1/higher/tutelage/diploma-files:
+    get:
+      summary: "Dossiers de diplôme : filter[program_id|academic_year_id|status|person_id]"
+      responses:
+        '200': {description: "Succès"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Application fermée ou école hors périmètre"}
+        '422': {description: "Filtre invalide"}
+    post:
+      summary: "Transmettre un dossier de diplôme (RG-TUT-2 : délibération finale signée et quitus, sinon 409)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [person_id, program_id, academic_year_id]
+              properties:
+                person_id: {type: string}
+                program_id: {type: string}
+                academic_year_id: {type: string}
+      responses:
+        '201': {description: "Dossier transmis"}
+        '403': {description: "Permission absente ou hors périmètre (journalisé)"}
+        '404': {description: "Introuvable ou hors périmètre"}
+        '409': {description: "PV final non signé, décision sans dossier, quitus non émis ou dossier déjà transmis"}
+        '422': {description: "Données invalides, inscription absente ou filière sans tutelle"}
+        '423': {description: "Application suspendue (écriture refusée)"}
+  /api/v1/higher/tutelage/diploma-files/{id}:
+    patch:
+      summary: "Suivi du dossier : in_progress, available, withdrawn"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [status]
+              properties:
+                status: {type: string, enum: [transmitted, in_progress, available, withdrawn]}
+                note: {type: string}
+      responses:
+        '200': {description: "Succès"}
+        '403': {description: "Permission absente ou hors périmètre (journalisé)"}
+        '404': {description: "Introuvable ou hors périmètre"}
+        '409': {description: "Transition impossible"}
+        '422': {description: "Données invalides"}
+        '423': {description: "Application suspendue (écriture refusée)"}
+  /api/v1/higher/tutelage/portal/enrolments:
+    get:
+      summary: "Accès de la tutelle (R22) : inscrits de ses filières (program_id, academic_year_id), consultation journalisée"
+      parameters:
+        - {name: program_id, in: query, required: true, schema: {type: string}}
+        - {name: academic_year_id, in: query, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Succès"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Accès non ouvert, filière introuvable ou hors périmètre"}
+        '422': {description: "Paramètre manquant ou filière sans tutelle"}
+  /api/v1/higher/tutelage/consultations:
+    get:
+      summary: "Journal des consultations de la tutelle : filter[program_id|academic_year_id|user_id]"
+      responses:
+        '200': {description: "Succès"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Application fermée ou école hors périmètre"}
+        '422': {description: "Filtre invalide"}

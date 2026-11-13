@@ -1,0 +1,38 @@
+# Contrat OpenAPI 3.1 des tableaux de bord de l'application Supérieur (PIL, DOC-32).
+# Lecture seule, agrégats sans donnée nominative, effectifs inférieurs à 5 masqués (valeurs nulles, suppressed vrai).
+# Erreurs RFC 9457 ; périmètre école/département/filière de higher.dashboard.read (RG-ORG-2), sélecteur d'école RG-ORG-3.
+paths:
+  /api/v1/higher/dashboards/{kind}:
+    get:
+      summary: "Tableau de bord : enrolment (candidatures, admis, inscrits), finance (encaissé, attendu, impayés), grading (avancement de la saisie), results (réussite par EC, UE, filière, rattrapage), attendance (assiduité par groupe et EC), vacations (heures et coût par département), national (résultats BTS/HND), minesup (effectifs par sexe, âge, filière, niveau)"
+      description: "Réponse data : board, generated_at, filters, schools (sélecteur), school_selector, suppressed_below, cards [{key, value, unit}], tables [{key, columns, rows}], notes. La région d'origine MINESUP est déclarée indisponible dans notes."
+      parameters:
+        - {name: kind, in: path, required: true, schema: {type: string, enum: [enrolment, finance, grading, results, attendance, vacations, national, minesup]}}
+        - {name: school_id, in: query, required: false, schema: {type: string}, description: "Sélecteur d'école ou « all »"}
+        - {name: program_id, in: query, required: false, schema: {type: string}}
+        - {name: academic_year_id, in: query, required: false, schema: {type: string}}
+        - {name: from, in: query, required: false, schema: {type: string, format: date}}
+        - {name: to, in: query, required: false, schema: {type: string, format: date}}
+      responses:
+        '200': {description: "Succès"}
+        '403': {description: "higher.dashboard.read ou permission de donnée du tableau absente"}
+        '404': {description: "Tableau inconnu, école ou ressource hors périmètre"}
+        '422': {description: "Filtre invalide (identifiant, date, période inversée)"}
+  /api/v1/higher/dashboards/{kind}/export:
+    get:
+      summary: "Export CSV ou XLSX d'un tableau (statistiques MINESUP, DOC-32), mêmes filtres et mêmes masquages que l'écran"
+      parameters:
+        - {name: kind, in: path, required: true, schema: {type: string, enum: [enrolment, finance, grading, results, attendance, vacations, national, minesup]}}
+        - {name: table, in: query, required: false, schema: {type: string}, description: "Clé du tableau (premier tableau par défaut)"}
+        - {name: format, in: query, required: false, schema: {type: string, enum: [csv, xlsx]}}
+        - {name: school_id, in: query, required: false, schema: {type: string}}
+        - {name: program_id, in: query, required: false, schema: {type: string}}
+        - {name: academic_year_id, in: query, required: false, schema: {type: string}}
+        - {name: from, in: query, required: false, schema: {type: string, format: date}}
+        - {name: to, in: query, required: false, schema: {type: string, format: date}}
+      responses:
+        '200': {description: "Fichier téléchargeable"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Tableau inconnu ou école hors périmètre"}
+        '422': {description: "Tableau, format ou filtre invalide"}
+        '501': {description: "XLSX indisponible sur ce serveur (extension zip manquante)"}

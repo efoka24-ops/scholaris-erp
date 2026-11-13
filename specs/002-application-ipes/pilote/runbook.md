@@ -1,0 +1,270 @@
+# Pilote IPES : runbook de mise en service
+
+Public : l'équipe SCHOLARIS (opérations sur Camoo) et l'administrateur de chaque institut. Deux clients distincts, **un client = un IPES** :
+
+1. Institut Supérieur du Septentrion de Garoua (ISSEG) ;
+2. Institut de Formation Professionnelle les Étoiles du Septentrion (IFPES).
+
+Les deux font partie du Complexe de Formation les Étoiles du Septentrion (quartier Ouro Mal-Amadou, Garoua). Le site est en HTTPS, l'e-mail SMTP est actif, les SMS partent par la passerelle TeeeOTP (quota de 500 par jour : prévenir TRU GROUP avant un envoi de masse ; vérifier la réception sur un numéro de test avant le pilote).
+
+Règles de sécurité de ce runbook : aucun mot de passe, clé ou identifiant de connexion n'est écrit dans le dépôt ni dans ce document ; les noms et téléphones de personnes réelles non plus. Les identifiants sont échangés hors dépôt et changés après la première connexion. Les opérations sur Camoo (migrate, création des clients, import réel) sont faites par l'équipe, jamais par un assistant automatique.
+
+## 0. Prérequis (avant le premier institut)
+
+| Contrôle | Commande ou action | Attendu |
+|---|---|---|
+| Version déployée à jour | FTP puis `php artisan migrate` | « Appliquée : … » ou « Rien à migrer » |
+| Base en bon état | `php artisan db:check` | tous les contrôles verts (migrations, schéma, utf8mb4, écriture/lecture annulées) |
+| Statut du serveur | `php artisan status` | extensions ok, base ok |
+| HTTPS actif | ouvrir le site | cadenas valide ; `/api/v1/health` répond |
+| Clé de sauvegarde | `php artisan backup:keygen` (une seule fois), clé dans `BACKUP_KEY` du `.env` du serveur ET dans un coffre hors serveur | sans cette clé, les sauvegardes sont illisibles |
+| SMTP | envoyer un message de test depuis l'écran Messagerie | reçu |
+| Permission de reprise | voir §8 « Permission `higher.migration.manage` » | accordée à la direction d'école et à la scolarité |
+
+## 1. Création du client et de l'établissement (par institut)
+
+1. L'institut dépose une **demande d'accès** publique pour l'application « Supérieur » (`higher`) ; l'administrateur de plateforme l'accepte (2FA obligatoire pour lui). Le client démarre en **essai de 90 jours**.
+2. Création du premier administrateur du client : `php artisan admin:create "<client>" "<prénom>" "<nom>" "<téléphone ou e-mail>"`. Le mot de passe affiché une seule fois est transmis hors dépôt et changé à la première connexion ; la double authentification est exigée.
+3. Création de l'établissement de type `higher` si l'activation ne l'a pas créé : `php artisan establishment:create <client> "<nom de l'institut>" higher`.
+4. Relever l'**identifiant du client** (utilisé par les commandes) et l'identifiant de l'établissement : `php artisan list` ne les affiche pas ; ils figurent dans l'écran Plateforme > Clients.
+5. Se connecter avec l'administrateur du client et vérifier : « Mes applications » montre l'IPES en essai ; le client n'accède pas à `/platform`.
+
+## 2. Gabarit de démarrage (`higher:pilot-setup`)
+
+Après la création du client, l'équipe installe un squelette réutilisable. La commande est **idempotente** et ne crée **aucune autorisation MINESUP** : les filières restent **fermées et non inscriptibles** tant qu'une autorisation réelle n'est pas saisie.
+
+```
+php artisan higher:pilot-setup <id du client> <modèle> [--establishment=<id>] [--year=<id de l'année>] [--dry-run]
+```
+
+| Modèle | Contenu (gabarit à confirmer par l'établissement) |
+|---|---|
+| `sante` | école « santé et paramédical », département, filières : BTS Études médico-sanitaires (odontostomatologie ; sage-femme), BTS Sciences et techniques biomédicales (techniques pharmaceutiques), délégué médical, vendeur en pharmacie, auxiliaire de vie sociale, aide-soignant |
+| `gestion` | école « gestion et administration », département, filières : BTS Gestion (assistant manager), BTS Gestion des collectivités territoriales, GRH, administration des collectivités territoriales décentralisées |
+| `complet` | les deux écoles ci-dessus |
+
+Ce que la commande crée : écoles internes et départements ; filières au statut **fermé**, nom suffixé « [à confirmer] » ; niveaux (BTS 1 et BTS 2, ou Niveau 1) ; un groupe G1 par niveau ; un profil documentaire par école (en-tête, logo et couleurs à compléter) ; avec `--year`, une **grille de frais vide en brouillon** par école.
+
+Mode d'emploi :
+
+1. Toujours commencer par `--dry-run` : le compte rendu liste ce qui serait créé, rien n'est écrit.
+2. Lancer sans `--dry-run` ; relancer ne crée rien de plus (« existe déjà, conservé »). Si le client a plusieurs IPES, ajouter `--establishment=<id>`.
+3. Comparer le résultat à la réalité : régime, durée, niveaux et intitulés de chaque filière sont à **confirmer ou corriger** par l'établissement (écran Paramétrage académique). Le gabarit n'a de valeur que de point de départ : régime BTS pour les BTS, « certificat » par défaut pour les autres, sans tutelle universitaire.
+4. Ne rouvrir une filière (statut actif) qu'après saisie de l'**arrêté d'autorisation MINESUP réel** et de sa période de validité (voir `donnees-a-fournir.md`).
+
+## 3. Paramétrage dans l'ordre
+
+Réalisé par l'administrateur de l'institut avec la direction (écrans « Paramétrage académique », « Maquettes », « Frais et paiements », « Documents officiels »). Ne pas passer à l'étape suivante avant d'avoir validé la précédente.
+
+| # | Étape | Où | Contrôle de sortie |
+|---|---|---|---|
+| 1 | Année académique et semestres | Administration > Années | l'année en cours est active |
+| 2 | Écoles internes | Paramétrage académique | une école par pôle, code court (sert au matricule et aux numéros de documents) |
+| 3 | Départements | idem | rattachés à leur école |
+| 4 | Filières (régime, langue, mode, durée) | idem | régime jamais modifiable ensuite (RG-ORG-7) : se tromper = créer une nouvelle filière |
+| 5 | Niveaux et groupes | idem | niveaux 1 à n, groupe(s) avec capacité |
+| 6 | **Autorisations MINESUP** (arrêté, date, validité, niveaux couverts) | Autorisations | l'écran d'éligibilité ne signale plus de refus pour la filière ; alertes d'expiration à 90, 30 et 7 jours |
+| 7 | **Tutelles** (filières LMD seulement : université, convention, échéance) | Tutelles | convention non expirée |
+| 8 | **Règlement des études** (barèmes, grille de lettres, seuils) puis gel | Règlements | figé à la première inscription (RG-ACA-3) ; modifié ensuite seulement par le directeur académique avec 2FA |
+| 9 | Calendrier (inscriptions, évaluations, délibérations) | Calendrier | dates cohérentes |
+| 10 | **Maquettes** par filière et niveau (UE, EC, crédits ou coefficients, volumes horaires) saisies par le directeur d'école, **publiées** par le directeur académique | Maquettes | 30 crédits par semestre en LMD (RG-MAQ-2) ; BTS : chaque matière rattachée à une épreuve de l'examen national |
+| 11 | **Grilles de frais** (dossier, inscription, pension, examen national, carte, assurance) et échéancier par défaut | Frais et paiements > Grilles | une grille active par école, filière, niveau et mode |
+| 12 | Profils documentaires (en-tête, logo, couleurs, langue) | Documents officiels | un profil par école |
+| 13 | Paramètres de l'établissement (paiement mobile, relances, blocages) | Administration | blocages jamais appliqués aux cours ni aux compositions |
+| 14 | **Comptes du personnel** et rôles | Administration > Utilisateurs | voir tableau ci-dessous |
+
+Rôles à attribuer (périmètre école, département, filière ou groupe selon le poste) : administrateur fonctionnel, directeur général, directeur académique, directeur d'école, chef de département, responsable de filière, service de la scolarité, service des examens, caissier, comptable, enseignants (permanents et vacataires), responsable des stages, jury. Un compte par personne, jamais partagé ; la **2FA** est exigée pour les rôles sensibles (direction, comptabilité).
+
+Les fiches du personnel (module Personnel) doivent exister **avant** la reprise du personnel enseignant.
+
+## 4. Reprise de données
+
+Principe : **limitée à l'année en cours et aux UE capitalisées** ; pas de reprise d'années antérieures (les anciens relevés restent sur papier ou numérisés à part). Cinq jeux, dans cet ordre :
+
+1. étudiants en cours et inscription (CSV ou XLSX) ;
+2. UE capitalisées et dettes ;
+3. soldes d'ouverture et échéanciers ;
+4. personnel enseignant et affectations ;
+5. notes de l'année en cours (verrouillées, motif « reprise »).
+
+Procédure pour chaque jeu (**écran « Reprise des données »**, accueil IPES puis `/superieur/reprise-des-donnees`, ou API `/api/v1/higher/migration` ; permission `higher.migration.manage`) :
+
+1. Télécharger le **modèle** (bouton « Télécharger le modèle de fichier », ou `GET /higher/migration/templates/{students|credits|balances|staff|marks}`, CSV UTF-8 séparateur « ; », ou `?format=xlsx`).
+2. Remplir le fichier avec l'établissement, **sans données réelles dans le dépôt**.
+3. **Simulation obligatoire** : choisir le jeu et l'année, joindre le fichier (CSV ou XLSX, 8 Mo au plus) puis « Lancer la simulation » (API : `POST /higher/migration/batches` avec `dry_run=true`, fichier en `multipart/form-data` champ `file`, ou JSON `content`/`content_base64`) ; rien n'est écrit. Lire le rapport ligne par ligne (erreurs, doublons, avertissements, colonnes inconnues ; filtre par état). Corriger le fichier et refaire la simulation jusqu'à zéro erreur : le bouton « Appliquer le lot » reste désactivé tant qu'il reste une erreur.
+4. **Application** : « Appliquer le lot » puis confirmation (API : `POST /higher/migration/batches/{id}/apply`, 2FA récente ; sans 2FA récente l'écran renvoie vers la confirmation puis revient). Une seule transaction : tout ou rien. Relancer le même fichier ne crée rien en double (clé de reprise : matricule, sinon nom + prénom + date de naissance).
+5. **Annulation** si le fichier était faux : « Annuler ce lot » avec un motif de 5 caractères au moins (API : `POST /higher/migration/batches/{id}/revert`), possible tant qu'aucune donnée dépendante n'existe (un lot d'étudiants ne s'annule pas tant que des soldes, notes ou UE reprises le référencent : annuler d'abord ces lots). Les **soldes d'ouverture ne s'annulent pas** (une facture émise ne se supprime pas) : vérifier très soigneusement la simulation.
+6. Tout est journalisé (simulation, application, annulation) ; la liste « Historique des lots » de l'écran permet de rouvrir le rapport de chaque lot. Contrôler par sondage 5 % des lignes dans les écrans (fiche étudiant, compte de scolarité, notes).
+
+Mineurs : la reprise refuse les étudiants de moins de 18 ans (garant exigé) ; les inscrire par l'écran Inscriptions.
+
+## 5. Checklist de bascule (jour J)
+
+- [ ] Sauvegarde chiffrée faite avant la bascule : `php artisan backup:run`, fichier téléchargé et conservé hors serveur.
+- [ ] `db:check` vert, `migrate:status` sans migration en attente.
+- [ ] Paramétrage académique complet (étapes 1 à 14), autorisations réelles saisies, aucune alerte d'expiration.
+- [ ] Maquettes publiées pour chaque filière et niveau ouvert.
+- [ ] Grilles de frais actives ; exemple chiffré vérifié (ex. 450 000 FCFA de pension, bourse de 20 %, 3 tranches).
+- [ ] Reprise des 5 jeux faite et contrôlée par sondage.
+- [ ] Comptes du personnel créés, 2FA activée pour les rôles sensibles, mots de passe initiaux changés.
+- [ ] Tâches planifiées créées (§6) et premier passage constaté dans les journaux.
+- [ ] Formation des rôles faite (dossier `formation/`).
+- [ ] TST-01 à TST-12 rejoués (voir `recette-pilote.md`).
+- [ ] Sauvegarde restaurée **une fois sur une base de test** (voir §7).
+- [ ] Information des étudiants et des garants : accès à l'espace étudiant, pas de SMS pour l'instant.
+- [ ] Décision de bascule signée par la direction de l'institut ; ancien système en lecture seule.
+
+## 6. Tâches planifiées à créer sur Camoo
+
+Créer les tâches cron du panneau d'hébergement (chemin du projet : le dossier de l'application sur le serveur). Chaque ligne : `cd <chemin du projet> && php artisan <commande>`.
+
+| Commande | Fréquence | Rôle |
+|---|---|---|
+| `queue:send` | chaque minute | reprend les envois de messages en échec |
+| `documents:process-jobs --workers=4 --max-seconds=840` | chaque minute (ou par `schedule:run`) | génère les documents en lot et pré-rend les PDF des bulletins, en 4 processus (voir §6 ter) |
+| `sms:sync-status` | toutes les 15 minutes | met à jour l'état des SMS TeeeOTP (envoyé, remis, échec) |
+| `attendance:retry-absences` | chaque heure | rejoue les notifications d'absence échouées |
+| `reminders:send` | chaque jour (7 h) | relances de tranches de scolarité |
+| `platform:billing-run` | chaque jour (6 h) | relances, impayés et suspensions des abonnements |
+| `reports:run` | chaque jour (5 h) | rapports planifiés |
+| `higher:expiry-alerts` | chaque jour (6 h 30) | alertes d'expiration des autorisations et conventions (90/30/7 jours) |
+| `higher:reserve-expiry` | chaque jour (6 h 45) | expiration des admissions « sous réserve » à 30 jours |
+| `higher:grading-reminders` | chaque jour (7 h 15) | relances de saisie des notes |
+| `higher:reminders` | chaque jour (7 h 30) | relances de l'application IPES |
+| `backup:run` | chaque nuit (2 h) | sauvegarde chiffrée avec rétention |
+| `retention:run --apply` | selon la politique de rétention (mensuel) | purge des données arrivées à échéance ; commencer par `retention:run` sans `--apply` |
+
+Vérification : après 24 h, chaque tâche a laissé une trace dans `storage/logs` sans erreur ; la file de messages ne grossit pas.
+
+### 6 ter. Bulletins en nombre : rendu léger et plusieurs processus (NF-S2)
+
+Objectif : 3 000 bulletins PDF en moins de 15 minutes. Deux réglages y concourent :
+
+1. **Profil léger** des bulletins (catégorie `bulletin`) : polices de base, grandes images retirées, PDF de 10 Kio environ au
+   lieu de 55 Kio, rendu environ 3 fois plus rapide. Actif par défaut. Pour revenir au profil standard, poser
+   `DOCUMENTS_BATCH_LIGHT_PROFILE=false` dans le `.env` du serveur. L'aperçu accepte toujours `?profile=standard`.
+2. **Pré-rendu par la file** : après l'émission, `documents:process-jobs` rend chaque bulletin et range le PDF dans
+   `storage/cache/documents-pdf` (variable `DOCUMENTS_PDF_STORE`). Le portail, l'aperçu et les liens de téléchargement servent
+   ensuite ce fichier sans nouveau rendu. C'est un cache : si le dossier est vidé, le PDF est refait à la demande.
+
+Plusieurs processus se partagent la file sans doublon. Chaque lot et chaque bulletin est pris par une mise à jour conditionnelle
+(verrou en base), et un verrou abandonné est repris après `queue.stale_after` (600 s).
+
+**Cas Camoo : une seule tâche cron, toutes les 15 minutes.** La tâche `php -f cron.php` (= `schedule:run`) lance
+`documents:process-jobs --workers=4 --max-seconds=840`. Ce lancement crée 4 processus en arrière-plan (créneaux 1 à 4) puis
+rend la main aussitôt, et les autres tâches du cron ne sont pas retardées. Chaque processus vide la file pendant 14 minutes au
+plus et s'arrête dès qu'elle est vide. Un verrou de fichier par créneau (`storage/cache/documents-worker-<k>.lock`) empêche
+d'avoir plus de 4 processus, même si le cron repasse avant la fin.
+
+**Si l'hébergeur interdit de lancer un processus** (`exec` ou `popen` dans `disable_functions`) : la commande l'affiche
+(« lancement en arrière-plan impossible ») et traite la file elle-même dans la limite de `--max-seconds`. Il n'y a alors qu'un
+seul processus, et 3 000 bulletins prennent environ 25 minutes, soit deux passages du cron. Pour tenir 15 minutes dans ce cas,
+créer 2 à 4 tâches cron supplémentaires, chacune avec son créneau :
+
+```
+cd <chemin du projet> && php artisan documents:process-jobs --slot=1 --max-seconds=840
+cd <chemin du projet> && php artisan documents:process-jobs --slot=2 --max-seconds=840
+```
+
+**Lancement manuel**, par exemple le soir des conseils de classe, en SSH :
+`php artisan documents:process-jobs --workers=4 --max-seconds=1800`. La progression se lit dans `storage/logs/schedule.log`
+et dans la santé de la plateforme (file des documents).
+
+**Mesure locale** (SQLite, poste Windows, bulletins réels du passage C-117) :
+`php tests/Load/Secondary/prerender-queue.php 160 4`.
+
+| Mode | Débit | 3 000 bulletins |
+|---|---|---|
+| Avant : rendu à la demande en profil standard, un processus | 1 491 ms par bulletin | 74,5 min |
+| File, profil léger, 1 processus | 2,1 bulletins par s (40 en 19,3 s) | 24,1 min |
+| Après : file, profil léger, 4 processus | 6,3 bulletins par s (160 en 25,5 s, 40 par processus, aucun doublon) | 8,0 min de rendu |
+
+À cela s'ajoute l'émission (66 ms par bulletin, soit 3,3 min). Le total est d'environ 11,3 min, sous les 15 min.
+À refaire sur le serveur Camoo (MySQL), avec le même script adapté ou en relevant les durées de `schedule.log`.
+
+### 6 bis. SMS par TeeeOTP
+
+Les SMS de SCHOLARIS partent par TeeeOTP, le service SMS mutualisé de TRU GROUP (https://github.com/efoka24-ops/teeeotp). Les codes d'accès restent générés et vérifiés par SCHOLARIS : seul `POST /v1/sms` est utilisé, jamais `/v1/otp/*`. Sans configuration, les SMS restent sur le journal (simulateur).
+
+Variables à poser dans le `.env` **du serveur** (jamais dans le dépôt, jamais dans un message ni un ticket) :
+
+| Variable | Valeur | Remarque |
+|---|---|---|
+| `SMS_DRIVER` | `teeeotp` | l'emporte sur `SMS_GATEWAY` ; autres valeurs : `log` (défaut), `http` |
+| `TEEEOTP_BASE_URL` | `https://trugroup.cm/teeeotp` | défaut si absente ; HTTPS obligatoire |
+| `TEEEOTP_API_KEY` | `sk_test_…` puis `sk_live_…` | fournie par TRU GROUP ; sans clé, le pilote reste sur le journal |
+| `TEEEOTP_TIMEOUT_SECONDS` | `10` (défaut) | délai maximal d'un appel, de 1 à 60 s |
+
+Mise en service en deux temps :
+
+1. **Clé de test `sk_test_…`** : quelques vrais SMS (5 par défaut), puis les envois sont **simulés** (rien ne part, TeeeOTP répond « simulated »). Lancer `php artisan sms:check` : il appelle `GET /v1/me` et affiche le mode (test ou live), le quota, l'allocation de test et la consommation du jour, sans jamais afficher la clé. Envoyer un message de test depuis l'écran Messagerie vers un numéro de l'équipe, et vérifier la réception.
+2. **Clé de production `sk_live_…`** : remplacer `TEEEOTP_API_KEY` (la clé live est une décision de TRU GROUP), relancer `php artisan sms:check` (mode `live` attendu), puis refaire un envoi de test. Prévenir TRU GROUP avant un envoi de masse (quota quotidien du projet).
+
+Exploitation :
+
+- Numéros acceptés : mobiles camerounais (`6XXXXXXXX`, `2376XXXXXXXX`, `+2376XXXXXXXX`) ; un autre numéro est refusé avant tout appel. Les messages de plus de 480 caractères sont raccourcis proprement (coupure à une espace, « … »).
+- La référence de chaque SMS est « teeeotp-<identifiant TeeeOTP> », mémorisée avec la livraison (champ « Référence opérateur » de l'export des messages). `php artisan sms:sync-status` (planifié toutes les 15 minutes, §6) relit l'état chez TeeeOTP : `delivered` marque le SMS remis ; `failed` ou `expired` le marque en échec (motif `provider_failed`) et il rejoint la file de reprise `queue:send` ; `queued`/`sending`/`sent` laissent le SMS « envoyé ». Les SMS plus vieux de 3 jours ne sont plus suivis.
+- Erreurs possibles dans les journaux (code seul, jamais la clé, le numéro ni le texte) : `QUOTA_EXCEEDED` (quota du jour atteint : attendre le lendemain ou demander une hausse), `TOO_MANY_REQUESTS` (réessai automatique), `INVALID_PHONE`, `UNREACHABLE` (service injoignable : réessai automatique), `UNAUTHORIZED` (clé refusée ou révoquée : refaire `sms:check`).
+- Retour arrière : retirer `SMS_DRIVER` (ou le mettre à `log`) du `.env` ; les SMS repassent sur le simulateur.
+
+## 7. Sauvegarde, restauration, surveillance
+
+- **Sauvegarde** : `php artisan backup:run [--keep=N]` (fichier `.sbk` chiffré dans `storage/backups/`). Télécharger chaque semaine une copie hors serveur (FTP).
+- **Restauration (à tester avant la bascule)** : sur une base de **test** (jamais la production pour un premier essai) : `php artisan backup:restore storage/backups/<fichier>.sbk --force`. Les nombres de lignes sont contrôlés ; une seule transaction.
+- **Surveillance** : `php artisan db:check` chaque semaine et après chaque déploiement ; `php artisan status` ; `php artisan audit:verify <client>` (chaîne du journal d'audit intacte) ; lire `storage/logs` (erreurs 500, échecs d'envoi) ; contrôler que la file de messages est vide.
+- **Alertes à surveiller** : abonnement en retard (lecture seule 423 pour les écritures), autorisation MINESUP proche de l'expiration, convention de tutelle expirée.
+
+## 8. Permission `higher.migration.manage`
+
+La reprise exige la permission `higher.migration.manage`. Elle est **déjà accordée** à `higher_dir_ecole` et `higher_scolarite` : par la migration `database/migrations/202610191200_higher_migration_dashboard_permissions.sql` et dans `RoleMatrix::ROLES` (les deux vont ensemble, sinon `HigherRolesMigrationTest` échoue). L'écran de reprise lit les permissions du rôle actif fournies par le serveur : aucune liste à tenir côté interface. Pour l'accorder à un autre rôle :
+
+```sql
+INSERT INTO role_permissions (role, permission) VALUES ('<code du rôle>', 'higher.migration.manage');
+```
+
+Le périmètre de la personne (école, département, filière) borne les lignes qu'elle peut reprendre.
+
+## 8 bis. Relevés de notes : mise à niveau des modèles installés et relevé annuel DOC-10
+
+**Mise à niveau (une fois, au déploiement).** Un établissement qui a installé le catalogue des documents avant la mise en page des relevés réels garde l'ancien modèle DOC-09 (10 emplacements d'UE) et DOC-10. La migration `database/migrations/202611051201_c103_higher_transcript_templates.sql`, jouée par `php artisan migrate`, met à niveau **tous les clients d'un coup**, de façon idempotente :
+
+1. elle ajoute aux types `hi_doc09` et `hi_doc10` les variables du nouveau modèle (`units_table`, `annual_table`, `rank_info`) ;
+2. elle crée une **nouvelle version validée** du modèle FR et EN (version précédente + 1) ; l'**ancienne version est conservée** (documents déjà émis, retour arrière possible en rouvrant l'ancienne version) ;
+3. elle ne touche pas un modèle dont la dernière version utilise déjà un tableau du moteur (déjà à jour ou personnalisé sur le nouveau modèle) ;
+4. la rejouer ne change rien. Contrôle après déploiement : `php artisan migrate:status` sans migration en attente, puis émettre un relevé de test.
+
+Un modèle à emplacements `u01_…` **personnalisé par l'établissement** est lui aussi remplacé par la nouvelle version (l'ancienne reste consultable) : l'établissement reprend ses personnalisations sur la nouvelle version. Les nouveaux clients installent directement le nouveau modèle depuis le catalogue.
+
+La limite de 10 UE par relevé semestriel est levée : le tableau du nouveau modèle liste toutes les UE et leurs EC.
+
+**Relevé de notes et de crédits DOC-10 (annuel et cumulatif).** Écran Délibérations > Relevés, section « Relevé de notes et de crédits » : un étudiant, ou toute une promotion (groupe et année). Prérequis : décision de fin d'année enregistrée et PV des semestres signés (RG-DOC-3). Le relevé porte toutes les UE de l'année avec crédits, note /20, cote /4, grade et mention de l'UE (selon l'échelle des règles du jury, jamais pour une UE non acquise), la moyenne annuelle, la MGP sur 4, les crédits capitalisés et cumulés et la décision. Émission en lot : les étudiants sans décision ou sans relevé publié sont listés avec leur raison, ceux qui ont déjà un relevé valide postérieur à la décision sont sautés : relancer le lot n'émet rien en double. API : `GET|POST /higher/deliberation/annual-transcripts`, `POST /higher/deliberation/annual-transcripts/batch`.
+
+_Pas de commande artisan de mise à niveau par client_ : écrire dans les types et modèles du socle Documents exige un contrat du socle que l'application IPES n'a pas le droit de contourner (accès inter-modules par Contracts seulement). La migration ci-dessus couvre tous les clients existants au déploiement.
+
+## 9. Plan de retour arrière
+
+| Situation | Action |
+|---|---|
+| Fichier de reprise faux, lot appliqué | annuler le lot (§4, étape 5), corriger, refaire la simulation ; pour un solde d'ouverture, faire corriger le compte par le comptable |
+| Déploiement défectueux | restaurer les fichiers de la version précédente (FTP) ; **ne jamais** revenir sur une migration de base : restaurer la sauvegarde d'avant déploiement sur la base si le schéma est en cause |
+| Données corrompues | arrêt des saisies (suspendre l'application du client si besoin), restauration de la dernière sauvegarde saine sur une base de test, comparaison, puis décision de la direction |
+| Échec de bascule | reprendre l'ancien système (resté en lecture seule), noter les écarts au registre des défauts (`recette-pilote.md`), nouvelle date |
+
+Avant chaque opération risquée : sauvegarde `backup:run` et noter l'heure.
+
+## 10. Protection des données (loi n° 2024/017 sur la protection des données personnelles)
+
+- **Consentements** : le garant ne voit les notes et absences d'un étudiant majeur qu'avec son consentement enregistré (RG-INS-7) ; le consentement est collecté à l'inscription et peut être retiré. Les données de santé éventuelles sont chiffrées.
+- **Finalités et accès** : accès par rôle et par périmètre (école, département, filière, groupe) ; refus par défaut ; un identifiant d'un autre client répond 404. L'université de tutelle n'a aucun accès direct par défaut (désactivé en V1).
+- **Durées de conservation** : définies par la politique de rétention (`retention:run`) validée par la direction de l'institut avant le pilote ; à confirmer par l'établissement et à consigner dans le registre des traitements. Les relevés de notes et diplômes sont conservés durablement.
+- **Droits des personnes** : accès, rectification, effacement dans les limites légales via les demandes de personnes concernées (module Conformité) ; export d'un client par `tenant:export`.
+- **Pas de données réelles avant HTTPS** : le site est en HTTPS ; les données réelles peuvent donc être saisies, mais jamais dans le dépôt ni dans les jeux de test.
+- **Journal d'audit** inaltérable (chaîné) : toute reprise, correction de note, réouverture de délibération y figure.
+
+## 11. Incidents
+
+1. **Qualifier** : indisponibilité, erreur de données, fuite possible, message en échec. Noter l'heure, l'institut, le `trace_id` affiché dans l'erreur.
+2. **Contenir** : suspendre les écritures du client si les données sont en cause ; changer les mots de passe et révoquer les sessions si un compte est compromis.
+3. **Diagnostiquer** : `storage/logs`, `db:check`, `audit:verify <client>`.
+4. **Corriger ou restaurer** (§9), puis **informer** la direction de l'institut le jour même ; en cas de fuite de données personnelles, informer l'autorité compétente et les personnes concernées selon la loi.
+5. **Consigner** dans le registre des défauts (`recette-pilote.md`) : cause, correction, prévention.

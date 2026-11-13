@@ -1,0 +1,246 @@
+# Contrat OpenAPI 3.1 du module FIN de l'application Supérieur (IPES) : grilles de frais par école, filière, niveau et mode,
+# comptes de scolarité (facture libre du socle, D4), paiements (affectation RG-FIN-2 du socle, reçu DOC-27), bourses et réductions
+# (RG-FIN-1, plafond billing.discount_cap_percent), échéanciers négociés, tiers payeurs (S13), blocages (RG-FIN-5).
+# Toutes les routes : authentification, en-tête X-Establishment-Id ; GET -> 404 si l'application est fermée ;
+# écritures -> 423 si l'abonnement est suspendu (lecture et export seulement), 403 si fermée (voir higher-core.yaml).
+# Permissions : higher.billing.read (lecture), billing.manage (grilles, comptes, bourses, échéanciers, tiers), billing.cash (espèces).
+# Périmètre : école, filière, niveau (ScopedBySchool) ; hors périmètre : 404 en lecture, 403 journalisé en écriture.
+paths:
+  /api/v1/higher/billing/fee-kinds:
+    get:
+      summary: "Types de frais de l'IPES et codes stables (dossier, inscription, pension, examen national, soutenance, stage, carte, assurance, reversement tutelle)"
+      responses:
+        '200': {description: "Liste des types (code, kind du socle, libellés FR/EN, remboursable)"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Application fermée"}
+  /api/v1/higher/billing/fee-grids:
+    get:
+      summary: "Grilles de frais du périmètre (filtres academic_year_id, school_id, status)"
+      responses:
+        '404': {description: "Application fermée, ressource introuvable ou hors périmètre"}
+        '200': {description: "Grilles"}
+        '403': {description: "Permission absente"}
+    post:
+      summary: "Créer une grille (école, filière, niveau, mode day/evening) avec ses frais et l'échéancier de la pension (défaut 3 tranches : 15 octobre, 15 janvier, 15 avril)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [academic_year_id, school_id, label, fees]
+              properties:
+                academic_year_id: {type: string}
+                school_id: {type: string}
+                program_id: {type: [string, 'null']}
+                level_id: {type: [string, 'null']}
+                study_mode: {type: [string, 'null'], enum: [day, evening, null]}
+                label: {type: string, maxLength: 160}
+                fees: {type: array, items: {type: object, properties: {fee_code: {type: string}, amount_xaf: {type: integer}, due_on: {type: [string, 'null'], format: date}}}}
+                terms: {type: [array, 'null'], items: {type: object, properties: {due_on: {type: string, format: date}, weight: {type: integer}}}}
+                start_year: {type: [integer, 'null'], description: "Année de rentrée pour l'échéancier par défaut (higher.billing.default_terms)"}
+      responses:
+        '404': {description: "Application fermée, ressource introuvable ou hors périmètre"}
+        '201': {description: "Grille créée"}
+        '403': {description: "Hors périmètre ou permission absente"}
+        '409': {description: "Grille active déjà présente pour ces critères"}
+        '422': {description: "Frais inconnu, montant ou échéancier invalide"}
+        '423': {description: "Abonnement suspendu"}
+  /api/v1/higher/billing/fee-grids/{id}:
+    get:
+      summary: "Détail d'une grille"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Grille"}
+        '404': {description: "Introuvable ou hors périmètre"}
+  /api/v1/higher/billing/fee-grids/{id}/archive:
+    post:
+      summary: "Archiver une grille (les comptes ouverts gardent leur facture)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Grille archivée"}
+        '403': {description: "Hors périmètre"}
+        '404': {description: "Introuvable"}
+        '423': {description: "Abonnement suspendu"}
+  /api/v1/higher/billing/accounts:
+    get:
+      summary: "Comptes de scolarité du périmètre (filtres academic_year_id, school_id, person_id)"
+      responses:
+        '404': {description: "Application fermée, ressource introuvable ou hors périmètre"}
+        '200': {description: "Comptes avec totaux, tranches et reçus"}
+        '403': {description: "Permission absente"}
+    post:
+      summary: "Ouvrir le compte d'un étudiant : facture du socle depuis la grille la plus précise, échéancier par défaut ou négocié validé, tiers payeur éventuel"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [person_id, academic_year_id, school_id]
+              properties:
+                person_id: {type: string}
+                academic_year_id: {type: string}
+                school_id: {type: string}
+                program_id: {type: [string, 'null']}
+                level_id: {type: [string, 'null']}
+                study_mode: {type: [string, 'null'], enum: [day, evening, null]}
+                enrolment_ref: {type: [string, 'null']}
+                plan_id: {type: [string, 'null']}
+                sponsor_id: {type: [string, 'null']}
+      responses:
+        '404': {description: "Application fermée, ressource introuvable ou hors périmètre"}
+        '201': {description: "Compte ouvert (installments : status paid, partial, pending, overdue)"}
+        '403': {description: "Hors périmètre"}
+        '409': {description: "Compte déjà ouvert pour cette année et cette filière"}
+        '422': {description: "Aucune grille, échéancier non validé, frais absent du catalogue du socle"}
+        '423': {description: "Abonnement suspendu"}
+  /api/v1/higher/billing/accounts/{id}:
+    get:
+      summary: "Compte de scolarité : relevé de compte et échéancier (DOC-28 en données), retard, prochaine échéance"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Compte"}
+        '404': {description: "Introuvable ou hors périmètre"}
+  /api/v1/higher/billing/accounts/{id}/payments:
+    post:
+      summary: "Encaisser un paiement (en-tête Idempotency-Key obligatoire) (espèces avec caisse ouverte, mobile money, virement, carte) ; affectation RG-FIN-2 et reçu du socle ; NOT-10"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [amount_xaf, channel]
+              properties:
+                amount_xaf: {type: integer, minimum: 1}
+                channel: {type: string, enum: [cash, orange_money, mtn_momo, transfer, card]}
+                payer_phone: {type: [string, 'null']}
+                external_reference: {type: [string, 'null'], description: "Référence de l'opérateur (paiement déjà confirmé)"}
+      responses:
+        '404': {description: "Application fermée, ressource introuvable ou hors périmètre"}
+        '201': {description: "Paiement (pending ou confirmed, reçu numéroté) et compte à jour"}
+        '400': {description: "Idempotency-Key manquant"}
+        '403': {description: "Permission ou périmètre"}
+        '409': {description: "Caisse fermée"}
+        '422': {description: "Montant ou canal invalide"}
+        '423': {description: "Abonnement suspendu"}
+  /api/v1/higher/billing/accounts/{id}/scholarships:
+    get:
+      summary: "Bourses et réductions du compte"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Bourses"}
+        '404': {description: "Compte introuvable"}
+    post:
+      summary: "Demander une bourse ou réduction (merit, staff, sibling, partnership) sur la pension seulement (RG-FIN-1), plafonnée"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [scholarship_kind, reason]
+              properties:
+                scholarship_kind: {type: string, enum: [merit, staff, sibling, partnership]}
+                calc_mode: {type: string, enum: [percent, fixed]}
+                rate_value: {type: integer, description: "Défaut : higher.scholarship.rates (mérite 20 %)"}
+                applies_to: {type: string, description: "tuition (défaut, higher.billing.discount_targets)"}
+                reason: {type: string}
+      responses:
+        '404': {description: "Application fermée, ressource introuvable ou hors périmètre"}
+        '201': {description: "Bourse en attente de validation"}
+        '403': {description: "Hors périmètre"}
+        '422': {description: "Remise hors pension, plafond dépassé, taux absent"}
+        '423': {description: "Abonnement suspendu"}
+  /api/v1/higher/billing/scholarships/{id}/approve:
+    post:
+      summary: "Valider une bourse (comptable autre que le demandeur) : remise répartie sur les tranches restantes"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '404': {description: "Application fermée, ressource introuvable ou hors périmètre"}
+        '200': {description: "Bourse appliquée"}
+        '403': {description: "Demandeur = validateur, ou hors périmètre"}
+        '409': {description: "Déjà traitée"}
+        '423': {description: "Abonnement suspendu"}
+  /api/v1/higher/billing/scholarships/{id}/reject:
+    post:
+      summary: "Refuser une bourse"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '403': {description: "Permission absente, hors périmètre ou application fermée (écriture)"}
+        '404': {description: "Application fermée, ressource introuvable ou hors périmètre"}
+        '200': {description: "Bourse refusée"}
+        '409': {description: "Déjà traitée"}
+        '423': {description: "Abonnement suspendu"}
+  /api/v1/higher/billing/payment-plans:
+    post:
+      summary: "Demander un échéancier individuel négocié (tranches datées et pondérées de la pension)"
+      responses:
+        '403': {description: "Permission absente, hors périmètre ou application fermée (écriture)"}
+        '404': {description: "Application fermée, ressource introuvable ou hors périmètre"}
+        '201': {description: "Échéancier en attente de validation du comptable"}
+        '422': {description: "Tranches invalides"}
+        '423': {description: "Abonnement suspendu"}
+  /api/v1/higher/billing/payment-plans/{id}/approve:
+    post:
+      summary: "Valider l'échéancier négocié (comptable autre que le demandeur)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '404': {description: "Application fermée, ressource introuvable ou hors périmètre"}
+        '200': {description: "Validé"}
+        '403': {description: "Demandeur = validateur"}
+        '409': {description: "Déjà traité"}
+        '423': {description: "Abonnement suspendu"}
+  /api/v1/higher/billing/payment-plans/{id}/reject:
+    post:
+      summary: "Refuser l'échéancier négocié"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '403': {description: "Permission absente, hors périmètre ou application fermée (écriture)"}
+        '404': {description: "Application fermée, ressource introuvable ou hors périmètre"}
+        '200': {description: "Refusé"}
+        '423': {description: "Abonnement suspendu"}
+  /api/v1/higher/billing/sponsors:
+    get:
+      summary: "Tiers payeurs (entreprises, bailleurs, parrains)"
+      responses:
+        '404': {description: "Application fermée, ressource introuvable ou hors périmètre"}
+        '200': {description: "Tiers"}
+    post:
+      summary: "Créer un tiers payeur ; les comptes ouverts avec sponsor_id sont facturés à son nom (S13)"
+      responses:
+        '403': {description: "Permission absente, hors périmètre ou application fermée (écriture)"}
+        '404': {description: "Application fermée, ressource introuvable ou hors périmètre"}
+        '201': {description: "Tiers créé"}
+        '422': {description: "Nom ou nature invalide"}
+        '423': {description: "Abonnement suspendu"}
+  /api/v1/higher/billing/sponsors/{id}:
+    get:
+      summary: "Relevé du tiers payeur : comptes pris en charge et solde dû par lui"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Relevé"}
+        '404': {description: "Introuvable"}
+  /api/v1/higher/billing/holds/{personId}:
+    get:
+      summary: "Blocages liés aux impayés (results, documents, reinscription paramétrables ; courses et exams jamais bloqués) et solde"
+      parameters:
+        - {name: personId, in: path, required: true, schema: {type: string}}
+      responses:
+        '404': {description: "Application fermée, ressource introuvable ou hors périmètre"}
+        '200': {description: "Blocages par portée"}
+        '403': {description: "Permission absente"}

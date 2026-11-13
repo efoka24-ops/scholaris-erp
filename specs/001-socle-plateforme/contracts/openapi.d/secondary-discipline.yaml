@@ -1,0 +1,231 @@
+# Contrat OpenAPI 3.1 de la discipline du secondaire (spec 005, lot E2-B : T864 a T867 ; EX-SEC-34 a 37 ; RG-PRE-1 a 3 ; TST-10).
+# L'appel par heure de cours, les justificatifs et les retards restent au socle (/attendance-sessions, /absence-justifications, D1, D4) :
+# ces routes lisent leur cumul (seances validees ; une seance = une heure de cours) et portent ce que le socle n'a pas : propositions
+# du bareme de l'etablissement (regle discipline_scale, jamais appliquee d'office), decision par une personne habilitee selon le
+# niveau du palier, conseil de discipline avec proces-verbal, exclusions de cours. Ecritures : 423 si l'abonnement est suspendu,
+# 403 si l'application n'est pas ouverte (WriteGate).
+paths:
+  /api/v1/secondary/discipline/scale:
+    get:
+      summary: "Bareme des heures d'absence de l'etablissement (regle discipline_scale), son etat et l'exemple du CDC a confirmer"
+      description: "Droits de discipline ou d'appel."
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "{data: {configured, scale: {tiers, repeat_offence_code}, version, errors, rule_key, hours_per_session, example, example_status}}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Application fermee"}
+  /api/v1/secondary/discipline/hours:
+    get:
+      summary: "Cumul en heures d'une classe sur une periode : absences, justifiees, non justifiees, retards, propositions en cours"
+      description: "Permission secondary.attendance.read, .take, .manage, secondary.discipline.manage ou .validate sur la classe (404 hors perimetre). Sans from/to : trimestre qui couvre le jour."
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: class_id, in: query, required: true, schema: {type: string}}
+        - {name: from, in: query, required: false, schema: {type: string, format: date}}
+        - {name: to, in: query, required: false, schema: {type: string, format: date}}
+      responses:
+        '200': {description: "{data: {class_id, class_name, period: {from, to, label}, hours_per_session, students: [{person_id, first_name, last_name, class_id, sessions, absent_hours, unjustified_hours, justified_hours, lates, proposals}]}}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Classe introuvable ou hors perimetre"}
+        '422': {description: "class_id absent, dates invalides ou aucune periode couvrante"}
+  /api/v1/secondary/discipline/proposals/compute:
+    post:
+      summary: "Calculer les propositions du bareme (classe, ou tout l'etablissement sans class_id) ; recalcul idempotent ; NOT-03 aux garants"
+      description: "Permission secondary.discipline.manage. Un palier superieur remplace les propositions encore ouvertes de la periode (superseded). Recidive : une sanction du bareme deja appliquee sur une periode anterieure."
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                class_id: {type: [string, 'null']}
+                from: {type: string, format: date}
+                to: {type: string, format: date}
+                period_label: {type: string, maxLength: 80}
+      responses:
+        '200': {description: "{data: {period, scale_version, examined, created: [proposition], unchanged}}"}
+        '400': {description: "Corps illisible"}
+        '403': {description: "Permission absente, classe hors perimetre ou application non ouverte"}
+        '404': {description: "Classe introuvable"}
+        '409': {description: "Bareme non parametre ou invalide"}
+        '422': {description: "Champs invalides ou aucune periode couvrante"}
+        '423': {description: "Abonnement suspendu"}
+  /api/v1/secondary/discipline/proposals:
+    get:
+      summary: "Propositions du bareme (filtres status, class_id, person_id, decision_level)"
+      description: "Permission secondary.discipline.manage, .validate, .council.preside ou secondary.attendance.manage, bornee au perimetre."
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: 'filter[status]', in: query, required: false, schema: {type: string, enum: [proposed, applied, rejected, superseded]}}
+        - {name: 'filter[class_id]', in: query, required: false, schema: {type: string}}
+        - {name: 'filter[person_id]', in: query, required: false, schema: {type: string}}
+        - {name: per_page, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 200}}
+        - {name: cursor, in: query, required: false, schema: {type: string}}
+      responses:
+        '200': {description: "Liste paginee {data: [{id, person_id, class_id, period_from, period_to, period_label, unjustified_hours, proposed_kind, proposed_label, decision_level, scale_version, repeat_offence, status, decided_by, decided_at, decision_reason, council_id, created_at}], meta.next_cursor, meta.per_page}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Application fermee"}
+        '422': {description: "Filtre ou pagination invalide"}
+  /api/v1/secondary/discipline/proposals/{id}:
+    get:
+      summary: "Une proposition du bareme"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "{data: proposition}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Proposition introuvable ou hors perimetre"}
+  /api/v1/secondary/discipline/proposals/{id}/decide:
+    post:
+      summary: "Decision d'une personne habilitee (RG-PRE-2) : apply, ou reject avec un motif ; une seule decision"
+      description: "Niveau surveillant_general : secondary.discipline.manage ou .validate ; chef_etablissement (et niveau inconnu) : secondary.discipline.validate ; conseil_discipline : jamais applique hors conseil (409), rejet motive par secondary.discipline.validate."
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [decision]
+              properties:
+                decision: {type: string, enum: [apply, reject]}
+                reason: {type: string, maxLength: 1000}
+      responses:
+        '200': {description: "{data: proposition decidee}"}
+        '400': {description: "Corps illisible"}
+        '403': {description: "Niveau de decision non habilite ou application non ouverte"}
+        '404': {description: "Proposition introuvable ou hors perimetre"}
+        '409': {description: "Deja decidee, ou palier du conseil de discipline"}
+        '422': {description: "Decision invalide ou rejet sans motif"}
+        '423': {description: "Abonnement suspendu"}
+  /api/v1/secondary/discipline/class-exclusions:
+    get:
+      summary: "Exclusions de cours (filtres class_id, person_id, session_date)"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: per_page, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 200}}
+        - {name: cursor, in: query, required: false, schema: {type: string}}
+      responses:
+        '200': {description: "Liste paginee {data: [{id, person_id, class_id, session_date, hour_label, session_id, reason, reported_by, client_uuid, created_at}], meta.next_cursor, meta.per_page}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Application fermee"}
+        '422': {description: "Filtre ou pagination invalide"}
+    post:
+      summary: "Signaler une exclusion de cours (Q14) ; meme client_uuid : 200 avec l'exclusion deja enregistree (rejeu hors ligne)"
+      description: "Permission secondary.attendance.take, .manage ou secondary.discipline.manage sur la classe."
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [client_uuid, person_id, class_id, session_date, hour_label, reason]
+              properties:
+                client_uuid: {type: string, maxLength: 40}
+                person_id: {type: string}
+                class_id: {type: string}
+                session_date: {type: string, format: date}
+                hour_label: {type: string, maxLength: 20}
+                session_id: {type: [string, 'null']}
+                reason: {type: string, maxLength: 500}
+      responses:
+        '200': {description: "{data: exclusion, replayed: true}"}
+        '201': {description: "{data: exclusion, replayed: false}"}
+        '400': {description: "Corps illisible"}
+        '403': {description: "Permission absente, classe hors perimetre ou application non ouverte"}
+        '404': {description: "Classe ou eleve introuvable"}
+        '422': {description: "Champs invalides"}
+        '423': {description: "Abonnement suspendu"}
+  /api/v1/secondary/discipline/councils:
+    get:
+      summary: "Conseils de discipline (filtres status, class_id, person_id)"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: per_page, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 200}}
+        - {name: cursor, in: query, required: false, schema: {type: string}}
+      responses:
+        '200': {description: "Liste paginee {data: [conseil], meta.next_cursor, meta.per_page}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Application fermee"}
+        '422': {description: "Filtre ou pagination invalide"}
+    post:
+      summary: "Convoquer un conseil de discipline (API-15) : dossier, faits, membres ; NOT-06 aux garants"
+      description: "Permission secondary.discipline.manage ou secondary.discipline.council.preside sur la classe."
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [person_id, class_id, facts, hearing_on, hearing_time, place]
+              properties:
+                person_id: {type: string}
+                class_id: {type: string}
+                proposal_id: {type: [string, 'null']}
+                facts: {type: string, maxLength: 2000}
+                hearing_on: {type: string, format: date}
+                hearing_time: {type: string, pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$'}
+                place: {type: string, maxLength: 160}
+                members: {type: array, maxItems: 12, items: {type: string, maxLength: 120}}
+      responses:
+        '201': {description: "{data: {id, person_id, class_id, proposal_id, facts, convened_on, hearing_on, hearing_time, place, members, status: convened, ...}}"}
+        '400': {description: "Corps illisible"}
+        '403': {description: "Permission absente, classe hors perimetre ou application non ouverte"}
+        '404': {description: "Eleve, classe ou proposition introuvable"}
+        '422': {description: "Champs invalides ou seance datee dans le passe"}
+        '423': {description: "Abonnement suspendu"}
+  /api/v1/secondary/discipline/councils/{id}:
+    get:
+      summary: "Un conseil de discipline"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "{data: conseil}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Conseil introuvable ou hors perimetre"}
+  /api/v1/secondary/discipline/councils/{id}/decide:
+    post:
+      summary: "Decision du conseil (RG-PRE-3) : final_exclusion exige le proces-verbal et l'audition de l'eleve et des parents ; no_sanction rejette la proposition liee"
+      description: "Permission secondary.discipline.council.preside. Exclusion definitive inscrite au dossier de l'eleve (reinscription sur decision motivee, RG-INS-3)."
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [decision_kind, decision_reason]
+              properties:
+                decision_kind: {type: string, pattern: '^[a-z][a-z0-9_]{0,39}$'}
+                decision_reason: {type: string, maxLength: 1000}
+                minutes: {type: string, maxLength: 20000}
+                student_heard: {type: boolean}
+                parents_heard: {type: boolean}
+                exclusion_days: {type: [integer, 'null'], minimum: 1, maximum: 365}
+      responses:
+        '200': {description: "{data: conseil decide}"}
+        '400': {description: "Corps illisible"}
+        '403': {description: "Permission absente, classe hors perimetre ou application non ouverte"}
+        '404': {description: "Conseil introuvable"}
+        '409': {description: "Decision deja rendue"}
+        '422': {description: "Champs invalides, ou exclusion definitive sans proces-verbal ou sans audition"}
+        '423': {description: "Abonnement suspendu"}

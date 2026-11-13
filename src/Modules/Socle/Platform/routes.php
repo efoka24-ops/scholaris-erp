@@ -1,0 +1,148 @@
+<?php
+
+declare(strict_types=1);
+
+use Scholaris\Core\Http\RouteRegistry;
+use Scholaris\Modules\Socle\Platform\Http\AccessCodeAdminController;
+use Scholaris\Modules\Socle\Platform\Http\AccessRequestAdminController;
+use Scholaris\Modules\Socle\Platform\Http\AdministratorsAdminController;
+use Scholaris\Modules\Socle\Platform\Http\AuditAdminController;
+use Scholaris\Modules\Socle\Platform\Http\ClientApplicationController;
+use Scholaris\Modules\Socle\Platform\Http\ClientRegularisationController;
+use Scholaris\Modules\Socle\Platform\Http\ClientsAdminController;
+use Scholaris\Modules\Socle\Platform\Http\EstablishmentsAdminController;
+use Scholaris\Modules\Socle\Platform\Http\PaymentsAdminController;
+use Scholaris\Modules\Socle\Platform\Http\PaymentWebhookController;
+use Scholaris\Modules\Socle\Platform\Http\PlatformAdminController;
+use Scholaris\Modules\Socle\Platform\Http\PricingAdminController;
+use Scholaris\Modules\Socle\Platform\Http\PublicAccessController;
+use Scholaris\Modules\Socle\Platform\Http\RegularisationAdminController;
+use Scholaris\Modules\Socle\Platform\Http\RegularisationRequestsAdminController;
+use Scholaris\Modules\Socle\Platform\Http\SupportAdminController;
+
+/**
+ * Routes du module Platform. Le préfixe /api/v1 est ajouté par le registre.
+ *  - /public/** : sans compte (catalogue, demande d'accès, suivi) ;
+ *  - /platform/** : administrateur de plateforme uniquement (client technique `platform`), sans en-tête d'établissement ;
+ *  - /me/applications : tout utilisateur d'un client ; /applications/** et /application-payments/** : établissement actif.
+ */
+return static function (RouteRegistry $routes): void {
+    $public = ['public' => true];
+    $platform = ['tenant' => false];
+
+    $routes->add('GET', '/public/applications', [PublicAccessController::class, 'applications'], $public);
+    $routes->add('POST', '/public/access-requests', [PublicAccessController::class, 'submit'], $public);
+    $routes->add('GET', '/public/access-requests/{token}', [PublicAccessController::class, 'track'], $public);
+    $routes->add('POST', '/public/access-requests/{token}/complement', [PublicAccessController::class, 'complement'], $public);
+
+    $routes->add('GET', '/platform/dashboard', [PlatformAdminController::class, 'dashboard'], $platform);
+    $routes->add('GET', '/platform/settings', [PlatformAdminController::class, 'settings'], $platform);
+    $routes->add('PATCH', '/platform/settings', [PlatformAdminController::class, 'updateSettings'], $platform);
+    $routes->add('GET', '/platform/settings/contact', [PlatformAdminController::class, 'contact'], $platform);
+    $routes->add('PATCH', '/platform/settings/contact', [PlatformAdminController::class, 'updateContact'], $platform);
+    $routes->add('GET', '/platform/applications', [PlatformAdminController::class, 'catalog'], $platform);
+    $routes->add('PATCH', '/platform/applications/{key}', [PlatformAdminController::class, 'updateCatalog'], $platform);
+    $routes->add('GET', '/platform/clients', [ClientsAdminController::class, 'index'], $platform);
+    $routes->add('POST', '/platform/clients', [ClientsAdminController::class, 'store'], $platform);
+    $routes->add('GET', '/platform/clients/{tenant}', [ClientsAdminController::class, 'show'], $platform);
+    $routes->add('PATCH', '/platform/clients/{tenant}', [ClientsAdminController::class, 'update'], $platform);
+    $routes->add('POST', '/platform/clients/{tenant}/suspend', [ClientsAdminController::class, 'suspend'], $platform);
+    $routes->add('POST', '/platform/clients/{tenant}/reactivate', [ClientsAdminController::class, 'reactivate'], $platform);
+    $routes->add('POST', '/platform/clients/{tenant}/archive', [ClientsAdminController::class, 'archive'], $platform);
+    $routes->add('GET', '/platform/clients/{tenant}/establishments', [EstablishmentsAdminController::class, 'index'], $platform);
+    $routes->add('POST', '/platform/clients/{tenant}/establishments', [EstablishmentsAdminController::class, 'store'], $platform);
+    $routes->add('PATCH', '/platform/clients/{tenant}/establishments/{establishment}', [EstablishmentsAdminController::class, 'update'], $platform);
+    $routes->add('POST', '/platform/clients/{tenant}/establishments/{establishment}/close', [EstablishmentsAdminController::class, 'close'], $platform);
+    $routes->add('POST', '/platform/clients/{tenant}/establishments/{establishment}/reopen', [EstablishmentsAdminController::class, 'reopen'], $platform);
+    $routes->add('GET', '/platform/clients/{tenant}/administrators', [AdministratorsAdminController::class, 'index'], $platform);
+    $routes->add('POST', '/platform/clients/{tenant}/administrators', [AdministratorsAdminController::class, 'store'], $platform);
+    $routes->add('POST', '/platform/clients/{tenant}/administrators/{user}/resend-invitation', [AdministratorsAdminController::class, 'resend'], $platform);
+    $routes->add('POST', '/platform/clients/{tenant}/administrators/{user}/block', [AdministratorsAdminController::class, 'block'], $platform);
+    $routes->add('POST', '/platform/clients/{tenant}/administrators/{user}/unblock', [AdministratorsAdminController::class, 'unblock'], $platform);
+    $routes->add('POST', '/platform/clients/{tenant}/administrators/{user}/reset-access', [AdministratorsAdminController::class, 'reset'], $platform);
+    $routes->add('GET', '/platform/clients/{tenant}/users', [AccessCodeAdminController::class, 'users'], $platform);
+    $routes->add('GET', '/platform/clients/{tenant}/users/{user}', [\Scholaris\Modules\Socle\Platform\Http\ActivityAdminController::class, 'user'], $platform);
+    $routes->add('POST', '/platform/clients/{tenant}/users/{user}/logout', [\Scholaris\Modules\Socle\Platform\Http\ActivityAdminController::class, 'logout'], $platform);
+    $routes->add('GET', '/platform/messages/deliveries', [\Scholaris\Modules\Socle\Platform\Http\MessagesAdminController::class, 'deliveries'], $platform);
+    $routes->add('POST', '/platform/messages/deliveries/{tenant}/{id}/retry', [\Scholaris\Modules\Socle\Platform\Http\MessagesAdminController::class, 'retryDelivery'], $platform);
+    $routes->add('GET', '/platform/messages/direct', [\Scholaris\Modules\Socle\Platform\Http\MessagesAdminController::class, 'directJournal'], $platform);
+    $routes->add('POST', '/platform/messages/direct/preview', [\Scholaris\Modules\Socle\Platform\Http\MessagesAdminController::class, 'preview'], $platform);
+    $routes->add('POST', '/platform/messages/direct', [\Scholaris\Modules\Socle\Platform\Http\MessagesAdminController::class, 'send'], $platform);
+    $routes->add('POST', '/platform/messages/direct/{id}/retry', [\Scholaris\Modules\Socle\Platform\Http\MessagesAdminController::class, 'retryDirect'], $platform);
+    $routes->add('GET', '/platform/messages/internal', [\Scholaris\Modules\Socle\Platform\Http\MessagesAdminController::class, 'internal'], $platform);
+    $routes->add('GET', '/platform/activity', [\Scholaris\Modules\Socle\Platform\Http\ActivityAdminController::class, 'index'], $platform);
+    $routes->add('GET', '/platform/activity/export', [\Scholaris\Modules\Socle\Platform\Http\ActivityAdminController::class, 'export'], $platform);
+    $routes->add('POST', '/platform/clients/{tenant}/users/{user}/access-code', [AccessCodeAdminController::class, 'issue'], $platform);
+    $routes->add('POST', '/platform/clients/{tenant}/users/{user}/access-code/send', [AccessCodeAdminController::class, 'send'], $platform);
+    $routes->add('POST', '/platform/administrators/{user}/access-code', [AccessCodeAdminController::class, 'issue'], $platform);
+    $routes->add('POST', '/platform/administrators/{user}/access-code/send', [AccessCodeAdminController::class, 'send'], $platform);
+    $routes->add('GET', '/platform/me', [AdministratorsAdminController::class, 'me'], $platform);
+    $routes->add('GET', '/platform/kpi', [\Scholaris\Modules\Socle\Platform\Http\KpiAdminController::class, 'show'], $platform);
+    $routes->add('GET', '/platform/health', [\Scholaris\Modules\Socle\Platform\Http\HealthAdminController::class, 'show'], $platform);
+    $routes->add('GET', '/platform/administrators', [AdministratorsAdminController::class, 'index'], $platform);
+    $routes->add('PATCH', '/platform/administrators/{user}/role', [AdministratorsAdminController::class, 'role'], $platform);
+    $routes->add('POST', '/platform/administrators', [AdministratorsAdminController::class, 'store'], $platform);
+    $routes->add('POST', '/platform/administrators/{user}/resend-invitation', [AdministratorsAdminController::class, 'resend'], $platform);
+    $routes->add('POST', '/platform/administrators/{user}/block', [AdministratorsAdminController::class, 'block'], $platform);
+    $routes->add('POST', '/platform/administrators/{user}/unblock', [AdministratorsAdminController::class, 'unblock'], $platform);
+    $routes->add('POST', '/platform/administrators/{user}/reset-access', [AdministratorsAdminController::class, 'reset'], $platform);
+    $routes->add('GET', '/platform/audit', [AuditAdminController::class, 'index'], $platform);
+    $routes->add('POST', '/platform/clients/{tenant}/applications', [PlatformAdminController::class, 'openForClient'], $platform);
+    $routes->add('PATCH', '/platform/clients/{tenant}/applications/{key}', [PlatformAdminController::class, 'setPrice'], $platform);
+    $routes->add('POST', '/platform/clients/{tenant}/applications/{key}/suspend', [PlatformAdminController::class, 'suspend'], $platform);
+    $routes->add('POST', '/platform/clients/{tenant}/applications/{key}/close', [PlatformAdminController::class, 'close'], $platform);
+    $routes->add('POST', '/platform/clients/{tenant}/applications/{key}/reactivate', [PlatformAdminController::class, 'reactivate'], $platform);
+    $routes->add('PATCH', '/platform/clients/{tenant}/applications/{key}/terms', [PricingAdminController::class, 'terms'], $platform);
+    $routes->add('POST', '/platform/clients/{tenant}/applications/{key}/options', [PricingAdminController::class, 'subscribe'], $platform);
+    $routes->add('POST', '/platform/clients/{tenant}/applications/{key}/options/{option}/remove', [PricingAdminController::class, 'unsubscribe'], $platform);
+    $routes->add('GET', '/platform/service-options', [PricingAdminController::class, 'index'], $platform);
+    $routes->add('POST', '/platform/service-options', [PricingAdminController::class, 'store'], $platform);
+    $routes->add('PATCH', '/platform/service-options/{key}', [PricingAdminController::class, 'update'], $platform);
+    $routes->add('DELETE', '/platform/service-options/{key}', [PricingAdminController::class, 'destroy'], $platform);
+    $routes->add('GET', '/platform/regularisation', [RegularisationAdminController::class, 'index'], $platform);
+    $routes->add('GET', '/platform/regularisation/export', [RegularisationAdminController::class, 'export'], $platform);
+    $routes->add('GET', '/platform/regularisation/declarations', [RegularisationRequestsAdminController::class, 'index'], $platform);
+    $routes->add('GET', '/platform/regularisation/declarations/export', [RegularisationRequestsAdminController::class, 'export'], $platform);
+    $routes->add('POST', '/platform/regularisation/declarations/{id}/confirm', [RegularisationRequestsAdminController::class, 'confirm'], $platform);
+    $routes->add('POST', '/platform/regularisation/declarations/{id}/reject', [RegularisationRequestsAdminController::class, 'reject'], $platform);
+    $routes->add('POST', '/platform/clients/{tenant}/regularisation/lock', [RegularisationAdminController::class, 'lock'], $platform);
+    $routes->add('POST', '/platform/clients/{tenant}/regularisation/unlock', [RegularisationAdminController::class, 'unlock'], $platform);
+    $routes->add('POST', '/platform/clients/{tenant}/regularisation/delay', [RegularisationAdminController::class, 'delay'], $platform);
+    $routes->add('POST', '/platform/clients/{tenant}/regularisation/level', [RegularisationAdminController::class, 'level'], $platform);
+    $routes->add('GET', '/platform/access-requests', [AccessRequestAdminController::class, 'index'], $platform);
+    $routes->add('GET', '/platform/access-requests/{id}', [AccessRequestAdminController::class, 'show'], $platform);
+    $routes->add('POST', '/platform/access-requests/{id}/accept', [AccessRequestAdminController::class, 'accept'], $platform);
+    $routes->add('POST', '/platform/access-requests/{id}/reject', [AccessRequestAdminController::class, 'reject'], $platform);
+    $routes->add('POST', '/platform/access-requests/{id}/request-info', [AccessRequestAdminController::class, 'requestInfo'], $platform);
+    $routes->add('POST', '/platform/access-requests/{id}/archive', [AccessRequestAdminController::class, 'archive'], $platform);
+    $routes->add('DELETE', '/platform/access-requests/{id}', [AccessRequestAdminController::class, 'destroy'], $platform);
+    // Boîte du support SCHOLARIS (C-113) : conversations de nature « support » seulement.
+    $routes->add('GET', '/platform/support/agents', [SupportAdminController::class, 'agents'], $platform);
+    $routes->add('GET', '/platform/support/conversations', [SupportAdminController::class, 'index'], $platform);
+    $routes->add('POST', '/platform/support/conversations', [SupportAdminController::class, 'open'], $platform);
+    $routes->add('GET', '/platform/support/conversations/{id}', [SupportAdminController::class, 'show'], $platform);
+    $routes->add('GET', '/platform/support/conversations/{id}/messages', [SupportAdminController::class, 'messages'], $platform);
+    $routes->add('POST', '/platform/support/conversations/{id}/messages', [SupportAdminController::class, 'reply'], $platform);
+    $routes->add('POST', '/platform/support/conversations/{id}/status', [SupportAdminController::class, 'status'], $platform);
+    $routes->add('POST', '/platform/support/conversations/{id}/assign', [SupportAdminController::class, 'assign'], $platform);
+    $routes->add('GET', '/platform/payments', [PlatformAdminController::class, 'payments'], $platform);
+    $routes->add('POST', '/platform/payments', [PaymentsAdminController::class, 'store'], $platform);
+    $routes->add('POST', '/platform/payments/{id}/cancel', [PaymentsAdminController::class, 'cancel'], $platform);
+    $routes->add('GET', '/platform/payments/{id}/receipt', [PaymentsAdminController::class, 'receipt'], $platform);
+    $routes->add('POST', '/platform/payments/webhook', [PaymentWebhookController::class, 'receive'], $public);
+
+    // « Mon profil » et réglages personnels (C-112 point 6) : tout utilisateur connecté, plateforme comprise.
+    $routes->add('GET', '/me/profile', [\Scholaris\Modules\Socle\Platform\Http\ProfileController::class, 'show'], ['tenant' => false]);
+    $routes->add('PATCH', '/me/profile', [\Scholaris\Modules\Socle\Platform\Http\ProfileController::class, 'update'], ['tenant' => false]);
+    $routes->add('PATCH', '/me/preferences', [\Scholaris\Modules\Socle\Platform\Http\ProfileController::class, 'preferences'], ['tenant' => false]);
+    $routes->add('POST', '/me/sessions/logout-others', [\Scholaris\Modules\Socle\Platform\Http\ProfileController::class, 'logoutOthers'], ['tenant' => false]);
+    $routes->add('GET', '/platform/settings/security', [\Scholaris\Modules\Socle\Platform\Http\ProfileController::class, 'security'], $platform);
+    $routes->add('PATCH', '/platform/settings/security', [\Scholaris\Modules\Socle\Platform\Http\ProfileController::class, 'updateSecurity'], $platform);
+    $routes->add('GET', '/me/applications', [ClientApplicationController::class, 'mine'], ['tenant' => false]);
+    $routes->add('GET', '/me/regularisation', [ClientRegularisationController::class, 'mine'], ['tenant' => false]);
+    $routes->add('POST', '/me/regularisation/declarations', [ClientRegularisationController::class, 'declare'], ['tenant' => false]);
+    $routes->add('POST', '/applications/{key}/open', [ClientApplicationController::class, 'open']);
+    $routes->add('POST', '/applications/{key}/payments', [ClientApplicationController::class, 'pay']);
+    $routes->add('GET', '/applications/{key}/payments', [ClientApplicationController::class, 'payments']);
+    $routes->add('GET', '/application-payments/{id}/receipt', [ClientApplicationController::class, 'receipt']);
+};
