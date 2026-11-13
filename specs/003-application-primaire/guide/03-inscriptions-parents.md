@@ -84,7 +84,18 @@ Le message **Inscription validée** (dossier complet) ou **Inscription sous rés
 
 ![Fiche d'un élève inscrit sous réserve des pièces](images/pri-04-fiche-eleve.png)
 
-La fiche regroupe l'**Identité**, les **Inscriptions** avec leur état, les **Pièces du dossier** (par exemple « Dossier complet : 0 / 7 ») et les **Consentements**. Les garants financiers se gèrent à l'inscription (étape 2) et au guichet des inscriptions.
+La fiche regroupe l'**Identité**, les **Parents et garants**, les **Inscriptions** avec leur état, les **Pièces du dossier** (par exemple « Dossier complet : 0 / 7 ») et les **Consentements**.
+
+La section **Parents et garants** liste les **Responsables légaux et garants de l'élève**. Chaque ligne donne :
+
+- le **nom** de la personne (cliquez dessus pour ouvrir sa propre fiche) ;
+- son **lien** avec l'élève : **Parent**, **Tuteur**, **Garant financier**, **Autorisé à récupérer** ou **Contact d'urgence** ;
+- son **téléphone** ;
+- **Garant financier : Oui** ou **Non**. Un parent qui est aussi garant financier n'occupe qu'une ligne.
+
+Sur la fiche d'un parent, la même section liste les **Enfants rattachés à cette personne**. Si personne n'est rattaché, la fiche l'indique : « Aucun parent ni garant enregistré pour cette personne. »
+
+La fiche se consulte seulement : les parents et le garant financier s'enregistrent à l'inscription (étape 2) et au guichet des inscriptions.
 
 Les états s'affichent en clair :
 
