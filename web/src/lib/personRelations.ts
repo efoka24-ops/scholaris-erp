@@ -48,3 +48,36 @@ export function guardiansOf(rows: RelationRow[]): RelatedPerson[] {
 export function childrenOf(rows: RelationRow[]): RelatedPerson[] {
   return group(rows.filter((r) => r.as === 'related'));
 }
+
+// GAR-FORM : gestion des liens depuis la fiche (POST et DELETE /people/{id}/relations, droit people.manage).
+
+export const RELATION_KINDS: RelationKind[] = ['parent', 'guardian', 'financial_guarantor', 'authorized_pickup', 'emergency'];
+
+/** Liens qui comptent comme responsable pour valider l'inscription d'un mineur (RelationService::hasGuarantor). */
+export const RESPONSIBLE_KINDS = ['parent', 'guardian', 'financial_guarantor'];
+
+/** Liens dont Billing tire les destinataires des relances et des reçus (PersonDirectory::guarantorsOf). */
+export const BILLING_KINDS = ['financial_guarantor', 'guardian'];
+
+export interface SubjectLink {
+  id: string;
+  kind: string;
+  personId: string;
+  name: string;
+}
+
+/** Liens un par un (pas regroupés) où la personne de la fiche est l'élève : ce sont eux qu'on change ou qu'on retire. */
+export function subjectLinks(rows: RelationRow[]): SubjectLink[] {
+  return rows
+    .filter((r) => r.as === 'subject')
+    .map((r) => {
+      const name = [(r.person.last_name ?? '').toUpperCase(), r.person.first_name ?? ''].filter((x) => x !== '').join(' ');
+      return { id: r.id, kind: r.kind, personId: r.person.id, name: name === '' ? '—' : name };
+    })
+    .sort((a, b) => ((RELATION_KINDS as string[]).indexOf(a.kind) - (RELATION_KINDS as string[]).indexOf(b.kind)) || a.name.localeCompare(b.name));
+}
+
+/** Vrai s'il reste un lien d'un de ces types une fois le lien `removedId` retiré. */
+export function remainsAfter(links: SubjectLink[], removedId: string, kinds: string[]): boolean {
+  return links.some((l) => l.id !== removedId && kinds.includes(l.kind));
+}
