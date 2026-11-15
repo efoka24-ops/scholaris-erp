@@ -149,6 +149,7 @@ paths:
                 regularisation_amount_tolerance_xaf: {type: integer, minimum: 0, maximum: 10000, description: "Écart toléré entre montant déclaré et reçu (défaut 100)"}
                 regularisation_partial_min_xaf: {type: integer, minimum: 100, maximum: 1000000, description: "Montant minimum d un paiement partiel déclaré (défaut 1000)"}
                 regularisation_partial_mode: {type: integer, minimum: 0, maximum: 1, description: "Paiement partiel confirmé : 0 période prolongée proportionnellement (défaut), 1 crédit du solde seulement ; dans les deux cas le niveau ne change qu à la couverture du solde"}
+                platform.provisional_password.require_change: {type: integer, minimum: 0, maximum: 1, description: "Mot de passe provisoire donné depuis le back-office : case « Exiger un nouveau mot de passe à la connexion » cochée par défaut (1) ou non (0, défaut)"}
       responses:
         '200': {description: "Réglages mis à jour"}
         '403': {description: "Réservé à l'administrateur de plateforme ; 2FA récente exigée"}
@@ -1211,6 +1212,43 @@ paths:
           description: "Client archivé"
         '422':
           description: "Canal indisponible pour ce compte, ou code expiré ou remplacé"
+  /api/v1/platform/clients/{tenant}/users/{user}/provisional-password:
+    post:
+      summary: "Donne un mot de passe provisoire à un compte du client qui a perdu le sien ({ send?: none|email|sms, require_change?: bool }) : nouveau mot de passe généré (12 caractères sans 0/O ni 1/l/I, conforme à la politique), utilisable aussitôt ; ancien mot de passe, sessions, appareils de confiance, codes d'accès et de réinitialisation ouverts invalidés ; double authentification conservée ; require_change absent = réglage platform.provisional_password.require_change (faux par défaut) ; rendu une seule fois (Cache-Control no-store), jamais stocké en clair ni journalisé ; 5 par heure et par compte (2FA récente, mêmes droits que le code d'accès)"
+      description: "Réponse { data: { password, login, must_change_password, two_factor_enabled, delivery: { channel: none|email|sms, status: not_sent|sent|failed, masked_to }, share: { establishment_name, login, login_url, locale, channels, message: { subject, text, sms } } } }. Le message (FR/EN selon la langue du compte) mentionne le changement exigé et la double authentification qui reste demandée ; l'envoi passe directement par la passerelle e-mail ou SMS, sans enregistrement du texte. Un envoi en échec n'annule pas le mot de passe."
+      security:
+        - bearer: []
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema: {type: string}
+        - name: user
+          in: path
+          required: true
+          schema: {type: string}
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                send: {type: string, enum: [none, email, sms]}
+                require_change: {type: boolean}
+      responses:
+        '201':
+          description: "Mot de passe donné, message prêt et résultat de l'envoi"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Client ou compte introuvable (un compte d'un autre client est introuvable)"
+        '409':
+          description: "Compte suspendu (bloqué), son propre compte, ou client archivé"
+        '422':
+          description: "Canal inconnu, compte sans mobile camerounais (sms) ou sans e-mail (email), require_change non booléen"
+        '429':
+          description: "Trop de mots de passe provisoires pour ce compte (Retry-After)"
   /api/v1/platform/administrators/{user}/access-code:
     post:
       summary: "Crée un code d'accès à usage unique pour un autre administrateur de plateforme ({ send?: none|email|sms }) ; jamais pour son propre compte ; mêmes règles et même réponse que pour un compte de client (2FA récente)"
@@ -1255,6 +1293,38 @@ paths:
           description: "Son propre compte"
         '422':
           description: "Canal indisponible, ou code expiré ou remplacé"
+  /api/v1/platform/administrators/{user}/provisional-password:
+    post:
+      summary: "Donne un mot de passe provisoire à un autre administrateur de plateforme ({ send?: none|email|sms, require_change?: bool }) ; jamais pour son propre compte ; mêmes règles et même réponse que pour un compte de client (2FA récente, platform.admins.manage)"
+      security:
+        - bearer: []
+      parameters:
+        - name: user
+          in: path
+          required: true
+          schema: {type: string}
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                send: {type: string, enum: [none, email, sms]}
+                require_change: {type: boolean}
+      responses:
+        '201':
+          description: "Mot de passe donné (même forme que pour un compte de client)"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Administrateur de plateforme introuvable"
+        '409':
+          description: "Son propre compte, ou compte suspendu (bloqué)"
+        '422':
+          description: "Canal inconnu ou contact manquant"
+        '429':
+          description: "Trop de mots de passe provisoires pour ce compte (Retry-After)"
   /api/v1/platform/clients/{tenant}/applications/{key}/terms:
     patch:
       summary: "Délais propres au client pour une application : trial_days (0-365), grace_days (0-90), billing_period_months (1, 3 ou 12), regularisation_level (read_only ou locked) ; null remet la valeur du catalogue ; reason obligatoire ; journalisé avant/après (2FA récente)"

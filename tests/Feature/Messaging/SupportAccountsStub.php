@@ -72,4 +72,9 @@ final class SupportAccountsStub implements AccountAdministration
     {
         throw HttpException::notFound();
     }
+
+    public function issueProvisionalPasswordByPlatform(string $tenantId, string $userId, string $actorId, bool $requireChange): array
+    {
+        throw HttpException::notFound();
+    }
 }

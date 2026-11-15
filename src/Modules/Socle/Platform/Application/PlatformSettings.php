@@ -42,6 +42,9 @@ final class PlatformSettings
     /** Plafond de destinataires d'un envoi direct en masse depuis le back-office. */
     public const BROADCAST_MAX = 'broadcast_max_recipients';
 
+    /** Mot de passe provisoire donné depuis le back-office : 1 = changement exigé à la connexion par défaut (0 par défaut, demande des établissements). */
+    public const PROVISIONAL_REQUIRE_CHANGE = 'platform.provisional_password.require_change';
+
     private const CONTACT_KEY = 'platform_contact';
     private const DEFAULT_NAME = 'TRU GROUP';
     public const PAYMENT_CHANNELS = ['orange_money', 'mtn_momo'];
@@ -76,6 +79,7 @@ final class PlatformSettings
         'health_sms_quota_critical' => ['default' => 50, 'min' => 0, 'max' => 10000000],
         self::INACTIVE_DAYS => ['default' => 14, 'min' => 1, 'max' => 365],
         self::BROADCAST_MAX => ['default' => 500, 'min' => 1, 'max' => 100000],
+        self::PROVISIONAL_REQUIRE_CHANGE => ['default' => 0, 'min' => 0, 'max' => 1],
     ];
 
     public function __construct(

@@ -99,6 +99,72 @@ final class UserAccessCodes
         return ['delivery' => $delivery];
     }
 
+    /**
+     * Mot de passe provisoire (mot de passe perdu) : un nouveau mot de passe est généré par Identity, rendu UNE fois avec un
+     * message prêt à copier, envoyé à la demande par e-mail ou SMS directement par la passerelle (jamais par Messaging, qui
+     * enregistre le texte rendu). `requireChange` null : réglage de la plateforme. Le journal garde le canal, le résultat
+     * de l'envoi et le changement exigé ; jamais le mot de passe.
+     *
+     * @return array<string, mixed>
+     */
+    public function issuePassword(string $tenantId, string $tenantName, string $userId, string $send, ?bool $requireChange, string $actorId, ?string $ip): array
+    {
+        $account = $this->account($tenantId, $userId, $actorId);
+        if ($account['status'] === 'locked') {
+            throw HttpException::conflict('Ce compte est suspendu (bloqué) : débloquez-le avant de lui donner un mot de passe provisoire.');
+        }
+        if ($send !== 'none' && !in_array($send, self::channels($account), true)) {
+            throw HttpException::validation(['send' => [self::unavailable($send)]]);
+        }
+        $requireChange ??= $this->settings->value(PlatformSettings::PROVISIONAL_REQUIRE_CHANGE) === 1;
+        $issued = $this->accounts->issueProvisionalPasswordByPlatform($tenantId, $userId, $actorId, $requireChange);
+        $base = rtrim((string) $this->config->get('app.url', ''), '/');
+        $locale = $account['locale'] === 'en' ? 'en' : 'fr';
+        $message = ProvisionalPasswordMessage::compose($locale, [
+            'first_name' => $account['first_name'],
+            'establishment_name' => $tenantName,
+            'login' => $issued['login'],
+            'password' => $issued['provisional_password'],
+            'login_url' => $base . '/connexion',
+            'require_change' => $issued['must_change_password'],
+            'two_factor' => $issued['two_factor_enabled'],
+        ]);
+        $delivery = $send === 'none' ? ['channel' => 'none', 'status' => 'not_sent', 'masked_to' => null] : $this->deliver($account, $send, $message);
+        $this->record($tenantId, $actorId, 'platform.provisional_password_issued', $userId, [
+            'send' => $send,
+            'delivery' => $delivery['status'],
+            'require_change' => $issued['must_change_password'],
+            'two_factor_kept' => $issued['two_factor_enabled'],
+        ], $ip);
+
+        return [
+            'password' => $issued['provisional_password'],
+            'login' => $issued['login'],
+            'must_change_password' => $issued['must_change_password'],
+            'two_factor_enabled' => $issued['two_factor_enabled'],
+            'delivery' => $delivery,
+            'share' => [
+                'establishment_name' => $tenantName,
+                'login' => $issued['login'],
+                'login_url' => $base . '/connexion',
+                'locale' => $locale,
+                'channels' => self::channels($account),
+                'message' => $message,
+            ],
+        ];
+    }
+
+    /**
+     * Canaux d'envoi possibles d'un compte et réglage par défaut, pour l'écran (sans coordonnée en clair).
+     *
+     * @param array{email: ?string, phone: ?string} $account
+     * @return array{channels: list<string>, require_change_default: bool}
+     */
+    public function provisionalOptions(array $account): array
+    {
+        return ['channels' => self::channels($account), 'require_change_default' => $this->settings->value(PlatformSettings::PROVISIONAL_REQUIRE_CHANGE) === 1];
+    }
+
     /** @return array{first_name: string, email: ?string, phone: ?string, locale: string, status: string} */
     private function account(string $tenantId, string $userId, string $actorId): array
     {

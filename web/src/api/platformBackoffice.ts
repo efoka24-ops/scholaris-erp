@@ -1,7 +1,7 @@
 // Back-office de la plateforme (C-112) : rôles fins, santé, indicateurs, journal d'activité, suivi des messages et envoi direct.
 // Les routes /platform/** ne reçoivent jamais d'en-tête d'établissement.
 import { http } from './http';
-import type { PlatformAction } from './platform';
+import type { AccessChannel, PlatformAction } from './platform';
 import type { PlatformRole } from '@/lib/permissions';
 
 const NO_ESTABLISHMENT = { establishmentId: false as const };
@@ -136,6 +136,8 @@ export interface PlatformUserCard {
   logins: Array<{ occurred_at: string; ip: string | null; method: string | null }>;
   actions: Array<{ occurred_at: string; action: string; object_type: string; object_id: string }>;
   messages: ClientDelivery[];
+  /** Canaux d'envoi possibles (sans coordonnée) et case « changement exigé » cochée par défaut (réglage de la plateforme). */
+  provisional_password?: { channels: AccessChannel[]; require_change_default: boolean };
 }
 
 export const fetchPlatformUser = async (tenant: string, user: string): Promise<PlatformUserCard> =>

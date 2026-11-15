@@ -45,6 +45,14 @@ Chiffres : 11 domaines ; 28 routes ajoutées (54 au total dans le module) ; 7 ma
   contextes des utilisateurs ; la plateforme le voit toujours (`ClientProvisioning::establishmentsOf`).
 - Administrateurs : contrat `Identity\Contracts\AccountAdministration` limité aux rôles `super_admin` (client) et
   `platform_admin` (plateforme) ; aucun autre compte d'un client n'est lisible.
+- Mot de passe provisoire (MDP-PROV, 2026-11-15) : depuis la fiche d'un utilisateur, « Donner un mot de passe provisoire »
+  remplace le mot de passe perdu par un mot de passe généré (12 caractères lisibles), que la personne utilise aussitôt, sans
+  passer par la réinitialisation. Case « Exiger un nouveau mot de passe à la connexion » (décochée par défaut, réglage
+  `platform.provisional_password.require_change` dans Réglages), envoi facultatif par e-mail ou SMS, confirmation, puis
+  affichage unique du mot de passe et d'un message prêt à copier. Sessions, codes d'accès et de réinitialisation ouverts
+  invalidés ; double authentification conservée et rappelée dans le message ; compte bloqué refusé ; 5 par heure et par compte ;
+  2FA récente. Le mot de passe n'est jamais journalisé ni enregistré (envoi direct par la passerelle, hors Messaging).
+  `POST /platform/clients/{t}/users/{u}/provisional-password` et `POST /platform/administrators/{u}/provisional-password`.
 - Migrations : `202610151700_platform_backoffice.sql`, `202610151701_platform_invitation_templates.sql`,
   `202610151702_organisation_establishment_closed.sql`.
 

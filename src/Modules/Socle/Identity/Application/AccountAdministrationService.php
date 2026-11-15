@@ -178,6 +178,11 @@ final class AccountAdministrationService implements AccountAdministration
         return $this->provisional->reissue($tenantId, $userId, $actorId, $establishmentId, $resetTwoFactor);
     }
 
+    public function issueProvisionalPasswordByPlatform(string $tenantId, string $userId, string $actorId, bool $requireChange): array
+    {
+        return $this->provisional->issueForAccount($this->account($tenantId, $userId), $actorId, $requireChange);
+    }
+
     /** Compte du client désigné (sur la plateforme : administrateur de plateforme seulement), sinon 404. */
     private function account(string $tenantId, string $userId): User
     {

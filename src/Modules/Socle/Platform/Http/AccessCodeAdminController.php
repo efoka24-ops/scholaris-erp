@@ -16,6 +16,7 @@ use Scholaris\Modules\Socle\Platform\Application\UserAccessCodes;
  * Dépannage et partage de l'accès : GET /platform/clients/{tenant}/users (lecture seule) ;
  * POST …/users/{user}/access-code { send?: none|email|sms } (nouveau code, l'ancien invalidé) ;
  * POST …/users/{user}/access-code/send { channel: email|sms, code } (renvoi du code ouvert) ;
+ * POST …/users/{user}/provisional-password { send?, require_change? } (mot de passe provisoire rendu une fois) ;
  * mêmes routes sous /platform/administrators/{user}. Écritures avec 2FA récente ; réponses jamais mises en cache.
  */
 final class AccessCodeAdminController
@@ -64,6 +65,23 @@ final class AccessCodeAdminController
         $sent = $this->codes->send($tenantId, $tenantName, PlatformGuard::param($request, 'user'), $channel, $code, $principal->userId, PlatformGuard::ip($request));
 
         return $this->responder->json(['data' => $sent])->withHeader('Cache-Control', 'no-store');
+    }
+
+    /** POST …/{user}/provisional-password { send?: none|email|sms, require_change?: bool } */
+    public function provisionalPassword(ServerRequestInterface $request): ResponseInterface
+    {
+        [$tenantId, $tenantName, $principal] = $this->scope($request);
+        $input = Input::of($request, ['send', 'require_change']);
+        $send = $input->choice('send', UserAccessCodes::SEND, false) ?? 'none';
+        $requireChange = $input->raw('require_change');
+        if ($requireChange !== null && !is_bool($requireChange)) {
+            $input->fail('require_change', 'Valeur attendue : true ou false.');
+        }
+        $input->validate();
+
+        $issued = $this->codes->issuePassword($tenantId, $tenantName, PlatformGuard::param($request, 'user'), $send, is_bool($requireChange) ? $requireChange : null, $principal->userId, PlatformGuard::ip($request));
+
+        return $this->responder->json(['data' => $issued], 201)->withHeader('Cache-Control', 'no-store')->withHeader('Pragma', 'no-cache');
     }
 
     /** @return array{0: string, 1: string, 2: Principal} */

@@ -9,16 +9,19 @@ import { platformCan } from './platformAccess';
 import { useSensitiveAction } from './useSensitiveAction';
 import TwoFactorPrompt from './TwoFactorPrompt.vue';
 import AccessCodePanel from './AccessCodePanel.vue';
+import ProvisionalPasswordPanel from './ProvisionalPasswordPanel.vue';
 import ReplayNotice from './ReplayNotice.vue';
 
 // Fiche d'un utilisateur vue par la plateforme (C-112 point 3) : connexions, actions, messages reçus, sessions ; forcer la
-// déconnexion et réémettre un code d'accès (double authentification récente, journalisées). Coordonnées masquées.
+// déconnexion, réémettre un code d'accès ou donner un mot de passe provisoire (double authentification récente, journalisées).
+// Coordonnées masquées.
 const props = defineProps<{ tenant: string; user: string }>();
 const { t, locale } = useI18n();
 const card = ref<PlatformUserCard | null>(null);
 const error = ref<unknown>(null);
 const done = ref<string | null>(null);
 const showCode = ref(false);
+const showPassword = ref(false);
 const action = useSensitiveAction();
 const statusKey = (s: string): MessageKey => `pa.adm.status.${s}` as MessageKey;
 
@@ -66,7 +69,17 @@ onMounted(load);
       <div class="row actions">
         <button v-if="platformCan('platform.users.logout')" type="button" class="btn" data-test="force-logout" :disabled="action.busy.value || card.sessions.length === 0" @click="logout">{{ t('pu.logout') }}</button>
         <button v-if="platformCan('platform.users.access_code', 'platform.clients.manage') && card.status !== 'locked'" type="button" class="btn" @click="showCode = !showCode">{{ t('pa.code.action') }}</button>
+        <button v-if="platformCan('platform.users.access_code', 'platform.clients.manage') && card.status !== 'locked'" type="button" class="btn" data-test="give-password" @click="showPassword = !showPassword">{{ t('pa.pwd.action') }}</button>
       </div>
+      <ProvisionalPasswordPanel
+        v-if="showPassword"
+        :tenant="tenant"
+        :user-id="card.id"
+        :name="`${card.first_name} ${card.last_name}`"
+        :channels="card.provisional_password?.channels ?? []"
+        :require-change-default="card.provisional_password?.require_change_default ?? false"
+        @close="showPassword = false"
+      />
       <AccessCodePanel v-if="showCode" :tenant="tenant" :user-id="card.id" :name="`${card.first_name} ${card.last_name}`" :channels="accessChannels(card.email === '—' ? null : card.email, card.phone === '—' ? null : card.phone)" @close="showCode = false" />
 
       <h2>{{ t('pu.sessions') }}</h2>

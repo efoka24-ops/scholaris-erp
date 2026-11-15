@@ -36,6 +36,11 @@ const verify = ref<Record<VerifyKey, string>>({
 const verifyErrors = ref<Partial<Record<VerifyKey, string>>>({});
 const verifySaved = ref(false);
 
+// Mot de passe provisoire : case « Exiger un nouveau mot de passe à la connexion » cochée par défaut ou non (non par défaut).
+const PWD_KEY = 'platform.provisional_password.require_change';
+const pwdRequire = ref(false);
+const pwdSaved = ref(false);
+
 async function load(): Promise<void> {
   loadError.value = null;
   try {
@@ -44,6 +49,7 @@ async function load(): Promise<void> {
     minutes.value = setting.value ? String(setting.value.value) : '';
     level.value = all[LEVEL_KEY]?.value === 1 ? '1' : '0';
     allSettings.value = all;
+    pwdRequire.value = all[PWD_KEY]?.value === 1;
     for (const key of VERIFY_KEYS) verify.value[key] = String(all[key]?.value ?? '');
   } catch (e) {
     loadError.value = e;
@@ -93,6 +99,12 @@ async function saveVerify(): Promise<void> {
   if (Object.keys(errs).length > 0) return;
   const res = await action.run<{ data: Record<string, PlatformSetting> }>(actions.updateSettings(values), t('rg.set.verifyTitle'));
   if (res) verifySaved.value = true;
+}
+
+async function savePwd(): Promise<void> {
+  pwdSaved.value = false;
+  const res = await action.run<{ data: Record<string, PlatformSetting> }>(actions.updateSettings({ [PWD_KEY]: pwdRequire.value ? 1 : 0 }), t('pa.set.pwdTitle'));
+  if (res) pwdSaved.value = true;
 }
 
 onMounted(load);
@@ -168,6 +180,14 @@ onMounted(load);
         <span id="rg-v-mode-hint" class="hint">{{ t('rg.set.partialHint') }}</span>
       </div>
       <p v-if="verifySaved" class="notice notice--success" role="status">{{ t('rg.set.verifySaved') }}</p>
+      <button type="submit" class="btn btn--primary" :disabled="action.busy.value">{{ t('admin.save') }}</button>
+    </form>
+
+    <form v-if="allSettings[PWD_KEY]" class="card stack" novalidate aria-labelledby="pwd-title" @submit.prevent="savePwd">
+      <h2 id="pwd-title">{{ t('pa.set.pwdTitle') }}</h2>
+      <p class="muted">{{ t('pa.set.pwdLede') }}</p>
+      <label class="choice"><input id="pwd-require" v-model="pwdRequire" type="checkbox" data-test="pwd-default" /> {{ t('pa.set.pwdLabel') }}</label>
+      <p v-if="pwdSaved" class="notice notice--success" role="status">{{ t('pa.set.pwdSaved') }}</p>
       <button type="submit" class="btn btn--primary" :disabled="action.busy.value">{{ t('admin.save') }}</button>
     </form>
 

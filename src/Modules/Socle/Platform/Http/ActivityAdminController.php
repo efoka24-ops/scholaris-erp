@@ -18,6 +18,7 @@ use Scholaris\Modules\Socle\Messaging\Contracts\DeliveryMonitor;
 use Scholaris\Modules\Socle\Organisation\Contracts\ClientProvisioning;
 use Scholaris\Modules\Socle\Platform\Application\ClientLifecycle;
 use Scholaris\Modules\Socle\Platform\Application\PlatformAudit;
+use Scholaris\Modules\Socle\Platform\Application\UserAccessCodes;
 use Scholaris\Modules\Socle\Platform\Domain\Mask;
 
 /**
@@ -45,6 +46,7 @@ final class ActivityAdminController
         private readonly PlatformAudit $audit,
         private readonly ResponseFactoryInterface $responses,
         private readonly StreamFactoryInterface $streams,
+        private readonly UserAccessCodes $codes,
     ) {
     }
 
@@ -103,6 +105,8 @@ final class ActivityAdminController
             'logins' => array_map(static fn (array $r): array => ['occurred_at' => $r['occurred_at'], 'ip' => $r['ip'], 'method' => $r['details']['method'] ?? null], $logins),
             'actions' => array_map(static fn (array $r): array => ['occurred_at' => $r['occurred_at'], 'action' => $r['action'], 'object_type' => $r['object_type'], 'object_id' => $r['object_id']], $actions),
             'messages' => $messages,
+            // Canaux d'envoi possibles (sans coordonnée en clair) et case « changement exigé » cochée par défaut ou non.
+            'provisional_password' => $this->codes->provisionalOptions($account),
         ]]);
     }
 

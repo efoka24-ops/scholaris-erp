@@ -83,4 +83,16 @@ interface AccountAdministration
      * @return array{user_id: string, login: string, status: string, must_change_password: bool, provisional_password: string}
      */
     public function reissueProvisionalPassword(string $tenantId, string $userId, string $actorId, ?string $establishmentId = null, bool $resetTwoFactor = false): array;
+
+    /**
+     * Mot de passe provisoire donné par la PLATEFORME depuis le back-office (utilisateur d'un client, ou administrateur de
+     * plateforme sur le client technique `platform`) : nouveau mot de passe généré (12 caractères non ambigus, conforme à la
+     * politique), haché ; sessions, appareils de confiance, codes d'accès et de réinitialisation ouverts invalidés ; double
+     * authentification conservée ; changement à la connexion seulement si `requireChange`. Refus : compte introuvable (404),
+     * son propre compte (409), compte bloqué (409), 5 émissions par heure et par compte (429). Le mot de passe en clair n'est
+     * rendu qu'ici, une fois ; jamais stocké ni journalisé (audit `identity.provisional_password_issued`, sans le mot de passe).
+     *
+     * @return array{user_id: string, login: string, status: string, must_change_password: bool, two_factor_enabled: bool, provisional_password: string}
+     */
+    public function issueProvisionalPasswordByPlatform(string $tenantId, string $userId, string $actorId, bool $requireChange): array;
 }

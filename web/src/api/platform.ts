@@ -302,6 +302,16 @@ export interface AccessCode {
   share: AccessShare;
 }
 
+/** Mot de passe provisoire donné par la plateforme (rendu une seule fois, jamais relu). */
+export interface ProvisionalPassword {
+  password: string;
+  login: string;
+  must_change_password: boolean;
+  two_factor_enabled: boolean;
+  delivery: AccessDelivery;
+  share: Omit<AccessShare, 'activation_url'>;
+}
+
 /** Compte d'un client, en lecture seule (aucune donnée métier). */
 export interface ClientUser {
   id: string;
@@ -630,6 +640,11 @@ export const actions = {
     method: 'POST',
     path: `${tenant ? `/platform/clients/${seg(tenant)}/users` : '/platform/administrators'}/${seg(user)}/access-code/send`,
     body: { channel, code },
+  }),
+  provisionalPassword: (tenant: string | null, user: string, send: AccessSend, requireChange: boolean): PlatformAction => ({
+    method: 'POST',
+    path: `${tenant ? `/platform/clients/${seg(tenant)}/users` : '/platform/administrators'}/${seg(user)}/provisional-password`,
+    body: { send, require_change: requireChange },
   }),
   archiveRequest: (id: string, reason: string): PlatformAction => ({ method: 'POST', path: `/platform/access-requests/${seg(id)}/archive`, body: { reason } }),
   deleteRequest: (id: string): PlatformAction => ({ method: 'DELETE', path: `/platform/access-requests/${seg(id)}`, body: {} }),

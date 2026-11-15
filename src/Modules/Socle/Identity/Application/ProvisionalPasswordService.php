@@ -8,6 +8,7 @@ use Scholaris\Core\Http\HttpException;
 use Scholaris\Modules\Socle\Audit\Contracts\AuditLog;
 use Scholaris\Modules\Socle\Identity\Contracts\AccountProvisioner;
 use Scholaris\Modules\Socle\Identity\Domain\Identifier;
+use Scholaris\Modules\Socle\Identity\Domain\PasswordPolicy;
 use Scholaris\Modules\Socle\Identity\Domain\ProvisionalPassword;
 use Scholaris\Modules\Socle\Identity\Domain\Role;
 use Scholaris\Modules\Socle\Identity\Domain\User;
@@ -41,6 +42,7 @@ final class ProvisionalPasswordService
         private readonly PasswordHasher $hasher,
         private readonly AuditLog $audit,
         private readonly Moment $moment,
+        private readonly PasswordPolicy $policy,
     ) {
     }
 
@@ -121,6 +123,67 @@ final class ProvisionalPasswordService
             'must_change_password' => true,
             'provisional_password' => $password,
         ];
+    }
+
+    /**
+     * Mot de passe provisoire donné par la PLATEFORME (back-office) à un compte déjà désigné par l'appelant (client ou plateforme) :
+     * l'ancien mot de passe est remplacé, les sessions, appareils de confiance et codes d'accès ou de réinitialisation ouverts sont
+     * invalidés, les compteurs d'échec remis à zéro. La double authentification est CONSERVÉE. `requireChange` décide du changement
+     * obligatoire à la connexion. Refus : son propre compte (409), compte bloqué (409), 5 émissions par heure et par compte (429,
+     * compteur partagé avec `reissue`). Le mot de passe respecte la politique du socle ; il n'est rendu qu'ici, jamais journalisé.
+     *
+     * @return array{user_id: string, login: string, status: string, must_change_password: bool, two_factor_enabled: bool, provisional_password: string}
+     */
+    public function issueForAccount(User $user, string $actorId, bool $requireChange): array
+    {
+        if ($user->id === $actorId) {
+            throw HttpException::conflict('Vous ne pouvez pas vous donner un mot de passe provisoire : utilisez « Mot de passe oublié ».');
+        }
+        if ($user->status === User::LOCKED) {
+            throw HttpException::conflict('Ce compte est suspendu (bloqué) : débloquez-le avant de lui donner un mot de passe provisoire.');
+        }
+        $this->assertQuota($user);
+
+        $password = $this->compliantPassword($user);
+        $now = $this->moment->iso();
+        $hash = $this->hasher->hash($password);
+        if ($requireChange) {
+            $this->users->setProvisionalPassword($user->tenantId, $user->id, $hash, $now);
+        } else {
+            $this->users->setPassword($user->tenantId, $user->id, $hash, $now);
+        }
+        $this->tokens->revokeForUser($user->tenantId, $user->id, $now);
+        $this->devices->revokeAll($user->tenantId, $user->id, $now);
+        $this->codes->consumeOpen($user->tenantId, $user->id, [ActivationService::ACTIVATION, ActivationService::RESET], $now);
+        $this->clearFailures($user, $now);
+        $this->audit->append($user->tenantId, $actorId, 'identity.provisional_password_issued', 'user', $user->id, ['status' => $user->status], [
+            'reason' => 'platform',
+            'must_change_password' => $requireChange,
+            'two_factor_kept' => $user->hasTwoFactor(),
+        ]);
+
+        return [
+            'user_id' => $user->id,
+            'login' => (string) ($user->email ?? $user->phone ?? ''),
+            'status' => User::ACTIVE,
+            'must_change_password' => $requireChange,
+            'two_factor_enabled' => $user->hasTwoFactor(),
+            'provisional_password' => $password,
+        ];
+    }
+
+    /** Tirage conforme à la politique du socle (longueur, mots de passe courants, identifiant de la personne). */
+    private function compliantPassword(User $user): string
+    {
+        $personal = array_values(array_filter([$user->phone, $user->email], static fn (?string $v): bool => $v !== null && $v !== ''));
+        for ($attempt = 0; $attempt < 20; $attempt++) {
+            $password = ProvisionalPassword::generate();
+            if ($this->policy->violations($password, $personal) === []) {
+                return $password;
+            }
+        }
+
+        throw new \RuntimeException('Aucun mot de passe provisoire conforme n\'a pu être tiré.');
     }
 
     private function assertMayReissue(User $target, string $actorId, ?string $establishmentId): void
