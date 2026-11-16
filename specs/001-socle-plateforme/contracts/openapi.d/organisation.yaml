@@ -520,7 +520,7 @@ paths:
         '404':
           description: "Introuvable"
     patch:
-      summary: "Modifie une année scolaire"
+      summary: "Modifie une année scolaire (libellé, dates ; organisation.manage). Refus 409 si l'année est clôturée ; 422 si les dates chevauchent une autre année ou laisseraient une période en dehors"
       security:
         - bearer: []
       parameters:
@@ -615,7 +615,7 @@ paths:
         '404':
           description: "Introuvable"
     patch:
-      summary: "Modifie une période"
+      summary: "Modifie une période (nature, numéro, dates, parent_id ; organisation.manage). La période reste dans son année et dans son parent, ne chevauche pas une période de même nature de la même année, et ne laisse pas sortir les éléments datés qui l'utilisent (422). Si elle est déjà utilisée, meta.warnings le signale. 409 si l'année est clôturée"
       security:
         - bearer: []
       parameters:
@@ -627,7 +627,7 @@ paths:
             type: string
       responses:
         '200':
-          description: "Modifié"
+          description: "Modifié (meta.warnings éventuel)"
         '403':
           description: "Accès refusé"
         '404':
@@ -636,6 +636,26 @@ paths:
           description: "Conflit"
         '422':
           description: "Données invalides"
+    delete:
+      summary: "Supprime une période libre de l'établissement actif (organisation.manage). Refus 409 si l'année est clôturée, si des périodes y sont rattachées, ou si un module l'utilise déjà (épreuves, notes, conseils, délibérations, bulletins, cahiers de progrès…, contrat PeriodUsage)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Supprimée ({data: {id, deleted: true}})"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable"
+        '409':
+          description: "Période utilisée, avec des périodes rattachées, ou année clôturée"
   /api/v1/structures:
     get:
       summary: "Liste des structures pédagogiques de l'établissement actif (curseur, filtres et tris en liste blanche)"

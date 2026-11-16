@@ -83,4 +83,5 @@ return [
         AssessmentExtensions::collect($c, AssessmentExtensions::GUARDS, DeliberationGuard::class),
     )),
     'assessment.deliberation_guards.assessment' => [BuiltInDeliberationGuard::class, ReopenAlertGuard::class],
+    'organisation.period_usage.assessment' => [\Scholaris\Modules\Socle\Assessment\Infrastructure\AssessmentPeriodUsage::class],
 ];

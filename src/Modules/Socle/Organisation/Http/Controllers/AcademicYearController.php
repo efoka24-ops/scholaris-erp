@@ -8,6 +8,7 @@ use Scholaris\Core\Http\HttpException;
 use Scholaris\Core\Http\JsonResponder;
 use Scholaris\Modules\Socle\Organisation\Application\AcademicYearService;
 use Scholaris\Modules\Socle\Organisation\Application\OrgClock;
+use Scholaris\Modules\Socle\Organisation\Domain\PeriodKind;
 use Scholaris\Modules\Socle\Organisation\Http\Policies\OrganisationPolicy;
 use Scholaris\Modules\Socle\Organisation\Http\RequestContext;
 use Scholaris\Modules\Socle\Organisation\Http\Requests\AcademicYearRequest;
@@ -80,6 +81,19 @@ final class AcademicYearController extends ScopedCrudController
             }
         }
 
-        return $existing === null ? $changes + ['status' => AcademicYearService::OPEN] : $changes;
+        if ($existing === null) {
+            return $changes + ['status' => AcademicYearService::OPEN];
+        }
+        // Réduire l'année ne laisse aucune période en dehors : il faut d'abord modifier (ou supprimer) la période.
+        foreach ($this->repositories->request('periods')->all(['academic_year_id' => (string) $existing['id']], 'starts_on') as $period) {
+            $field = $period['starts_on'] < $merged['starts_on'] ? 'starts_on' : ($period['ends_on'] > $merged['ends_on'] ? 'ends_on' : null);
+            if ($field !== null) {
+                $this->fail([$field => ['La période « ' . PeriodKind::from((string) $period['kind'])->label((int) $period['ordinal']) . ' » (du '
+                    . PeriodController::day((string) $period['starts_on']) . ' au ' . PeriodController::day((string) $period['ends_on'])
+                    . ') sortirait de l\'année : modifiez d\'abord ses dates.']]);
+            }
+        }
+
+        return $changes;
     }
 }

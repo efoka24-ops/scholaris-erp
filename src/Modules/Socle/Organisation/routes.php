@@ -66,6 +66,8 @@ return static function (RouteRegistry $routes): void {
         $routes->add('GET', $path . '/{id}', [$controller, 'show']);
         $routes->add('PATCH', $path . '/{id}', [$controller, 'update']);
     }
+    // Suppression d'une période libre (refusée, 409, si un module l'utilise : contrat PeriodUsage). Les années ne se suppriment pas.
+    $routes->add('DELETE', '/periods/{id}', [PeriodController::class, 'destroy']);
     // Clôture d'année (T137) : contrôle préalable, demande, approbation avec 2FA récente, refus.
     $routes->add('GET', '/academic-years/{id}/closure-check', [YearClosureController::class, 'check']);
     $routes->add('POST', '/academic-years/{id}/close', [YearClosureController::class, 'close']);

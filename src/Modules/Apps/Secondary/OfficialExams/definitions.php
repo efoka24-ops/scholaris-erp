@@ -15,4 +15,5 @@ return [
     'secondary.document_types.official_exams' => [OfficialExamDocumentTypes::class],
     OfficialExamService::class => autowire(),
     ExamCandidateDirectory::class => get(PdoExamCandidateDirectory::class),
+    'organisation.period_usage.secondary_official_exams' => [\Scholaris\Modules\Apps\Secondary\OfficialExams\Infrastructure\OfficialExamsPeriodUsage::class],
 ];

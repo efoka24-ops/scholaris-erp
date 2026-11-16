@@ -10,4 +10,5 @@ use Scholaris\Modules\Apps\Primary\Councils\Infrastructure\PrimaryAdmissions;
  */
 return [
     'assessment.admission_sources.primary' => [PrimaryAdmissions::class],
+    'organisation.period_usage.primary_councils' => [\Scholaris\Modules\Apps\Primary\Councils\Infrastructure\CouncilsPeriodUsage::class],
 ];

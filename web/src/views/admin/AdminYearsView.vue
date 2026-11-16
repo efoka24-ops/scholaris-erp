@@ -12,10 +12,13 @@ import {
   closureCheck,
   createPeriod,
   createYear,
+  deletePeriod,
   listPeriods,
   listYears,
   rejectClosure,
   requestClosure,
+  updatePeriod,
+  updateYear,
   type AcademicYear,
   type ClosureReport,
   type Period,
@@ -107,6 +110,7 @@ async function select(id: string): Promise<void> {
   periods.value = [];
   report.value = null;
   nextYearId.value = '';
+  editingPeriod.value = null;
   periodForm.kind = kinds.value[0] ?? '';
   periodForm.ordinal = 1;
   const res = await detailAction.run(async () => ({ periods: await listPeriods(id), report: await closureReport(id) }));
@@ -166,6 +170,89 @@ async function decide(kind: 'approve' | 'reject'): Promise<void> {
   }
 }
 
+// Modification d'une année et d'une période, suppression d'une période libre (organisation.manage, année ouverte).
+// Les erreurs de validation du serveur (422) s'affichent sous les champs ; les refus (409) dans l'avis d'erreur.
+const notice = ref('');
+const warnings = ref<string[]>([]);
+const yearEditAction = useAction();
+const periodEditAction = useAction();
+const periodDeleteAction = useAction();
+const editingYear = ref<AcademicYear | null>(null);
+const yearEdit = reactive({ label: '', starts_on: '', ends_on: '' });
+const editingPeriod = ref<Period | null>(null);
+const periodEdit = reactive({ kind: '', ordinal: 1, starts_on: '', ends_on: '', parent_id: '' });
+
+const canEditYear = (y: AcademicYear): boolean => canManage.value && y.status === 'open';
+const canEditPeriods = computed(() => canManage.value && selected.value?.status === 'open');
+const periodName = (p: Pick<Period, 'kind' | 'ordinal'>): string => (p.kind === 'year' ? kindLabel(p.kind) : `${kindLabel(p.kind)} ${p.ordinal}`);
+const editKinds = computed(() => {
+  const k = editingPeriod.value?.kind;
+  return k && !(kinds.value as string[]).includes(k) ? [k, ...kinds.value] : [...kinds.value];
+});
+const editParentChoices = computed(() => periods.value.filter((p) => p.kind === PARENT_KIND[periodEdit.kind] && p.id !== editingPeriod.value?.id));
+
+function fieldError(error: unknown, field: string): string | undefined {
+  return error instanceof ApiError && error.status === 422 ? error.fieldErrors[field]?.[0] : undefined;
+}
+const yearEditError = (field: string): string | undefined => fieldError(yearEditAction.error.value, field);
+const periodEditError = (field: string): string | undefined => fieldError(periodEditAction.error.value, field);
+/** Erreur générale (hors 422 par champ) : refus 409, droits, réseau. */
+const generalError = (error: unknown): unknown => (error instanceof ApiError && error.status === 422 && Object.keys(error.fieldErrors).length > 0 ? null : error);
+
+function startYearEdit(y: AcademicYear): void {
+  editingYear.value = y;
+  Object.assign(yearEdit, { label: y.label, starts_on: y.starts_on, ends_on: y.ends_on });
+  yearEditAction.error.value = null;
+  notice.value = '';
+}
+
+async function saveYear(): Promise<void> {
+  const y = editingYear.value;
+  if (!y) return;
+  const res = await yearEditAction.run(() => updateYear(y.id, { label: yearEdit.label.trim(), starts_on: yearEdit.starts_on, ends_on: yearEdit.ends_on }));
+  if (!res) return;
+  years.value = years.value.map((x) => (x.id === res.id ? { ...x, ...res } : x));
+  editingYear.value = null;
+  notice.value = t('admin.years.saved', { name: res.label });
+}
+
+function startPeriodEdit(p: Period): void {
+  editingPeriod.value = p;
+  Object.assign(periodEdit, { kind: p.kind, ordinal: p.ordinal, starts_on: p.starts_on, ends_on: p.ends_on, parent_id: p.parent_id ?? '' });
+  periodEditAction.error.value = null;
+  notice.value = '';
+  warnings.value = [];
+}
+
+async function savePeriod(): Promise<void> {
+  const p = editingPeriod.value;
+  if (!p) return;
+  const parentId = PARENT_KIND[periodEdit.kind] && editParentChoices.value.some((c) => c.id === periodEdit.parent_id) ? periodEdit.parent_id : null;
+  const res = await periodEditAction.run(() =>
+    updatePeriod(p.id, { kind: periodEdit.kind, ordinal: Number(periodEdit.ordinal), starts_on: periodEdit.starts_on, ends_on: periodEdit.ends_on, parent_id: parentId }),
+  );
+  if (!res) return;
+  periods.value = periods.value.map((x) => (x.id === p.id ? { ...x, ...res.period } : x)).sort((a, b) => a.starts_on.localeCompare(b.starts_on));
+  editingPeriod.value = null;
+  warnings.value = res.warnings;
+  notice.value = t('admin.periods.saved', { name: periodName(res.period) });
+}
+
+async function removePeriod(p: Period): Promise<void> {
+  const name = periodName(p);
+  if (typeof window !== 'undefined' && !window.confirm(t('admin.periods.deleteConfirm', { name }))) return;
+  notice.value = '';
+  warnings.value = [];
+  const done = await periodDeleteAction.run(async () => {
+    await deletePeriod(p.id);
+    return true;
+  });
+  if (!done) return;
+  periods.value = periods.value.filter((x) => x.id !== p.id);
+  if (editingPeriod.value?.id === p.id) editingPeriod.value = null;
+  notice.value = t('admin.periods.deleted', { name });
+}
+
 onMounted(loadYears);
 </script>
 
@@ -223,17 +310,53 @@ onMounted(loadYears);
             <td>{{ formatDate(y.starts_on, locale) }}</td>
             <td>{{ formatDate(y.ends_on, locale) }}</td>
             <td><span class="tag" :class="`tag--${yearTone(y)}`">{{ y.status === 'open' ? t('admin.years.open') : t('admin.years.closed') }}</span></td>
-            <td><button type="button" class="btn" :aria-pressed="y.id === selectedId" :aria-label="t('admin.years.manageNamed', { name: y.label })" @click="select(y.id)">{{ t('admin.years.manage') }}</button></td>
+            <td class="actions">
+              <button type="button" class="btn" :aria-pressed="y.id === selectedId" :aria-label="t('admin.years.manageNamed', { name: y.label })" @click="select(y.id)">{{ t('admin.years.manage') }}</button>
+              <button v-if="canEditYear(y)" type="button" class="btn" data-test="year-edit" :aria-label="t('admin.years.editNamed', { name: y.label })" @click="startYearEdit(y)">{{ t('admin.years.edit') }}</button>
+            </td>
           </tr>
         </tbody>
       </table>
     </div>
+
+    <p v-if="notice" class="notice notice--success" role="status">{{ notice }}</p>
+    <ul v-if="warnings.length" class="notice notice--warning" data-test="period-warnings">
+      <li v-for="w in warnings" :key="w">{{ w }}</li>
+    </ul>
+
+    <form v-if="editingYear && canEditYear(editingYear)" class="card" novalidate aria-labelledby="y-edit" @submit.prevent="saveYear">
+      <h2 id="y-edit">{{ t('admin.years.editTitle', { name: editingYear.label }) }}</h2>
+      <ErrorNotice :error="generalError(yearEditAction.error.value)" />
+      <div class="grid grid--kpi">
+        <div class="field">
+          <label for="ye-label">{{ t('admin.years.label') }}</label>
+          <input id="ye-label" v-model="yearEdit.label" type="text" maxlength="40" :aria-invalid="!!yearEditError('label')" aria-describedby="ye-label-err" />
+          <span v-if="yearEditError('label')" id="ye-label-err" class="error">{{ yearEditError('label') }}</span>
+        </div>
+        <div class="field">
+          <label for="ye-start">{{ t('admin.years.start') }}</label>
+          <input id="ye-start" v-model="yearEdit.starts_on" type="date" :aria-invalid="!!yearEditError('starts_on')" aria-describedby="ye-start-err" />
+          <span v-if="yearEditError('starts_on')" id="ye-start-err" class="error">{{ yearEditError('starts_on') }}</span>
+        </div>
+        <div class="field">
+          <label for="ye-end">{{ t('admin.years.end') }}</label>
+          <input id="ye-end" v-model="yearEdit.ends_on" type="date" :aria-invalid="!!yearEditError('ends_on')" aria-describedby="ye-end-err" />
+          <span v-if="yearEditError('ends_on')" id="ye-end-err" class="error">{{ yearEditError('ends_on') }}</span>
+        </div>
+      </div>
+      <p class="muted small">{{ t('admin.years.editHint') }}</p>
+      <div class="row">
+        <button type="submit" class="btn btn--primary" :disabled="yearEditAction.busy.value">{{ t('admin.common.save') }}</button>
+        <button type="button" class="btn" @click="editingYear = null">{{ t('admin.common.cancel') }}</button>
+      </div>
+    </form>
 
     <template v-if="selected">
       <ErrorNotice :error="detailAction.error.value" />
 
       <section class="card" aria-labelledby="p-title">
         <h2 id="p-title">{{ t('admin.periods.title', { name: selected.label }) }}</h2>
+        <ErrorNotice :error="periodDeleteAction.error.value" />
         <p v-if="periods.length === 0" class="muted">{{ t('admin.periods.none') }}</p>
         <div v-else class="table-wrap">
           <table>
@@ -243,6 +366,7 @@ onMounted(loadYears);
                 <th scope="col" class="num">{{ t('admin.periods.ordinal') }}</th>
                 <th scope="col">{{ t('admin.years.start') }}</th>
                 <th scope="col">{{ t('admin.years.end') }}</th>
+                <th v-if="canEditPeriods" scope="col"><span class="sr-only">{{ t('common.actions') }}</span></th>
               </tr>
             </thead>
             <tbody>
@@ -251,10 +375,58 @@ onMounted(loadYears);
                 <td class="num">{{ p.ordinal }}</td>
                 <td>{{ formatDate(p.starts_on, locale) }}</td>
                 <td>{{ formatDate(p.ends_on, locale) }}</td>
+                <td v-if="canEditPeriods" class="actions">
+                  <button type="button" class="btn" data-test="period-edit" :aria-label="t('admin.periods.editNamed', { name: periodName(p) })" @click="startPeriodEdit(p)">{{ t('admin.periods.edit') }}</button>
+                  <button type="button" class="btn" data-test="period-delete" :disabled="periodDeleteAction.busy.value" :aria-label="t('admin.periods.deleteNamed', { name: periodName(p) })" @click="removePeriod(p)">
+                    {{ t('admin.periods.delete') }}
+                  </button>
+                </td>
               </tr>
             </tbody>
           </table>
         </div>
+
+        <form v-if="editingPeriod && canEditPeriods" class="subform" novalidate aria-labelledby="p-edit" @submit.prevent="savePeriod">
+          <h3 id="p-edit">{{ t('admin.periods.editTitle', { name: periodName(editingPeriod) }) }}</h3>
+          <ErrorNotice :error="generalError(periodEditAction.error.value)" />
+          <div class="grid grid--kpi">
+            <div class="field">
+              <label for="pe-kind">{{ t('admin.periods.kind') }}</label>
+              <select id="pe-kind" v-model="periodEdit.kind" :aria-invalid="!!periodEditError('kind')" aria-describedby="pe-kind-err">
+                <option v-for="k in editKinds" :key="k" :value="k">{{ kindLabel(k) }}</option>
+              </select>
+              <span v-if="periodEditError('kind')" id="pe-kind-err" class="error">{{ periodEditError('kind') }}</span>
+            </div>
+            <div v-if="PARENT_KIND[periodEdit.kind]" class="field">
+              <label for="pe-parent">{{ t('admin.periods.parent') }}</label>
+              <select id="pe-parent" v-model="periodEdit.parent_id" :aria-invalid="!!periodEditError('parent_id')" aria-describedby="pe-parent-err">
+                <option value="">—</option>
+                <option v-for="c in editParentChoices" :key="c.id" :value="c.id">{{ periodName(c) }}</option>
+              </select>
+              <span v-if="periodEditError('parent_id')" id="pe-parent-err" class="error">{{ periodEditError('parent_id') }}</span>
+            </div>
+            <div class="field">
+              <label for="pe-ord">{{ t('admin.periods.ordinal') }}</label>
+              <input id="pe-ord" v-model.number="periodEdit.ordinal" type="number" min="1" max="12" step="1" :aria-invalid="!!periodEditError('ordinal')" aria-describedby="pe-ord-err" />
+              <span v-if="periodEditError('ordinal')" id="pe-ord-err" class="error">{{ periodEditError('ordinal') }}</span>
+            </div>
+            <div class="field">
+              <label for="pe-start">{{ t('admin.years.start') }}</label>
+              <input id="pe-start" v-model="periodEdit.starts_on" type="date" :aria-invalid="!!periodEditError('starts_on')" aria-describedby="pe-start-err" />
+              <span v-if="periodEditError('starts_on')" id="pe-start-err" class="error">{{ periodEditError('starts_on') }}</span>
+            </div>
+            <div class="field">
+              <label for="pe-end">{{ t('admin.years.end') }}</label>
+              <input id="pe-end" v-model="periodEdit.ends_on" type="date" :aria-invalid="!!periodEditError('ends_on')" aria-describedby="pe-end-err" />
+              <span v-if="periodEditError('ends_on')" id="pe-end-err" class="error">{{ periodEditError('ends_on') }}</span>
+            </div>
+          </div>
+          <p class="muted small">{{ t('admin.periods.editHint') }}</p>
+          <div class="row">
+            <button type="submit" class="btn btn--primary" :disabled="periodEditAction.busy.value">{{ t('admin.common.save') }}</button>
+            <button type="button" class="btn" @click="editingPeriod = null">{{ t('admin.common.cancel') }}</button>
+          </div>
+        </form>
 
         <form v-if="canManage && selected.status === 'open'" class="subform" novalidate aria-labelledby="p-new" @submit.prevent="submitPeriod">
           <h3 id="p-new">{{ t('admin.periods.new') }}</h3>
@@ -394,5 +566,11 @@ onMounted(loadYears);
 }
 .small {
   font-size: 13px;
+}
+.actions .btn + .btn {
+  margin-left: 8px;
+}
+ul.notice {
+  padding-left: 20px;
 }
 </style>

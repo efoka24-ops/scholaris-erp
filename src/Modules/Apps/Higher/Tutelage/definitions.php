@@ -13,4 +13,5 @@ return [
     TutelageClock::class => autowire(),
     'higher.document_types.tutelage' => [TutelageDocumentTypes::class],
     'integrations.export_types.higher_tutelage' => TutelageExportTypes::types(),
+    'organisation.period_usage.higher_tutelage' => [\Scholaris\Modules\Apps\Higher\Tutelage\Infrastructure\TutelagePeriodUsage::class],
 ];

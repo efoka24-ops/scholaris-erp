@@ -32,4 +32,5 @@ return [
     'assessment.result_input_sources.higher_deliberation' => [JuryResultInputs::class],
     'documents.issuance_guards.higher_deliberation' => [SignedMinutesIssuanceGuard::class],
     'higher.document_types.deliberation' => [DeliberationDocumentTypes::class, SuccessCertificateType::class],
+    'organisation.period_usage.higher_deliberation' => [\Scholaris\Modules\Apps\Higher\Deliberation\Infrastructure\DeliberationPeriodUsage::class],
 ];

@@ -22,4 +22,5 @@ return [
     Referential::class => get(PdoReferential::class),
     ReferentialService::class => autowire(),
     ReferentialController::class => autowire(),
+    'organisation.period_usage.public_primary' => [\Scholaris\Modules\Apps\PublicPrimary\Referential\Infrastructure\ReferentialPeriodUsage::class],
 ];

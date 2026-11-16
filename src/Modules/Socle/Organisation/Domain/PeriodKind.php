@@ -15,6 +15,17 @@ enum PeriodKind: string
     case Sequence = 'sequence';
     case Semester = 'semester';
 
+    /** Libellé lisible, ex. « Semestre 1 » (une seule période « année » : pas de numéro). */
+    public function label(int $ordinal): string
+    {
+        return match ($this) {
+            self::Year => 'Année',
+            self::Trimester => 'Trimestre ' . $ordinal,
+            self::Sequence => 'Séquence ' . $ordinal,
+            self::Semester => 'Semestre ' . $ordinal,
+        };
+    }
+
     public function allowedFor(EstablishmentType $type): bool
     {
         return $type === EstablishmentType::Higher ? $this === self::Semester : $this !== self::Semester;

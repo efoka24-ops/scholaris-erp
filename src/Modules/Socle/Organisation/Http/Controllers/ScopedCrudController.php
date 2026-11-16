@@ -96,6 +96,18 @@ abstract class ScopedCrudController
     {
     }
 
+    /**
+     * Informations jointes à la réponse d'une modification (clé `meta`), ex. avertissements ; vide par défaut.
+     *
+     * @param array<string, mixed> $existing
+     * @param array<string, mixed> $row
+     * @return array<string, mixed>
+     */
+    protected function updateMeta(array $existing, array $row): array
+    {
+        return [];
+    }
+
     protected function repository(): ResourceRepository
     {
         return $this->repositories->request($this->table());
@@ -221,8 +233,9 @@ abstract class ScopedCrudController
             $this->resource()->toArray($existing),
             $this->resource()->toArray($row),
         );
+        $meta = $this->updateMeta($existing, $row);
 
-        return $this->responder->json(['data' => $this->resource()->toArray($row)]);
+        return $this->responder->json(['data' => $this->resource()->toArray($row)] + ($meta === [] ? [] : ['meta' => $meta]));
     }
 
     protected function id(ServerRequestInterface $request): string

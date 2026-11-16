@@ -41,4 +41,5 @@ return [
     PhotoConsentController::class => autowire(),
     MediaRetention::class => autowire(),
     'console.command.' . PurgeMediaCommand::NAME => autowire(PurgeMediaCommand::class),
+    'organisation.period_usage.nursery_development' => [\Scholaris\Modules\Apps\Nursery\Development\Application\DevelopmentPeriodUsage::class],
 ];

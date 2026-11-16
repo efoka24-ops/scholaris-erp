@@ -36,4 +36,5 @@ return [
     'reporting.indicators.secondary' => [SecondaryIndicators::class],
     'reporting.dashboards.secondary' => [new ConfiguredDashboard('secondary', 'Enseignement secondaire', SecondaryIndicators::EXPECTED, 'secondary.dashboard.read')],
     'integrations.export_types.secondary_dashboards' => DashboardExportTypes::types(),
+    'organisation.period_usage.secondary_dashboards' => [\Scholaris\Modules\Apps\Secondary\Dashboards\Application\DashboardsPeriodUsage::class],
 ];

@@ -29,4 +29,5 @@ return [
     'secondary.document_types.orientation' => [OrientationDocumentTypes::class],
     SecondaryPromotionPlanner::CONTAINER_KEY => [SecondaryPromotionPlanner::class],
     PromotionPlans::class => get(SecondaryPromotionPlanner::class),
+    'organisation.period_usage.secondary_councils' => [\Scholaris\Modules\Apps\Secondary\Councils\Infrastructure\CouncilsPeriodUsage::class],
 ];

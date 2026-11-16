@@ -39,7 +39,7 @@ export interface AcademicYear {
 export interface Period {
   id: string;
   academic_year_id: string;
-  kind: 'trimester' | 'sequence' | 'semester';
+  kind: 'year' | 'trimester' | 'sequence' | 'semester';
   ordinal: number;
   starts_on: string;
   ends_on: string;
@@ -208,6 +208,21 @@ export const createYear = async (input: { label: string; starts_on: string; ends
 export const listPeriods = (yearId: string): Promise<Period[]> => http.all<Period>('/periods', { 'filter[academic_year_id]': yearId, sort: 'starts_on' });
 export const createPeriod = async (input: { academic_year_id: string; kind: string; ordinal: number; starts_on: string; ends_on: string; parent_id?: string }): Promise<Period> =>
   (await http.post<{ data: Period }>('/periods', input)).data;
+/** Modification d'une année (libellé, dates ; organisation.manage, année ouverte). */
+export const updateYear = async (id: string, input: { label?: string; starts_on?: string; ends_on?: string }): Promise<AcademicYear> =>
+  (await http.patch<{ data: AcademicYear }>(`/academic-years/${id}`, input)).data;
+/** Modification d'une période ; `warnings` signale une période déjà utilisée (épreuves, notes…). */
+export const updatePeriod = async (
+  id: string,
+  input: { kind?: string; ordinal?: number; starts_on?: string; ends_on?: string; parent_id?: string | null },
+): Promise<{ period: Period; warnings: string[] }> => {
+  const res = await http.patch<{ data: Period; meta?: { warnings?: string[] } }>(`/periods/${id}`, input);
+  return { period: res.data, warnings: res.meta?.warnings ?? [] };
+};
+/** Suppression d'une période libre (409 si un module l'utilise). */
+export const deletePeriod = async (id: string): Promise<void> => {
+  await http.delete<unknown>(`/periods/${id}`);
+};
 export const closureCheck = async (yearId: string): Promise<ClosureReport> => (await http.get<{ data: ClosureReport }>(`/academic-years/${yearId}/closure-check`)).data;
 export const requestClosure = async (yearId: string, nextYearId: string | null): Promise<Closure> =>
   (await http.post<{ data: Closure }>(`/academic-years/${yearId}/close`, nextYearId ? { next_academic_year_id: nextYearId } : {})).data;

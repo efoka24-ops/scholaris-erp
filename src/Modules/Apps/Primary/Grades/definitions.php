@@ -20,4 +20,5 @@ return [
     'assessment.rule_scopes.primary' => [PrimaryRuleScopes::class],
     'assessment.council_line_providers.primary' => [PrimaryCouncilLines::class],
     SheetProgress::class => autowire(PdoSheetProgress::class),
+    'organisation.period_usage.primary_grades' => [\Scholaris\Modules\Apps\Primary\Grades\Infrastructure\GradesPeriodUsage::class],
 ];
