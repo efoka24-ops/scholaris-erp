@@ -7,25 +7,39 @@ namespace Scholaris\Modules\Socle\Reporting\Application;
 use Scholaris\Core\Http\HttpException;
 use Scholaris\Core\Support\Ulid;
 use Scholaris\Modules\Socle\Audit\Contracts\AuditLog;
+use Scholaris\Modules\Socle\Identity\Contracts\EstablishmentPersonnel;
 use Scholaris\Modules\Socle\Messaging\Contracts\DeliveryResult;
+use Scholaris\Modules\Socle\Messaging\Contracts\EssentialMessenger;
 use Scholaris\Modules\Socle\Messaging\Contracts\Messenger;
 use Scholaris\Modules\Socle\Organisation\Contracts\EstablishmentDirectory;
+use Scholaris\Modules\Socle\Organisation\Contracts\ModuleAvailability;
+use Scholaris\Modules\Socle\People\Contracts\ConsentChecker;
 use Scholaris\Modules\Socle\People\Contracts\PersonDirectory;
 use Scholaris\Modules\Socle\Reporting\Domain\DashboardKind;
 use Scholaris\Modules\Socle\Reporting\Domain\Frequency;
 use Scholaris\Modules\Socle\Reporting\Domain\ReportType;
 use Scholaris\Modules\Socle\Reporting\Infrastructure\ScheduleRepository;
+use Scholaris\Modules\Socle\Staff\Contracts\EstablishmentStaffRoster;
 use Throwable;
 
 /**
  * Rapports planifiés : définition (type, périodicité, destinataires) et exécution. Une exécution calcule les indicateurs, envoie le
- * résumé par e-mail à chaque destinataire via Messenger (qui applique consentement et plages horaires) et journalise le résultat.
+ * résumé par e-mail à chaque destinataire et journalise le résultat, avec le motif de chaque échec par destinataire.
+ * RAPPORT-MAIL : pour le personnel actif de l'établissement (rôle interne ou fiche du personnel), le rapport est un message de
+ * service interne (EssentialMessenger : pas de consentement « communications » exigé, désinscription et refus explicite respectés) ;
+ * pour toute autre personne, Messenger exige le consentement comme d'habitude.
  * L'exécution planifiée est idempotente par rapport et par jour : rejouer la commande le même jour n'envoie rien de plus.
  */
 final class ScheduledReportService
 {
     public const TEMPLATE = 'scheduled_report';
     public const MAX_RECIPIENTS = 20;
+    /** Motif d'un envoi qui a levé une exception. */
+    public const SEND_ERROR = 'send_error';
+    /** Préfixes d'indicateurs propres à une application : ils ne concernent qu'un établissement du même type. */
+    public const APPLICATION_PREFIXES = ['higher', 'secondary', 'primary', 'nursery'];
+    /** Préfixes d'indicateurs des modules du socle : sans objet si le module est désactivé pour l'établissement. */
+    public const MODULE_PREFIXES = ['people', 'billing', 'attendance', 'staff', 'scheduling', 'assessment'];
 
     public function __construct(
         private readonly ScheduleRepository $schedules,
@@ -36,7 +50,59 @@ final class ScheduledReportService
         private readonly Messenger $messenger,
         private readonly AuditLog $audit,
         private readonly ReportingClock $clock,
+        private readonly EssentialMessenger $essential,
+        private readonly EstablishmentPersonnel $personnel,
+        private readonly EstablishmentStaffRoster $roster,
+        private readonly ModuleAvailability $modules,
+        private readonly ConsentChecker $consents,
     ) {
+    }
+
+    /**
+     * Avertissements sur les destinataires (pas un refus) : pas d'adresse e-mail sur la fiche (`no_email`), ou personne hors du
+     * personnel de l'établissement sans consentement aux communications (`consent_required`).
+     *
+     * @param list<string> $recipientIds
+     * @return list<array{person_id: string, reason: string}>
+     */
+    public function recipientWarnings(string $tenantId, string $establishmentId, array $recipientIds): array
+    {
+        $staff = $this->staffAmong($tenantId, $establishmentId, $recipientIds);
+        $warnings = [];
+        foreach ($this->people->findMany($tenantId, $recipientIds) as $person) {
+            if ($person->email === null || trim($person->email) === '') {
+                $warnings[] = ['person_id' => $person->id, 'reason' => 'no_email'];
+            } elseif (!in_array($person->id, $staff, true) && !$this->consents->hasConsent($tenantId, $person->id, ConsentChecker::COMMUNICATION)) {
+                $warnings[] = ['person_id' => $person->id, 'reason' => 'consent_required'];
+            }
+        }
+
+        return $warnings;
+    }
+
+    /**
+     * Personnel actif de l'établissement parmi ces personnes : rôle interne en vigueur (Identity) ou fiche du personnel active (Staff).
+     *
+     * @param list<string> $personIds
+     * @return list<string>
+     */
+    private function staffAmong(string $tenantId, string $establishmentId, array $personIds): array
+    {
+        if ($personIds === []) {
+            return [];
+        }
+        $staff = $this->personnel->personnelAmong($tenantId, $establishmentId, $personIds);
+        try {
+            foreach ($this->roster->membersOf($tenantId, $establishmentId) as $member) {
+                if (in_array($member->personId, $personIds, true)) {
+                    $staff[] = $member->personId;
+                }
+            }
+        } catch (Throwable) {
+            // fiche du personnel indisponible : seuls les rôles comptent
+        }
+
+        return array_values(array_unique($staff));
     }
 
     /**
@@ -127,7 +193,38 @@ final class ScheduledReportService
     {
         $this->get($tenantId, $establishmentId, $id);
 
-        return $this->schedules->runs($tenantId, $establishmentId, $id, 50);
+        return array_map(fn (array $run): array => $this->presentRun($tenantId, $run), $this->schedules->runs($tenantId, $establishmentId, $id, 50));
+    }
+
+    /**
+     * @param array<string, mixed> $run
+     * @return array<string, mixed>
+     */
+    private function presentRun(string $tenantId, array $run): array
+    {
+        $decoded = is_string($run['failures'] ?? null) ? json_decode($run['failures'], true) : null;
+        $run['failures'] = $this->withNames($tenantId, is_array($decoded) ? array_values(array_filter($decoded, 'is_array')) : []);
+
+        return $run;
+    }
+
+    /**
+     * @param list<array<mixed>> $failures
+     * @return list<array{person_id: string, name: string|null, reason: string}>
+     */
+    private function withNames(string $tenantId, array $failures): array
+    {
+        $ids = array_map(static fn (array $f): string => (string) ($f['person_id'] ?? ''), $failures);
+        $names = [];
+        foreach ($ids === [] ? [] : $this->people->findMany($tenantId, $ids) as $person) {
+            $names[$person->id] = $person->fullName();
+        }
+
+        return array_map(static fn (array $f): array => [
+            'person_id' => (string) ($f['person_id'] ?? ''),
+            'name' => $names[(string) ($f['person_id'] ?? '')] ?? null,
+            'reason' => (string) ($f['reason'] ?? 'blocked'),
+        ], $failures);
     }
 
     /**
@@ -187,6 +284,7 @@ final class ScheduledReportService
 
         $sent = 0;
         $failed = 0;
+        $failures = [];
         $summary = '';
         $status = 'done';
         try {
@@ -198,12 +296,23 @@ final class ScheduledReportService
                 'details' => mb_substr($label . ' - ' . $summary, 0, 190),
                 'establishment_name' => $name,
             ];
-            foreach ($this->decodeRecipients($row) as $personId) {
+            $recipients = $this->decodeRecipients($row);
+            $staff = $this->staffAmong($tenantId, $establishmentId, $recipients);
+            foreach ($recipients as $personId) {
                 try {
-                    $result = $this->messenger->send($tenantId, $establishmentId, $personId, self::TEMPLATE, $variables, ['email']);
-                    $result->status === DeliveryResult::BLOCKED ? ++$failed : ++$sent;
+                    // Rapport interne : message de service pour le personnel ; consentement exigé pour toute autre personne.
+                    $result = in_array($personId, $staff, true)
+                        ? $this->essential->sendEssential($tenantId, $establishmentId, $personId, self::TEMPLATE, $variables, ['email'])
+                        : $this->messenger->send($tenantId, $establishmentId, $personId, self::TEMPLATE, $variables, ['email']);
+                    if ($result->status === DeliveryResult::BLOCKED) {
+                        ++$failed;
+                        $failures[] = ['person_id' => $personId, 'reason' => $result->reason ?? 'blocked'];
+                    } else {
+                        ++$sent;
+                    }
                 } catch (Throwable) {
                     ++$failed;
+                    $failures[] = ['person_id' => $personId, 'reason' => self::SEND_ERROR];
                 }
             }
             if ($sent === 0 && $failed > 0) {
@@ -216,16 +325,20 @@ final class ScheduledReportService
             $summary = 'Calcul impossible : ' . mb_substr($e->getMessage(), 0, 200);
         }
 
-        $this->schedules->finishRun($tenantId, $runId, $status, $sent, $failed, mb_substr($summary, 0, 500));
+        $this->schedules->finishRun($tenantId, $runId, $status, $sent, $failed, mb_substr($summary, 0, 500), $failures);
         $this->schedules->update($tenantId, $establishmentId, $scheduleId, [
             'last_run_at' => $now, 'last_run_status' => $status,
             'next_run_on' => $frequency->nextAfter($asOf, $runDay), 'updated_at' => $now,
         ]);
         $this->audit->append($tenantId, $actorId, 'report_schedule.run', 'report_schedule', $scheduleId, null, [
             'run_key' => $runKey, 'trigger' => $trigger, 'status' => $status, 'sent' => $sent, 'failed' => $failed,
+            'failure_reasons' => array_values(array_unique(array_column($failures, 'reason'))),
         ]);
 
-        return ['schedule_id' => $scheduleId, 'tenant_id' => $tenantId, 'run_key' => $runKey, 'status' => $status, 'sent_count' => $sent, 'failed_count' => $failed];
+        return [
+            'schedule_id' => $scheduleId, 'tenant_id' => $tenantId, 'run_key' => $runKey, 'status' => $status, 'sent_count' => $sent, 'failed_count' => $failed,
+            'failures' => $this->withNames($tenantId, $failures),
+        ];
     }
 
     /**
@@ -244,7 +357,7 @@ final class ScheduledReportService
         $group = $kind === DashboardKind::Groupe;
         $data = $this->indicators->build($kind, $tenantId, $group ? null : $establishmentId);
         /** @var list<array<string, mixed>> $items */
-        $items = $group ? $data['consolidated'] : $data['indicators'];
+        $items = $group ? $data['consolidated'] : $this->relevant($tenantId, $establishmentId, $data['indicators']);
         $parts = [];
         foreach ($items as $item) {
             $parts[] = $item['available'] === true
@@ -253,6 +366,35 @@ final class ScheduledReportService
         }
 
         return [$type->label(), implode(' ; ', $parts)];
+    }
+
+    /**
+     * RAPPORT-MAIL : indicateurs qui concernent l'établissement. Un indicateur d'application (primary.*, secondary.*, nursery.*,
+     * higher.*) n'est gardé que pour un établissement de ce type ; un indicateur d'un module du socle désactivé est retiré. Un
+     * indicateur sans objet n'apparaît donc jamais « indisponible » ; un indicateur pertinent non calculé le reste.
+     *
+     * @param list<array<string, mixed>> $items
+     * @return list<array<string, mixed>>
+     */
+    private function relevant(string $tenantId, string $establishmentId, array $items): array
+    {
+        $type = $this->establishments->find($tenantId, $establishmentId)?->type;
+        $modules = [];
+
+        return array_values(array_filter($items, function (array $item) use ($tenantId, $establishmentId, $type, &$modules): bool {
+            $prefix = strstr((string) $item['key'], '.', true);
+            if ($prefix === false) {
+                return true;
+            }
+            if (in_array($prefix, self::APPLICATION_PREFIXES, true)) {
+                return $prefix === $type;
+            }
+            if (in_array($prefix, self::MODULE_PREFIXES, true)) {
+                return $modules[$prefix] ??= $this->modules->isEnabled($tenantId, $establishmentId, $prefix);
+            }
+
+            return true;
+        }));
     }
 
     /**

@@ -105,10 +105,11 @@ final class ScheduleRepository
         return true;
     }
 
-    public function finishRun(string $tenantId, string $id, string $status, int $sent, int $failed, ?string $summary): void
+    /** @param list<array{person_id: string, reason: string}> $failures motif de chaque destinataire en échec (RAPPORT-MAIL) */
+    public function finishRun(string $tenantId, string $id, string $status, int $sent, int $failed, ?string $summary, array $failures = []): void
     {
-        $this->pdo()->prepare('UPDATE report_runs SET status = ?, sent_count = ?, failed_count = ?, summary = ? WHERE tenant_id = ? AND id = ?')
-            ->execute([$status, $sent, $failed, $summary, $tenantId, $id]);
+        $this->pdo()->prepare('UPDATE report_runs SET status = ?, sent_count = ?, failed_count = ?, summary = ?, failures = ? WHERE tenant_id = ? AND id = ?')
+            ->execute([$status, $sent, $failed, $summary, json_encode($failures, JSON_THROW_ON_ERROR), $tenantId, $id]);
     }
 
     /** @return list<array<string, mixed>> */

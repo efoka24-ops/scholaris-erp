@@ -54,6 +54,8 @@ return [
     UserPersonLink::class => autowire(PdoUserPersonLink::class),
     PersonAccountLookup::class => get(UserPersonLink::class),
     RoleDirectory::class => autowire(PdoRoleDirectory::class),
+    // RAPPORT-MAIL : personnel d'un établissement d'après les rôles (destinataires des rapports internes).
+    \Scholaris\Modules\Socle\Identity\Contracts\EstablishmentPersonnel::class => autowire(\Scholaris\Modules\Socle\Identity\Infrastructure\PdoEstablishmentPersonnel::class),
     RecentSecondFactor::class => autowire(PdoRecentSecondFactor::class),
     PlatformAdministrators::class => autowire(PlatformAdministratorService::class),
     // C-112 : membres de la plateforme et attribution de leur rôle (admin, support, finance, audit).

@@ -6,8 +6,13 @@ namespace Tests\Feature\Reporting;
 
 use Nyholm\Psr7\ServerRequest;
 use Psr\Http\Message\ResponseInterface;
+use Scholaris\Modules\Socle\Identity\Contracts\EstablishmentPersonnel;
+use Scholaris\Modules\Socle\Messaging\Contracts\EssentialMessenger;
 use Scholaris\Modules\Socle\Messaging\Contracts\Messenger;
 use Scholaris\Modules\Socle\Reporting\Console\RunScheduledReportsCommand;
+use Scholaris\Modules\Socle\Staff\Contracts\EstablishmentStaffRoster;
+use Tests\Support\Reporting\AppIndicators;
+use Tests\Support\Reporting\Personnel;
 use Tests\Support\Reporting\RecordingMessenger;
 use Tests\Support\Reporting\ReportingTestCase;
 
@@ -15,11 +20,19 @@ use Tests\Support\Reporting\ReportingTestCase;
 final class ScheduledReportTest extends ReportingTestCase
 {
     private RecordingMessenger $messenger;
+    private Personnel $personnel;
 
     protected function setUp(): void
     {
         $this->messenger = new RecordingMessenger();
-        $this->bootReporting([Messenger::class => $this->messenger]);
+        $this->personnel = new Personnel();
+        $this->bootReporting([
+            Messenger::class => $this->messenger, EssentialMessenger::class => $this->messenger,
+            EstablishmentPersonnel::class => $this->personnel, EstablishmentStaffRoster::class => $this->personnel,
+            'reporting.indicators.zz_apps' => [AppIndicators::class],
+        ]);
+        $this->personnel->withRole('t1', 'e1', 'dir');
+        $this->personnel->member('t1', 'e1', 'cens');
         foreach (['mgr', 'director', 'eve'] as $user) {
             $this->access->grant($user, 'e1');
         }
@@ -138,6 +151,12 @@ final class ScheduledReportTest extends ReportingTestCase
         self::assertSame('partial', $result[1]['data']['status']);
         self::assertSame(1, $result[1]['data']['sent_count']);
         self::assertSame(2, $result[1]['data']['failed_count']);
+        self::assertSame([
+            ['person_id' => 'bloque', 'name' => 'B Bloque', 'reason' => 'consent_missing'],
+            ['person_id' => 'panne', 'name' => 'P Panne', 'reason' => 'send_error'],
+        ], $result[1]['data']['failures']);
+        [, $runs] = $this->send('GET', '/report-schedules/' . $schedule['id'] . '/runs');
+        self::assertSame($result[1]['data']['failures'], $runs['data'][0]['failures'], 'Motif conservé et renvoyé par l\'historique.');
         // l'exécution manuelle ne bloque pas une nouvelle exécution manuelle
         self::assertSame('partial', $this->send('POST', '/report-schedules/' . $schedule['id'] . '/run')[1]['data']['status']);
     }
@@ -193,5 +212,72 @@ final class ScheduledReportTest extends ReportingTestCase
         // un rapport reste exécuté dans son seul client
         $this->container()->get(\Scholaris\Modules\Socle\Reporting\Application\ScheduledReportService::class)->runDue('t2', '2026-10-12');
         self::assertSame([], $this->messenger->sent);
+    }
+
+    /** RAPPORT-MAIL : le personnel (rôle interne ou fiche du personnel) reçoit un message de service, sans consentement exigé. */
+    public function testLePersonnelRecoitLeRapportSansConsentementEtLesAutresRestentSoumisAuConsentement(): void
+    {
+        $this->messenger->withoutConsent('dir');
+        $this->messenger->withoutConsent('cens');
+        $this->people->add('t1', 'famille', 'Fa', 'Mille', null, 'famille@exemple.test');
+        $this->messenger->withoutConsent('famille');
+        // un rôle dans un AUTRE établissement ne fait pas du personnel de e1
+        $this->people->add('t1', 'ailleurs', 'Ai', 'Lleurs', null, 'ailleurs@exemple.test');
+        $this->personnel->withRole('t1', 'e2', 'ailleurs');
+        $this->messenger->withoutConsent('ailleurs');
+        $schedule = $this->create(['recipient_ids' => ['dir', 'cens', 'famille', 'ailleurs']]);
+
+        $run = $this->send('POST', '/report-schedules/' . $schedule['id'] . '/run')[1]['data'];
+
+        self::assertSame('partial', $run['status']);
+        self::assertSame(2, $run['sent_count']);
+        self::assertSame([true, true], array_column($this->messenger->sent, 'essential'));
+        self::assertSame(['dir', 'cens'], array_column($this->messenger->sent, 'person'));
+        self::assertSame(['famille' => 'consent_missing', 'ailleurs' => 'consent_missing'], array_column($run['failures'], 'reason', 'person_id'));
+    }
+
+    public function testLeMembreDuPersonnelDesinscritNeRecoitRien(): void
+    {
+        $this->people->add('t1', 'desinscrit', 'De', 'Sinscrit', null, 'd@exemple.test');
+        $this->personnel->withRole('t1', 'e1', 'desinscrit');
+        $schedule = $this->create(['recipient_ids' => ['desinscrit']]);
+
+        $run = $this->send('POST', '/report-schedules/' . $schedule['id'] . '/run')[1]['data'];
+
+        self::assertSame('failed', $run['status']);
+        self::assertSame([['person_id' => 'desinscrit', 'name' => 'De Sinscrit', 'reason' => 'opted_out']], $run['failures']);
+        self::assertSame([], $this->messenger->sent);
+    }
+
+    public function testAvertissementALEnregistrementPourUnDestinataireSansAdresseEMail(): void
+    {
+        $this->people->add('t1', 'avec', 'A', 'Vec', null, 'avec@exemple.test');
+        $this->personnel->withRole('t1', 'e1', 'avec');
+        [$response, $body] = $this->send('POST', '/report-schedules', body: [
+            'name' => 'X', 'report_type' => 'direction', 'frequency' => 'daily', 'recipient_ids' => ['avec', 'dir'],
+        ]);
+        self::assertSame(201, $response->getStatusCode(), 'Un avertissement, pas un refus.');
+        self::assertSame([['person_id' => 'dir', 'reason' => 'no_email']], $body['meta']['recipient_warnings']);
+
+        $patched = $this->send('PATCH', '/report-schedules/' . $body['data']['id'], body: ['recipient_ids' => ['avec']])[1];
+        self::assertSame([], $patched['meta']['recipient_warnings']);
+    }
+
+    /** Établissement du supérieur : ni indicateur du primaire, du secondaire ou de la maternelle, ni module désactivé. */
+    public function testLeResumeNeGardeQueLesIndicateursQuiConcernentLEtablissement(): void
+    {
+        foreach (['billing', 'attendance', 'staff', 'scheduling', 'assessment'] as $module) {
+            $this->modules->disable('e1', $module);
+        }
+        $schedule = $this->create(['report_type' => 'direction']);
+        $this->send('POST', '/report-schedules/' . $schedule['id'] . '/run');
+        $summary = (string) $this->send('GET', '/report-schedules/' . $schedule['id'] . '/runs')[1]['data'][0]['summary'];
+
+        self::assertStringContainsString('Inscrits : 3', $summary);
+        self::assertStringContainsString('Taux de réussite : 87', $summary);
+        self::assertStringContainsString('Soutenances planifiées : indisponible', $summary, 'Pertinent mais non calculé : reste indisponible.');
+        foreach (['Absents ce matin', 'couverture des programmes', 'maternelle', 'Absents du jour', 'recouvrement', 'Enseignants actifs', 'Créneaux'] as $absent) {
+            self::assertStringNotContainsString($absent, $summary);
+        }
     }
 }

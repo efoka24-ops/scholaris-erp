@@ -16,9 +16,9 @@ final class People implements PersonDirectory
     /** @var array<string, list<string>> */
     private array $learners = [];
 
-    public function add(string $tenantId, string $id, string $firstName, string $lastName, ?string $gender = null): void
+    public function add(string $tenantId, string $id, string $firstName, string $lastName, ?string $gender = null, ?string $email = null): void
     {
-        $this->people[$tenantId . '|' . $id] = new PersonSummary($id, $tenantId, $firstName, $lastName, null, null, 'fr', $gender);
+        $this->people[$tenantId . '|' . $id] = new PersonSummary($id, $tenantId, $firstName, $lastName, null, $email, 'fr', $gender);
     }
 
     public function link(string $tenantId, string $guarantorId, string $learnerId): void

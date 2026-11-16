@@ -69,7 +69,7 @@ final class ScheduleController
         $row = $this->reports->create($this->context->tenantId(), $this->context->establishmentId(), $data, $principal->userId);
         $this->journal($request, $principal, 'report_schedule.created', (string) $row['id'], null, $row);
 
-        return $this->responder->json(['data' => $row], 201);
+        return $this->responder->json(['data' => $row, 'meta' => $this->warnings($row)], 201);
     }
 
     public function update(ServerRequestInterface $request): ResponseInterface
@@ -83,7 +83,7 @@ final class ScheduleController
         $row = $this->reports->update($this->context->tenantId(), $this->context->establishmentId(), $id, $this->validate($this->body($request), false));
         $this->journal($request, $principal, 'report_schedule.updated', $id, $before, $row);
 
-        return $this->responder->json(['data' => $row]);
+        return $this->responder->json(['data' => $row, 'meta' => $this->warnings($row)]);
     }
 
     public function destroy(ServerRequestInterface $request): ResponseInterface
@@ -122,6 +122,20 @@ final class ScheduleController
         }
 
         return $this->responder->json(['data' => $this->regulatory->build($this->context->tenantId(), $establishmentId)]);
+    }
+
+    /**
+     * RAPPORT-MAIL : avertissements sur les destinataires (sans adresse e-mail, ou hors personnel sans consentement), jamais un refus.
+     *
+     * @param array<string, mixed> $row
+     * @return array{recipient_warnings: list<array{person_id: string, reason: string}>}
+     */
+    private function warnings(array $row): array
+    {
+        /** @var list<string> $ids */
+        $ids = $row['recipient_ids'];
+
+        return ['recipient_warnings' => $this->reports->recipientWarnings($this->context->tenantId(), $this->context->establishmentId(), $ids)];
     }
 
     private function principal(ServerRequestInterface $request): Principal
