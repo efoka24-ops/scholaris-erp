@@ -6,8 +6,8 @@ import { useAction } from '@/views/admin/useAction';
 import { http } from '@/api/http';
 import type { Person } from '@/api/types';
 import {
-  createSchedule, deleteSchedule, listRuns, listSchedules, runSchedule, updateSchedule,
-  type Frequency, type ReportRun, type ReportSchedule, type ReportType, type RunResult,
+  deleteSchedule, listRuns, listSchedules, runSchedule, saveSchedule, updateSchedule,
+  type Frequency, type ReportRun, type ReportSchedule, type ReportType, type RunFailure, type RunResult,
 } from '@/api/reports';
 import { useAuthStore } from '@/stores/auth';
 import { useContextStore } from '@/stores/context';
@@ -34,6 +34,8 @@ const found = ref<Person[]>([]);
 const runResult = ref<{ id: string; result: RunResult } | null>(null);
 const runsOf = ref<{ id: string; items: ReportRun[] } | null>(null);
 const confirmDelete = ref<string | null>(null);
+/** RAPPORT-MAIL : avertissements reçus à l'enregistrement (destinataire sans adresse e-mail, ou hors personnel sans consentement). */
+const warnings = ref<Array<{ id: string; label: string; reason: string }>>([]);
 
 const types = computed<ReportType[]>(() => (ctx.can('reporting.group.read') ? ['direction', 'censeur', 'groupe', 'regulatory'] : ['direction', 'censeur', 'regulatory']));
 const dayMax = computed(() => (form.frequency === 'weekly' ? 7 : 28));
@@ -46,6 +48,10 @@ const errors = computed(() => ({
 const typeLabel = (k: string): string => t(`reports.type.${k}` as MessageKey);
 const freqLabel = (k: string): string => t(`reports.freq.${k}` as MessageKey);
 const tone = (s: string | null): 'success' | 'warning' | 'neutral' => (s === 'done' || s === 'active' ? 'success' : s === 'failed' ? 'warning' : 'neutral');
+const KNOWN_FAILURES = ['no_contact', 'opted_out', 'consent_missing', 'consent_revoked', 'template_missing', 'gateway_error', 'send_error', 'recipient_unknown'];
+const failureReason = (reason: string): string => (KNOWN_FAILURES.includes(reason) ? t(`reports.failure.${reason}` as MessageKey) : t('reports.failure.other', { reason }));
+const failureLine = (f: RunFailure): string => t('reports.failure.line', { name: f.name ?? f.person_id, reason: failureReason(f.reason) });
+const warningReason = (reason: string): string => (reason === 'no_email' || reason === 'consent_required' ? t(`reports.warning.${reason}` as MessageKey) : reason);
 const runStatus = (s: string): string => {
   const key = `reports.run.${s}` as MessageKey;
   const label = t(key);
@@ -93,8 +99,10 @@ async function submit(): Promise<void> {
   else if (editingId.value) body.run_day = null;
   const id = editingId.value;
   if (!id) body.report_type = form.report_type;
-  const res = await save.run(() => (id ? updateSchedule(id, body) : createSchedule(body)));
+  const labels = new Map(form.recipients.map((r) => [r.id, r.label]));
+  const res = await save.run(() => saveSchedule(id, body));
   if (!res) return;
+  warnings.value = res.warnings.map((w) => ({ id: w.person_id, label: labels.get(w.person_id) ?? w.person_id, reason: w.reason }));
   reset();
   await load();
 }
@@ -181,6 +189,9 @@ onMounted(() => {
                 <td colspan="7">
                   <div class="notice notice--success" role="status">
                     {{ t('reports.run.result', { status: runStatus(runResult.result.status), sent: runResult.result.sent_count, failed: runResult.result.failed_count }) }}
+                    <ul v-if="runResult.result.failures?.length" data-test="run-failures">
+                      <li v-for="f in runResult.result.failures" :key="f.person_id">{{ failureLine(f) }}</li>
+                    </ul>
                   </div>
                 </td>
               </tr>
@@ -189,13 +200,17 @@ onMounted(() => {
                   <p v-if="runsOf.items.length === 0" class="muted">{{ t('reports.runs.empty') }}</p>
                   <div v-else class="table-wrap">
                     <table>
-                      <thead><tr><th>{{ t('reports.runs.date') }}</th><th>{{ t('reports.runs.trigger') }}</th><th>{{ t('staff.col.status') }}</th><th class="num">{{ t('reports.runs.sent') }}</th><th class="num">{{ t('reports.runs.failed') }}</th><th>{{ t('reports.runs.summary') }}</th></tr></thead>
+                      <thead><tr><th>{{ t('reports.runs.date') }}</th><th>{{ t('reports.runs.trigger') }}</th><th>{{ t('staff.col.status') }}</th><th class="num">{{ t('reports.runs.sent') }}</th><th class="num">{{ t('reports.runs.failed') }}</th><th>{{ t('reports.runs.summary') }}</th><th>{{ t('reports.runs.failures') }}</th></tr></thead>
                       <tbody>
                         <tr v-for="run in runsOf.items" :key="run.id">
                           <td>{{ formatDateTime(run.created_at, locale) }}</td>
                           <td>{{ run.trigger_kind === 'scheduled' ? t('reports.runs.scheduled') : t('reports.runs.manual') }}</td>
                           <td><StatusTag :tone="tone(run.status)">{{ runStatus(run.status) }}</StatusTag></td>
                           <td class="num">{{ run.sent_count }}</td><td class="num">{{ run.failed_count }}</td><td>{{ run.summary ?? '—' }}</td>
+                          <td data-test="run-failure-reasons">
+                            <ul v-if="run.failures?.length" style="margin: 0; padding-left: 16px"><li v-for="f in run.failures" :key="f.person_id">{{ failureLine(f) }}</li></ul>
+                            <template v-else>—</template>
+                          </td>
                         </tr>
                       </tbody>
                     </table>
@@ -211,6 +226,10 @@ onMounted(() => {
     <form class="card" data-test="schedule-form" novalidate @submit.prevent="submit">
       <h2>{{ editingId ? t('reports.edit') : t('reports.create') }}</h2>
       <ErrorNotice v-if="save.error.value || search.error.value" :error="save.error.value ?? search.error.value" />
+      <div v-if="warnings.length > 0" class="notice notice--warning" role="status" data-test="recipient-warnings">
+        <p>{{ t('reports.warnings.title') }}</p>
+        <ul><li v-for="w in warnings" :key="w.id">{{ t('reports.failure.line', { name: w.label, reason: warningReason(w.reason) }) }}</li></ul>
+      </div>
       <div class="grid grid--kpi">
         <label class="field">
           <span class="label">{{ t('reports.col.name') }}</span>
