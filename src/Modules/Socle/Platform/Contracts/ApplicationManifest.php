@@ -26,7 +26,10 @@ final class ApplicationManifest
     public const SECTORS = [self::PRIVATE, self::PUBLIC];
     public const TARGETS = ['higher', 'secondary', 'primary', 'nursery'];
 
-    /** @param list<string> $requiredModules modules du socle à activer pour les établissements de la cible */
+    /**
+     * @param list<string> $requiredModules modules du socle à activer pour les établissements de la cible
+     * @param list<string> $administratorRoles rôles de direction donnés à l'administrateur du client (voir la propriété)
+     */
     public function __construct(
         public readonly string $key,
         public readonly string $label,
@@ -43,6 +46,13 @@ final class ApplicationManifest
         public readonly string $sector = self::PRIVATE,
         /** false : application technique qui n'est pas un produit (module commun), absente des catalogues */
         public readonly bool $listed = true,
+        /**
+         * Rôles de direction de l'application, attribués automatiquement à l'administrateur du client (`super_admin`) quand le client
+         * obtient l'application : dans chaque établissement de la cible où il n'exerce encore aucun rôle de l'application.
+         *
+         * @var list<string>
+         */
+        public readonly array $administratorRoles = [],
     ) {
         if (preg_match('/^[a-z][a-z0-9_]{1,19}$/', $key) !== 1) {
             throw new InvalidArgumentException('Clé d\'application invalide : ' . $key);

@@ -148,6 +148,18 @@ final class Catalog
         return $this->cache = $apps;
     }
 
+    /** Manifeste déclaré par l'application (ce que le code sait d'elle), null si aucune application ne déclare cette clé. */
+    public function manifest(string $key): ?ApplicationManifest
+    {
+        foreach ($this->manifests() as $manifest) {
+            if ($manifest->key === $key) {
+                return $manifest;
+            }
+        }
+
+        return null;
+    }
+
     /** @return list<ApplicationManifest> */
     private function manifests(): array
     {

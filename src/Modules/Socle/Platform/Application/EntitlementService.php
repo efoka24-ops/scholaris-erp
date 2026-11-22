@@ -43,6 +43,7 @@ final class EntitlementService
         private readonly PlatformClock $clock,
         private readonly ServiceOptions $options,
         private readonly PlatformSettings $settings,
+        private readonly ApplicationAdministratorRoles $administratorRoles,
     ) {
     }
 
@@ -130,6 +131,8 @@ final class EntitlementService
         }
 
         $this->activateModules($tenantId, $app);
+        // IPES-ADMIN : rôles de direction de l'application pour les administrateurs du client (sans effet avant leur invitation).
+        $this->administratorRoles->grant($tenantId, $actorId, $appKey);
         $row = $this->rowOrFail($tenantId, $appKey);
         $this->audit->record($tenantId, $actorId, 'platform.application_opened', 'tenant_application', (string) $row['id'], ['app_key' => $appKey, 'source' => $source, 'state' => $row['state']] + ($forced ? ['forced' => true, 'catalog_status' => $status, 'force_reason' => (string) $forceReason] : []), $ip);
 

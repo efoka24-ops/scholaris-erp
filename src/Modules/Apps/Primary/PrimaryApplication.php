@@ -20,7 +20,8 @@ final class PrimaryApplication
 
     public static function manifest(): ApplicationManifest
     {
-        return new ApplicationManifest(self::KEY, 'École primaire', self::KEY, ApplicationManifest::COMING_SOON, '0.1.0', ['people', 'billing', 'messaging', 'documents', 'attendance', 'assessment', 'reporting'], 0, 90, 15);
+        // Le directeur du primaire est le rôle donné à l'administrateur du client quand il obtient l'application (IPES-ADMIN).
+        return new ApplicationManifest(self::KEY, 'École primaire', self::KEY, ApplicationManifest::COMING_SOON, '0.1.0', ['people', 'billing', 'messaging', 'documents', 'attendance', 'assessment', 'reporting'], 0, 90, 15, administratorRoles: ['primary_directeur']);
     }
 
     /** @return list<string> */

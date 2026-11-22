@@ -32,6 +32,15 @@ final class HigherApplication
     /** Modules du socle activés pour les établissements `higher` à l'ouverture de l'application (fait par Platform, pas par Higher). */
     public const REQUIRED_MODULES = ['people', 'billing', 'messaging', 'documents', 'scheduling', 'attendance', 'assessment', 'staff', 'reporting'];
 
+    /**
+     * Rôles donnés à l'administrateur du client (super_admin) quand il obtient l'IPES (IPES-ADMIN) : R03 directeur académique (lecture de
+     * tout le paramétrage, des admissions et des inscriptions, calendrier, tutelles) et R20 administrateur fonctionnel (structure,
+     * autorisations, règlement : `higher.settings.manage`). Le plan des vagues associe déjà R20 au super_admin du client. R02 (directeur
+     * général, `direction_groupe`) n'est pas retenu : rôle de niveau client, il ouvrirait une tuile « Tout le groupe » ; R04 se donne
+     * par école, qui n'existe pas encore à l'ouverture.
+     */
+    public const ADMINISTRATOR_ROLES = ['higher_dir_academique', 'higher_admin_fonct'];
+
     /** Sous-modules prévus (vagues 1 à 3) ; chacun a son dossier, son routes.php et son definitions.php. */
     public const MODULES = [
         'Academic', 'Admissions', 'Enrolment', 'Curriculum', 'Teaching', 'Attendance', 'Grades', 'Deliberation', 'Billing',
@@ -57,6 +66,7 @@ final class HigherApplication
             monthlyPriceXaf: 60000,
             trialDays: 90,
             graceDays: 15,
+            administratorRoles: self::ADMINISTRATOR_ROLES,
         );
     }
 

@@ -51,6 +51,8 @@ final class SecondaryApplication
             monthlyPriceXaf: 60000,
             trialDays: 90,
             graceDays: 15,
+            // R03 chef d'établissement (proviseur ou principal), donné à l'administrateur du client (IPES-ADMIN).
+            administratorRoles: ['sec_chef_etablissement'],
         );
     }
 

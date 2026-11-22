@@ -46,6 +46,7 @@ final class AccessRequestService
         private readonly PlatformClock $clock,
         private readonly RateLimiter $limiter,
         private readonly Config $config,
+        private readonly ApplicationAdministratorRoles $administratorRoles,
     ) {
     }
 
@@ -275,6 +276,8 @@ final class AccessRequestService
             );
         }
         $this->saveContact($tenantId, $row);
+        // IPES-ADMIN : l'administrateur (nouveau ou déjà là) reçoit le rôle de direction de l'application dans l'établissement.
+        $this->administratorRoles->grant($tenantId, $actorId, $appKey);
 
         $now = $this->clock->iso();
         $this->db->update('platform_access_requests', [

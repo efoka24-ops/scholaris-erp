@@ -47,6 +47,8 @@ final class NurseryApplication
             monthlyPriceXaf: 30000,
             trialDays: 90,
             graceDays: 15,
+            // N02 directrice ou directeur de maternelle, donné à l'administrateur du client (IPES-ADMIN).
+            administratorRoles: ['nursery_directeur'],
         );
     }
 

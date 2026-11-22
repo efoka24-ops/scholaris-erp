@@ -31,6 +31,7 @@ final class AdministratorAccounts
         private readonly PlatformAudit $audit,
         private readonly Config $config,
         private readonly PlatformStaff $staff,
+        private readonly ApplicationAdministratorRoles $applicationRoles,
     ) {
     }
 
@@ -77,6 +78,10 @@ final class AdministratorAccounts
         $ids = $platform
             ? $this->accounts->invitePlatformAdministrator($person['first_name'], $person['last_name'], $person['phone'], $person['email'], $person['locale'], $actorId)
             : $this->clientAdministrators->invite($tenantId, $person['first_name'], $person['last_name'], $person['phone'], $person['email'], $person['locale'], $actorId);
+        if (!$platform) {
+            // IPES-ADMIN : un administrateur invité plus tard reçoit aussi les rôles de direction des applications du client.
+            $this->applicationRoles->grant($tenantId, $actorId);
+        }
         $role = $platform ? $platformRole : self::CLIENT_ROLE;
         if ($platform && $role !== self::PLATFORM_ROLE) {
             $this->staff->assign($ids['user_id'], $role, $actorId);

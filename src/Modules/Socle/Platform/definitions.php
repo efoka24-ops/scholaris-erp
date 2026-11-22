@@ -34,4 +34,6 @@ return [
     // par défaut de Messaging (application seulement), les définitions de Platform étant chargées après celles de Messaging.
     \Scholaris\Modules\Socle\Messaging\Contracts\NotificationChannelPreferences::class => autowire(\Scholaris\Modules\Socle\Platform\Infrastructure\PreferenceChannels::class),
     'console.command.' . ClientCreateCommand::NAME => autowire(ClientCreateCommand::class),
+    // IPES-ADMIN : rattrapage des rôles de direction des applications pour les administrateurs de client déjà acceptés.
+    'console.command.' . \Scholaris\Modules\Socle\Platform\Console\GrantApplicationRolesCommand::NAME => autowire(\Scholaris\Modules\Socle\Platform\Console\GrantApplicationRolesCommand::class),
 ];

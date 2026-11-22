@@ -28,6 +28,7 @@ Règles de sécurité de ce runbook : aucun mot de passe, clé ou identifiant de
 3. Création de l'établissement de type `higher` si l'activation ne l'a pas créé : `php artisan establishment:create <client> "<nom de l'institut>" higher`.
 4. Relever l'**identifiant du client** (utilisé par les commandes) et l'identifiant de l'établissement : `php artisan list` ne les affiche pas ; ils figurent dans l'écran Plateforme > Clients.
 5. Se connecter avec l'administrateur du client et vérifier : « Mes applications » montre l'IPES en essai ; le client n'accède pas à `/platform`.
+6. Rôles IPES de l'administrateur (IPES-ADMIN) : à l'acceptation de la demande, à l'ouverture de l'application et à l'invitation d'un administrateur depuis la plateforme, l'administrateur du client (`super_admin`) reçoit **Directeur académique (R03)** et **Administrateur fonctionnel (R20)** dans l'établissement IPES. Dans l'interface, il choisit l'un de ces rôles dans le sélecteur « Rôle » pour ouvrir les écrans de l'IPES. Un administrateur créé par `admin:create`, ou un client accepté avant le 20 novembre 2026, les reçoit par le rattrapage idempotent `php artisan platform:grant-application-roles [<id du client>]` : à lancer une fois après le déploiement, puis sans risque à chaque besoin (il ne touche que les administrateurs de client sans aucun rôle de l'application).
 
 ## 2. Gabarit de démarrage (`higher:pilot-setup`)
 
