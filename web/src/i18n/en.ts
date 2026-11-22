@@ -812,6 +812,10 @@ export const en: Record<keyof typeof fr, string> = {
 
   'forbidden.title': 'Access denied',
   'forbidden.text': 'Your role does not give access to this page. Change role or establishment, or contact the management.',
+  'forbidden.noAppRole': 'Your account does not have a role in this application yet. Ask the administrator to assign one to you (Administration > Users and roles).',
+  'forbidden.otherRole': 'Your active role does not give access to this page. Your role “{role}” does.',
+  'forbidden.useRole': 'Switch to the “{role}” role',
+  'forbidden.switchFailed': 'The role could not be switched. Try again or pick the role in the menu.',
   'notFound.title': 'Page not found',
   'notFound.text': 'This address does not exist. Go back to the home page to find your way.',
 };

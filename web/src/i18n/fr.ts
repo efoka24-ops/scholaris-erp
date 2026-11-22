@@ -812,6 +812,10 @@ export const fr = {
 
   'forbidden.title': 'Accès refusé',
   'forbidden.text': "Votre rôle ne donne pas accès à cette page. Changez de rôle ou d'établissement, ou contactez la direction.",
+  'forbidden.noAppRole': "Votre compte n'a pas encore de rôle dans cette application. Demandez à l'administrateur de vous l'attribuer (Administration > Utilisateurs et rôles).",
+  'forbidden.otherRole': 'Votre rôle actif ne donne pas accès à cette page. Votre rôle « {role} » l’ouvre.',
+  'forbidden.useRole': 'Passer au rôle « {role} »',
+  'forbidden.switchFailed': "Le changement de rôle n'a pas abouti. Réessayez ou choisissez le rôle dans le menu.",
   'notFound.title': 'Page introuvable',
   'notFound.text': "Cette adresse n'existe pas. Revenez à l'accueil pour retrouver votre chemin.",
 } as const;

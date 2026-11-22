@@ -5,6 +5,7 @@ import { useContextStore } from '@/stores/context';
 import { usePlatformStore } from '@/stores/platform';
 import { ensurePlatformAccess, platformCan } from '@/views/platform/platformAccess';
 import { translate } from '@/i18n';
+import { forbiddenReason } from '@/lib/forbidden';
 import { http, type RegularisationLevel } from '@/api/http';
 import type { Problem } from '@/api/types';
 import { invalidateRegularisation, isLockedForRegularisation, regularisationNotice } from '@/views/platform/regularisationGate';
@@ -63,7 +64,12 @@ export async function guard(to: RouteLocationNormalized): Promise<RouteLocationR
 
   if (to.meta.needsEstablishment && !ctx.establishmentId && ctx.loaded) return { name: 'home' };
   if (to.meta.roles && !to.meta.roles.some((r) => ctx.activeRole === r)) return { name: 'forbidden' };
-  if (to.meta.perms && ctx.loaded && !ctx.can(...to.meta.perms)) return { name: 'forbidden' };
+  if (to.meta.perms && ctx.loaded && !ctx.can(...to.meta.perms)) {
+    // IPES-ADMIN : écran d'application refusé, avec son motif (aucun rôle de l'application, ou un autre rôle qui l'ouvre).
+    const why = forbiddenReason(to.meta.establishmentTypes, to.meta.perms, ctx.roles, ctx.activeRole);
+    if (why === null) return { name: 'forbidden' };
+    return { name: 'forbidden', query: why.reason === 'other_role' ? { reason: why.reason, role: why.role, from: to.fullPath } : { reason: why.reason } };
+  }
   return true;
 }
 
