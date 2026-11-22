@@ -5,6 +5,8 @@ import { probeTenantAdmin } from '@/api/admin';
 import type { ContextTile } from '@/api/types';
 import { permissionsForRoles } from '@/lib/permissions';
 import { contrastWithBlack } from '@/lib/format';
+import { roleOnOpen, saveRoleChoice } from '@/lib/defaultRole';
+import { useAuthStore } from '@/stores/auth';
 
 export const DEFAULT_ACCENT = '#F26B1D';
 export const GROUP_ID = 'group';
@@ -64,8 +66,16 @@ export const useContextStore = defineStore('context', () => {
     return tiles.value;
   }
 
+  /**
+   * Active un établissement. Avec `role` : choix de la personne (sélecteur « Rôle »), mémorisé pour cet établissement.
+   * Sans `role` : son choix enregistré, sinon le rôle d'application le plus large (ROLE-DEFAUT), sinon le choix du serveur.
+   */
   async function switchTo(id: string, role?: string): Promise<void> {
-    const res = await http.post<{ data: { context: ContextTile; role: string } }>('/me/context', { establishment_id: id, ...(role ? { role } : {}) });
+    const userId = useAuthStore().me?.id;
+    const target = tiles.value.find((t) => t.id === id);
+    const wanted = role ?? (target && target.kind === 'establishment' ? roleOnOpen(userId, id, target.roles) : null);
+    const res = await http.post<{ data: { context: ContextTile; role: string } }>('/me/context', { establishment_id: id, ...(wanted ? { role: wanted } : {}) });
+    if (role) saveRoleChoice(userId, id, res.data.role);
     activeId.value = id;
     activeRole.value = res.data.role;
     const idx = tiles.value.findIndex((t) => t.id === id);
