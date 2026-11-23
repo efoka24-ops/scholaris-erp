@@ -11,6 +11,7 @@ import NurseryDashboardView from '@/views/nursery/NurseryDashboardView.vue';
 import NurseryLogbookView from '@/views/nursery/NurseryLogbookView.vue';
 import NurseryPickupView from '@/views/nursery/NurseryPickupView.vue';
 import { jsonResponse, flushPromises, freshEnvironment, mockApi, mountView, signIn, teacherMe, tile } from './helpers';
+import { todayIso } from '@/lib/format';
 
 beforeEach(freshEnvironment);
 
@@ -258,7 +259,7 @@ describe('maternelle', () => {
 
   it('sortie : liste les personnes autorisées du jour, jamais les autorisations d\'un autre jour', async () => {
     signIn(nurseryMe, [nurseryTile], 'directeur');
-    const today = new Date().toISOString().slice(0, 10);
+    const today = todayIso(); // meme date locale que l ecran (pas UTC)
     mockApi({
       'GET /people': { data: [{ id: 'L1', first_name: 'Aminatou', last_name: 'B.' }] },
       'GET /authorized-pickups': { data: [
