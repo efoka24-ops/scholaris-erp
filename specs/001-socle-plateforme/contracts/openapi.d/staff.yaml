@@ -1,0 +1,655 @@
+# Contrat OpenAPI 3.1 du service S10 Personnel enseignant et vacations (fusionné avec openapi.yaml par le test de contrat).
+paths:
+  /api/v1/staff:
+    get:
+      summary: "Liste des fiches du personnel de l'établissement actif (filter[kind|status|category|person_id], curseur). Un enseignant sans droit de lecture ne voit que sa fiche"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Page de fiches"
+    post:
+      summary: "Crée la fiche d'une personne existante (person_id, kind permanent|vacataire|invite, grade, category, employee_number, department_id, hired_on) ; une seule fiche par personne"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: "Fiche créée"
+        '404':
+          description: "Personne introuvable"
+        '409':
+          description: "La personne a déjà une fiche"
+        '422':
+          description: "Champs invalides"
+  /api/v1/staff/{id}:
+    get:
+      summary: "Fiche du personnel (identité lue dans People). Un enseignant lit sa propre fiche"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Fiche"
+        '404':
+          description: "Fiche introuvable"
+    patch:
+      summary: "Modifie la fiche (statut active|suspended|left, grade, catégorie, dates)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: "Fiche modifiée"
+        '404':
+          description: "Fiche introuvable"
+        '422':
+          description: "Champs invalides"
+  /api/v1/staff/{id}/qualifications:
+    get:
+      summary: "Qualifications et diplômes"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Liste"
+        '404':
+          description: "Fiche introuvable"
+    post:
+      summary: "Ajoute une qualification (title, institution, obtained_on)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: "Qualification ajoutée"
+        '404':
+          description: "Fiche introuvable"
+        '422':
+          description: "Champs invalides"
+  /api/v1/staff/{id}/qualifications/{qualificationId}:
+    delete:
+      summary: "Supprime une qualification"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '204':
+          description: "Supprimée"
+        '404':
+          description: "Introuvable"
+  /api/v1/staff/{id}/assignments:
+    get:
+      summary: "Affectations aux classes et matières de l'établissement actif, avec charge prévue et minutes validées"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Liste"
+        '404':
+          description: "Fiche introuvable"
+    post:
+      summary: "Affecte l'enseignant à une classe et une matière (structure_id, subject_id, session_kind cm|td|tp|other, planned_minutes, element_ref, group_ref, level, dates)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: "Affectation créée"
+        '404':
+          description: "Fiche introuvable"
+        '409':
+          description: "Membre parti"
+        '422':
+          description: "Champs invalides"
+  /api/v1/staff/{id}/assignments/{assignmentId}:
+    patch:
+      summary: "Modifie ou termine une affectation (status active|ended)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: "Affectation modifiée"
+        '404':
+          description: "Introuvable"
+        '422':
+          description: "Champs invalides"
+    delete:
+      summary: "Supprime une affectation sans heure rattachée"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '204':
+          description: "Supprimée"
+        '404':
+          description: "Introuvable"
+        '409':
+          description: "Des heures y sont rattachées"
+  /api/v1/vacation-rates:
+    get:
+      summary: "Taux horaires (XAF par heure d'équivalent TD) et plafonds mensuels par catégorie"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Liste"
+    put:
+      summary: "Fixe le taux d'une catégorie (category, level facultatif = taux de ce niveau, hourly_rate, monthly_cap_minutes) ; journalisé"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: "Taux enregistré"
+        '422':
+          description: "Champs invalides"
+  /api/v1/vacation-contracts:
+    get:
+      summary: "Contrats de vacation (filter[staff_id|status]) ; un enseignant ne voit que les siens"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Page de contrats"
+    post:
+      summary: "Crée un contrat (staff_id, starts_on, ends_on, hourly_rate, max_minutes) en brouillon, référence VAC-AAAA-NNNNN"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: "Contrat créé"
+        '404':
+          description: "Fiche introuvable"
+        '409':
+          description: "Permanent ou chevauchement"
+        '422':
+          description: "Champs invalides"
+  /api/v1/vacation-contracts/{id}:
+    get:
+      summary: "Contrat de vacation"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Contrat"
+        '404':
+          description: "Introuvable"
+    patch:
+      summary: "Modifie un contrat en brouillon ou refusé"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: "Contrat modifié"
+        '404':
+          description: "Introuvable"
+        '409':
+          description: "État incompatible"
+        '422':
+          description: "Champs invalides"
+  /api/v1/vacation-contracts/{id}/submit:
+    post:
+      summary: "Demande la validation à deux personnes (Approvals)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '404':
+          description: "Contrat de vacation introuvable"
+        '200':
+          description: "Contrat en attente de validation"
+        '409':
+          description: "Déjà soumis"
+        '422':
+          description: "Aucun taux applicable"
+  /api/v1/vacation-contracts/{id}/approve:
+    post:
+      summary: "Valide le contrat (le demandeur ne peut pas approuver)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '404':
+          description: "Contrat de vacation introuvable"
+        '200':
+          description: "Contrat actif"
+        '403':
+          description: "Demandeur ou droit manquant"
+        '409':
+          description: "Aucune validation en attente"
+  /api/v1/vacation-contracts/{id}/reject:
+    post:
+      summary: "Refuse le contrat"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '404':
+          description: "Contrat de vacation introuvable"
+        '200':
+          description: "Contrat refusé"
+        '403':
+          description: "Droit manquant"
+        '409':
+          description: "Aucune validation en attente"
+  /api/v1/vacation-contracts/{id}/terminate:
+    post:
+      summary: "Résilie un contrat actif"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '404':
+          description: "Contrat de vacation introuvable"
+        '200':
+          description: "Contrat résilié"
+        '409':
+          description: "Contrat non actif"
+  /api/v1/vacation-hours:
+    get:
+      summary: "Heures réalisées (filter[staff_id|status|source|assignment_id|period=AAAA-MM]) ; un enseignant ne voit que les siennes"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Page d'heures"
+    post:
+      summary: "Saisit une séance réalisée (staff_id, held_on, minutes, session_kind, assignment_id, slot_id, content, signed). signed=true réservé à l'enseignant lui-même"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: "Heure déclarée"
+        '403':
+          description: "Droit manquant"
+        '409':
+          description: "Séance déjà déclarée"
+        '422':
+          description: "Champs invalides"
+  /api/v1/vacation-hours/{id}:
+    get:
+      summary: "Heure réalisée"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Heure"
+        '404':
+          description: "Introuvable"
+  /api/v1/vacation-hours/{id}/sign:
+    post:
+      summary: "Émargement de l'enseignant (content = cahier de textes)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '404':
+          description: "Heure de vacation introuvable"
+        '200':
+          description: "Heure émargée"
+        '403':
+          description: "Pas l'enseignant concerné"
+        '409':
+          description: "Heure non déclarée"
+  /api/v1/vacation-hours/{id}/validate:
+    post:
+      summary: "Valide l'heure (contre-signature) : émargement, cahier de textes, contrat actif et plafonds exigés ; pas par le déclarant ; puis contrôles de payabilité déclarés par les applications (409)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '404':
+          description: "Heure de vacation introuvable"
+        '200':
+          description: "Heure validée"
+        '403':
+          description: "Droit manquant ou déclarant"
+        '409':
+          description: "Heure non payable"
+  /api/v1/vacation-hours/{id}/reject:
+    post:
+      summary: "Rejette l'heure avec un motif (reason)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: "Heure rejetée"
+        '403':
+          description: "Droit manquant"
+        '409':
+          description: "Heure non déclarée"
+        '422':
+          description: "Motif manquant"
+  /api/v1/vacation-statements:
+    get:
+      summary: "Relevés mensuels (filter[staff_id|status|period=AAAA-MM]) ; un enseignant ne voit que les siens"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Page de relevés"
+    post:
+      summary: "Calcule le relevé d'un mois (staff_id, period) à partir des heures validées : minutes, HETD (millièmes), montant brut entier en XAF ; coefficients staff.hetd.cm|td|tp|other, taux par niveau de chaque heure"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: "Relevé en brouillon"
+        '409':
+          description: "Aucune heure validée, relevé déjà soumis"
+        '422':
+          description: "Champs invalides"
+  /api/v1/vacation-statements/{id}:
+    get:
+      summary: "Relevé avec ses lignes d'heures"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Relevé"
+        '404':
+          description: "Introuvable"
+  /api/v1/vacation-statements/{id}/submit:
+    post:
+      summary: "Soumet le relevé à validation à deux personnes (Approvals)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '404':
+          description: "Relevé de vacations introuvable"
+        '200':
+          description: "Relevé en attente"
+        '409':
+          description: "Déjà soumis"
+  /api/v1/vacation-statements/{id}/approve:
+    post:
+      summary: "Valide le relevé (le demandeur ne peut pas approuver) ; 409 si un contrôle de payabilité déclaré par une application le refuse"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '404':
+          description: "Relevé de vacations introuvable"
+        '200':
+          description: "Relevé validé"
+        '403':
+          description: "Demandeur ou droit manquant"
+        '409':
+          description: "Aucune validation en attente"
+  /api/v1/vacation-statements/{id}/reject:
+    post:
+      summary: "Refuse le relevé : il redevient un brouillon recalculable"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '404':
+          description: "Relevé de vacations introuvable"
+        '200':
+          description: "Relevé en brouillon"
+        '403':
+          description: "Droit manquant"
+        '409':
+          description: "Aucune validation en attente"
+  /api/v1/vacation-statements/{id}/pay:
+    post:
+      summary: "Marque un relevé validé comme payé (paid_on, payment_reference) ; aucun calcul de paie"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: "Relevé payé"
+        '409':
+          description: "Relevé non validé"
+        '422':
+          description: "Champs invalides"
+  /api/v1/staff/export:
+    get:
+      summary: "Export CSV (UTF-8 avec BOM, séparateur « ; ») du personnel de l’établissement actif : mêmes filtres et même visibilité que GET /staff, plafonné à 5 000 lignes"
+      security:
+        - bearer: []
+      parameters:
+        - name: format
+          in: query
+          required: false
+          description: "Format du fichier : csv (défaut ; UTF-8 avec BOM, séparateur « ; ») ou xlsx (Excel)"
+          schema: {type: string, enum: [csv, xlsx], default: csv}
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Fichier CSV"
+          content:
+            text/csv:
+              schema: {type: string}
+        '403':
+          description: "Permission de lecture manquante"
+        '422':
+          description: "Filtre non autorisé"
+  /api/v1/vacation-hours/export:
+    get:
+      summary: "Export CSV (UTF-8 avec BOM, séparateur « ; ») des heures réalisées : mêmes filtres et même visibilité que GET /vacation-hours, plafonné à 5 000 lignes"
+      security:
+        - bearer: []
+      parameters:
+        - name: format
+          in: query
+          required: false
+          description: "Format du fichier : csv (défaut ; UTF-8 avec BOM, séparateur « ; ») ou xlsx (Excel)"
+          schema: {type: string, enum: [csv, xlsx], default: csv}
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Fichier CSV"
+          content:
+            text/csv:
+              schema: {type: string}
+        '403':
+          description: "Permission de lecture manquante"
+        '422':
+          description: "Filtre non autorisé"
+  /api/v1/vacation-contracts/export:
+    get:
+      summary: "Export CSV / Excel des contrats de vacation : mêmes filtres et même visibilité que GET /vacation-contracts, plafonné à 5 000 lignes"
+      security:
+        - bearer: []
+      parameters:
+        - name: format
+          in: query
+          required: false
+          description: "Format du fichier : csv (défaut ; UTF-8 avec BOM, séparateur « ; ») ou xlsx (Excel)"
+          schema: {type: string, enum: [csv, xlsx], default: csv}
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Fichier CSV (UTF-8 avec BOM, séparateur « ; ») ou Excel selon le paramètre format"
+          content:
+            text/csv:
+              schema: {type: string}
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema: {type: string, format: binary}
+        '403':
+          description: "Accès refusé"
+        '422':
+          description: "Filtre hors liste blanche"
+  /api/v1/vacation-statements/export:
+    get:
+      summary: "Export CSV / Excel des relevés de vacations : mêmes filtres et même visibilité que GET /vacation-statements, plafonné à 5 000 lignes"
+      security:
+        - bearer: []
+      parameters:
+        - name: format
+          in: query
+          required: false
+          description: "Format du fichier : csv (défaut ; UTF-8 avec BOM, séparateur « ; ») ou xlsx (Excel)"
+          schema: {type: string, enum: [csv, xlsx], default: csv}
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Fichier CSV (UTF-8 avec BOM, séparateur « ; ») ou Excel selon le paramètre format"
+          content:
+            text/csv:
+              schema: {type: string}
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema: {type: string, format: binary}
+        '403':
+          description: "Accès refusé"
+        '422':
+          description: "Filtre hors liste blanche"

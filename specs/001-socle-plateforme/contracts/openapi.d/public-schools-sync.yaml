@@ -1,0 +1,4 @@
+# Hors ligne des écoles publiques : aucune route propre. Les éléments de type `public.attendance` voyagent par POST /api/v1/sync/batches (socle Sync, API-04).
+# Élément : { kind: public.attendance, client_uuid, payload: { structure_id, date, day_part: morning|afternoon, records: [{ person_id, status: A|R, arrived_at?, note? }] } }.
+# Seules les exceptions sont envoyées (tous présents par défaut). Résultats par élément : applied, duplicate, conflict (409, jamais écrasé), rejected (403, 422, 423).
+paths: {}

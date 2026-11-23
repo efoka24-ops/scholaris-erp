@@ -1,0 +1,405 @@
+# Contrat OpenAPI 3.1 du service S07 Calendrier et emplois du temps (fusionné avec openapi.yaml par le test de contrat).
+# Permissions : scheduling.read (lecture de l'établissement), scheduling.manage (écriture). Sans scheduling.read, un enseignant
+# lit son propre emploi du temps, un apprenant ou un garant celui des classes de ses apprenants.
+paths:
+  /api/v1/calendar-events:
+    get:
+      summary: "Calendrier académique de l’établissement (filter[kind|academic_year_id|structure_id|from|to], pagination par curseur)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Page d’entrées du calendrier"
+        '403':
+          description: "Ni droit de lecture ni fiche de personne"
+        '422':
+          description: "Filtre invalide"
+    post:
+      summary: "Crée une entrée : semestre, période d’examens, session de rattrapage, délibération, jour férié, fermeture ou événement (ends_on facultatif = starts_on)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [kind, title, starts_on]
+              properties:
+                kind: {}
+                title: {}
+                starts_on: {}
+                ends_on: {}
+                academic_year_id: {}
+                structure_id: {}
+                notes: {}
+      responses:
+        '201':
+          description: "Entrée créée"
+        '403':
+          description: "scheduling.manage requis"
+        '422':
+          description: "Champs invalides"
+  /api/v1/calendar-events/{id}:
+    get:
+      summary: "Une entrée du calendrier"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: "Entrée"
+        '404':
+          description: "Introuvable"
+    patch:
+      summary: "Modifie une entrée (champs partiels)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                kind: {}
+                title: {}
+                starts_on: {}
+                ends_on: {}
+                academic_year_id: {}
+                structure_id: {}
+                notes: {}
+      responses:
+        '200':
+          description: "Entrée modifiée"
+        '404':
+          description: "Introuvable"
+        '422':
+          description: "Champs invalides"
+    delete:
+      summary: "Supprime une entrée"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '204':
+          description: "Supprimée"
+        '404':
+          description: "Introuvable"
+  /api/v1/timetable-slots:
+    get:
+      summary: "Créneaux hebdomadaires (filter[teacher_person_id|room_id|structure_id|weekday|period_of_day|course_unit_id|session_kind])"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Page de créneaux, limitée au périmètre de l’appelant s’il n’a pas scheduling.read"
+    post:
+      summary: "Crée un créneau (session_kind cm|td|tp|other facultatif ; structure_ids : plusieurs structures = cours mutualisé). Refusé en 409 avec la liste des conflits (enseignant, salle, structure, capacité de salle) sur plage et période de validité qui se recouvrent"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [subject_label, teacher_person_id, structure_ids, weekday, start_time, end_time, valid_from]
+              properties:
+                subject_label: {}
+                teacher_person_id: {}
+                room_id: {}
+                course_unit_id: {}
+                structure_ids: {}
+                weekday: {}
+                start_time: {}
+                end_time: {}
+                valid_from: {}
+                valid_to: {}
+      responses:
+        '201':
+          description: "Créneau créé"
+        '403':
+          description: "scheduling.manage requis"
+        '409':
+          description: "Conflit d’emploi du temps (membre « conflicts »)"
+        '422':
+          description: "Champs invalides"
+  /api/v1/timetable-slots/check:
+    post:
+      summary: "Vérifie un emplacement sans l’enregistrer ; ignore_slot_id exclut un créneau existant (modification)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [subject_label, teacher_person_id, structure_ids, weekday, start_time, end_time, valid_from]
+              properties:
+                subject_label: {}
+                teacher_person_id: {}
+                room_id: {}
+                course_unit_id: {}
+                structure_ids: {}
+                weekday: {}
+                start_time: {}
+                end_time: {}
+                valid_from: {}
+                valid_to: {}
+                ignore_slot_id: {}
+      responses:
+        '200':
+          description: "{ ok, conflicts[] }"
+        '403':
+          description: "scheduling.manage requis"
+        '422':
+          description: "Champs invalides"
+  /api/v1/timetable-slots/{id}:
+    get:
+      summary: "Un créneau"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: "Créneau"
+        '404':
+          description: "Introuvable ou hors du périmètre de l’appelant"
+    patch:
+      summary: "Modifie un créneau (champs partiels) ; les conflits sont revérifiés"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                subject_label: {}
+                teacher_person_id: {}
+                room_id: {}
+                course_unit_id: {}
+                structure_ids: {}
+                weekday: {}
+                start_time: {}
+                end_time: {}
+                valid_from: {}
+                valid_to: {}
+      responses:
+        '200':
+          description: "Créneau modifié"
+        '404':
+          description: "Introuvable"
+        '409':
+          description: "Conflit d’emploi du temps"
+        '422':
+          description: "Champs invalides"
+    delete:
+      summary: "Supprime un créneau et ses modifications ponctuelles"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '204':
+          description: "Supprimé"
+        '404':
+          description: "Introuvable"
+  /api/v1/timetable-changes:
+    get:
+      summary: "Modifications ponctuelles (filter[slot_id|kind|on_date])"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Page de modifications, limitée au périmètre de l’appelant s’il n’a pas scheduling.read"
+    post:
+      summary: "Annule (cancelled), déplace (moved : new_date, new_start_time, new_end_time, new_room_id) ou fait remplacer (replaced : new_teacher_person_id) une occurrence ; l’enseignant, les apprenants et leurs garants sont notifiés (modèle timetable_change). 409 si le nouvel emplacement est en conflit"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [slot_id, on_date, kind]
+              properties:
+                slot_id: {}
+                on_date: {}
+                kind: {}
+                new_date: {}
+                new_start_time: {}
+                new_end_time: {}
+                new_room_id: {}
+                new_teacher_person_id: {}
+                reason: {}
+      responses:
+        '201':
+          description: "Modification enregistrée (notified_count = personnes notifiées)"
+        '403':
+          description: "scheduling.manage requis"
+        '404':
+          description: "Créneau introuvable"
+        '409':
+          description: "Occurrence déjà modifiée ou conflit sur le nouvel emplacement"
+        '422':
+          description: "Champs invalides ou date hors créneau"
+  /api/v1/timetable-changes/{id}:
+    get:
+      summary: "Une modification ponctuelle"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: "Modification"
+        '404':
+          description: "Introuvable ou hors du périmètre de l’appelant"
+    delete:
+      summary: "Retire une modification : l’occurrence reprend son cours normal"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '204':
+          description: "Retirée"
+        '404':
+          description: "Introuvable"
+  /api/v1/timetable:
+    get:
+      summary: "Emploi du temps d’une semaine (lundi à dimanche contenant « week ») pour exactement un de structure_id (classe ou groupe), teacher_person_id ou room_id ; occurrences annulées, déplacées ou remplacées signalées par leur statut"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - {name: week, in: query, required: true, schema: {type: string, format: date}}
+        - {name: structure_id, in: query, schema: {type: string}}
+        - {name: teacher_person_id, in: query, schema: {type: string}}
+        - {name: room_id, in: query, schema: {type: string}}
+      responses:
+        '200':
+          description: "Semaine en 7 jours d’occurrences"
+        '422':
+          description: "Paramètres invalides"
+  /api/v1/timetable/consumption:
+    get:
+      summary: "Suivi en lecture seule du volume d’un élément constitutif : minutes tenues jusqu’à as_of (annulations et jours fériés déduits), minutes encore programmées, reste si planned_minutes est fourni ; minutes tenues par nature (realized_minutes_by_kind)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - {name: course_unit_id, in: query, required: true, schema: {type: string}}
+        - {name: as_of, in: query, required: true, schema: {type: string, format: date}}
+        - {name: planned_minutes, in: query, schema: {type: integer, minimum: 0}}
+      responses:
+        '200':
+          description: "Volumes prévus, réalisés, programmés et restants"
+        '403':
+          description: "scheduling.read requis"
+        '422':
+          description: "Paramètres invalides"
+  /api/v1/timetable-slots/export:
+    get:
+      summary: "Export CSV (UTF-8 avec BOM, séparateur « ; ») des créneaux d’emploi du temps : mêmes filtres et même périmètre de lecture que GET /timetable-slots, plafonné à 5 000 lignes"
+      security:
+        - bearer: []
+      parameters:
+        - name: format
+          in: query
+          required: false
+          description: "Format du fichier : csv (défaut ; UTF-8 avec BOM, séparateur « ; ») ou xlsx (Excel)"
+          schema: {type: string, enum: [csv, xlsx], default: csv}
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Fichier CSV"
+          content:
+            text/csv:
+              schema: {type: string}
+        '403':
+          description: "Permission de lecture manquante"
+        '422':
+          description: "Filtre non autorisé"
+  /api/v1/calendar-events/export:
+    get:
+      summary: "Export CSV / Excel du calendrier : mêmes filtres que GET /calendar-events, plafonné à 5 000 lignes"
+      security:
+        - bearer: []
+      parameters:
+        - name: format
+          in: query
+          required: false
+          description: "Format du fichier : csv (défaut ; UTF-8 avec BOM, séparateur « ; ») ou xlsx (Excel)"
+          schema: {type: string, enum: [csv, xlsx], default: csv}
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Fichier CSV (UTF-8 avec BOM, séparateur « ; ») ou Excel selon le paramètre format"
+          content:
+            text/csv:
+              schema: {type: string}
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema: {type: string, format: binary}
+        '403':
+          description: "Accès refusé"
+        '422':
+          description: "Filtre hors liste blanche"
+  /api/v1/timetable-changes/export:
+    get:
+      summary: "Export CSV / Excel des modifications de l’emploi du temps : mêmes filtres et même périmètre que GET /timetable-changes, plafonné à 5 000 lignes"
+      security:
+        - bearer: []
+      parameters:
+        - name: format
+          in: query
+          required: false
+          description: "Format du fichier : csv (défaut ; UTF-8 avec BOM, séparateur « ; ») ou xlsx (Excel)"
+          schema: {type: string, enum: [csv, xlsx], default: csv}
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Fichier CSV (UTF-8 avec BOM, séparateur « ; ») ou Excel selon le paramètre format"
+          content:
+            text/csv:
+              schema: {type: string}
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema: {type: string, format: binary}
+        '403':
+          description: "Accès refusé"
+        '422':
+          description: "Filtre hors liste blanche"

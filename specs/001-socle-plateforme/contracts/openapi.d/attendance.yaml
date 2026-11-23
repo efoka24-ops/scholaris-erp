@@ -1,0 +1,585 @@
+# Contrat OpenAPI 3.1 du service S08 Présences et discipline (fusionné avec openapi.yaml par le test de contrat).
+paths:
+  /api/v1/attendance-sessions:
+    get:
+      summary: "Liste des appels de l'établissement (filtres status, slot_id, structure_id, date, teacher_person_id)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Succès"
+        '403':
+          description: "Accès refusé"
+        '422':
+          description: "Données invalides"
+    post:
+      summary: "Crée l'appel d'un créneau pour un jour (client_uuid idempotent, lignes et validation facultatives) ; 200 si rejoué, 409 avec les deux versions en cas de conflit. Mode attendance.mode = day_part (PP17) : au lieu de slot_id, structure_id + day_part (morning, afternoon, full_day) sans créneau ; une séance par classe, moment et jour (slot_id = dp:<structure_id>:<moment>), 422 si le mode n'est pas activé"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Succès"
+        '201':
+          description: "Créé"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '409':
+          description: "Conflit (deux versions restituées)"
+        '422':
+          description: "Données invalides"
+  /api/v1/attendance-sessions/sync:
+    post:
+      summary: "Synchronise par lot les appels enregistrés hors ligne ; un résultat par appel (synced, conflict, error). Chaque appel porte slot_id ou, en mode day_part, structure_id + day_part"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Succès"
+        '403':
+          description: "Accès refusé"
+        '422':
+          description: "Données invalides"
+  /api/v1/attendance-sessions/{id}:
+    get:
+      summary: "Détail d'un appel avec ses lignes et compteurs (présents, absents, retards)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Succès"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+  /api/v1/attendance-sessions/{id}/records:
+    put:
+      summary: "Enregistre les lignes d'un appel par lot (P, A, R avec heure d'arrivée) ; 409 si l'appel est validé avec un contenu différent"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Succès"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '409':
+          description: "Conflit (deux versions restituées)"
+        '422':
+          description: "Données invalides"
+  /api/v1/attendance-sessions/{id}/validate:
+    post:
+      summary: "Valide l'appel (un statut par élève attendu) et prévient les parents des absents non justifiés"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Succès"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '422':
+          description: "Données invalides"
+  /api/v1/attendance-sessions/{id}/qr-token:
+    post:
+      summary: "Émet le jeton de séance à durée limitée affiché en QR"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '201':
+          description: "Créé"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '409':
+          description: "Conflit (deux versions restituées)"
+  /api/v1/attendance-sessions/{id}/scan:
+    post:
+      summary: "Pointage de l'étudiant avec le jeton de séance (plage courte)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Succès"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '409':
+          description: "Conflit (deux versions restituées)"
+        '422':
+          description: "Données invalides"
+  /api/v1/attendance-records:
+    get:
+      summary: "Lignes de présence (filtres session_id, person_id, status, date, justified) ; un parent précise person_id"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Succès"
+        '403':
+          description: "Accès refusé"
+        '422':
+          description: "Données invalides"
+  /api/v1/absence-justifications:
+    get:
+      summary: "Justificatifs d'absence (filtres status, person_id)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Succès"
+        '403':
+          description: "Accès refusé"
+    post:
+      summary: "Dépose un justificatif d'absence (période, motif, référence de document facultative)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '201':
+          description: "Créé"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '422':
+          description: "Données invalides"
+  /api/v1/absence-justifications/{id}:
+    get:
+      summary: "Détail d'un justificatif"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Succès"
+        '404':
+          description: "Introuvable ou autre client"
+  /api/v1/absence-justifications/{id}/accept:
+    post:
+      summary: "Valide le justificatif : les absences de la période deviennent justifiées"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Succès"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '409':
+          description: "Conflit (deux versions restituées)"
+  /api/v1/absence-justifications/{id}/reject:
+    post:
+      summary: "Refuse le justificatif"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Succès"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '409':
+          description: "Conflit (deux versions restituées)"
+  /api/v1/incidents:
+    get:
+      summary: "Incidents de l'établissement (filtres person_id, category)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Succès"
+        '403':
+          description: "Accès refusé"
+    post:
+      summary: "Signale un incident (surveillant)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '201':
+          description: "Créé"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '422':
+          description: "Données invalides"
+  /api/v1/incidents/{id}:
+    get:
+      summary: "Détail d'un incident"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Succès"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+  /api/v1/sanctions:
+    get:
+      summary: "Sanctions (filtres person_id, status, kind)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Succès"
+        '403':
+          description: "Accès refusé"
+    post:
+      summary: "Propose une sanction du barème de l'établissement ; elle attend la validation d'une autre personne"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '201':
+          description: "Créé"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '422':
+          description: "Données invalides"
+  /api/v1/sanctions/{id}:
+    get:
+      summary: "Détail d'une sanction"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Succès"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+  /api/v1/sanctions/{id}/approve:
+    post:
+      summary: "Valide la sanction (autre personne que le proposant)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Succès"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '409':
+          description: "Conflit (deux versions restituées)"
+  /api/v1/sanctions/{id}/reject:
+    post:
+      summary: "Refuse la sanction proposée"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Succès"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '409':
+          description: "Conflit (deux versions restituées)"
+  /api/v1/authorized-pickups:
+    get:
+      summary: "Personnes autorisées à récupérer un enfant (filtres learner_id, status, grant_type)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Succès"
+        '403':
+          description: "Accès refusé"
+    post:
+      summary: "Enregistre une personne autorisée (permanente ou du jour)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '201':
+          description: "Créé"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+        '422':
+          description: "Données invalides"
+  /api/v1/authorized-pickups/{id}/revoke:
+    post:
+      summary: "Révoque une autorisation"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Succès"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable ou autre client"
+  /api/v1/attendance/students/{id}/summary:
+    get:
+      summary: "Cumuls d'assiduité d'un apprenant, par matière, avec niveau (ok, alert, not_allowed), par élément constitutif (by_course_unit) selon attendance.base (base) ; lisible par son parent"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Succès"
+        '404':
+          description: "Introuvable ou autre client"
+        '422':
+          description: "Données invalides"
+  /api/v1/attendance/not-allowed-to-sit:
+    get:
+      summary: "Apprenants au-dessus du seuil de non justifié (non autorisés à composer) ou en alerte"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Succès"
+        '403':
+          description: "Accès refusé"
+        '422':
+          description: "Données invalides"
+  /api/v1/attendance-sessions/export:
+    get:
+      summary: "Export CSV (UTF-8 avec BOM, séparateur « ; ») des séances d’appel : mêmes filtres et mêmes permissions que GET /attendance-sessions, plafonné à 5 000 lignes"
+      security:
+        - bearer: []
+      parameters:
+        - name: format
+          in: query
+          required: false
+          description: "Format du fichier : csv (défaut ; UTF-8 avec BOM, séparateur « ; ») ou xlsx (Excel)"
+          schema: {type: string, enum: [csv, xlsx], default: csv}
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Fichier CSV"
+          content:
+            text/csv:
+              schema: {type: string}
+        '403':
+          description: "Permission de lecture manquante"
+        '422':
+          description: "Filtre non autorisé"
+  /api/v1/attendance-records/export:
+    get:
+      summary: "Export CSV (UTF-8 avec BOM, séparateur « ; ») des lignes de présence, dont les absences (filter[status]=A) : mêmes filtres et mêmes règles d’accès que GET /attendance-records, plafonné à 5 000 lignes"
+      security:
+        - bearer: []
+      parameters:
+        - name: format
+          in: query
+          required: false
+          description: "Format du fichier : csv (défaut ; UTF-8 avec BOM, séparateur « ; ») ou xlsx (Excel)"
+          schema: {type: string, enum: [csv, xlsx], default: csv}
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Fichier CSV"
+          content:
+            text/csv:
+              schema: {type: string}
+        '403':
+          description: "Permission de lecture manquante"
+        '422':
+          description: "Filtre non autorisé"
+  /api/v1/absence-justifications/export:
+    get:
+      summary: "Export CSV / Excel des justificatifs d’absence : mêmes filtres et mêmes règles d’accès que GET /absence-justifications, plafonné à 5 000 lignes"
+      security:
+        - bearer: []
+      parameters:
+        - name: format
+          in: query
+          required: false
+          description: "Format du fichier : csv (défaut ; UTF-8 avec BOM, séparateur « ; ») ou xlsx (Excel)"
+          schema: {type: string, enum: [csv, xlsx], default: csv}
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Fichier CSV (UTF-8 avec BOM, séparateur « ; ») ou Excel selon le paramètre format"
+          content:
+            text/csv:
+              schema: {type: string}
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema: {type: string, format: binary}
+        '403':
+          description: "Accès refusé"
+        '422':
+          description: "Filtre hors liste blanche"
+  /api/v1/incidents/export:
+    get:
+      summary: "Export CSV / Excel des incidents : mêmes filtres et mêmes permissions que GET /incidents, plafonné à 5 000 lignes"
+      security:
+        - bearer: []
+      parameters:
+        - name: format
+          in: query
+          required: false
+          description: "Format du fichier : csv (défaut ; UTF-8 avec BOM, séparateur « ; ») ou xlsx (Excel)"
+          schema: {type: string, enum: [csv, xlsx], default: csv}
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Fichier CSV (UTF-8 avec BOM, séparateur « ; ») ou Excel selon le paramètre format"
+          content:
+            text/csv:
+              schema: {type: string}
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema: {type: string, format: binary}
+        '403':
+          description: "Permission de discipline manquante"
+        '422':
+          description: "Filtre hors liste blanche"
+  /api/v1/sanctions/export:
+    get:
+      summary: "Export CSV / Excel des sanctions : mêmes filtres et mêmes permissions que GET /sanctions, plafonné à 5 000 lignes"
+      security:
+        - bearer: []
+      parameters:
+        - name: format
+          in: query
+          required: false
+          description: "Format du fichier : csv (défaut ; UTF-8 avec BOM, séparateur « ; ») ou xlsx (Excel)"
+          schema: {type: string, enum: [csv, xlsx], default: csv}
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Fichier CSV (UTF-8 avec BOM, séparateur « ; ») ou Excel selon le paramètre format"
+          content:
+            text/csv:
+              schema: {type: string}
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema: {type: string, format: binary}
+        '403':
+          description: "Permission de discipline manquante"
+        '422':
+          description: "Filtre hors liste blanche"

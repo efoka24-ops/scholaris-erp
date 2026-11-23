@@ -1,0 +1,40 @@
+# Contrat OpenAPI 3.1 de la page publique « Candidater » de l'application Supérieur (sans authentification). Fusionné avec
+# openapi.yaml par le test de contrat. Erreurs RFC 9457. Un lien inconnu, désactivé, mal formé ou d'un client sans l'application
+# répond le même 404. Limites : /api/v1/public/ (30 par minute et par IP) ; inscription : 10 par heure et par IP, 300 par jour et par
+# lien, puis compteurs d'activation par identifiant (un renvoi par minute, 5 par heure). Le code reçu se vérifie avec
+# /auth/activation/verify puis /auth/activation/password, la connexion se fait par /auth/login.
+paths:
+  /api/v1/public/admissions/{slug}:
+    get:
+      summary: "Institut et campagnes ouvertes : nom, filière, niveau, dates, places, frais de dossier, pièces demandées"
+      security: []
+      parameters:
+        - {name: slug, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Institut et campagnes ouvertes aujourd'hui (aucun identifiant interne)"}
+        '404': {description: "Lien inconnu, désactivé ou application fermée (réponse identique)"}
+        '429': {description: "Trop de requêtes"}
+  /api/v1/public/admissions/{slug}/register:
+    post:
+      summary: "Inscription du candidat par téléphone ou e-mail : crée ou retrouve la fiche et le compte (rôle apprenant seul) et envoie un code ; réponse identique que le compte existe ou non"
+      security: []
+      parameters:
+        - {name: slug, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [first_name, last_name, identifier]
+              properties:
+                first_name: {type: string, maxLength: 80}
+                last_name: {type: string, maxLength: 80}
+                identifier: {type: string, description: "Téléphone (+237…) ou e-mail"}
+                locale: {type: string, enum: [fr, en]}
+                website: {type: string, description: "Champ piège, doit rester vide"}
+      responses:
+        '200': {description: "Code envoyé : channel, masked_to, expires_in, resend_in"}
+        '404': {description: "Lien inconnu"}
+        '422': {description: "Données invalides"}
+        '429': {description: "Trop de demandes (par IP, par lien ou par identifiant)"}

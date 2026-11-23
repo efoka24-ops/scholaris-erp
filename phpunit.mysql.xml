@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Suite MySQL : rejoue les tests d'isolation et de contrat sur une VRAIE base MySQL 8 jetable.
+  Ne tourne JAMAIS sans TEST_DB_DRIVER=mysql (voir tests/Mysql/bootstrap.php). Aucun secret dans le dépôt :
+  TEST_DB_HOST, TEST_DB_PORT, TEST_DB_DATABASE, TEST_DB_USERNAME, TEST_DB_PASSWORD viennent de l'environnement.
+  Usage : php vendor/bin/phpunit -c phpunit.mysql.xml  (voir specs/001-socle-plateforme/tests-mysql.md)
+-->
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="tests/Mysql/bootstrap.php"
+         colors="true"
+         cacheDirectory=".phpunit.cache-mysql"
+         executionOrder="default"
+         failOnWarning="true"
+         failOnRisky="true">
+    <testsuites>
+        <testsuite name="MysqlSchema"><directory>tests/Mysql</directory></testsuite>
+        <testsuite name="Isolation">
+            <directory>tests/Isolation</directory>
+            <exclude>tests/Isolation/TenantScopeTest.php</exclude>
+        </testsuite>
+        <testsuite name="Contracts">
+            <directory>tests/Feature/Contracts</directory>
+            <file>tests/Feature/BillingMessagingContractTest.php</file>
+            <file>tests/Feature/Audit/CompleteTenantExportTest.php</file>
+            <file>tests/Feature/Audit/TenantExportTest.php</file>
+            <file>tests/Feature/Identity/ContextPeriodTest.php</file>
+        </testsuite>
+    </testsuites>
+    <php>
+        <env name="APP_ENV" value="testing"/>
+        <env name="APP_DEBUG" value="false"/>
+        <env name="LOG_PATH" value="storage/logs/test.log"/>
+    </php>
+</phpunit>

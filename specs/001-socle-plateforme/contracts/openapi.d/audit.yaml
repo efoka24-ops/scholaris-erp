@@ -1,0 +1,235 @@
+# Contrat OpenAPI 3.1 du service S13 Conformité (module Audit), fusionné avec openapi.yaml par le test de contrat.
+# Routes de niveau client : pas d'en-tête X-Establishment-Id exigé.
+paths:
+  /api/v1/data-requests:
+    get:
+      summary: "Liste des demandes de personnes concernées (filtres status, kind ; curseur) - privacy.requests.read"
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: "Liste paginée"
+        '403':
+          description: "Accès refusé"
+    post:
+      summary: "Enregistre une demande (access, rectification, erasure, portability) ; échéance = délai paramétré - privacy.requests.manage"
+      security:
+        - bearer: []
+      responses:
+        '201':
+          description: "Demande reçue"
+        '403':
+          description: "Accès refusé"
+        '422':
+          description: "Données invalides"
+  /api/v1/data-requests/{id}:
+    get:
+      summary: "Détail d'une demande (indicateur de retard)"
+      security:
+        - bearer: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Demande"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable"
+  /api/v1/data-requests/{id}/start:
+    post:
+      summary: "Prend en charge la demande (reçue vers en cours) ; pour un effacement, ouvre l'approbation à deux personnes"
+      security:
+        - bearer: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Demande en cours"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable"
+        '409':
+          description: "Transition impossible"
+  /api/v1/data-requests/{id}/refuse:
+    post:
+      summary: "Refuse la demande avec un motif obligatoire"
+      security:
+        - bearer: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Demande refusée"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable"
+        '409':
+          description: "Transition impossible"
+        '422':
+          description: "Motif manquant"
+  /api/v1/data-requests/{id}/approval:
+    post:
+      summary: "Décision du second validateur sur un effacement (decision approve ou reject) ; le demandeur ne peut pas valider"
+      security:
+        - bearer: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '422':
+          description: "Décision absente ou invalide"
+        '200':
+          description: "Décision enregistrée"
+        '403':
+          description: "Accès refusé, ou validateur identique au demandeur"
+        '404':
+          description: "Introuvable"
+        '409':
+          description: "Aucune approbation en attente"
+  /api/v1/data-requests/{id}/complete:
+    post:
+      summary: "Clôture la demande (en cours vers traitée) ; un effacement exige l'approbation et anonymise via les sources enregistrées"
+      security:
+        - bearer: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Demande traitée"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable"
+        '409':
+          description: "Etat incompatible ou effacement non approuvé"
+  /api/v1/data-requests/{id}/data:
+    get:
+      summary: "Extraction JSON des données de la personne (accès et portabilité), calculée à la demande et journalisée"
+      security:
+        - bearer: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Données de la personne"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Introuvable"
+        '409':
+          description: "Demande non extractible"
+  /api/v1/privacy/settings:
+    get:
+      summary: "Paramètres de conformité du client (délai de réponse, durées de rétention en mois)"
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: "Paramètres"
+        '403':
+          description: "Accès refusé"
+    put:
+      summary: "Modifie les paramètres (deadline_days, requests_retention_months, approvals_retention_months) ; journalisé"
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: "Paramètres à jour"
+        '403':
+          description: "Accès refusé"
+        '422':
+          description: "Valeur hors bornes"
+  /api/v1/privacy/processing-register:
+    get:
+      summary: "Registre des traitements (lecture seule, configurable par la clé privacy.processing_register)"
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: "Entrées du registre"
+        '403':
+          description: "Accès refusé"
+  /api/v1/privacy/tenant-export:
+    post:
+      summary: "Export complet du client appelant en archive ZIP de JSON - privacy.export (super administrateur) ; journalisé"
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: "Archive ZIP"
+          content:
+            application/zip: {}
+        '403':
+          description: "Accès refusé"
+  /api/v1/data-requests/export:
+    get:
+      summary: "Export CSV / Excel des demandes de personnes concernées : mêmes filtres (status, kind) et mêmes droits que GET /data-requests, plafonné à 5 000 lignes"
+      security:
+        - bearer: []
+      parameters:
+        - name: format
+          in: query
+          required: false
+          description: "Format du fichier : csv (défaut ; UTF-8 avec BOM, séparateur « ; ») ou xlsx (Excel)"
+          schema: {type: string, enum: [csv, xlsx], default: csv}
+      responses:
+        '200':
+          description: "Fichier CSV (UTF-8 avec BOM, séparateur « ; ») ou Excel selon le paramètre format"
+          content:
+            text/csv:
+              schema: {type: string}
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema: {type: string, format: binary}
+        '403':
+          description: "Accès refusé"
+        '422':
+          description: "Filtre hors liste blanche"
+  /api/v1/audit-log/export:
+    get:
+      summary: "Export CSV / Excel du journal d’audit du client (rang, date, auteur, action, objet ; ni états avant/après, ni IP, ni appareil, ni empreintes) : réservé à la permission privacy.export ; filtres actor_id, action, object_type, from, to ; plafonné à 5 000 lignes"
+      security:
+        - bearer: []
+      parameters:
+        - name: format
+          in: query
+          required: false
+          description: "Format du fichier : csv (défaut ; UTF-8 avec BOM, séparateur « ; ») ou xlsx (Excel)"
+          schema: {type: string, enum: [csv, xlsx], default: csv}
+      responses:
+        '200':
+          description: "Fichier CSV (UTF-8 avec BOM, séparateur « ; ») ou Excel selon le paramètre format"
+          content:
+            text/csv:
+              schema: {type: string}
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema: {type: string, format: binary}
+        '403':
+          description: "Permission d’export manquante"
+        '422':
+          description: "Filtre invalide"

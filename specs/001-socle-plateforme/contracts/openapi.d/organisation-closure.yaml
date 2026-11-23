@@ -1,0 +1,64 @@
+# Contrat OpenAPI 3.1 de la clôture d'année (T137), fusionné avec openapi.yaml par le test de contrat.
+# POST /api/v1/academic-years/{id}/close est décrit dans organisation.yaml.
+paths:
+  /api/v1/academic-years/{id}/closure-check:
+    get:
+      summary: "Contrôle préalable à la clôture (organisation.manage) : impayés, notes non verrouillées, délibérations ouvertes. Chaque contrôle est ok, blocking ou not_evaluable (aucune source : listé, non bloquant) ; renvoie aussi la demande en cours"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Résultat des contrôles"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Année introuvable dans cet établissement"
+  /api/v1/academic-years/{id}/close/approve:
+    post:
+      summary: "Approuve la demande de clôture (organisation.manage, double authentification récente, autre personne que le demandeur) puis archive l'état, reporte les soldes, passe les apprenants en classe supérieure et ferme l'année. Idempotent : sur une clôture terminée renvoie son état, sur une clôture interrompue reprend aux étapes restantes"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Année clôturée (état des étapes : done, skipped, unavailable)"
+        '403':
+          description: "Demandeur identique, droit manquant ou double authentification récente absente"
+        '404':
+          description: "Année ou demande introuvable"
+        '409':
+          description: "Demande refusée, contrôle devenu bloquant ou étape interrompue (relancer pour reprendre)"
+  /api/v1/academic-years/{id}/close/reject:
+    post:
+      summary: "Refuse la demande de clôture en attente (organisation.manage)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Demande refusée"
+        '403':
+          description: "Accès refusé ou refus par le demandeur"
+        '404':
+          description: "Année ou demande introuvable"
+        '409':
+          description: "La demande n'est plus en attente"

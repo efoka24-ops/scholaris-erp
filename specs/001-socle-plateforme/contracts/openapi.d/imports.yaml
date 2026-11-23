@@ -1,0 +1,128 @@
+# Contrat OpenAPI 3.1 de l'import en masse des acteurs d'un établissement (T-001), fusionné avec openapi.yaml par le test de contrat.
+# Permission imports.people.manage (super administrateur, directeur, administrateur fonctionnel IPES) ; l'importeur n'attribue que
+# les rôles qu'il peut déjà attribuer. Colonnes du fichier : nom, prénoms, e-mail, téléphone, langue, rôle, périmètre, code du
+# périmètre, date de début, date de fin (obligatoire pour les rôles temporaires), note. 2 Mo et 1000 lignes au plus.
+paths:
+  /api/v1/imports/people/template:
+    get:
+      summary: "Modèle de fichier d'import des acteurs (en-têtes et deux lignes d'exemple à supprimer), ?format=csv (défaut) ou xlsx"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: format
+          in: query
+          schema:
+            type: string
+            enum: [csv, xlsx]
+      responses:
+        '200':
+          description: "Modèle à télécharger"
+          content:
+            text/csv:
+              schema:
+                type: string
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
+        '403':
+          description: "Permission imports.people.manage manquante"
+        '422':
+          description: "Format inconnu"
+  /api/v1/imports/people:
+    post:
+      summary: "Analyse un fichier CSV ou XLSX (champ multipart « file ») SANS rien créer : lot, puis par ligne valide, erreur (messages en français) ou doublon (identifiant déjà connu). Le fichier brut n'est pas conservé"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: "Lot analysé : data = bilan (summary) et lignes ; meta.unknown_columns et meta.allowed_roles"
+        '403':
+          description: "Permission imports.people.manage manquante, ou aucun rôle attribuable par l'appelant"
+        '422':
+          description: "Fichier absent, illisible, trop gros (2 Mo), trop long (1000 lignes) ou colonnes obligatoires absentes"
+        '429':
+          description: "Limite de débit (30 analyses par heure et par utilisateur)"
+  /api/v1/imports/people/{id}:
+    get:
+      summary: "Bilan et lignes du lot (filtre ?status=valid|error|duplicate|applied|partial|failed). Contient les identifiants créés, jamais un mot de passe"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [valid, error, duplicate, applied, partial, failed]
+      responses:
+        '200':
+          description: "Bilan du lot"
+        '404':
+          description: "Lot introuvable, expiré, ou d'un autre client ou établissement"
+        '422':
+          description: "État inconnu"
+  /api/v1/imports/people/{id}/errors.csv:
+    get:
+      summary: "Lignes à corriger (erreurs, doublons, échecs) dans les colonnes du modèle, précédées de ligne, état et problème"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Fichier CSV UTF-8 (séparateur ;)"
+          content:
+            text/csv:
+              schema:
+                type: string
+        '404':
+          description: "Lot introuvable"
+  /api/v1/imports/people/{id}/commit:
+    post:
+      summary: "Applique le lot UNE seule fois (idempotent) : crée personnes, comptes et affectations des lignes valides. credentials = provisional_password (défaut ; mots de passe rendus UNE fois dans data.provisional_credentials, ou en CSV avec ?format=csv) ou activation_code (send_codes envoie les codes). Un appel ultérieur rend le bilan sans secret (meta.replay)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: format
+          in: query
+          schema:
+            type: string
+            enum: [json, csv]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                credentials:
+                  type: string
+                  enum: [provisional_password, activation_code]
+                send_codes:
+                  type: boolean
+      responses:
+        '200':
+          description: "Bilan du lot appliqué (JSON) ou fichier d'identifiants (format=csv) ; Cache-Control no-store"
+        '404':
+          description: "Lot introuvable, expiré, ou d'un autre client ou établissement"
+        '409':
+          description: "Application en cours, ou identifiants déjà remis (format=csv sur un lot déjà appliqué)"
+        '422':
+          description: "Option invalide"
+        '429':
+          description: "Limite de débit (10 applications par heure et par utilisateur)"

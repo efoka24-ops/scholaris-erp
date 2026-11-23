@@ -1,0 +1,293 @@
+# Contrat OpenAPI 3.1 de l'examen de fin de cycle (application Primaire privee, EX-PRI-42 ; T550 ; Q11 a confirmer) : preparation par
+# l'ecole du CEP (francophone) et du FSLC (anglophone). Examens : parametre primary.exam.kinds ; champs de la fiche d'inscription :
+# primary.exam.registration_fields ; prefixe des numeros : primary.exam.candidate_number_prefix. Aucun bareme ni note officielle :
+# seul le resultat publie (admis, ajourne, absent) est saisi. Gestion : primary.exam.manage sur tout l'etablissement ; lecture :
+# primary.exam.read. WriteGate sur les ecritures.
+paths:
+  /api/v1/primary/exam-catalogue:
+    get:
+      summary: "Examens proposes, champs de la fiche d'inscription et resultats possibles (parametres)"
+      responses:
+        '200': {description: "Reponse {data: {kinds, fields[{code, fr, en, required}], outcomes}}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Application fermee"}
+  /api/v1/primary/exam-sessions:
+    get:
+      summary: "Sessions d'examen avec statistiques (inscrits, retires, admis, ajournes, absents, taux de reussite = admis / (admis + ajournes))"
+      parameters:
+        - {name: academic_year_id, in: query, required: false, schema: {type: string}}
+      responses:
+        '200': {description: "Reponse {data: {items[]}}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Application fermee"}
+    post:
+      summary: "Creer une session (niveau marque « niveau d'examen »)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [academic_year_id, exam_code, level_structure_id]
+              properties:
+                academic_year_id: {type: string}
+                exam_code: {type: string, maxLength: 20}
+                level_structure_id: {type: string}
+                label: {type: string, maxLength: 160}
+                centre_label: {type: [string, 'null'], maxLength: 160}
+                sub_centre_label: {type: [string, 'null'], maxLength: 160}
+                registration_opens_on: {type: [string, 'null'], format: date}
+                registration_closes_on: {type: [string, 'null'], format: date}
+                written_on: {type: [string, 'null'], format: date}
+                fee_code: {type: [string, 'null'], maxLength: 40}
+      responses:
+        '201': {description: "Session creee (draft)"}
+        '403': {description: "Permission absente ou perimetre partiel"}
+        '409': {description: "Session deja creee pour cet examen, ce niveau et cette annee"}
+        '422': {description: "Examen inconnu, niveau non d'examen"}
+  /api/v1/primary/exam-sessions/{id}:
+    get:
+      summary: "Session et statistiques"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Session"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Session introuvable"}
+    patch:
+      summary: "Modifier centre, sous-centre, dates, frais"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                label: {type: string, maxLength: 160}
+                centre_label: {type: [string, 'null'], maxLength: 160}
+                sub_centre_label: {type: [string, 'null'], maxLength: 160}
+                registration_opens_on: {type: [string, 'null'], format: date}
+                registration_closes_on: {type: [string, 'null'], format: date}
+                written_on: {type: [string, 'null'], format: date}
+                fee_code: {type: [string, 'null'], maxLength: 40}
+      responses:
+        '200': {description: "Session modifiee"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Session introuvable"}
+        '422': {description: "Donnees invalides"}
+  /api/v1/primary/exam-sessions/{id}/status:
+    post:
+      summary: "Changer l'etat (draft -> open -> closed, reouverture)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [status]
+              properties:
+                status: {type: string, enum: [draft, open, closed]}
+      responses:
+        '200': {description: "Session"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Session introuvable"}
+        '409': {description: "Transition impossible"}
+        '422': {description: "Etat inconnu"}
+  /api/v1/primary/exam-sessions/{id}/candidates:
+    get:
+      summary: "Candidats (retires compris)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Reponse {data: {items[{id, person_id, name, candidate_number, sub_centre_label, registration_status, fields, outcome, outcome_detail}]}}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Session introuvable"}
+    post:
+      summary: "Inscrire un eleve du niveau d'examen (409 si deja candidat ; un retire est reinscrit)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [person_id]
+              properties:
+                person_id: {type: string}
+      responses:
+        '201': {description: "Candidat"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Session introuvable"}
+        '409': {description: "Doublon ou inscriptions closes"}
+        '422': {description: "Eleve hors niveau d'examen"}
+  /api/v1/primary/exam-sessions/{id}/candidates/enrol-level:
+    post:
+      summary: "Inscription en lot des eleves actifs des classes du niveau d'examen (idempotente)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Reponse {data: {registered, existing}}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Session introuvable"}
+        '409': {description: "Inscriptions closes"}
+  /api/v1/primary/exam-sessions/{id}/numbers:
+    post:
+      summary: "Attribuer les numeros manquants (prefixe parametre, ordre alphabetique)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Reponse {data: {assigned}}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Session introuvable"}
+  /api/v1/primary/exam-sessions/{id}/results:
+    put:
+      summary: "Saisir les resultats officiels publies (session close) ; chaque ligne invalide est rejetee avec son motif"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [entries]
+              properties:
+                entries:
+                  type: array
+                  maxItems: 3000
+                  items:
+                    type: object
+                    properties:
+                      candidate_id: {type: string}
+                      candidate_number: {type: string}
+                      outcome: {type: string, description: "passed|failed|absent|pending (admis, ajourne, absent acceptes)"}
+                      detail: {type: string, maxLength: 160}
+      responses:
+        '200': {description: "Reponse {data: {recorded, rejected[{line, reason}]}}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Session introuvable"}
+        '409': {description: "Session non close"}
+        '422': {description: "Corps invalide"}
+  /api/v1/primary/exam-sessions/{id}/results/import:
+    post:
+      summary: "Importer les resultats en CSV (numero;resultat;mention, en-tete facultatif)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [csv]
+              properties:
+                csv: {type: string, maxLength: 200000}
+      responses:
+        '200': {description: "Reponse {data: {recorded, rejected[]}}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Session introuvable"}
+        '409': {description: "Session non close"}
+        '422': {description: "Corps invalide"}
+  /api/v1/primary/exam-sessions/{id}/results/publish:
+    post:
+      summary: "Publier les resultats aux familles (portail, SMS NOT-PRI-09)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Reponse {data: {notified, published_at}}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Session introuvable"}
+        '409': {description: "Aucun resultat saisi"}
+  /api/v1/primary/exam-sessions/{id}/invoices:
+    post:
+      summary: "Facturer les frais d'examen (code du catalogue) a chaque candidat, une seule fois"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Reponse {data: {invoiced, already}}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Session introuvable"}
+        '422': {description: "Aucun frais parametre"}
+  /api/v1/primary/exam-sessions/{id}/export:
+    get:
+      summary: "Liste des candidats inscrits en CSV ou XLSX (numero, nom, sexe, naissance, classe, sous-centre, champs de la fiche, resultat)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+        - {name: format, in: query, required: false, schema: {type: string, enum: [csv, xlsx]}}
+      responses:
+        '200': {description: "Fichier"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Session introuvable"}
+        '422': {description: "Format inconnu"}
+  /api/v1/primary/exam-candidates/{id}:
+    patch:
+      summary: "Numero, sous-centre, champs de la fiche d'inscription (champs parametres)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                candidate_number: {type: [string, 'null'], maxLength: 40}
+                sub_centre_label: {type: [string, 'null'], maxLength: 160}
+                fields: {type: object}
+      responses:
+        '200': {description: "Candidat"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Candidat introuvable"}
+        '409': {description: "Numero deja attribue"}
+        '422': {description: "Champ inconnu de la fiche"}
+  /api/v1/primary/exam-candidates/{id}/withdraw:
+    post:
+      summary: "Retirer un candidat (la ligne est conservee)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [reason]
+              properties:
+                reason: {type: string, maxLength: 255}
+      responses:
+        '200': {description: "Candidat retire"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Candidat introuvable"}
+        '409': {description: "Deja retire"}
+        '422': {description: "Motif manquant"}
+  /api/v1/primary/exam-candidates/{id}/sheet:
+    get:
+      summary: "Fiche d'inscription imprimable (identite, classe, centre, sous-centre, champs parametres, champs obligatoires manquants)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Fiche"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Candidat introuvable"}
+  /api/v1/primary/family/children/{id}/exams:
+    get:
+      summary: "Portail parent : examens de l'enfant, resultat visible apres publication seulement"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Reponse {data: {items[{exam, exam_code, written_on, sub_centre, candidate_number, outcome, outcome_detail}]}}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Enfant introuvable"}

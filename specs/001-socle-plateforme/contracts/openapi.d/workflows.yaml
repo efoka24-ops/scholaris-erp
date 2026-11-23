@@ -1,0 +1,581 @@
+# Contrat OpenAPI 3.1 des circuits de validation configurables (W-001), fusionné avec openapi.yaml par le test de contrat.
+# Chaque application déclare ses circuits (étapes, fonctions autorisées, étapes facultatives, confirmation récente, verrous) ;
+# l'administrateur de l'établissement (permission workflows.manage) ou le super administrateur de la plateforme (depuis la fiche du
+# client, ou pour tous les clients) les ajuste dans ces limites. Sans réglage : comportement historique. Toute modification exige une
+# confirmation récente (403) et un motif ; tout verrou levé est refusé (422, explication en français par champ « steps.<étape>.<champ> »).
+# Ordre d'application : valeurs de l'application < plateforme < client < établissement ; un niveau supérieur peut IMPOSER une étape
+# (enforced) : aucun niveau inférieur ne la modifie.
+# Corps de PUT : { steps: { <étape>: { actor?, enabled?, recent_confirmation?, enforced? } }, reason }.
+# Circuits déclarés (application/circuit) : higher/grades_lifecycle, higher/grades_correction, higher/billing_scholarship,
+# higher/admissions_decision, organisation/year_closure, et billing/billing_reversal (W-002, socle de facturation : le caissier
+# demande l'annulation d'un paiement, un comptable ou la direction (acteurs `comptable` / `direction`) la valide, jamais le demandeur ;
+# confirmation récente facultative ; motif, reçu conservé et audit verrouillés). Défaut = comportement historique.
+paths:
+  /api/v1/workflows:
+    get:
+      summary: "Circuits de l'établissement actif, toutes applications : valeurs par défaut, valeurs effectives, verrous, réglage du niveau (pagination par curseur)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: application
+          in: query
+          schema: {type: string}
+        - name: per_page
+          in: query
+          schema: {type: integer, minimum: 1, maximum: 200}
+        - name: cursor
+          in: query
+          schema: {type: string}
+      responses:
+        '200':
+          description: "data = circuits {id, application, key, label_fr, label_en, level, customised, steps[], invariants[], override}"
+          content:
+            application/json:
+              schema:
+                type: object
+        '403':
+          description: "Permission workflows.manage manquante"
+        '404':
+          description: "Client ou établissement introuvable"
+        '422':
+          description: "Paramètre de liste invalide"
+  /api/v1/workflows/effective:
+    get:
+      summary: "Circuits EFFECTIFS de l'établissement actif, forme minimale (qui valide à chaque étape) pour adapter les boutons des écrans : tout le personnel, sans la permission workflows.manage (W-002)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "data = [{id (application:circuit), application, key, customised, steps[{key, enabled, recent_confirmation, source (default|platform|client|establishment), actor{key, permission, role}}]}] ; aucun motif, auteur ni historique ; pagination par curseur"
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          description: "En-tête X-Establishment-Id manquant"
+        '403':
+          description: "Compte de plateforme (réservé au personnel d'un établissement)"
+  /api/v1/workflows/{application}:
+    get:
+      summary: "Circuits de l'établissement actif d'une application (ex. higher, organisation, billing)"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: application
+          in: path
+          required: true
+          schema: {type: string}
+        - name: per_page
+          in: query
+          schema: {type: integer, minimum: 1, maximum: 200}
+        - name: cursor
+          in: query
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Circuits de l'application, même forme que la liste"
+          content:
+            application/json:
+              schema:
+                type: object
+        '403':
+          description: "Permission workflows.manage manquante"
+        '404':
+          description: "Client ou établissement introuvable"
+        '422':
+          description: "Clé d'application ou paramètre de liste invalide"
+  /api/v1/workflows/{application}/{circuit}:
+    get:
+      summary: "Un circuit de l'établissement actif : étapes, défaut / valeur active / source de chaque étape, fonctions possibles, ce qui est modifiable, verrous expliqués"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: application
+          in: path
+          required: true
+          schema: {type: string}
+        - name: circuit
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Circuit"
+          content:
+            application/json:
+              schema:
+                type: object
+        '403':
+          description: "Permission workflows.manage manquante"
+        '404':
+          description: "Circuit inconnu, ou sans objet pour ce type d'établissement, client introuvable"
+    put:
+      summary: "Ajuste un circuit de l'établissement actif dans les limites de l'application (confirmation récente ; motif obligatoire ; versionné et journalisé). Réglage identique : aucune nouvelle version"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: application
+          in: path
+          required: true
+          schema: {type: string}
+        - name: circuit
+          in: path
+          required: true
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [steps, reason]
+              properties:
+                steps:
+                  type: object
+                  additionalProperties:
+                    type: object
+                    additionalProperties: false
+                    properties:
+                      actor: {type: string, description: "Clé d'une fonction autorisée pour l'étape"}
+                      enabled: {type: boolean, description: "false seulement pour une étape facultative"}
+                      recent_confirmation: {type: boolean, description: "false refusé si la confirmation est obligatoire ou imposée"}
+                      enforced: {type: boolean, description: "Plateforme ou client seulement : impose l'étape aux niveaux inférieurs"}
+                reason: {type: string, minLength: 5, maxLength: 500}
+      responses:
+        '200':
+          description: "Circuit après réglage"
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          description: "Corps illisible"
+        '403':
+          description: "Permission workflows.manage manquante, ou confirmation récente requise (second-factor-required)"
+        '404':
+          description: "Circuit ou client introuvable"
+        '422':
+          description: "Motif absent, champ inconnu, ou verrou levé : errors par « steps.<étape>.<champ> » avec l'explication en français"
+    delete:
+      summary: "Revient au défaut à ce niveau (motif en corps JSON ou ?reason=, confirmation récente). Idempotent. Les niveaux supérieurs ne sont jamais touchés"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: application
+          in: path
+          required: true
+          schema: {type: string}
+        - name: circuit
+          in: path
+          required: true
+          schema: {type: string}
+        - name: reason
+          in: query
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Circuit après retour au défaut"
+          content:
+            application/json:
+              schema:
+                type: object
+        '403':
+          description: "Permission workflows.manage manquante, ou confirmation récente requise"
+        '404':
+          description: "Circuit ou client introuvable"
+        '422':
+          description: "Motif absent ou invalide"
+  /api/v1/workflows/{application}/{circuit}/history:
+    get:
+      summary: "Historique des 50 dernières modifications (version, nature set ou reset, avant, après, motif, auteur, date), la plus récente d'abord"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: application
+          in: path
+          required: true
+          schema: {type: string}
+        - name: circuit
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Modifications"
+          content:
+            application/json:
+              schema:
+                type: object
+        '403':
+          description: "Permission workflows.manage manquante"
+        '404':
+          description: "Circuit ou client introuvable"
+  /api/v1/platform/clients/{tenant}/workflows:
+    get:
+      summary: "Circuits d'un client (fiche client de la plateforme), toutes applications : valeurs par défaut, valeurs effectives, verrous, réglage du niveau (pagination par curseur)"
+      security:
+        - bearer: []
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema: {type: string}
+        - name: application
+          in: query
+          schema: {type: string}
+        - name: per_page
+          in: query
+          schema: {type: integer, minimum: 1, maximum: 200}
+        - name: cursor
+          in: query
+          schema: {type: string}
+      responses:
+        '200':
+          description: "data = circuits {id, application, key, label_fr, label_en, level, customised, steps[], invariants[], override}"
+          content:
+            application/json:
+              schema:
+                type: object
+        '403':
+          description: "Réservé à l'administrateur de plateforme"
+        '404':
+          description: "Client ou établissement introuvable"
+        '422':
+          description: "Paramètre de liste invalide"
+  /api/v1/platform/clients/{tenant}/workflows/{application}:
+    get:
+      summary: "Circuits d'un client (fiche client de la plateforme) d'une application (ex. higher, organisation, billing)"
+      security:
+        - bearer: []
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema: {type: string}
+        - name: application
+          in: path
+          required: true
+          schema: {type: string}
+        - name: per_page
+          in: query
+          schema: {type: integer, minimum: 1, maximum: 200}
+        - name: cursor
+          in: query
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Circuits de l'application, même forme que la liste"
+          content:
+            application/json:
+              schema:
+                type: object
+        '403':
+          description: "Réservé à l'administrateur de plateforme"
+        '404':
+          description: "Client ou établissement introuvable"
+        '422':
+          description: "Clé d'application ou paramètre de liste invalide"
+  /api/v1/platform/clients/{tenant}/workflows/{application}/{circuit}:
+    get:
+      summary: "Un circuit d'un client (fiche client de la plateforme) : étapes, défaut / valeur active / source de chaque étape, fonctions possibles, ce qui est modifiable, verrous expliqués"
+      security:
+        - bearer: []
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema: {type: string}
+        - name: application
+          in: path
+          required: true
+          schema: {type: string}
+        - name: circuit
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Circuit"
+          content:
+            application/json:
+              schema:
+                type: object
+        '403':
+          description: "Réservé à l'administrateur de plateforme"
+        '404':
+          description: "Circuit inconnu, ou sans objet pour ce type d'établissement, client introuvable"
+    put:
+      summary: "Ajuste un circuit d'un client (fiche client de la plateforme) dans les limites de l'application (confirmation récente ; motif obligatoire ; versionné et journalisé). Réglage identique : aucune nouvelle version"
+      security:
+        - bearer: []
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema: {type: string}
+        - name: application
+          in: path
+          required: true
+          schema: {type: string}
+        - name: circuit
+          in: path
+          required: true
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [steps, reason]
+              properties:
+                steps:
+                  type: object
+                  additionalProperties:
+                    type: object
+                    additionalProperties: false
+                    properties:
+                      actor: {type: string, description: "Clé d'une fonction autorisée pour l'étape"}
+                      enabled: {type: boolean, description: "false seulement pour une étape facultative"}
+                      recent_confirmation: {type: boolean, description: "false refusé si la confirmation est obligatoire ou imposée"}
+                      enforced: {type: boolean, description: "Plateforme ou client seulement : impose l'étape aux niveaux inférieurs"}
+                reason: {type: string, minLength: 5, maxLength: 500}
+      responses:
+        '200':
+          description: "Circuit après réglage"
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          description: "Corps illisible"
+        '403':
+          description: "Réservé à l'administrateur de plateforme, ou confirmation récente requise (second-factor-required)"
+        '404':
+          description: "Circuit ou client introuvable"
+        '422':
+          description: "Motif absent, champ inconnu, ou verrou levé : errors par « steps.<étape>.<champ> » avec l'explication en français"
+    delete:
+      summary: "Revient au défaut à ce niveau (motif en corps JSON ou ?reason=, confirmation récente). Idempotent. Les niveaux supérieurs ne sont jamais touchés"
+      security:
+        - bearer: []
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema: {type: string}
+        - name: application
+          in: path
+          required: true
+          schema: {type: string}
+        - name: circuit
+          in: path
+          required: true
+          schema: {type: string}
+        - name: reason
+          in: query
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Circuit après retour au défaut"
+          content:
+            application/json:
+              schema:
+                type: object
+        '403':
+          description: "Réservé à l'administrateur de plateforme, ou confirmation récente requise"
+        '404':
+          description: "Circuit ou client introuvable"
+        '422':
+          description: "Motif absent ou invalide"
+  /api/v1/platform/clients/{tenant}/workflows/{application}/{circuit}/history:
+    get:
+      summary: "Historique des 50 dernières modifications (version, nature set ou reset, avant, après, motif, auteur, date), la plus récente d'abord"
+      security:
+        - bearer: []
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema: {type: string}
+        - name: application
+          in: path
+          required: true
+          schema: {type: string}
+        - name: circuit
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Modifications"
+          content:
+            application/json:
+              schema:
+                type: object
+        '403':
+          description: "Réservé à l'administrateur de plateforme"
+        '404':
+          description: "Circuit ou client introuvable"
+  /api/v1/platform/workflows:
+    get:
+      summary: "Circuits communs à tous les clients (plancher de la plateforme), toutes applications : valeurs par défaut, valeurs effectives, verrous, réglage du niveau (pagination par curseur)"
+      security:
+        - bearer: []
+      parameters:
+        - name: application
+          in: query
+          schema: {type: string}
+        - name: per_page
+          in: query
+          schema: {type: integer, minimum: 1, maximum: 200}
+        - name: cursor
+          in: query
+          schema: {type: string}
+      responses:
+        '200':
+          description: "data = circuits {id, application, key, label_fr, label_en, level, customised, steps[], invariants[], override}"
+          content:
+            application/json:
+              schema:
+                type: object
+        '403':
+          description: "Réservé à l'administrateur de plateforme"
+        '404':
+          description: "Client ou établissement introuvable"
+        '422':
+          description: "Paramètre de liste invalide"
+  /api/v1/platform/workflows/{application}/{circuit}:
+    get:
+      summary: "Un circuit communs à tous les clients (plancher de la plateforme) : étapes, défaut / valeur active / source de chaque étape, fonctions possibles, ce qui est modifiable, verrous expliqués"
+      security:
+        - bearer: []
+      parameters:
+        - name: application
+          in: path
+          required: true
+          schema: {type: string}
+        - name: circuit
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Circuit"
+          content:
+            application/json:
+              schema:
+                type: object
+        '403':
+          description: "Réservé à l'administrateur de plateforme"
+        '404':
+          description: "Circuit inconnu, ou sans objet pour ce type d'établissement, client introuvable"
+    put:
+      summary: "Ajuste un circuit communs à tous les clients (plancher de la plateforme) dans les limites de l'application (confirmation récente ; motif obligatoire ; versionné et journalisé). Réglage identique : aucune nouvelle version"
+      security:
+        - bearer: []
+      parameters:
+        - name: application
+          in: path
+          required: true
+          schema: {type: string}
+        - name: circuit
+          in: path
+          required: true
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [steps, reason]
+              properties:
+                steps:
+                  type: object
+                  additionalProperties:
+                    type: object
+                    additionalProperties: false
+                    properties:
+                      actor: {type: string, description: "Clé d'une fonction autorisée pour l'étape"}
+                      enabled: {type: boolean, description: "false seulement pour une étape facultative"}
+                      recent_confirmation: {type: boolean, description: "false refusé si la confirmation est obligatoire ou imposée"}
+                      enforced: {type: boolean, description: "Plateforme ou client seulement : impose l'étape aux niveaux inférieurs"}
+                reason: {type: string, minLength: 5, maxLength: 500}
+      responses:
+        '200':
+          description: "Circuit après réglage"
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          description: "Corps illisible"
+        '403':
+          description: "Réservé à l'administrateur de plateforme, ou confirmation récente requise (second-factor-required)"
+        '404':
+          description: "Circuit ou client introuvable"
+        '422':
+          description: "Motif absent, champ inconnu, ou verrou levé : errors par « steps.<étape>.<champ> » avec l'explication en français"
+    delete:
+      summary: "Revient au défaut à ce niveau (motif en corps JSON ou ?reason=, confirmation récente). Idempotent. Les niveaux supérieurs ne sont jamais touchés"
+      security:
+        - bearer: []
+      parameters:
+        - name: application
+          in: path
+          required: true
+          schema: {type: string}
+        - name: circuit
+          in: path
+          required: true
+          schema: {type: string}
+        - name: reason
+          in: query
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Circuit après retour au défaut"
+          content:
+            application/json:
+              schema:
+                type: object
+        '403':
+          description: "Réservé à l'administrateur de plateforme, ou confirmation récente requise"
+        '404':
+          description: "Circuit ou client introuvable"
+        '422':
+          description: "Motif absent ou invalide"
+  /api/v1/platform/workflows/{application}/{circuit}/history:
+    get:
+      summary: "Historique des 50 dernières modifications (version, nature set ou reset, avant, après, motif, auteur, date), la plus récente d'abord"
+      security:
+        - bearer: []
+      parameters:
+        - name: application
+          in: path
+          required: true
+          schema: {type: string}
+        - name: circuit
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: "Modifications"
+          content:
+            application/json:
+              schema:
+                type: object
+        '403':
+          description: "Réservé à l'administrateur de plateforme"
+        '404':
+          description: "Circuit ou client introuvable"

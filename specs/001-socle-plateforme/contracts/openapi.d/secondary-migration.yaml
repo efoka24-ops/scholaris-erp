@@ -1,0 +1,89 @@
+# Contrat OpenAPI 3.1 de la reprise de données d'un ancien logiciel, application Secondaire (T977, lot E4-C) : classes de l'année,
+# élèves et inscriptions (fiche, garant, matricule), soldes de frais d'ouverture. Droits par jeu, sur tout l'établissement :
+# classes = secondary.settings.write, secondary.settings.manage ou secondary.enrol.manage ; élèves = secondary.enrol.manage ;
+# soldes = secondary.billing.manage.
+# SIMULATION OBLIGATOIRE D'ABORD : POST /batches n'écrit rien hors du lot ; l'application n'écrit RIEN tant qu'une ligne est en erreur.
+# Idempotent : une ligne déjà reprise (même clé) devient un doublon ignoré. Cloisonné par client et par établissement.
+# Erreurs RFC 9457 ; WriteGate (423 suspendue) ; garde de module (404 application fermée).
+paths:
+  /api/v1/secondary/migration/kinds:
+    get:
+      summary: "Jeux de la reprise (classes, students, balances) : libellé, colonnes, colonnes obligatoires et droit de l'utilisateur (allowed)"
+      responses:
+        '200': {description: "Succès"}
+        '403': {description: "Aucun droit de reprise"}
+        '404': {description: "Application fermée"}
+  /api/v1/secondary/migration/templates/{kind}:
+    get:
+      summary: "Modèle CSV téléchargeable (UTF-8, séparateur ;) : en-têtes et lignes d'EXEMPLE fictives (refusées si elles restent dans le fichier)"
+      parameters:
+        - {name: kind, in: path, required: true, schema: {type: string, enum: [classes, students, balances]}}
+      responses:
+        '200': {description: "Fichier CSV"}
+        '403': {description: "Aucun droit de reprise"}
+        '404': {description: "Jeu inconnu ou application fermée"}
+  /api/v1/secondary/migration/batches:
+    get:
+      summary: "Lots de reprise de l'établissement, du plus récent au plus ancien ; filtre ?kind="
+      parameters:
+        - {name: kind, in: query, required: false, schema: {type: string, enum: [classes, students, balances]}}
+      responses:
+        '200': {description: "Succès"}
+        '403': {description: "Aucun droit de reprise"}
+        '404': {description: "Application fermée"}
+    post:
+      summary: "SIMULATION par fichier joint : rapport ligne par ligne (valid, duplicate, error et messages) ; rien n'est écrit hors du lot"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [kind, academic_year_id, file]
+              properties:
+                kind: {type: string, enum: [classes, students, balances]}
+                academic_year_id: {type: string, maxLength: 40}
+                entry_date: {type: string, format: date, description: "Date d'entrée des inscriptions (obligatoire pour students)"}
+                format: {type: string, enum: [csv, xlsx], description: "Déduit de l'extension du fichier s'il est absent"}
+                file: {type: string, format: binary, description: "Fichier CSV (UTF-8, séparateur ;) ou XLSX (première feuille), 8 Mo et 1 000 lignes au plus"}
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [kind, academic_year_id]
+              properties:
+                kind: {type: string, enum: [classes, students, balances]}
+                academic_year_id: {type: string, maxLength: 40}
+                entry_date: {type: string, format: date}
+                format: {type: string, enum: [csv, xlsx], default: csv}
+                content: {type: string, description: "Contenu CSV UTF-8 (séparateur ;), pour les scripts"}
+                content_base64: {type: string, description: "Fichier encodé en base64 (CSV ou XLSX), pour les scripts"}
+                file_name: {type: string, maxLength: 160}
+      responses:
+        '201': {description: "Lot simulé (status simulated) : summary (total, valid, duplicate, error, applied), unknown_columns, lines"}
+        '403': {description: "Droit du jeu absent ou périmètre limité à des classes"}
+        '404': {description: "Application fermée"}
+        '409': {description: "Application non ouverte pour cet établissement (profil à confirmer)"}
+        '422': {description: "Jeu, année, date d'entrée ou fichier manquant ; fichier illisible, colonne obligatoire absente, trop de lignes"}
+        '423': {description: "Application suspendue (écriture refusée)"}
+  /api/v1/secondary/migration/batches/{id}:
+    get:
+      summary: "Rapport d'un lot avec ses lignes (line, status, label, messages, object_ref)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Succès"}
+        '403': {description: "Aucun droit de reprise"}
+        '404': {description: "Lot introuvable (ou d'un autre client ou établissement)"}
+  /api/v1/secondary/migration/batches/{id}/apply:
+    post:
+      summary: "APPLIQUE un lot simulé : fichier recontrôlé, rien n'est écrit s'il reste une ligne en erreur ; écritures par les services propriétaires ; doublons ignorés"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Lot appliqué (status applied, ou partial si une ligne d'un jeu non atomique est refusée à l'écriture)"}
+        '403': {description: "Droit du jeu absent"}
+        '404': {description: "Lot introuvable"}
+        '409': {description: "Lot déjà appliqué, ou application non ouverte"}
+        '422': {description: "Reprise refusée : au moins une ligne en erreur, rien n'a été écrit (type import-rejected)"}
+        '423': {description: "Application suspendue (écriture refusée)"}

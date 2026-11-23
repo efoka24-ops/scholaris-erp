@@ -1,0 +1,42 @@
+# Contrat OpenAPI 3.1 des portails étudiant et garant de l'application Supérieur (IPES), lot I1. Périmètre « soi » : la personne
+# liée au compte connecté (permission self.read). Le garant voit toujours la situation financière de ses étudiants ; absences et
+# notes seulement avec le consentement de l'étudiant (RG-INS-7). Sections ajoutées aux portails du socle (/portal/learner,
+# /portal/family) : higher_finance, higher_documents (portals.sections.higher).
+paths:
+  /api/v1/higher/portal/student:
+    get:
+      summary: "Portail étudiant : candidature, inscriptions (matricule), comptes et échéancier, reçus, documents, emploi du temps quand disponible"
+      responses:
+        '200': {description: "Portail"}
+        '403': {description: "self.read absent ou compte non rattaché à une personne"}
+        '404': {description: "Application fermée"}
+  /api/v1/higher/portal/guarantor:
+    get:
+      summary: "Portail garant : ses étudiants, situation financière toujours, absences et notes avec consentement"
+      responses:
+        '404': {description: "Application fermée, ressource introuvable ou hors périmètre"}
+        '200': {description: "Portail"}
+        '403': {description: "self.read absent ou compte non rattaché"}
+  /api/v1/higher/portal/student/payments:
+    post:
+      summary: "Payer (en-tête Idempotency-Key obligatoire) par mobile money un compte de l'étudiant connecté (ou d'un étudiant dont il est garant : student_id)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [account_id, amount_xaf, channel, payer_phone]
+              properties:
+                student_id: {type: [string, 'null']}
+                account_id: {type: string}
+                amount_xaf: {type: integer, minimum: 1}
+                channel: {type: string, enum: [orange_money, mtn_momo]}
+                payer_phone: {type: string}
+      responses:
+        '403': {description: "Permission absente, hors périmètre ou application fermée (écriture)"}
+        '201': {description: "Paiement en attente de confirmation de l'opérateur"}
+        '400': {description: "Idempotency-Key manquant"}
+        '404': {description: "Compte ou étudiant introuvable"}
+        '422': {description: "Données invalides"}
+        '423': {description: "Abonnement suspendu"}

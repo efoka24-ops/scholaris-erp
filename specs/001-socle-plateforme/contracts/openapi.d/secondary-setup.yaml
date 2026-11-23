@@ -1,0 +1,359 @@
+# Contrat OpenAPI 3.1 du parametrage de l'application Enseignement secondaire (spec 005, lot E1 : T815, T820 a T822, T838).
+# Ouverture de l'application (copie du profil de type ajuste), changements de profil journalises (motif obligatoire, rien n'est
+# supprime : module coupe en lecture seule, cycle portant des classes non retirable 409), niveaux (exemples a confirmer), series et
+# specialites ouvertes (catalogue MINESEC), classes (RG-ORG-1 cycle du profil, RG-ORG-2 serie obligatoire au 2nd cycle ou en
+# technique), matieres, coefficients et volumes PARAMETRES PAR L'ETABLISSEMENT (versions avec auteur, date, motif ; ligne verrouillee
+# 422 coefficient-locked ; annee gelee 409 jamais recalculee ; copie vers une autre annee), salles, reglement interieur versionne.
+# Routes /secondary/** : authentification, en-tete X-Establishment-Id ; GET -> 404 si l'application est fermee ; ecritures -> 423
+# si l'abonnement est suspendu, 403 si l'application n'est pas ouverte (WriteGate). Listes paginees par curseur. Erreurs RFC 9457.
+paths:
+  /api/v1/secondary/setup/profile/open:
+    post:
+      summary: "Ouvrir l'application pour l'etablissement (T815) : ownership, cycles, teaching_kinds, sections, modules, head_title, official_code, reason ; propriete, cycles, enseignements et titre exiges quand le profil de type ne les fixe pas"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '201': {description: "Succes {data}"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, affectation hors etablissement entier ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert ou deja ouvert, doublon, annee gelee, valeur portant des donnees"}
+        '422': {description: "Validation (errors par champ)"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+  /api/v1/secondary/setup/profile/changes:
+    get:
+      summary: "Journal complet des changements de profil (opened, subtype, ownership, cycles, teaching_kinds, sections, head_title, modules, official_code), filtre filter[change_kind]"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: per_page, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 200}}
+        - {name: cursor, in: query, required: false, schema: {type: string}}
+        - {name: sort, in: query, required: false, schema: {type: string}}
+      responses:
+        '200': {description: "Succes {data}"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, affectation hors etablissement entier ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert ou deja ouvert, doublon, annee gelee, valeur portant des donnees"}
+        '422': {description: "Validation (errors par champ)"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+    post:
+      summary: "Changer le profil apres l'ouverture (T838) : {kind, value, reason} ; motif obligatoire ; module coupe en lecture seule ; cycle, enseignement ou section portant des classes : 409"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '201': {description: "Succes {data}"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, affectation hors etablissement entier ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert ou deja ouvert, doublon, annee gelee, valeur portant des donnees"}
+        '422': {description: "Validation (errors par champ)"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+  /api/v1/secondary/setup/levels:
+    get:
+      summary: "Niveaux de l'etablissement (origine example a confirmer ou custom)"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: per_page, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 200}}
+        - {name: cursor, in: query, required: false, schema: {type: string}}
+        - {name: sort, in: query, required: false, schema: {type: string}}
+      responses:
+        '200': {description: "Succes {data}"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, affectation hors etablissement entier ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert ou deja ouvert, doublon, annee gelee, valeur portant des donnees"}
+        '422': {description: "Validation (errors par champ)"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+    post:
+      summary: "Creer un niveau {code, label, cycle_code, section_code, teaching_kind, sort_order?, exam_code?} (cycle, enseignement et section du profil, sinon 422)"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '201': {description: "Succes {data}"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, affectation hors etablissement entier ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert ou deja ouvert, doublon, annee gelee, valeur portant des donnees"}
+        '422': {description: "Validation (errors par champ)"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+  /api/v1/secondary/setup/levels/examples:
+    post:
+      summary: "Charger les niveaux d'exemple (a confirmer) correspondant au profil"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '201': {description: "Succes {data}"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, affectation hors etablissement entier ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert ou deja ouvert, doublon, annee gelee, valeur portant des donnees"}
+        '422': {description: "Validation (errors par champ)"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+  /api/v1/secondary/setup/levels/{id}:
+    patch:
+      summary: "Modifier un niveau {label?, sort_order?, exam_code?, active?}"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Succes {data}"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, affectation hors etablissement entier ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert ou deja ouvert, doublon, annee gelee, valeur portant des donnees"}
+        '422': {description: "Validation (errors par champ)"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+  /api/v1/secondary/setup/streams:
+    get:
+      summary: "Series et specialites ouvertes par l'etablissement"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: per_page, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 200}}
+        - {name: cursor, in: query, required: false, schema: {type: string}}
+        - {name: sort, in: query, required: false, schema: {type: string}}
+      responses:
+        '200': {description: "Succes {data}"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, affectation hors etablissement entier ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert ou deja ouvert, doublon, annee gelee, valeur portant des donnees"}
+        '422': {description: "Validation (errors par champ)"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+    post:
+      summary: "Ouvrir une serie ou specialite du catalogue {stream_ref_id, authorization_id?} (cycle du profil)"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '201': {description: "Succes {data}"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, affectation hors etablissement entier ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert ou deja ouvert, doublon, annee gelee, valeur portant des donnees"}
+        '422': {description: "Validation (errors par champ)"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+  /api/v1/secondary/setup/streams/{id}:
+    patch:
+      summary: "Activer, desactiver une serie ou la rattacher a une autorisation {active?, authorization_id?}"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Succes {data}"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, affectation hors etablissement entier ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert ou deja ouvert, doublon, annee gelee, valeur portant des donnees"}
+        '422': {description: "Validation (errors par champ)"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+  /api/v1/secondary/setup/classes:
+    get:
+      summary: "Classes (profils de classe), filtre academic_year_id"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: per_page, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 200}}
+        - {name: cursor, in: query, required: false, schema: {type: string}}
+        - {name: sort, in: query, required: false, schema: {type: string}}
+        - {name: academic_year_id, in: query, required: false, schema: {type: string}}
+      responses:
+        '200': {description: "Succes {data}"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, affectation hors etablissement entier ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert ou deja ouvert, doublon, annee gelee, valeur portant des donnees"}
+        '422': {description: "Validation (errors par champ)"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+    post:
+      summary: "Creer une classe {label, level_id, academic_year_id, stream_id?, capacity?, exam_code?, head_teacher_person_id?} (RG-ORG-1, RG-ORG-2)"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '201': {description: "Succes {data}"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, affectation hors etablissement entier ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert ou deja ouvert, doublon, annee gelee, valeur portant des donnees"}
+        '422': {description: "Validation (errors par champ)"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+  /api/v1/secondary/setup/classes/{id}:
+    patch:
+      summary: "Modifier une classe {label?, capacity?, exam_code?, head_teacher_person_id?}"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Succes {data}"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, affectation hors etablissement entier ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert ou deja ouvert, doublon, annee gelee, valeur portant des donnees"}
+        '422': {description: "Validation (errors par champ)"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+  /api/v1/secondary/setup/subjects:
+    get:
+      summary: "Matieres de l'etablissement (projetees dans le referentiel d'evaluation du socle)"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: per_page, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 200}}
+        - {name: cursor, in: query, required: false, schema: {type: string}}
+        - {name: sort, in: query, required: false, schema: {type: string}}
+      responses:
+        '200': {description: "Succes {data}"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, affectation hors etablissement entier ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert ou deja ouvert, doublon, annee gelee, valeur portant des donnees"}
+        '422': {description: "Validation (errors par champ)"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+    post:
+      summary: "Creer une matiere {code, label, label_en?}"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '201': {description: "Succes {data}"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, affectation hors etablissement entier ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert ou deja ouvert, doublon, annee gelee, valeur portant des donnees"}
+        '422': {description: "Validation (errors par champ)"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+  /api/v1/secondary/setup/subjects/{id}:
+    patch:
+      summary: "Modifier ou desactiver une matiere {label?, label_en?, active?}"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Succes {data}"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, affectation hors etablissement entier ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert ou deja ouvert, doublon, annee gelee, valeur portant des donnees"}
+        '422': {description: "Validation (errors par champ)"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+  /api/v1/secondary/setup/coefficients:
+    get:
+      summary: "Coefficients et volumes en vigueur d'une annee (history=1 : toutes les versions), filtres level_code, stream_id"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: per_page, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 200}}
+        - {name: cursor, in: query, required: false, schema: {type: string}}
+        - {name: sort, in: query, required: false, schema: {type: string}}
+        - {name: academic_year_id, in: query, required: true, schema: {type: string}}
+        - {name: history, in: query, required: false, schema: {type: string, enum: ['0', '1']}}
+      responses:
+        '200': {description: "Succes {data}"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, affectation hors etablissement entier ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert ou deja ouvert, doublon, annee gelee, valeur portant des donnees"}
+        '422': {description: "Validation (errors par champ)"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+    post:
+      summary: "Poser une nouvelle version {academic_year_id, level_code, stream_id?, subject_ref, coefficient, weekly_hours, subject_role, origin?, source_ref?, valid_from, reason} ; ligne verrouillee : 422 coefficient-locked ; annee gelee : 409"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '201': {description: "Succes {data}"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, affectation hors etablissement entier ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert ou deja ouvert, doublon, annee gelee, valeur portant des donnees"}
+        '422': {description: "Validation (errors par champ)"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+  /api/v1/secondary/setup/coefficients/freezes:
+    get:
+      summary: "Annees dont les coefficients sont geles"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: per_page, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 200}}
+        - {name: cursor, in: query, required: false, schema: {type: string}}
+        - {name: sort, in: query, required: false, schema: {type: string}}
+      responses:
+        '200': {description: "Succes {data}"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, affectation hors etablissement entier ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert ou deja ouvert, doublon, annee gelee, valeur portant des donnees"}
+        '422': {description: "Validation (errors par champ)"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+  /api/v1/secondary/setup/coefficients/freeze:
+    post:
+      summary: "Geler les coefficients d'une annee {academic_year_id, reason} (jamais recalcules ensuite)"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '201': {description: "Succes {data}"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, affectation hors etablissement entier ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert ou deja ouvert, doublon, annee gelee, valeur portant des donnees"}
+        '422': {description: "Validation (errors par champ)"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+  /api/v1/secondary/setup/coefficients/copy:
+    post:
+      summary: "Copier les coefficients en vigueur vers une autre annee {from_academic_year_id, to_academic_year_id, valid_from, reason}"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '201': {description: "Succes {data}"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, affectation hors etablissement entier ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert ou deja ouvert, doublon, annee gelee, valeur portant des donnees"}
+        '422': {description: "Validation (errors par champ)"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+  /api/v1/secondary/setup/rooms:
+    get:
+      summary: "Profils de salles (salle, laboratoire, atelier)"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: per_page, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 200}}
+        - {name: cursor, in: query, required: false, schema: {type: string}}
+        - {name: sort, in: query, required: false, schema: {type: string}}
+      responses:
+        '200': {description: "Succes {data}"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, affectation hors etablissement entier ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert ou deja ouvert, doublon, annee gelee, valeur portant des donnees"}
+        '422': {description: "Validation (errors par champ)"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+    post:
+      summary: "Enregistrer le profil d'une salle du socle {room_id, label, room_kind, capacity?, specialty_stream_id?, equipment?, safety_notes?} (atelier : module workshops actif)"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '201': {description: "Succes {data}"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, affectation hors etablissement entier ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert ou deja ouvert, doublon, annee gelee, valeur portant des donnees"}
+        '422': {description: "Validation (errors par champ)"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+  /api/v1/secondary/setup/rules:
+    get:
+      summary: "Reglement interieur : valeur en vigueur de chaque regle de la liste fermee (etablissement, parametre ou vide a confirmer)"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Succes {data}"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, affectation hors etablissement entier ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert ou deja ouvert, doublon, annee gelee, valeur portant des donnees"}
+        '422': {description: "Validation (errors par champ)"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}
+  /api/v1/secondary/setup/rules/{key}:
+    put:
+      summary: "Nouvelle version d'une regle {value, valid_from, reason} (forme controlee : liste, objet ou valeur simple)"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+        - {name: key, in: path, required: true, schema: {type: string}}
+      responses:
+        '201': {description: "Succes {data}"}
+        '400': {description: "Corps JSON illisible ou en-tete manquant"}
+        '403': {description: "Permission absente, affectation hors etablissement entier ou application non ouverte"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+        '409': {description: "Conflit : profil non ouvert ou deja ouvert, doublon, annee gelee, valeur portant des donnees"}
+        '422': {description: "Validation (errors par champ)"}
+        '423': {description: "Abonnement suspendu : ecriture refusee"}

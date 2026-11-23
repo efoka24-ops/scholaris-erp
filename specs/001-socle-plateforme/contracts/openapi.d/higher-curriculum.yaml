@@ -1,0 +1,196 @@
+# Contrat OpenAPI 3.1 des maquettes de l'application Supérieur (MAQ) : versions par filière, niveau et année ; semestres, UE
+# (fondamentale, transversale, optionnelle, stage, projet ; UE à choix), EC (crédits, coefficient, volumes CM/TD/TP/travail
+# personnel) ; BTS/HND en matières et coefficients rattachées aux épreuves nationales ; contrôle, publication (projection vers le
+# référentiel d'évaluation), nouvelle version (RG-MAQ-1), copie d'année, export CSV/XLSX.
+# Fusionné avec openapi.yaml par le test de contrat. Erreurs RFC 9457. Mêmes règles d'accès que higher-academic.yaml
+# (WriteGate, périmètre école/département/filière/niveau). Permissions : lecture higher.curriculum.read ; édition
+# higher.curriculum.manage (R04, R05, R06) ; publication et dépublication higher.curriculum.approve (R02, R03).
+paths:
+  /api/v1/higher/curricula:
+    get:
+      summary: "Maquettes du périmètre : filter[program_id|level_id|academic_year_id|status|regime|school_id]"
+      responses:
+        '200': {description: "Liste paginée"}
+        '404': {description: "Application Supérieur fermée ou jamais ouverte au client, ou ressource hors périmètre"}
+        '403': {description: "Permission absente"}
+    post:
+      summary: "Créer une maquette en brouillon (version suivante) ; semestres par défaut 2n-1 et 2n pour le niveau n"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [program_id, level_id, academic_year_id]
+              properties:
+                program_id: {type: string}
+                level_id: {type: string}
+                academic_year_id: {type: string}
+                title: {type: string}
+                approved_programme_ref: {type: [string, 'null'], description: "Référence du programme approuvé de la tutelle (RG-MAQ-3)"}
+                semester_ordinals: {type: array, items: {type: integer, minimum: 1, maximum: 12}, maxItems: 4}
+      responses:
+        '201': {description: "Maquette créée"}
+        '403': {description: "Filière hors périmètre"}
+        '409': {description: "Une maquette existe déjà (brouillon ou publiée) : créer une nouvelle version"}
+        '422': {description: "Filière ou niveau introuvable"}
+  /api/v1/higher/curricula/{id}:
+    get:
+      summary: "Maquette complète (semestres > UE > EC, volumes) avec son contrôle de cohérence"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Maquette"}
+        '404': {description: "Introuvable ou hors périmètre"}
+    patch:
+      summary: "Modifier titre et référence du programme approuvé (brouillon seulement)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Maquette modifiée"}
+        '409': {description: "Maquette publiée (type .../higher-curriculum-published) ou utilisée avec des notes (.../higher-curriculum-in-use, RG-MAQ-1)"}
+  /api/v1/higher/curricula/{id}/check:
+    get:
+      summary: "Contrôle de cohérence (EX-MAQ-06) : crédits par semestre (RG-MAQ-2), UE sans EC, crédits UE = somme EC, volumes, épreuves nationales, RG-MAQ-3"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "{data: {errors, warnings, semesters: [{ordinal, label, credits, volume_minutes}], publishable}}"}
+        '404': {description: "Application Supérieur fermée ou jamais ouverte au client, ou ressource hors périmètre"}
+  /api/v1/higher/curricula/{id}/export:
+    get:
+      summary: "Export de la maquette, une ligne par EC (CSV `;` UTF-8 BOM, ou XLSX avec format=xlsx)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+        - {name: format, in: query, required: false, schema: {type: string, enum: [csv, xlsx], default: csv}}
+      responses:
+        '200': {description: "Fichier", content: {text/csv: {}, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet: {}}}
+        '404': {description: "Application Supérieur fermée ou jamais ouverte au client, ou ressource hors périmètre"}
+        '422': {description: "Format inconnu"}
+  /api/v1/higher/curricula/{id}/publish:
+    post:
+      summary: "Publier (validation) : contrôle sans erreur exigé, version précédente « remplacée », projection UE/EC vers le référentiel d'évaluation (idempotente), instantané"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Maquette publiée"}
+        '403': {description: "Permission higher.curriculum.approve requise"}
+        '409': {description: "Pas en brouillon"}
+        '422': {description: "Maquette incohérente : errors.curriculum liste les motifs"}
+  /api/v1/higher/curricula/{id}/unpublish:
+    post:
+      summary: "Dépublier une version SANS notes (retour au brouillon ; matières désactivées ; la version remplacée redevient en vigueur)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Maquette en brouillon"}
+        '409': {description: "Notes saisies (RG-MAQ-1) ou pas publiée"}
+  /api/v1/higher/curricula/{id}/versions:
+    post:
+      summary: "Nouvelle version (RG-MAQ-1) : brouillon copié d'une version publiée ou remplacée ; les étudiants restent sur leur version"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '201': {description: "Nouvelle version en brouillon"}
+        '409': {description: "Source en brouillon, ou une nouvelle version est déjà en brouillon"}
+  /api/v1/higher/curricula/{id}/copy:
+    post:
+      summary: "Copier la maquette vers une autre année (EX-MAQ-05)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [academic_year_id]
+              properties:
+                academic_year_id: {type: string}
+      responses:
+        '201': {description: "Copie en brouillon"}
+        '409': {description: "Une maquette existe déjà pour l'année cible"}
+        '422': {description: "Même année : créer une nouvelle version"}
+  /api/v1/higher/curricula/{id}/units:
+    post:
+      summary: "Ajouter une UE (ou une matière BTS/HND) à un semestre"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [semester_ordinal, code, title, unit_type]
+              properties:
+                semester_ordinal: {type: integer}
+                code: {type: string, maxLength: 20}
+                title: {type: string}
+                unit_type: {type: string, enum: [fundamental, transversal, optional, internship, project]}
+                credits: {type: integer, minimum: 0, maximum: 60}
+                coefficient: {type: number, minimum: 0, maximum: 100}
+                choice_group: {type: string, description: "UE à choix : options d'un même groupe, à crédits égaux"}
+                choice_count: {type: [integer, 'null'], description: "Nombre d'UE à choisir dans le groupe"}
+                national_exam_paper: {type: [string, 'null'], description: "Épreuve de l'examen national (BTS, HND)"}
+                cc_weight_percent: {type: [integer, 'null'], description: "Poids du contrôle continu propre à l'UE"}
+                sort_index: {type: integer}
+      responses:
+        '201': {description: "UE ajoutée"}
+        '409': {description: "Maquette non modifiable ou code déjà utilisé"}
+        '422': {description: "Semestre absent ou données invalides"}
+  /api/v1/higher/curriculum-units/{id}:
+    patch:
+      summary: "Modifier une UE (brouillon seulement)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "UE modifiée"}
+        '409': {description: "Maquette publiée ou utilisée (RG-MAQ-1)"}
+    delete:
+      summary: "Supprimer une UE et ses EC (brouillon seulement)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "{data: {id, deleted: true}}"}
+        '409': {description: "Maquette non modifiable"}
+  /api/v1/higher/curriculum-units/{id}/elements:
+    post:
+      summary: "Ajouter un EC à une UE : crédits, coefficient, volumes en heures au quart d'heure"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code, title]
+              properties:
+                code: {type: string, maxLength: 20}
+                title: {type: string}
+                credits: {type: integer, minimum: 0, maximum: 30}
+                coefficient: {type: number}
+                cm_hours: {type: number, multipleOf: 0.25}
+                td_hours: {type: number, multipleOf: 0.25}
+                tp_hours: {type: number, multipleOf: 0.25}
+                personal_hours: {type: number, multipleOf: 0.25}
+                cc_weight_percent: {type: [integer, 'null']}
+                sort_index: {type: integer}
+      responses:
+        '201': {description: "EC ajouté"}
+        '409': {description: "Maquette non modifiable ou code déjà utilisé"}
+  /api/v1/higher/curriculum-elements/{id}:
+    patch:
+      summary: "Modifier un EC (brouillon seulement)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "EC modifié"}
+        '409': {description: "Maquette non modifiable"}
+    delete:
+      summary: "Supprimer un EC (brouillon seulement)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "{data: {id, deleted: true}}"}

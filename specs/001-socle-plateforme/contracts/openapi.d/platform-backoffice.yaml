@@ -1,0 +1,363 @@
+# Contrat OpenAPI 3.1 du back-office de la plateforme (C-112) : rôles fins, santé, indicateurs, journal d'activité,
+# suivi des messages et envoi direct, profil personnel. Fusionné avec openapi.yaml par le test de contrat.
+# Routes /platform/** : membre du client technique `platform` (platform_admin, platform_support, platform_finance,
+# platform_auditor) détenant la permission `platform.*` de l'action ; « 2FA récente » : double authentification validée
+# depuis moins de 15 minutes (403 two-factor-recent-required). Téléphones et e-mails toujours masqués dans les listes.
+paths:
+  /api/v1/platform/me:
+    get:
+      summary: "Rôle de plateforme et permissions platform.* du membre connecté (menus du front)"
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: "{ user_id, role, permissions }"
+        '403':
+          description: "Réservé aux membres de la plateforme"
+  /api/v1/platform/administrators/{user}/role:
+    patch:
+      summary: "Attribue un rôle de plateforme { role : platform_admin | platform_support | platform_finance | platform_auditor } (platform.admins.manage, 2FA récente) ; jamais son propre rôle ni celui du dernier administrateur actif (409)"
+      security:
+        - bearer: []
+      parameters:
+        - name: user
+          in: path
+          required: true
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [role]
+              properties:
+                role: {type: string, enum: [platform_admin, platform_support, platform_finance, platform_auditor]}
+      responses:
+        '200':
+          description: "Membre avec son nouveau rôle"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Membre introuvable"
+        '409':
+          description: "Son propre rôle ou dernier administrateur actif"
+        '422':
+          description: "Rôle inconnu"
+  /api/v1/platform/health:
+    get:
+      summary: "Santé de la plateforme (platform.health.read) : sondes database, cron_last_run, cron_failures, message_queue, message_failures, document_batches, sms_gateway (TeeeOTP GET /v1/me en cache 10 min : mode, quota restant), smtp, disk, backup, errors_24h (avec trace_ids) ; chacune { key, status : ok | warning | critical | unknown, value, unit, thresholds { warning, critical, direction }, detail } ; seuils réglables (réglages health_*)"
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: "{ status, as_of, probes }"
+        '403':
+          description: "Réservé aux rôles administrateur, support et audit de la plateforme"
+  /api/v1/platform/kpi:
+    get:
+      summary: "Indicateurs d'usage (platform.dashboard.read) : connectés (sessions des 15 dernières minutes ; liste nominative seulement avec platform.users.read), connexions jour / semaine / mois et série de 30 jours, actifs 7 j et 30 j, échecs de connexion et verrouillages 24 h, clients actifs / inactifs (réglage kpi_inactive_days), usage par application, 10 clients les plus et les moins actifs, conversion essai → payant, SMS et e-mails (jour, mois) avec quota TeeeOTP restant"
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: "Indicateurs"
+        '403':
+          description: "Réservé aux membres de la plateforme"
+  /api/v1/platform/activity:
+    get:
+      summary: "Journal d'activité transversal, le plus récent d'abord (platform.audit.read) ; filtres filter[tenant_id], filter[actor_id], filter[action] (préfixe), filter[from], filter[to] (AAAA-MM-JJ) ; pagination par curseur"
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: "{ data, meta.next_cursor } : client, acteur, action, objet, détails, ip"
+        '403':
+          description: "Réservé aux rôles administrateur, support et audit"
+        '422':
+          description: "Filtre invalide"
+  /api/v1/platform/activity/export:
+    get:
+      summary: "Export CSV du journal d'activité filtré (platform.audit.export), 5 000 lignes au plus"
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: "Fichier CSV téléchargé"
+          content:
+            text/csv: {}
+        '403':
+          description: "Réservé aux rôles administrateur et audit"
+  /api/v1/platform/clients/{tenant}/users/{user}:
+    get:
+      summary: "Fiche d'un utilisateur vue par la plateforme (platform.users.read) : identité, contact masqué, statut, rôles, sessions ouvertes, 20 dernières connexions, 50 dernières actions, 50 derniers messages reçus (destinataire masqué, jamais le texte)"
+      security:
+        - bearer: []
+      parameters:
+        - {name: tenant, in: path, required: true, schema: {type: string}}
+        - {name: user, in: path, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: "Fiche"
+        '403':
+          description: "Refusé"
+        '404':
+          description: "Client ou utilisateur introuvable"
+  /api/v1/platform/clients/{tenant}/users/{user}/logout:
+    post:
+      summary: "Force la déconnexion : toutes les sessions ouvertes du compte sont révoquées (platform.users.logout, 2FA récente), journalisé dans la plateforme et le client"
+      security:
+        - bearer: []
+      parameters:
+        - {name: tenant, in: path, required: true, schema: {type: string}}
+        - {name: user, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: {type: object, additionalProperties: false}
+      responses:
+        '200':
+          description: "{ revoked_sessions }"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Client ou utilisateur introuvable"
+  /api/v1/platform/messages/deliveries:
+    get:
+      summary: "Journal des SMS et e-mails des clients (platform.messages.read) : destinataire masqué, client, modèle, statut (TeeeOTP), motif d'échec, tentatives, dates ; jamais le texte. Filtres filter[channel] (sms, email), filter[tenant_id], filter[status], filter[from], filter[to] ; curseur"
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: "{ data, meta.next_cursor }"
+        '403':
+          description: "Refusé"
+        '422':
+          description: "Filtre invalide"
+  /api/v1/platform/messages/deliveries/{tenant}/{id}/retry:
+    post:
+      summary: "Relance une livraison en échec (platform.messages.retry, 2FA récente), journalisé"
+      security:
+        - bearer: []
+      parameters:
+        - {name: tenant, in: path, required: true, schema: {type: string}}
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: {type: object, additionalProperties: false}
+      responses:
+        '200':
+          description: "Remise en file"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '409':
+          description: "Livraison absente ou pas en échec"
+  /api/v1/platform/messages/direct:
+    get:
+      summary: "Journal des envois directs de la plateforme (platform.messages.read), destinataire masqué ; filtres filter[channel], filter[tenant_id], filter[status]"
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: "{ data, meta.next_cursor }"
+        '403':
+          description: "Refusé"
+    post:
+      summary: "Envoi direct par SMS, e-mail ou notification dans l'application (conversation du support) : à une personne (platform.messages.send), aux administrateurs d'un client ou de tous les clients d'une application (envoi en masse : platform.messages.broadcast et 2FA récente) ; plafond broadcast_max_recipients ; journalisé"
+      security:
+        - bearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [target_type, channel, subject, body]
+              properties:
+                target_type: {type: string, enum: [person, client_admins, app_clients]}
+                tenant_id: {type: string}
+                user_id: {type: string}
+                app_key: {type: string}
+                channel: {type: string, enum: [sms, email, app]}
+                subject: {type: string, maxLength: 120}
+                body: {type: string, maxLength: 4000}
+      responses:
+        '201':
+          description: "{ batch_id, recipients, sent, failed }"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Client ou utilisateur introuvable"
+        '409':
+          description: "Aucun destinataire ou plafond dépassé"
+        '422':
+          description: "Données invalides"
+  /api/v1/platform/messages/direct/preview:
+    post:
+      summary: "Aperçu d'un envoi direct : nombre de destinataires (joignables), échantillon masqué, segments et coût SMS estimé, plafond, rendu HTML de l'e-mail (EmailLayout) ; même corps que l'envoi"
+      security:
+        - bearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [target_type, channel, subject, body]
+              properties:
+                target_type: {type: string, enum: [person, client_admins, app_clients]}
+                tenant_id: {type: string}
+                user_id: {type: string}
+                app_key: {type: string}
+                channel: {type: string, enum: [sms, email, app]}
+                subject: {type: string, maxLength: 120}
+                body: {type: string, maxLength: 4000}
+      responses:
+        '200':
+          description: "Aperçu"
+        '403':
+          description: "Refusé"
+        '404':
+          description: "Client ou utilisateur introuvable"
+        '422':
+          description: "Données invalides"
+  /api/v1/platform/messages/direct/{id}/retry:
+    post:
+      summary: "Relance un envoi direct SMS ou e-mail en échec (platform.messages.retry, 2FA récente)"
+      security:
+        - bearer: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: {type: object, additionalProperties: false}
+      responses:
+        '200':
+          description: "Envoi relancé"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Envoi introuvable"
+        '409':
+          description: "Envoi déjà parti ou notification dans l'application"
+  /api/v1/platform/messages/internal:
+    get:
+      summary: "Messagerie interne, comptes par client (conversations, messages, messages masqués par la modération) ; jamais le contenu (platform.messages.read)"
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: "Comptes par client"
+        '403':
+          description: "Refusé"
+  /api/v1/me/profile:
+    get:
+      summary: "Mon profil (tout utilisateur connecté, plateforme comprise) : nom, téléphone, e-mail, langue, double authentification, sessions ouvertes (current = celle-ci), réglages personnels"
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: "Profil"
+        '401':
+          description: "Non connecté"
+    patch:
+      summary: "Modifie son nom, son téléphone (mobile camerounais), son e-mail ou sa langue ; un identifiant de connexion reste obligatoire. Le mot de passe et la 2FA restent sur /auth/change-password et /auth/2fa/*"
+      security:
+        - bearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                first_name: {type: string, maxLength: 80}
+                last_name: {type: string, maxLength: 80}
+                phone: {type: [string, 'null']}
+                email: {type: [string, 'null']}
+                locale: {type: string, enum: [fr, en]}
+      responses:
+        '200':
+          description: "Profil à jour"
+        '409':
+          description: "Téléphone ou e-mail déjà utilisé"
+        '422':
+          description: "Données invalides"
+  /api/v1/me/preferences:
+    patch:
+      summary: "Réglages personnels : canaux de notification des nouveaux messages en plus de l'application (notify_sms, notify_email) et résumé quotidien par e-mail (daily_digest, rôles de la plateforme seulement)"
+      security:
+        - bearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                notify_sms: {type: boolean}
+                notify_email: {type: boolean}
+                daily_digest: {type: boolean}
+      responses:
+        '200':
+          description: "Profil à jour"
+        '422':
+          description: "Valeur invalide ou résumé hors plateforme"
+  /api/v1/me/sessions/logout-others:
+    post:
+      summary: "Déconnecte tous ses autres appareils (la session courante reste ouverte), journalisé"
+      security:
+        - bearer: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: {type: object, additionalProperties: false}
+      responses:
+        '200':
+          description: "{ revoked_sessions }"
+  /api/v1/platform/settings/security:
+    get:
+      summary: "Réglages de sécurité (platform.settings.read) : durée d'une session (heures) et double authentification obligatoire par rôle (rôles de la plateforme : toujours, locked)"
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: "{ session_hours, roles }"
+        '403':
+          description: "Refusé"
+    patch:
+      summary: "Modifie la durée de session et la 2FA obligatoire par rôle (platform.settings.manage, 2FA récente), journalisé"
+      security:
+        - bearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                session_hours: {type: integer, minimum: 1, maximum: 72}
+                two_factor: {type: object, additionalProperties: {type: boolean}}
+      responses:
+        '200':
+          description: "Réglages à jour"
+        '403':
+          description: "Refusé ou 2FA récente requise"
+        '404':
+          description: "Rôle inconnu"
+        '409':
+          description: "Rôle de la plateforme (2FA toujours exigée)"
+        '422':
+          description: "Valeur hors bornes"

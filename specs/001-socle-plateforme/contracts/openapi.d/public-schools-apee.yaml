@@ -1,0 +1,453 @@
+# Contrat de l'APEE, du paquet minimum et des dons des écoles publiques (contrat généré à partir des routes, réponses RFC 9457).
+paths:
+  /api/v1/public/apee/entries:
+    post:
+      summary: ApeeController::record
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: "Succès" }
+        '201': { description: "Créé" }
+        '400': { description: "Requête invalide" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission ou périmètre insuffisant" }
+        '404': { description: "Introuvable dans le périmètre" }
+        '409': { description: "Conflit : déjà publié, figé ou rejeu différent" }
+        '422': { description: "Données invalides" }
+        '423': { description: "Application en lecture seule" }
+  /api/v1/public/apee/entries/{id}/proof:
+    post:
+      summary: ApeeController::attachProof
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: "Succès" }
+        '201': { description: "Créé" }
+        '400': { description: "Requête invalide" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission ou périmètre insuffisant" }
+        '404': { description: "Introuvable dans le périmètre" }
+        '409': { description: "Conflit : déjà publié, figé ou rejeu différent" }
+        '422': { description: "Données invalides" }
+        '423': { description: "Application en lecture seule" }
+  /api/v1/public/apee/families:
+    get:
+      summary: ApeeController::families
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: per_page
+          in: query
+          required: false
+          schema: { type: integer }
+        - name: cursor
+          in: query
+          required: false
+          schema: { type: string }
+        - name: structure_id
+          in: query
+          required: false
+          schema: { type: string }
+        - name: purpose
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        '200': { description: "Succès" }
+        '201': { description: "Créé" }
+        '400': { description: "Requête invalide" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission ou périmètre insuffisant" }
+        '404': { description: "Introuvable dans le périmètre" }
+        '409': { description: "Conflit : déjà publié, figé ou rejeu différent" }
+        '422': { description: "Données invalides" }
+        '423': { description: "Application en lecture seule" }
+  /api/v1/public/apee/years:
+    get:
+      summary: ApeeController::years
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: per_page
+          in: query
+          required: false
+          schema: { type: integer }
+        - name: cursor
+          in: query
+          required: false
+          schema: { type: string }
+        - name: structure_id
+          in: query
+          required: false
+          schema: { type: string }
+        - name: purpose
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        '200': { description: "Succès" }
+        '201': { description: "Créé" }
+        '400': { description: "Requête invalide" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission ou périmètre insuffisant" }
+        '404': { description: "Introuvable dans le périmètre" }
+        '409': { description: "Conflit : déjà publié, figé ou rejeu différent" }
+        '422': { description: "Données invalides" }
+        '423': { description: "Application en lecture seule" }
+    post:
+      summary: ApeeController::vote
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: "Succès" }
+        '201': { description: "Créé" }
+        '400': { description: "Requête invalide" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission ou périmètre insuffisant" }
+        '404': { description: "Introuvable dans le périmètre" }
+        '409': { description: "Conflit : déjà publié, figé ou rejeu différent" }
+        '422': { description: "Données invalides" }
+        '423': { description: "Application en lecture seule" }
+  /api/v1/public/apee/years/{id}/entries:
+    get:
+      summary: ApeeController::entries
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: per_page
+          in: query
+          required: false
+          schema: { type: integer }
+        - name: cursor
+          in: query
+          required: false
+          schema: { type: string }
+        - name: structure_id
+          in: query
+          required: false
+          schema: { type: string }
+        - name: purpose
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        '200': { description: "Succès" }
+        '201': { description: "Créé" }
+        '400': { description: "Requête invalide" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission ou périmètre insuffisant" }
+        '404': { description: "Introuvable dans le périmètre" }
+        '409': { description: "Conflit : déjà publié, figé ou rejeu différent" }
+        '422': { description: "Données invalides" }
+        '423': { description: "Application en lecture seule" }
+  /api/v1/public/apee/years/{id}/exemptions:
+    get:
+      summary: ApeeController::exemptions
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: per_page
+          in: query
+          required: false
+          schema: { type: integer }
+        - name: cursor
+          in: query
+          required: false
+          schema: { type: string }
+        - name: structure_id
+          in: query
+          required: false
+          schema: { type: string }
+        - name: purpose
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        '200': { description: "Succès" }
+        '201': { description: "Créé" }
+        '400': { description: "Requête invalide" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission ou périmètre insuffisant" }
+        '404': { description: "Introuvable dans le périmètre" }
+        '409': { description: "Conflit : déjà publié, figé ou rejeu différent" }
+        '422': { description: "Données invalides" }
+        '423': { description: "Application en lecture seule" }
+    post:
+      summary: ApeeController::exempt
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: "Succès" }
+        '201': { description: "Créé" }
+        '400': { description: "Requête invalide" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission ou périmètre insuffisant" }
+        '404': { description: "Introuvable dans le périmètre" }
+        '409': { description: "Conflit : déjà publié, figé ou rejeu différent" }
+        '422': { description: "Données invalides" }
+        '423': { description: "Application en lecture seule" }
+  /api/v1/public/apee/years/{id}/non-contributors:
+    get:
+      summary: ApeeController::nonContributors
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: per_page
+          in: query
+          required: false
+          schema: { type: integer }
+        - name: cursor
+          in: query
+          required: false
+          schema: { type: string }
+        - name: structure_id
+          in: query
+          required: false
+          schema: { type: string }
+        - name: purpose
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        '200': { description: "Succès" }
+        '201': { description: "Créé" }
+        '400': { description: "Requête invalide" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission ou périmètre insuffisant" }
+        '404': { description: "Introuvable dans le périmètre" }
+        '409': { description: "Conflit : déjà publié, figé ou rejeu différent" }
+        '422': { description: "Données invalides" }
+        '423': { description: "Application en lecture seule" }
+  /api/v1/public/apee/years/{id}/statement:
+    get:
+      summary: ApeeController::statement
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: per_page
+          in: query
+          required: false
+          schema: { type: integer }
+        - name: cursor
+          in: query
+          required: false
+          schema: { type: string }
+        - name: structure_id
+          in: query
+          required: false
+          schema: { type: string }
+        - name: purpose
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        '200': { description: "Succès" }
+        '201': { description: "Créé" }
+        '400': { description: "Requête invalide" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission ou périmètre insuffisant" }
+        '404': { description: "Introuvable dans le périmètre" }
+        '409': { description: "Conflit : déjà publié, figé ou rejeu différent" }
+        '422': { description: "Données invalides" }
+        '423': { description: "Application en lecture seule" }
+  /api/v1/public/apee/years/{id}/statement/document:
+    post:
+      summary: ApeeController::issueStatement
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: "Succès" }
+        '201': { description: "Créé" }
+        '400': { description: "Requête invalide" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission ou périmètre insuffisant" }
+        '404': { description: "Introuvable dans le périmètre" }
+        '409': { description: "Conflit : déjà publié, figé ou rejeu différent" }
+        '422': { description: "Données invalides" }
+        '423': { description: "Application en lecture seule" }
+  /api/v1/public/supplies:
+    get:
+      summary: ApeeController::supplies
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: per_page
+          in: query
+          required: false
+          schema: { type: integer }
+        - name: cursor
+          in: query
+          required: false
+          schema: { type: string }
+        - name: structure_id
+          in: query
+          required: false
+          schema: { type: string }
+        - name: purpose
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        '200': { description: "Succès" }
+        '201': { description: "Créé" }
+        '400': { description: "Requête invalide" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission ou périmètre insuffisant" }
+        '404': { description: "Introuvable dans le périmètre" }
+        '409': { description: "Conflit : déjà publié, figé ou rejeu différent" }
+        '422': { description: "Données invalides" }
+        '423': { description: "Application en lecture seule" }
+    post:
+      summary: ApeeController::receiveSupply
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: "Succès" }
+        '201': { description: "Créé" }
+        '400': { description: "Requête invalide" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission ou périmètre insuffisant" }
+        '404': { description: "Introuvable dans le périmètre" }
+        '409': { description: "Conflit : déjà publié, figé ou rejeu différent" }
+        '422': { description: "Données invalides" }
+        '423': { description: "Application en lecture seule" }
+  /api/v1/public/supplies/{id}:
+    get:
+      summary: ApeeController::supply
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: per_page
+          in: query
+          required: false
+          schema: { type: integer }
+        - name: cursor
+          in: query
+          required: false
+          schema: { type: string }
+        - name: structure_id
+          in: query
+          required: false
+          schema: { type: string }
+        - name: purpose
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        '200': { description: "Succès" }
+        '201': { description: "Créé" }
+        '400': { description: "Requête invalide" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission ou périmètre insuffisant" }
+        '404': { description: "Introuvable dans le périmètre" }
+        '409': { description: "Conflit : déjà publié, figé ou rejeu différent" }
+        '422': { description: "Données invalides" }
+        '423': { description: "Application en lecture seule" }
+  /api/v1/public/supplies/{id}/slip:
+    post:
+      summary: ApeeController::supplySlip
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: "Succès" }
+        '201': { description: "Créé" }
+        '400': { description: "Requête invalide" }
+        '401': { description: "Authentification requise" }
+        '403': { description: "Permission ou périmètre insuffisant" }
+        '404': { description: "Introuvable dans le périmètre" }
+        '409': { description: "Conflit : déjà publié, figé ou rejeu différent" }
+        '422': { description: "Données invalides" }
+        '423': { description: "Application en lecture seule" }

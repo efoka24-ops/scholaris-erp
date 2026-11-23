@@ -1,0 +1,7 @@
+parameters:
+    level: 8
+    paths:
+        - src
+        - config
+        - public
+    # Objectif du CDC : niveau maximal (10). Relever progressivement au fil des phases.

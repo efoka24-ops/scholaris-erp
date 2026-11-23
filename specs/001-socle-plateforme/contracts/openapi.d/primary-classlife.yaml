@@ -1,0 +1,95 @@
+# Contrat OpenAPI 3.1 de la vie de classe de l'application Primaire privee (ClassLife) : cahier de liaison du maitre et portail parent
+# (journal publie, competences publiees, accuse de lecture). Voir primary-core.yaml pour WriteGate (423/403).
+# Perimetre classe pour le maitre ; le parent n'accede qu'a ses enfants (autre famille ou autre client : 404).
+paths:
+  /api/v1/primary/classes/{id}/journal:
+    get:
+      summary: "Entrees du cahier de liaison d'une classe (primary.journal.read), avec nombre d'accuses de lecture"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+        - {name: from, in: query, required: false, schema: {type: string}}
+        - {name: to, in: query, required: false, schema: {type: string}}
+      responses:
+        '200': {description: "{items}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Classe introuvable ou hors perimetre"}
+    post:
+      summary: "Creer une entree en brouillon (primary.journal.write)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [title, body]
+              properties:
+                entry_date: {type: string, format: date}
+                entry_kind: {type: string, enum: [lesson, homework, liaison]}
+                title: {type: string, maxLength: 160}
+                body: {type: string, maxLength: 5000}
+                subject_id: {type: string}
+                visible_to_parents: {type: boolean}
+      responses:
+        '201': {description: "Entree creee"}
+        '403': {description: "Classe hors perimetre (journalise)"}
+        '404': {description: "Classe introuvable"}
+        '422': {description: "Donnees invalides"}
+        '423': {description: "Abonnement suspendu"}
+  /api/v1/primary/journal/{id}:
+    patch:
+      summary: "Modifier une entree non publiee"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Entree modifiee"}
+        '403': {description: "Classe hors perimetre"}
+        '404': {description: "Introuvable"}
+        '409': {description: "Entree deja publiee"}
+        '423': {description: "Abonnement suspendu"}
+  /api/v1/primary/journal/{id}/publish:
+    post:
+      summary: "Publier l'entree aux parents de la classe (NOT-PRI-05) ; rend le nombre de parents prevenus"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Entree publiee {notified}"}
+        '403': {description: "Classe hors perimetre"}
+        '404': {description: "Introuvable"}
+        '409': {description: "Deja publiee"}
+        '423': {description: "Abonnement suspendu"}
+  /api/v1/primary/journal/{id}/seen:
+    post:
+      summary: "Accuse de lecture d'un parent (unique par parent et par entree)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "{entry_id, seen_at}"}
+        '404': {description: "Entree inconnue, non publiee ou d'une autre classe que celle de ses enfants"}
+        '423': {description: "Abonnement suspendu"}
+  /api/v1/primary/family/children:
+    get:
+      summary: "Enfants du parent inscrits dans l'etablissement"
+      responses:
+        '200': {description: "{items}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+  /api/v1/primary/family/children/{id}/journal:
+    get:
+      summary: "Cahier de liaison publie de la classe de l'enfant"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "{items}"}
+        '404': {description: "Enfant d'une autre famille ou introuvable"}
+  /api/v1/primary/family/children/{id}/competencies:
+    get:
+      summary: "Competences PUBLIEES de l'enfant (feuilles verrouillees puis publiees seulement)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+        - {name: period_id, in: query, required: false, schema: {type: string}}
+      responses:
+        '200': {description: "{child_id, periods}"}
+        '404': {description: "Enfant d'une autre famille ou introuvable"}

@@ -1,0 +1,63 @@
+/* Écrans de délibération IPES (maquette Deliberation.html) : onglets soulignés, compteurs, cas limites surlignés, cibles de 44 px. */
+.hdl-tab {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap);
+  padding: 0 16px;
+  font: 700 14px var(--font);
+  border-bottom: 3px solid transparent;
+  color: var(--text-2);
+  text-decoration: none;
+}
+.hdl-tab--on {
+  color: var(--ink);
+  border-bottom-color: var(--accent);
+}
+.hdl-counts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 12px;
+  margin: 0 0 16px;
+}
+.hdl-count {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  padding: 12px;
+}
+.hdl-count strong {
+  display: block;
+  font-size: 24px;
+  font-variant-numeric: tabular-nums;
+}
+.hdl-sim td.num,
+.hdl-sim th.num {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.hdl-borderline {
+  background: var(--warning-bg);
+}
+.hdl-borderline > th {
+  border-left: 4px solid var(--warning);
+}
+.hdl-sub {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
+}
+.hdl-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.hdl-links .btn {
+  min-height: var(--tap);
+}
+ul.hdl-links,
+.hdl-sim ~ ul,
+ul.hi-list[role='list'] {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}

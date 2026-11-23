@@ -1,0 +1,44 @@
+# Contrat OpenAPI 3.1 du noyau de l'application Supérieur (IPES) : routes communes à tous les sous-modules Higher
+# (fusionné avec openapi.yaml par le test de contrat). Erreurs au format RFC 9457 (components/schemas/Problem).
+# Toute route Higher est préfixée /api/v1/higher, exige l'authentification et l'en-tête X-Establishment-Id.
+# Porte du droit d'usage (module Platform), appliquée à toutes les routes Higher des sous-modules :
+#   - GET : application fermée ou jamais ouverte au client -> 404 ;
+#   - POST, PUT, PATCH, DELETE : application suspendue -> 423 (type .../errors/application-suspended,
+#     « Abonnement suspendu : lecture et export seulement. ») ; fermée ou jamais ouverte -> 403 (type .../errors/application-closed).
+# Les contrats des sous-modules (openapi.d/higher-<module>.yaml) documentent donc 404 sur leurs GET et 403/423 sur leurs écritures.
+paths:
+  /api/v1/higher/me:
+    get:
+      summary: "Rôles de l'utilisateur dans l'application Supérieur, écoles où il exerce et état de l'abonnement (sélecteur « École », RG-ORG-3)"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: "Profil Higher"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      application:
+                        type: object
+                        properties:
+                          key: {type: string, const: higher}
+                          state: {type: [string, 'null'], enum: [trial, active, past_due, suspended, closed, null]}
+                          writable: {type: boolean, description: "Faux si l'abonnement est suspendu : lecture et export seulement"}
+                      establishment_id: {type: string}
+                      roles: {type: array, items: {type: string}, description: "Codes de rôle (higher_dir_ecole, enseignant…) qui portent higher.access"}
+                      all_schools: {type: boolean, description: "Vrai pour une affectation sur tout l'établissement"}
+                      school_ids: {type: array, items: {type: string}, description: "Écoles (org_units racines) des affectations limitées"}
+                      school_selector: {type: boolean, description: "Afficher le sélecteur « École » (plusieurs écoles ou tout l'établissement)"}
+        '400':
+          description: "En-tête X-Establishment-Id manquant"
+        '401':
+          description: "Non authentifié"
+        '403':
+          description: "Aucun droit sur l'établissement ou aucun rôle portant higher.access"
+        '404':
+          description: "Application Supérieur fermée ou jamais ouverte à ce client"

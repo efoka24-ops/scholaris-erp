@@ -1,0 +1,213 @@
+# Contrat OpenAPI 3.1 du module Sync (PP6) : synchronisation hors ligne par lots, appareils révocables.
+# Fusionné avec openapi.yaml par le test de contrat. Erreurs au format RFC 9457 (Problem, type application/problem+json).
+# Toutes les routes exigent l'authentification (401) et X-Establishment-Id (400 si absent, 403 si l'établissement n'est pas
+# accessible) ; puis une permission de l'établissement : sync.devices.manage (appareils) ou sync.batches.submit (lots).
+paths:
+  /api/v1/sync/devices:
+    get:
+      summary: "Liste paginée (curseur) des appareils de l'établissement, sans jamais la clé - sync.devices.manage"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      responses:
+        '200':
+          description: "Liste paginée : data[] {id, establishment_id, label, created_at, last_seen_at, revoked_at}, meta.next_cursor"
+        '403':
+          description: "Accès refusé"
+        '422':
+          description: "Paramètres de liste invalides"
+    post:
+      summary: >
+        Inscrit un appareil de l'établissement - sync.devices.manage. Corps JSON {label} (1 à 120 caractères ; aucun autre
+        champ). La clé de signature (256 bits aléatoires, 64 caractères hexadécimaux) est générée par le serveur et rendue
+        UNE SEULE FOIS dans la réponse (data.key, Cache-Control: no-store) : elle n'est ni relisible, ni journalisée ;
+        le serveur la conserve chiffrée.
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [label]
+              additionalProperties: false
+              properties:
+                label:
+                  type: string
+                  minLength: 1
+                  maxLength: 120
+      responses:
+        '201':
+          description: "Appareil inscrit : data {id, establishment_id, label, created_at, last_seen_at, revoked_at, key}"
+        '400':
+          description: "Corps absent ou JSON illisible"
+        '403':
+          description: "Accès refusé"
+        '422':
+          description: "Données invalides"
+  /api/v1/sync/devices/{id}/revoke:
+    post:
+      summary: "Révoque un appareil de l'établissement (idempotent : la date de première révocation est conservée) ; ses lots sont ensuite refusés (401) - sync.devices.manage"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Appareil révoqué"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Appareil introuvable (ou d'un autre client ou établissement)"
+  /api/v1/sync/devices/{id}/pin:
+    put:
+      summary: "PP7 (T608) : définit le code personnel (6 chiffres, haché) de l'utilisateur connecté sur un appareil partagé - sync.batches.submit"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              additionalProperties: false
+              properties:
+                code: {type: string, pattern: '^[0-9]{6}$'}
+      responses:
+        '200':
+          description: "Code enregistré : {data: {device_id, pin_set: true}}"
+        '400':
+          description: "Corps vide ou illisible"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Appareil introuvable (ou d'un autre client ou établissement)"
+        '422':
+          description: "Code absent ou hors format (6 chiffres)"
+        '423':
+          description: "Appareil révoqué ou verrouillé : en-tête X-Device-Wipe: true (effacer la base locale)"
+  /api/v1/sync/devices/{id}/unlock:
+    post:
+      summary: "PP7 (T608) : vérifie le code personnel de l'utilisateur connecté ; 5 échecs consécutifs verrouillent l'appareil et rendent l'ordre d'effacement - sync.batches.submit"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              additionalProperties: false
+              properties:
+                code: {type: string}
+      responses:
+        '200':
+          description: "Déverrouillé, compteur d'échecs remis à zéro : {data: {device_id, unlocked: true, wipe: false}}"
+        '400':
+          description: "Corps vide ou illisible"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Appareil introuvable (ou d'un autre client ou établissement)"
+        '422':
+          description: "Code incorrect : en-tête X-Unlock-Attempts-Remaining"
+        '423':
+          description: "Cinquième échec, appareil verrouillé ou révoqué : en-tête X-Device-Wipe: true (ordre d'effacement de la base locale)"
+  /api/v1/sync/batches:
+    post:
+      summary: >
+        Envoie un lot hors ligne - sync.batches.submit. Corps compressé en gzip (Content-Encoding: gzip, Content-Type:
+        application/json) : {"items": [{"kind", "client_uuid", "payload"}]} ; aucun champ inconnu. En-têtes obligatoires :
+        X-Device-Id (appareil inscrit dans cet établissement), Idempotency-Key = identifiant du lot (8 à 128 caractères,
+        lettres, chiffres, _ - : .) et X-Batch-Signature = HMAC-SHA256 hexadécimal (64 caractères, préfixe sha256= admis) calculé
+        avec la clé de l'appareil sur la chaîne « X-Device-Id, LF, Idempotency-Key, LF, corps compressé tel qu'envoyé ».
+        Chaque élément est confié au gestionnaire `sync.handlers.<kind>` ; résultat par élément : applied (200), duplicate
+        (déjà appliqué, jamais ré-appliqué), conflict (409, la version du serveur est rendue dans data.server et n'est jamais
+        écrasée) ou rejected (422 ou le code du refus ; aucun gestionnaire pour ce kind = 422). Le statut HTTP reste 200 : un
+        conflit ou un refus d'élément n'arrête pas le lot. Un lot rejoué (même Idempotency-Key, même contenu) rend ses éléments
+        en duplicate avec original_status ; la même clé avec un autre contenu est refusée (422). Limites paramétrées
+        (sync.batch.max_items 50, sync.batch.max_rows_per_item 500, sync.batch.max_compressed_bytes 262144,
+        sync.batch.max_uncompressed_bytes 2097152 ; valeurs par défaut à confirmer). Au-delà de sync.batch.inline_max_items
+        éléments (25 par défaut), le lot est mis en file (202, statut queued) et traité par la commande `sync:process` ; son
+        résultat se lit par GET /sync/batches/{id}.
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: X-Device-Id
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: X-Batch-Signature
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: Content-Encoding
+          in: header
+          required: true
+          schema:
+            type: string
+            enum: [gzip]
+      responses:
+        '200':
+          description: "Lot traité : data {id, status processed, replayed, device_id, received_at, processed_at, counts, items[]}"
+        '202':
+          description: "Lot en file (queued) : sera traité par sync:process"
+        '400':
+          description: "Idempotency-Key absent ou invalide, gzip ou JSON illisible"
+        '401':
+          description: "Appareil inconnu ou révoqué, ou signature invalide (même réponse dans les trois cas)"
+        '403':
+          description: "Accès refusé"
+        '413':
+          description: "Lot compressé ou décompressé trop volumineux"
+        '415':
+          description: "Content-Encoding: gzip obligatoire"
+        '422':
+          description: "Forme du lot invalide (champs inconnus, kind, client_uuid, payload, trop d'éléments) ou identifiant de lot déjà utilisé pour un autre contenu"
+  /api/v1/sync/batches/{id}:
+    get:
+      summary: "Résultat d'un lot de l'établissement par son identifiant (Idempotency-Key d'origine), statuts d'éléments tels qu'enregistrés - sync.batches.submit"
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/EstablishmentId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Lot : status queued, processing ou processed ; items[] {index, kind, client_uuid, status, code, message, data}"
+        '403':
+          description: "Accès refusé"
+        '404':
+          description: "Lot introuvable (ou d'un autre client ou établissement)"

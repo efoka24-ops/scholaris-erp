@@ -1,0 +1,95 @@
+# Contrat OpenAPI 3.1 de l'inscription dans l'application Primaire privee (Enrolment, Billing, Documents) : profil d'eleve
+# (redoublant calcule), controle de la table de passage, facture d'inscription (inscription + 1re tranche, remise fratrie du socle),
+# documents administratifs avec QR de verification publique, transfert sortant.
+# Toutes les routes : authentification, en-tete X-Establishment-Id ; GET -> 404 si l'application est fermee ; ecritures -> 423 si
+# l'abonnement est suspendu, 403 si l'application n'est pas ouverte (WriteGate, voir primary-core.yaml).
+# Perimetre classe (RG-PRI-3) : hors perimetre, 404 en lecture, 403 journalise en ecriture.
+paths:
+  /api/v1/primary/learners/{id}/profile:
+    get:
+      summary: "Profil d'un eleve : inscription, classe, niveau, indicateur redoublant calcule (permission primary.learner.read)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+        - {name: academic_year_id, in: query, required: false, schema: {type: string}}
+      responses:
+        '200': {description: "Profil"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Eleve inconnu, autre client ou classe hors perimetre"}
+  /api/v1/primary/promotion-map/check:
+    get:
+      summary: "Controle de coherence de la table de passage people.promotion.next_structure"
+      responses:
+        '200': {description: "{ok, errors[{code, class_structure_id, target_structure_id}], classes}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+  /api/v1/primary/billing/fee-kinds:
+    get:
+      summary: "Natures de frais propres au primaire (billing.fee_kinds.primary)"
+      responses:
+        '200': {description: "{items, base}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+  /api/v1/primary/enrolments/{id}/invoice:
+    post:
+      summary: "Facturer une inscription selon les grilles de frais ; rend le montant du a l'inscription (inscription + 1re tranche)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '201': {description: "Facture"}
+        '403': {description: "Permission ou perimetre insuffisant"}
+        '404': {description: "Inscription introuvable dans cet etablissement"}
+        '409': {description: "Facture deja emise"}
+        '423': {description: "Abonnement suspendu"}
+  /api/v1/primary/enrolments/{id}/transfer:
+    post:
+      summary: "Transfert sortant : emet le certificat de radiation (QR) puis clot l'inscription (statut transferred)"
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [destination, reason, effective_on]
+              properties:
+                destination: {type: string, maxLength: 160}
+                reason: {type: string, maxLength: 255}
+                effective_on: {type: string, format: date}
+                locale: {type: string, enum: [fr, en]}
+      responses:
+        '201': {description: "Document emis, inscription close"}
+        '403': {description: "Permission ou perimetre insuffisant"}
+        '404': {description: "Inscription introuvable"}
+        '409': {description: "Transition de statut refusee (document revoque)"}
+        '422': {description: "Inscription non en cours ou donnees invalides"}
+        '423': {description: "Abonnement suspendu"}
+  /api/v1/primary/documents/kinds:
+    get:
+      summary: "Natures de documents administratifs et type du socle correspondant"
+      responses:
+        '200': {description: "{items[{kind, type}]}"}
+        '403': {description: "Permission absente"}
+        '404': {description: "Application fermee ou ressource introuvable"}
+  /api/v1/primary/documents:
+    post:
+      summary: "Emettre un document administratif (certificat de scolarite, attestation, carte scolaire, fiche de renseignements)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [kind, enrollment_id]
+              properties:
+                kind: {type: string, enum: [certificate, attendance, school_card, info_sheet]}
+                enrollment_id: {type: string}
+                locale: {type: string, enum: [fr, en]}
+      responses:
+        '201': {description: "Document emis {number, verification_token}"}
+        '403': {description: "Permission ou perimetre insuffisant"}
+        '404': {description: "Inscription introuvable"}
+        '422': {description: "Donnees invalides ou inscription non en cours"}
+        '423': {description: "Abonnement suspendu"}

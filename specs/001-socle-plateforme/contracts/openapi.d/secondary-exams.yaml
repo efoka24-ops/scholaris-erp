@@ -1,0 +1,253 @@
+# API secondaire EXA — formats, pièces et codes de résultat configurés par établissement ; aucune règle d'organisateur présumée.
+paths:
+  /api/v1/secondary/official-exams:
+    get:
+      summary: Lister les sessions d'examens dans le périmètre de classes autorisé
+      parameters:
+        - {$ref: '../openapi.yaml#/components/parameters/EstablishmentId'}
+        - {name: per_page, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 200}}
+        - {name: cursor, in: query, required: false, schema: {type: string}}
+        - {name: filter[exam_code], in: query, required: false, schema: {type: string}}
+        - {name: filter[academic_year_id], in: query, required: false, schema: {type: string}}
+        - {name: filter[class_structure_id], in: query, required: false, schema: {type: string}}
+        - {name: filter[status], in: query, required: false, schema: {type: string}}
+      responses:
+        '200': {description: Sessions paginées}
+        '404': {description: Application non ouverte au client ou ressource introuvable}
+        '403': {description: Permission insuffisante}
+        '409': {description: Module official_exams inactif}
+        '423': {description: Droit d'usage suspendu}
+    post:
+      summary: Créer une session d'examen et ses règles de configuration locales
+      parameters:
+        - {$ref: '../openapi.yaml#/components/parameters/EstablishmentId'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [exam_code, exam_label, academic_year_id, class_structure_id]
+              properties:
+                exam_code: {type: string, maxLength: 40}
+                exam_label: {type: string, maxLength: 160}
+                academic_year_id: {type: string}
+                class_structure_id: {type: string}
+                comparison_period_id: {type: [string, 'null']}
+                registration_deadline: {type: [string, 'null'], format: date}
+                exam_on: {type: [string, 'null'], format: date}
+                required_pieces: {type: array, items: {type: string}}
+                optional_subjects: {type: array, items: {type: string}}
+                passing_codes: {type: array, items: {type: string}}
+                export_columns: {type: array, items: {$ref: '#/components/schemas/ExportColumn'}}
+      responses:
+        '201': {description: Session créée}
+        '403': {description: Permission insuffisante ou classe hors périmètre}
+        '404': {description: Classe ou année introuvable}
+        '409': {description: Module official_exams inactif}
+        '422': {description: Validation invalide}
+        '423': {description: Droit d'usage suspendu}
+  /api/v1/secondary/official-exams/{session_id}:
+    parameters:
+      - {$ref: '../openapi.yaml#/components/parameters/EstablishmentId'}
+      - {name: session_id, in: path, required: true, schema: {type: string}}
+    get:
+      summary: Lire une session d'examen
+      responses:
+        '200': {description: Session}
+        '403': {description: Permission insuffisante}
+        '404': {description: Session inaccessible ou inconnue}
+        '409': {description: Module official_exams inactif}
+        '423': {description: Droit d'usage suspendu}
+    patch:
+      summary: Modifier la configuration ou clôturer la session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/SessionPatch'}
+      responses:
+        '200': {description: Session mise à jour}
+        '403': {description: Permission insuffisante ou classe hors périmètre}
+        '404': {description: Session inaccessible ou inconnue}
+        '409': {description: Session clôturée ou module inactif}
+        '423': {description: Droit d'usage suspendu}
+        '422': {description: Validation invalide}
+  /api/v1/secondary/official-exams/{session_id}/candidates:
+    parameters:
+      - {$ref: '../openapi.yaml#/components/parameters/EstablishmentId'}
+      - {name: session_id, in: path, required: true, schema: {type: string}}
+    get:
+      summary: Lister les candidats, contrôles d'identité/photo/pièces et frais constatés
+      parameters:
+        - {name: per_page, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 200}}
+        - {name: cursor, in: query, required: false, schema: {type: string}}
+        - {name: filter[person_id], in: query, required: false, schema: {type: string}}
+      responses:
+        '200': {description: 'Candidats paginés ; sans frais constatés, status=blocked et status_message="frais non constatés"'}
+        '403': {description: Permission insuffisante}
+        '404': {description: Session inaccessible ou inconnue}
+        '409': {description: Module official_exams inactif}
+        '423': {description: Droit d'usage suspendu}
+    post:
+      summary: Ajouter un élève régulièrement inscrit dans la classe exacte de la session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [person_id]
+              properties: {person_id: {type: string}}
+      responses:
+        '201': {description: Candidat ajouté}
+        '403': {description: Permission insuffisante ou classe hors périmètre}
+        '404': {description: Session inconnue}
+        '409': {description: Déjà présent ou session close}
+        '422': {description: 'RG-EXA-1 : élève non inscrit activement dans la classe d''examen, ou validation invalide'}
+  /api/v1/secondary/official-exams/{session_id}/candidates/generate:
+    post:
+      summary: Générer les candidats depuis les inscriptions actives de la classe
+      parameters:
+        - {$ref: '../openapi.yaml#/components/parameters/EstablishmentId'}
+        - {name: session_id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Compte des candidats ajoutés et déjà listés}
+        '403': {description: Permission insuffisante ou classe hors périmètre}
+        '404': {description: Session inconnue}
+        '409': {description: Session close ou module inactif}
+        '423': {description: Droit d'usage suspendu}
+  /api/v1/secondary/official-exams/candidates/{id}:
+    parameters:
+      - {$ref: '../openapi.yaml#/components/parameters/EstablishmentId'}
+      - {name: id, in: path, required: true, schema: {type: string}}
+    patch:
+      summary: Mettre à jour les pièces reçues et matières optionnelles configurées
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                pieces_received: {type: array, items: {type: string}}
+                selected_subjects: {type: array, items: {type: string}}
+      responses:
+        '200': {description: Candidat mis à jour}
+        '403': {description: Permission insuffisante ou classe hors périmètre}
+        '404': {description: Candidat inconnu}
+        '409': {description: Session close ou module inactif}
+        '422': {description: Aucun champ valide}
+        '423': {description: Droit d'usage suspendu}
+    delete:
+      summary: Retirer un candidat d'une session ouverte (aucun critère d'impayé)
+      responses:
+        '200': {description: Candidat retiré de la liste de travail}
+        '403': {description: Permission insuffisante ou classe hors périmètre}
+        '404': {description: Candidat inconnu}
+        '409': {description: Session close ou module inactif}
+        '423': {description: Droit d'usage suspendu}
+  /api/v1/secondary/official-exams/candidates/{id}/photo:
+    parameters:
+      - {$ref: '../openapi.yaml#/components/parameters/EstablishmentId'}
+      - {name: id, in: path, required: true, schema: {type: string}}
+    get:
+      summary: Lire une photo privée à l'aide d'une signature à durée limitée
+      parameters:
+        - {name: ref, in: query, required: true, schema: {type: string}}
+        - {name: expires, in: query, required: true, schema: {type: integer}}
+        - {name: signature, in: query, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Image JPEG ou PNG}
+        '403': {description: Permission insuffisante ou signature invalide}
+        '404': {description: Photo inaccessible ou supprimée}
+    post:
+      summary: Déposer une photo JPEG ou PNG privée pour le candidat
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [photo_base64]
+              properties: {photo_base64: {type: string, maxLength: 2800000}}
+      responses:
+        '200': {description: Candidat et URL signée}
+        '403': {description: Permission insuffisante ou classe hors périmètre}
+        '404': {description: Candidat inconnu}
+        '409': {description: Session close ou module inactif}
+        '423': {description: Droit d'usage suspendu}
+        '422': {description: Photo invalide}
+    delete:
+      summary: Supprimer la photo privée du candidat
+      responses:
+        '200': {description: Candidat mis à jour}
+        '403': {description: Permission insuffisante ou classe hors périmètre}
+        '404': {description: Candidat inconnu}
+        '409': {description: Session close ou module inactif}
+  /api/v1/secondary/official-exams/{session_id}/candidates/export:
+    get:
+      summary: Export CSV générique utilisant les colonnes configurées de la session (lecture, permis en module coupé avec données)
+      parameters:
+        - {$ref: '../openapi.yaml#/components/parameters/EstablishmentId'}
+        - {name: session_id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: 'CSV privé, sans cache'}
+        '403': {description: Permission insuffisante}
+        '404': {description: Session inaccessible ou inconnue}
+        '409': {description: Module official_exams inactif}
+        '423': {description: Droit d'usage suspendu}
+  /api/v1/secondary/official-exams/{session_id}/results/import:
+    post:
+      summary: Importer des résultats CSV génériques par identifiant interne ou matricule
+      parameters:
+        - {$ref: '../openapi.yaml#/components/parameters/EstablishmentId'}
+        - {name: session_id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [csv]
+              properties: {csv: {type: string, maxLength: 2000000, description: 'key, result_code and optional result_mark columns'}}
+      responses:
+        '200': {description: Import report and updated statistics}
+        '403': {description: Validation permission required}
+        '404': {description: Session inaccessible or unknown}
+        '409': {description: Session conflict or module inactive}
+        '422': {description: Invalid CSV}
+        '423': {description: Write access suspended}
+  /api/v1/secondary/official-exams/{session_id}/summary:
+    get:
+      summary: Lire le taux de réussite et la comparaison configurable avec les moyennes scolaires
+      parameters:
+        - {$ref: '../openapi.yaml#/components/parameters/EstablishmentId'}
+        - {name: session_id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Statistical summary}
+        '403': {description: Permission insuffisante}
+        '404': {description: Session inaccessible ou inconnue}
+        '409': {description: Module official_exams inactif}
+        '423': {description: Droit d'usage suspendu}
+components:
+  schemas:
+    ExportColumn:
+      type: object
+      required: [field, header]
+      properties:
+        field: {type: string, enum: [person_id, full_name, national_id, class_label, fee_status, candidate_status, selected_subjects, result_code, result_mark]}
+        header: {type: string, maxLength: 80}
+    SessionPatch:
+      type: object
+      properties:
+        exam_code: {type: string, maxLength: 40}
+        exam_label: {type: string, maxLength: 160}
+        comparison_period_id: {type: [string, 'null']}
+        registration_deadline: {type: [string, 'null'], format: date}
+        exam_on: {type: [string, 'null'], format: date}
+        required_pieces: {type: array, items: {type: string}}
+        optional_subjects: {type: array, items: {type: string}}
+        passing_codes: {type: array, items: {type: string}}
+        export_columns: {type: array, items: {$ref: '#/components/schemas/ExportColumn'}}
+        status: {type: string, const: closed}

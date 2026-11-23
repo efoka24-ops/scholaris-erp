@@ -1,0 +1,151 @@
+# Contrat OpenAPI 3.1 des notes de l'application Enseignement secondaire (spec 005, lot E2-C : T868 a T871, T948).
+# Les epreuves, les notes (cellule, lot, synchronisation hors ligne, import par FICHIER JOINT multipart champ file), le cycle
+# (brouillon, soumise, validee, verrouillee avec deuxieme authentification recente, publiee, non evaluee) et les corrections en deux
+# validations passent par les routes du socle Assessment (/assessments, /grades, /grade-sheets, /grade-corrections), parametrees par
+# le preregage du secondaire (D4 : aucun contrat d'ecriture des notes). Ces routes /secondary/grades/** ajoutent : parametres et
+# preregage sans ecrasement, grille de l'enseignant (coefficients versionnes de Setup), controle d'affectation journalise (TST-09),
+# releve de sequence (DOC-08), saisines pour fraude (RG-NOT-3), epreuves communes, notifications NOT-04 et NOT-11.
+# Routes /secondary/** : authentification, en-tete X-Establishment-Id ; ecritures -> 423 si l'abonnement est suspendu, 403 si
+# l'application n'est pas ouverte. Listes paginees par curseur. Erreurs RFC 9457.
+paths:
+  /api/v1/secondary/grades/settings:
+    get:
+      summary: "Parametres de saisie en vigueur : cycle, separation saisie et verrouillage, codes d'absence (fraud, exempt, replacement), pas de saisie, chaine de correction, saisie hors ligne, lettres [EN]"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Succes {data}"}
+        '403': {description: "Permission absente ou classe, matiere hors affectation (refus journalise)"}
+        '404': {description: "Ressource introuvable ou hors perimetre"}
+        '409': {description: "Conflit : doublon, saisine deja traitee, epreuve commune close"}
+        '422': {description: "Validation (errors par champ)"}
+  /api/v1/secondary/grades/settings/preset:
+    post:
+      summary: "Poser le preregage d'exemple (example_cdc) sur les cles absentes de l'etablissement, jamais d'ecrasement : {keys?} ; rend applied et kept"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Succes {data}"}
+        '403': {description: "Permission absente ou classe, matiere hors affectation (refus journalise)"}
+        '404': {description: "Ressource introuvable ou hors perimetre"}
+        '409': {description: "Conflit : doublon, saisine deja traitee, epreuve commune close"}
+        '422': {description: "Validation (errors par champ)"}
+  /api/v1/secondary/grades/sheet:
+    get:
+      summary: "Grille de l'enseignant : class_id, period_id ; eleves, matieres de la classe avec coefficient en vigueur et can_enter, parametres"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Succes {data}"}
+        '403': {description: "Permission absente ou classe, matiere hors affectation (refus journalise)"}
+        '404': {description: "Ressource introuvable ou hors perimetre"}
+        '409': {description: "Conflit : doublon, saisine deja traitee, epreuve commune close"}
+        '422': {description: "Validation (errors par champ)"}
+  /api/v1/secondary/grades/entry-checks:
+    post:
+      summary: "Controle d'affectation avant saisie, import ou synchronisation (TST-09) : {class_id, subject_id} ; 403 journalise secondary.grades.denied"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Succes {data}"}
+        '403': {description: "Permission absente ou classe, matiere hors affectation (refus journalise)"}
+        '404': {description: "Ressource introuvable ou hors perimetre"}
+        '409': {description: "Conflit : doublon, saisine deja traitee, epreuve commune close"}
+        '422': {description: "Validation (errors par champ)"}
+  /api/v1/secondary/grades/statement:
+    get:
+      summary: "Releve des notes de sequence par classe (DOC-08) : class_id, period_id, subject_id? ; moyennes par matiere, lettre [EN], statistiques"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Succes {data}"}
+        '403': {description: "Permission absente ou classe, matiere hors affectation (refus journalise)"}
+        '404': {description: "Ressource introuvable ou hors perimetre"}
+        '409': {description: "Conflit : doublon, saisine deja traitee, epreuve commune close"}
+        '422': {description: "Validation (errors par champ)"}
+  /api/v1/secondary/grades/fraud-reports:
+    get:
+      summary: "Saisines pour fraude, filtres filter[status], filter[class_id], filter[person_id]"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Succes {data}"}
+        '403': {description: "Permission absente ou classe, matiere hors affectation (refus journalise)"}
+        '404': {description: "Ressource introuvable ou hors perimetre"}
+        '409': {description: "Conflit : doublon, saisine deja traitee, epreuve commune close"}
+        '422': {description: "Validation (errors par champ)"}
+    post:
+      summary: "Saisir le surveillant general pour fraude (RG-NOT-3) : {class_id, subject_id, assessment_id, person_id, period_id?, note?} ; une par note"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '201': {description: "Succes {data}"}
+        '403': {description: "Permission absente ou classe, matiere hors affectation (refus journalise)"}
+        '404': {description: "Ressource introuvable ou hors perimetre"}
+        '409': {description: "Conflit : doublon, saisine deja traitee, epreuve commune close"}
+        '422': {description: "Validation (errors par champ)"}
+  /api/v1/secondary/grades/fraud-reports/{id}/handle:
+    post:
+      summary: "Traiter une saisine (surveillant general) : {outcome}"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Succes {data}"}
+        '403': {description: "Permission absente ou classe, matiere hors affectation (refus journalise)"}
+        '404': {description: "Ressource introuvable ou hors perimetre"}
+        '409': {description: "Conflit : doublon, saisine deja traitee, epreuve commune close"}
+        '422': {description: "Validation (errors par champ)"}
+  /api/v1/secondary/grades/common-tests:
+    get:
+      summary: "Epreuves communes par niveau, filtres academic_year_id, level_code, period_id, status"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Succes {data}"}
+        '403': {description: "Permission absente ou classe, matiere hors affectation (refus journalise)"}
+        '404': {description: "Ressource introuvable ou hors perimetre"}
+        '409': {description: "Conflit : doublon, saisine deja traitee, epreuve commune close"}
+        '422': {description: "Validation (errors par champ)"}
+    post:
+      summary: "Creer une epreuve commune : {academic_year_id, level_code, subject_id, period_id, title, held_on?, assessment_ids?}"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '201': {description: "Succes {data}"}
+        '403': {description: "Permission absente ou classe, matiere hors affectation (refus journalise)"}
+        '404': {description: "Ressource introuvable ou hors perimetre"}
+        '409': {description: "Conflit : doublon, saisine deja traitee, epreuve commune close"}
+        '422': {description: "Validation (errors par champ)"}
+  /api/v1/secondary/grades/common-tests/{id}:
+    patch:
+      summary: "Modifier une epreuve commune : {title?, held_on?, assessment_ids?, status?}"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Succes {data}"}
+        '403': {description: "Permission absente ou classe, matiere hors affectation (refus journalise)"}
+        '404': {description: "Ressource introuvable ou hors perimetre"}
+        '409': {description: "Conflit : doublon, saisine deja traitee, epreuve commune close"}
+        '422': {description: "Validation (errors par champ)"}
+  /api/v1/secondary/grades/publications:
+    post:
+      summary: "NOT-04 note publiee, apres la publication de l'epreuve au socle : {class_id, assessment_id, subject_label, label, link?} ; jamais deux fois"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Succes {data}"}
+        '403': {description: "Permission absente ou classe, matiere hors affectation (refus journalise)"}
+        '404': {description: "Ressource introuvable ou hors perimetre"}
+        '409': {description: "Conflit : doublon, saisine deja traitee, epreuve commune close"}
+        '422': {description: "Validation (errors par champ)"}
+  /api/v1/secondary/grades/late-reminders:
+    post:
+      summary: "NOT-11 saisie en retard aux enseignants de la matiere (emploi du temps) : {class_id, period_id, period_label?, due_on, subject_ids}"
+      parameters:
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '200': {description: "Succes {data}"}
+        '403': {description: "Permission absente ou classe, matiere hors affectation (refus journalise)"}
+        '404': {description: "Ressource introuvable ou hors perimetre"}
+        '409': {description: "Conflit : doublon, saisine deja traitee, epreuve commune close"}
+        '422': {description: "Validation (errors par champ)"}

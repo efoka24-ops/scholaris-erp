@@ -1,0 +1,38 @@
+# Contrat OpenAPI 3.1 de l'annuaire des noms de l'application Supérieur (IPES), module Inscriptions (Higher\Enrolment) : les
+# écrans affichent des noms plutôt que des identifiants de personnes. Le module Inscriptions tient le registre des étudiants de
+# l'établissement (hi_students, matricule IPES) ; le personnel est reconnu par les contrats du socle (Staff : enseignants affectés à
+# l'établissement et personnel du client ; Identity : titulaires d'un rôle IPES dans l'établissement, hors apprenant, garant et
+# rôles externes) ; les noms viennent du contrat People (cloisonné par client). Lecture seule, permission higher.access.
+paths:
+  /api/v1/higher/directory/names:
+    get:
+      summary: "Nom, prénom et matricule éventuel des personnes rattachées à l'établissement (étudiants inscrits, personnel)"
+      description: >-
+        Un identifiant inconnu, non rattaché à l'établissement ou appartenant à un autre client est simplement absent de la réponse
+        (aucune distinction possible entre ces cas). 100 identifiants au plus par appel ; les doublons sont ignorés.
+      parameters:
+        - {name: ids, in: query, required: true, description: "Identifiants de personnes séparés par des virgules (1 à 100)", schema: {type: string, example: "01HP0A,01HP0B"}}
+        - {name: X-Establishment-Id, in: header, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: "Noms trouvés"
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      required: [person_id, first_name, last_name, matricule]
+                      properties:
+                        person_id: {type: string}
+                        first_name: {type: string}
+                        last_name: {type: string}
+                        matricule: {type: [string, 'null'], description: "Matricule IPES pour un étudiant, null pour le personnel"}
+        '401': {description: "Non authentifié (RFC 9457)"}
+        '403': {description: "Permission higher.access absente (RFC 9457)"}
+        '404': {description: "Application fermée au client"}
+        '422': {description: "ids absent, plus de 100 identifiants ou identifiant mal formé (RFC 9457, champ errors.ids)"}
